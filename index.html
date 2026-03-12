@@ -15,7 +15,7 @@
   }
 
   #customCursor {
-    position: fixed;
+    position: absolute;
     left: 50%;
     top: 50%;
     width: 36px;
@@ -919,33 +919,26 @@ window.addEventListener('resize', resizeDots);
 const cursorEl = document.getElementById('customCursor');
 
 function updateCursor(x, y) {
-  const vv = window.visualViewport;
-  if (vv) {
-    cursorEl.style.left = (vv.offsetLeft + x / vv.scale) + 'px';
-    cursorEl.style.top = (vv.offsetTop + y / vv.scale) + 'px';
-    cursorEl.style.transform = 'translate(-50%, -50%) scale(' + (1 / vv.scale) + ')';
-  } else {
-    cursorEl.style.left = x + 'px';
-    cursorEl.style.top = y + 'px';
-    cursorEl.style.transform = 'translate(-50%, -50%)';
-  }
+  cursorEl.style.left = x + 'px';
+  cursorEl.style.top = y + 'px';
+  cursorEl.style.transform = 'translate(-50%, -50%)';
 }
 
 document.addEventListener('mousemove', e => {
   cursorEl.style.display = '';
-  updateCursor(e.clientX, e.clientY);
+  updateCursor(e.pageX, e.pageY);
 });
 
 document.body.addEventListener('touchstart', e => {
   cursorEl.style.display = 'block';
   const t = e.touches[0];
-  updateCursor(t.clientX, t.clientY);
+  updateCursor(t.pageX, t.pageY);
 }, { passive: true, capture: true });
 
 document.body.addEventListener('touchmove', e => {
   cursorEl.style.display = 'block';
   const t = e.touches[0];
-  updateCursor(t.clientX, t.clientY);
+  updateCursor(t.pageX, t.pageY);
 }, { passive: true, capture: true });
 
 </script>
