@@ -16,7 +16,7 @@
   * { margin: 0; padding: 0; box-sizing: border-box; cursor: none !important; }
 
   #customCursor {
-    position: fixed;
+    position: absolute;
     width: 36px;
     height: 36px;
     pointer-events: none;
@@ -956,8 +956,9 @@ window.addEventListener('resize', resizeDots);
 
 const cursorEl = document.getElementById('customCursor');
 document.addEventListener('mousemove', e => {
-  cursorEl.style.left = e.clientX + 'px';
-  cursorEl.style.top = e.clientY + 'px';
+  const zoom = window.visualViewport ? window.visualViewport.scale : 1;
+  cursorEl.style.left = (e.pageX / zoom) + 'px';
+  cursorEl.style.top = (e.pageY / zoom) + 'px';
 });
 </script>
 </body>
