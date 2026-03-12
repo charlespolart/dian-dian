@@ -861,6 +861,8 @@ function resetAll() {
 
 /* ── Prevent accidental dot clicks while scrolling ── */
 let touchMoved = false;
+document.addEventListener('touchstart', () => { touchMoved = false; }, { passive: true });
+document.addEventListener('touchmove', () => { touchMoved = true; }, { passive: true });
 
 init();
 
@@ -942,7 +944,6 @@ function trackTouch() {
 }
 
 document.body.addEventListener('touchstart', e => {
-  touchMoved = false;
   cursorEl.style.display = 'block';
   const t = e.touches[0];
   touchCX = t.clientX;
@@ -951,7 +952,6 @@ document.body.addEventListener('touchstart', e => {
 }, { passive: true, capture: true });
 
 document.body.addEventListener('touchmove', e => {
-  touchMoved = true;
   const t = e.touches[0];
   touchCX = t.clientX;
   touchCY = t.clientY;
