@@ -2,17 +2,12 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
 <title>Reading Tracker 2026</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=DotGothic16&display=swap" rel="stylesheet">
 <style>
-  @font-face {
-    font-family: 'Pixel';
-    src: local('Silkscreen');
-  }
-
   * { margin: 0; padding: 0; box-sizing: border-box; cursor: none !important; }
 
   #customCursor {
@@ -27,82 +22,123 @@
   body {
     font-family: 'Silkscreen', 'DotGothic16', monospace;
     background: #f5f0d0;
-    background-image:
-      radial-gradient(circle, #b8c0d8 2px, transparent 2px);
+    background-image: radial-gradient(circle, #b8c0d8 2px, transparent 2px);
     background-size: 32px 32px;
     min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 10px 380px 10px 200px;
     color: #6a6880;
     overflow-x: hidden;
   }
 
-  /* ── Main layout ── */
-  .main-layout {
-    display: flex;
-    gap: 40px;
-    align-items: flex-start;
-    width: fit-content;
-    max-width: 100%;
-  }
-
-  .title-side {
+  /* ══════════════════════════════════════
+     PAGE LAYOUT
+     ══════════════════════════════════════ */
+  .page-layout {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    position: fixed;
-    right: 40px;
-    top: 50%;
-    transform: translateY(-50%);
-    max-width: 350px;
-    z-index: 100;
+    min-height: 100vh;
+    padding: 12px;
+    gap: 16px;
   }
 
-  /* ── Screen ── */
-  .screen {
-    background: rgba(255,255,252,0.6);
-    border: 2px dashed #d0c8b0;
-    border-radius: 14px;
-    padding: 10px 12px;
-    width: fit-content;
-    max-width: 100%;
-    margin-bottom: 8px;
-    flex: 1;
-    overflow: hidden;
+  /* Default stacked order: book, title, tabs */
+  .tama-shell { order: 0; }
+  .header-block { order: 1; }
+  .page-tabs { order: 2; }
+
+  /* ── Tabs (horizontal top by default) ── */
+  .page-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    gap: 6px;
+    justify-content: center;
+    width: 100%;
   }
 
-  .screen-dark {
-    background: rgba(232,228,216,0.5);
-    border-color: #c8c0a0;
-    color: #7a7868;
-  }
-
-  h1 {
+  .page-tab {
     font-family: 'Silkscreen', monospace;
-    font-size: 1.8rem;
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+    padding: 8px 16px;
+    border-radius: 10px 10px 0 0;
+    border: 2px solid #c8c0a8;
+    border-bottom: none;
+    background: #ede8d4;
+    color: #9890a0;
+    cursor: none !important;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .page-tab:hover { background: #f5f0e0; transform: translateY(-2px); }
+
+  .page-tab.active {
+    background: #faf6e8;
+    color: #8080a8;
+    border-color: #a8a0c0;
+    box-shadow: 0 2px 0 #faf6e8;
+    z-index: 1;
+  }
+
+  .page-tab .tab-close { font-size: 12px; opacity: 0.4; transition: opacity 0.15s; }
+  .page-tab .tab-close:hover { opacity: 1; }
+
+  .page-tab-add {
+    font-family: 'Silkscreen', monospace;
+    font-size: 0.85rem;
+    padding: 7px 14px;
+    border-radius: 10px 10px 0 0;
+    border: 2px dashed #c8c0a8;
+    border-bottom: none;
+    background: transparent;
+    color: #b0a890;
+    cursor: none !important;
+    transition: all 0.15s;
+  }
+  .page-tab-add:hover { background: #ede8d4; transform: translateY(-2px); }
+
+  /* ── Header (title, subtitle, stars) ── */
+  .header-block {
+    text-align: center;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .page-title {
+    font-family: 'Silkscreen', monospace;
+    font-size: 1.6rem;
     color: #9090b0;
     text-align: center;
     margin-bottom: 2px;
     text-shadow: 2px 2px 0 #d0d0e0;
     letter-spacing: 2px;
+    background: none;
+    border: none;
+    border-bottom: 3px dashed transparent;
+    outline: none;
+    cursor: none !important;
+    width: 100%;
+    overflow-wrap: normal;
+    word-break: keep-all;
+    transition: border-color 0.2s;
   }
+  .page-title:hover, .page-title:focus { border-bottom-color: #c8c0d8; }
 
   .subtitle {
     font-family: 'DotGothic16', monospace;
-    font-size: 2rem;
+    font-size: 1rem;
     color: #b0a890;
     text-align: center;
-    margin-bottom: 22px;
+    margin-bottom: 4px;
     letter-spacing: 4px;
   }
 
   .stars-deco {
     text-align: center;
-    font-size: 2rem;
-    margin-bottom: 16px;
+    font-size: 1rem;
     color: #c8b8a0;
     letter-spacing: 6px;
     animation: twinkle 1.5s ease-in-out infinite alternate;
@@ -113,107 +149,71 @@
     100% { opacity: 1; }
   }
 
-  /* ── Page title (editable) ── */
-  .page-title {
-    font-family: 'Silkscreen', monospace;
-    font-size: 4rem;
-    color: #9090b0;
-    text-align: center;
-    margin-bottom: 4px;
-    text-shadow: 2px 2px 0 #d0d0e0;
-    letter-spacing: 2px;
-    background: none;
-    border: none;
-    border-bottom: 3px dashed transparent;
-    outline: none;
-    cursor: none !important;
-    width: auto;
-    width: 100%;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    transition: border-color 0.2s;
-  }
-
-  .page-title:hover, .page-title:focus {
-    border-bottom-color: #c8c0d8;
-  }
-
-  /* ── Page tabs ── */
-  .page-tabs {
-    position: fixed;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
+  /* ── Book shell ── */
+  .tama-shell {
+    position: relative;
+    background: linear-gradient(135deg, #faf5ea 0%, #f3ecdb 50%, #ede5d0 100%);
+    border-radius: 4px 16px 16px 4px;
+    padding: 12px 10px 10px 28px;
+    width: fit-content;
+    max-width: 100%;
+    max-height: calc(100vh - 24px);
+    max-height: calc(100dvh - 24px);
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding: 10px;
-    z-index: 100;
-  }
-
-  .page-tab {
-    font-family: 'Silkscreen', monospace;
-    font-size: 0.7rem;
-    letter-spacing: 1px;
-    padding: 8px 16px;
-    border-radius: 0 10px 10px 0;
-    border: 2px solid #c8c0a8;
-    border-left: none;
-    background: #ede8d4;
-    color: #9890a0;
-    cursor: none !important;
-    transition: all 0.15s;
-    position: relative;
-    display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
+    box-shadow:
+      -3px 0 0 #e8dcc6,
+      -5px 0 0 #ddd0b8,
+      2px 3px 10px rgba(0,0,0,0.08);
+    border: 1px solid #d8cdb5;
   }
 
-  .page-tab:hover {
-    background: #f5f0e0;
-    transform: translateX(-2px);
+  .tama-shell::before {
+    content: '';
+    position: absolute;
+    left: 18px;
+    top: 10px;
+    bottom: 10px;
+    width: 2px;
+    background: linear-gradient(to bottom, transparent, #d0c4a8 15%, #c8bca0 50%, #d0c4a8 85%, transparent);
+    border-radius: 1px;
   }
 
-  .page-tab.active {
-    background: #faf6e8;
-    color: #8080a8;
-    border-color: #a8a0c0;
-    box-shadow: 2px 0 0 #faf6e8;
-    z-index: 1;
+  .tama-shell::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 4px 16px 16px 4px;
+    background: repeating-linear-gradient(to bottom, transparent, transparent 28px, rgba(200, 190, 168, 0.08) 28px, rgba(200, 190, 168, 0.08) 29px);
+    pointer-events: none;
   }
 
-  .page-tab .tab-close {
-    font-size: 12px;
-    opacity: 0.4;
-    transition: opacity 0.15s;
+  .tama-buttons, .lace-edge, .book-spine { display: none; }
+
+  /* ── Screen ── */
+  .screen {
+    background: rgba(255,255,252,0.6);
+    border: 2px dashed #d0c8b0;
+    border-radius: 14px;
+    padding: 10px;
+    width: 100%;
+    flex: 1;
+    overflow: hidden;
   }
 
-  .page-tab .tab-close:hover {
-    opacity: 1;
+  .screen-dark {
+    background: rgba(232,228,216,0.5);
+    border-color: #c8c0a0;
+    color: #7a7868;
+    flex: none;
+    width: fit-content;
   }
 
-  .page-tab-add {
-    font-family: 'Silkscreen', monospace;
-    font-size: 0.85rem;
-    padding: 7px 14px;
-    border-radius: 0 10px 10px 0;
-    border: 2px dashed #c8c0a8;
-    border-left: none;
-    background: transparent;
-    color: #b0a890;
-    cursor: none !important;
-    transition: all 0.15s;
-  }
-
-  .page-tab-add:hover {
-    background: #ede8d4;
-    transform: translateX(-2px);
-  }
-
-  /* ── Section titles ── */
   .section-title {
     font-family: 'Silkscreen', monospace;
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     letter-spacing: 3px;
     text-transform: uppercase;
     text-align: center;
@@ -223,11 +223,11 @@
     color: #a09880;
   }
 
-  /* ── Main layout: sidebar left + grid right ── */
+  /* ── Tracker layout (sidebar + grid) ── */
   .tracker-layout {
     display: flex;
-    gap: 24px;
-    align-items: flex-start;
+    gap: 16px;
+    align-items: stretch;
     width: 100%;
   }
 
@@ -235,15 +235,14 @@
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    width: 180px;
-    padding-left: 14px;
-    padding-right: 16px;
+    gap: 6px;
+    width: 160px;
+    padding: 0 8px;
   }
 
   .sidebar-section-title {
     font-family: 'Silkscreen', monospace;
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     letter-spacing: 2px;
     text-transform: uppercase;
     text-align: center;
@@ -253,40 +252,31 @@
     opacity: 0.7;
   }
 
-  /* ── Color Picker (vertical) ── */
+  /* ── Color Picker ── */
   .color-options {
     display: grid;
-    grid-template-columns: repeat(5, 28px);
-    gap: 5px;
+    grid-template-columns: repeat(5, 24px);
+    gap: 4px;
     justify-content: center;
   }
 
   .eraser-row {
     display: flex;
     justify-content: center;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
   }
 
   .color-btn {
-    width: 28px;
-    height: 28px;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
     border: 2px solid #c8c0a8;
     cursor: none !important;
     transition: all 0.15s;
   }
 
-  .color-btn:hover {
-    transform: scale(1.2);
-    border-color: #a8a0c0;
-    box-shadow: 0 0 6px rgba(160, 150, 190, 0.4);
-  }
-
-  .color-btn.active {
-    border-color: #8880a8;
-    box-shadow: 0 0 0 3px rgba(136, 128, 168, 0.3);
-    transform: scale(1.15);
-  }
+  .color-btn:hover { transform: scale(1.2); border-color: #a8a0c0; box-shadow: 0 0 6px rgba(160, 150, 190, 0.4); }
+  .color-btn.active { border-color: #8880a8; box-shadow: 0 0 0 3px rgba(136, 128, 168, 0.3); transform: scale(1.15); }
 
   .color-btn.eraser {
     background: #f5f0d0 !important;
@@ -294,70 +284,74 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 12px;
+    font-size: 11px;
     font-family: 'Silkscreen', monospace;
     color: #a09880;
   }
+  .color-btn.eraser.active { border-color: #8880a8; border-style: dashed; box-shadow: 0 0 0 3px rgba(136, 128, 168, 0.3); }
 
-  .color-btn.eraser.active {
-    border-color: #8880a8;
-    border-style: dashed;
-    box-shadow: 0 0 0 3px rgba(136, 128, 168, 0.3);
-  }
-
-  /* ── Legend (vertical) ── */
-  .legend-items {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
+  /* ── Legend ── */
+  .legend-items { display: flex; flex-direction: column; gap: 3px; }
 
   .legend-item {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 0.75rem;
+    gap: 6px;
+    font-size: 0.7rem;
     font-family: 'DotGothic16', monospace;
     color: #8a8478;
     cursor: grab !important;
-    padding: 4px 6px;
+    padding: 3px 5px;
     border-radius: 6px;
     transition: background 0.15s;
   }
-
-  .legend-item:hover {
-    background: rgba(0,0,0,0.04);
-  }
-
-  .legend-item.dragging {
-    opacity: 0.4;
-  }
-
-  .legend-item.drag-over {
-    border-top: 2px solid #a8a0c0;
-  }
+  .legend-item:hover { background: rgba(0,0,0,0.04); }
+  .legend-item.dragging { opacity: 0.4; }
+  .legend-item.drag-over { border-top: 2px solid #a8a0c0; }
 
   .legend-dot {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
     border: 2px solid rgba(0,0,0,0.08);
     flex-shrink: 0;
   }
 
-  .legend-input-row {
+  /* ── Sidebar Stats ── */
+  .sidebar-stats {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  .sidebar-stat {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    align-items: stretch;
+    align-items: center;
+    gap: 1px;
   }
+
+  .sidebar-stat-value {
+    font-family: 'Silkscreen', monospace;
+    font-size: 1.1rem;
+    color: #8a8478;
+  }
+
+  .sidebar-stat-label {
+    font-family: 'DotGothic16', monospace;
+    font-size: 0.7rem;
+    color: #9890a0;
+    letter-spacing: 1px;
+  }
+
+  .legend-input-row { display: flex; flex-direction: column; gap: 4px; }
 
   .legend-input-row input {
     font-family: 'DotGothic16', monospace;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     border: 2px solid #c8c0a8;
     border-radius: 8px;
-    padding: 6px 8px;
+    padding: 5px 7px;
     background: #faf6e8;
     color: #7a7868;
     outline: none;
@@ -367,69 +361,44 @@
   /* ── Buttons ── */
   .btn {
     font-family: 'Silkscreen', monospace;
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     letter-spacing: 1px;
     text-transform: uppercase;
     border: 2px solid;
     border-radius: 10px;
-    padding: 8px 16px;
+    padding: 7px 14px;
     cursor: none !important;
     transition: all 0.15s;
   }
-
-  .btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 2px 2px 0 rgba(0,0,0,0.08);
-  }
-
-  .btn:active {
-    transform: translateY(0);
-    box-shadow: none;
-  }
-
-  .btn-add {
-    background: #d8e8c8;
-    border-color: #b0c8a0;
-    color: #708060;
-  }
-
-  .btn-reset {
-    background: #e8d0c8;
-    border-color: #c8b0a8;
-    color: #907870;
-  }
+  .btn:hover { transform: translateY(-2px); box-shadow: 2px 2px 0 rgba(0,0,0,0.08); }
+  .btn:active { transform: translateY(0); box-shadow: none; }
+  .btn-add { background: #d8e8c8; border-color: #b0c8a0; color: #708060; }
+  .btn-reset { background: #e8d0c8; border-color: #c8b0a8; color: #907870; }
 
   /* ── Tracker Grid ── */
-  .tracker-scroll {
-    overflow-x: auto;
-    padding-bottom: 4px;
-  }
+  .tracker-scroll { overflow-x: auto; overflow-y: hidden; padding-bottom: 4px; max-width: 100%; }
 
   .tracker-table {
     border-collapse: separate;
-    border-spacing: 4px 2px;
+    border-spacing: var(--dot-spacing-h, 3px) var(--dot-spacing-v, 2px);
     margin: 0;
   }
 
   .tracker-table th {
     font-family: 'Silkscreen', monospace;
-    font-size: 0.6rem;
+    font-size: var(--label-size, 0.6rem);
     color: #9890a0;
-    padding: 0 1px 6px;
+    padding: 0 1px 4px;
     text-align: center;
     letter-spacing: 1px;
   }
-
-  .tracker-table th.day-header {
-    padding-right: 8px;
-    text-align: right;
-  }
+  .tracker-table th.day-header { padding-right: 6px; text-align: right; }
 
   .tracker-table td.day-label {
     text-align: right;
-    padding-right: 8px;
+    padding-right: 6px;
     font-family: 'Silkscreen', monospace;
-    font-size: 0.55rem;
+    font-size: var(--label-size, 0.55rem);
     color: #a09880;
     white-space: nowrap;
   }
@@ -437,224 +406,223 @@
   .dot-cell { padding: 0; }
 
   .dot {
-    width: var(--dot-size, 18px);
-    height: var(--dot-size, 18px);
+    width: var(--dot-size, 16px);
+    height: var(--dot-size, 16px);
     border-radius: 50%;
     background: #efe8d0;
     border: 2px solid #d0c8b0;
     cursor: none !important;
     transition: all 0.15s;
   }
-
-  .dot:hover {
-    transform: scale(1.25);
-    box-shadow: 0 0 8px rgba(160, 150, 190, 0.4);
-    border-color: #a8a0c0;
-  }
-
-  .dot.filled {
-    border-color: rgba(0, 0, 0, 0.08);
-  }
-
-  /* ── Stats ── */
-  .stats-row {
-    display: flex;
-    gap: 20px;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-
-  .stat { text-align: center; }
-
-  .stat-value {
-    font-family: 'Silkscreen', monospace;
-    font-size: 2rem;
-    color: #8a8478;
-  }
-
-  .stat-label {
-    font-family: 'DotGothic16', monospace;
-    font-size: 0.75rem;
-    letter-spacing: 1px;
-    color: #a8a090;
-  }
-
-  .actions {
-    margin-top: 16px;
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-  }
-
-  /* ── Book style shell ── */
-  .tama-shell {
-    position: relative;
-    background: linear-gradient(135deg, #faf5ea 0%, #f3ecdb 50%, #ede5d0 100%);
-    border-radius: 4px 16px 16px 4px;
-    padding: 12px 14px 10px 34px;
-    width: fit-content;
-    height: calc(100vh - 20px);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    box-shadow:
-      /* book depth */
-      -3px 0 0 #e8dcc6,
-      -5px 0 0 #ddd0b8,
-      /* soft outer shadow */
-      2px 3px 10px rgba(0,0,0,0.08);
-    border: 1px solid #d8cdb5;
-  }
-
-  /* Book spine groove */
-  .tama-shell::before {
-    content: '';
-    position: absolute;
-    left: 24px;
-    top: 10px;
-    bottom: 10px;
-    width: 2px;
-    background: linear-gradient(to bottom, transparent, #d0c4a8 15%, #c8bca0 50%, #d0c4a8 85%, transparent);
-    border-radius: 1px;
-  }
-
-  /* Subtle page texture lines */
-  .tama-shell::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 4px 16px 16px 4px;
-    background:
-      repeating-linear-gradient(
-        to bottom,
-        transparent,
-        transparent 28px,
-        rgba(200, 190, 168, 0.08) 28px,
-        rgba(200, 190, 168, 0.08) 29px
-      );
-    pointer-events: none;
-  }
-
-  .lace-edge { display: none; }
-
-  .tama-buttons { display: none; }
+  .dot:hover { transform: scale(1.25); box-shadow: 0 0 8px rgba(160, 150, 190, 0.4); border-color: #a8a0c0; }
+  .dot.filled { border-color: rgba(0, 0, 0, 0.08); }
 
 
-  /* ── Responsive ── */
-  @media (max-width: 800px) {
-    .main-layout { flex-direction: column; }
-    .title-side { max-width: 100%; padding-top: 0; }
-    .page-title { font-size: 2rem; }
-    h1 { font-size: 1.3rem; }
-    .tracker-layout { flex-direction: column; }
-    .sidebar { width: 100%; flex-direction: row; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
-    .sidebar > * { flex: 1 1 auto; min-width: 0; }
-    .tracker-table { border-spacing: 3px; }
-    .dot { width: 16px; height: 16px; }
-    .tama-shell { padding: 20px 12px 16px 28px; border-radius: 4px 12px 12px 4px; }
-    .screen { padding: 14px 10px; }
+  /* ══════════════════════════════════════
+     RESPONSIVE - MOBILE (default, < 768px)
+     Portrait: stacked, book is priority
+     ══════════════════════════════════════ */
+  @media (max-width: 767px) {
+    .page-layout { padding: 8px; gap: 10px; }
+    .tama-shell { order: 0; padding: 8px 8px 8px 22px; }
+    .tama-shell::before { left: 14px; }
+    .header-block { order: 1; }
+    .page-tabs { order: 2; }
+    .page-title { font-size: 1.3rem; }
+    .subtitle { font-size: 0.85rem; }
+    .stars-deco { font-size: 0.85rem; }
+
+    /* Sidebar becomes horizontal above grid */
+    .tracker-layout { flex-direction: column; gap: 8px; }
+    .sidebar {
+      width: 100%;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 0;
+    }
+    .sidebar > .sidebar-section-title { width: 100%; }
+    .color-options { grid-template-columns: repeat(5, 22px); justify-content: center; }
     .color-btn { width: 22px; height: 22px; }
+    .sidebar-stats { justify-content: center; }
+    .legend-items { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+    .legend-input-row { width: 100%; }
+    .screen { padding: 8px; overflow-y: auto; }
+  }
+
+  /* Phone landscape */
+  @media (max-width: 767px) and (orientation: landscape) {
+    .header-block { display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap; }
+    .page-title { font-size: 1.1rem; margin-bottom: 0; }
+    .subtitle { margin-bottom: 0; font-size: 0.8rem; }
+    .stars-deco { display: none; }
+    .tracker-layout { flex-direction: row; gap: 10px; }
+    .sidebar { width: 130px; flex-direction: column; padding: 0 6px; }
+    .color-options { grid-template-columns: repeat(5, 20px); gap: 3px; }
+    .color-btn { width: 20px; height: 20px; }
+  }
+
+  /* ══════════════════════════════════════
+     TABLET (768px - 1199px)
+     ══════════════════════════════════════ */
+  @media (min-width: 768px) and (max-width: 1399px) {
+    .page-layout { padding: 16px; gap: 14px; }
+    .page-title { font-size: 2rem; }
+    .subtitle { font-size: 1.2rem; }
+    .stars-deco { font-size: 1.2rem; }
+    .tama-shell { padding: 14px 12px 12px 30px; }
+  }
+
+  /* Tablet landscape: book left, tabs + info right */
+  @media (min-width: 1100px) and (max-width: 1399px) and (orientation: landscape) {
+    .page-layout {
+      display: grid;
+      grid-template-columns: auto auto;
+      grid-template-rows: auto 1fr;
+      gap: 12px 24px;
+      align-items: start;
+      justify-content: center;
+      align-content: center;
+      padding: 12px 20px;
+    }
+    .tama-shell { grid-column: 2; grid-row: 1 / -1; align-self: center; justify-self: center; order: 0; }
+    .page-tabs { grid-column: 1; grid-row: 1; justify-self: center; order: 0; }
+    .header-block { grid-column: 1; grid-row: 2; align-self: center; justify-self: center; max-width: 280px; order: 0; }
+    .page-title { font-size: 2.2rem; }
+  }
+
+  /* ══════════════════════════════════════
+     DESKTOP (>= 1400px)
+     Book left, tabs + info right
+     ══════════════════════════════════════ */
+  @media (min-width: 1400px) {
+    .page-layout {
+      display: grid;
+      grid-template-columns: auto auto;
+      grid-template-rows: auto 1fr;
+      min-height: 100vh;
+      padding: 16px 40px;
+      gap: 12px 30px;
+      justify-content: center;
+      align-content: center;
+    }
+
+    .tama-shell {
+      grid-column: 2;
+      grid-row: 1 / -1;
+      align-self: center;
+      justify-self: center;
+      height: calc(100vh - 32px);
+      order: 0;
+    }
+
+    .page-tabs {
+      grid-column: 1;
+      grid-row: 1;
+      justify-self: center;
+      order: 0;
+    }
+
+    .header-block {
+      grid-column: 1;
+      grid-row: 2;
+      align-self: center;
+      justify-self: center;
+      max-width: 350px;
+      order: 0;
+    }
+
+    .page-title { font-size: 3.5rem; }
+    .subtitle { font-size: 1.8rem; margin-bottom: 16px; }
+    .stars-deco { font-size: 1.6rem; margin-bottom: 16px; }
+  }
+
+  /* Large desktop */
+  @media (min-width: 1700px) {
+    .page-layout { gap: 0 50px; padding: 16px 60px; }
+    .page-title { font-size: 4rem; }
+    .subtitle { font-size: 2rem; }
+    .stars-deco { font-size: 2rem; }
+    .tama-shell { padding: 14px 16px 12px 36px; }
+    .sidebar { width: 180px; }
+    .color-options { grid-template-columns: repeat(5, 28px); gap: 5px; }
+    .color-btn { width: 28px; height: 28px; }
   }
 </style>
 </head>
 <body>
 
-
 <img id="customCursor" src="cursor.gif" alt="">
 
-<div class="main-layout">
-<div class="tama-shell">
-  <div class="book-spine"></div>
+<div class="page-layout">
 
-  <!-- Tracker Screen: sidebar + grid -->
-  <div class="screen">
-    <div class="section-title">Tracker</div>
-    <div class="tracker-layout">
-      <div class="sidebar">
-        <div class="sidebar-section-title">Couleurs</div>
-        <div class="eraser-row" id="eraserRow"></div>
-        <div class="color-options" id="colorPicker"></div>
-        <div class="sidebar-section-title">Legende</div>
-        <div class="legend-items" id="legendItems"></div>
-        <div class="legend-input-row">
-          <input type="text" id="newLegendLabel" placeholder="ex: 1-5 pages">
-          <button class="btn btn-add" onclick="addLegend()">+ Add</button>
+  <div class="page-tabs" id="pageTabs"></div>
+
+  <div class="header-block">
+    <div class="page-title" id="pageTitle" contenteditable="true" spellcheck="false">Reading Tracker</div>
+    <p class="subtitle">~ 2026 ~</p>
+    <div class="stars-deco">&#9734; &#9734; &#9734; &#9734; &#9734;</div>
+  </div>
+
+
+  <div class="tama-shell">
+    <div class="screen">
+      <div class="section-title" id="bookTitle">Tracker</div>
+      <div class="tracker-layout">
+        <div class="sidebar">
+          <div class="sidebar-section-title">Couleurs</div>
+          <div class="eraser-row" id="eraserRow"></div>
+          <div class="color-options" id="colorPicker"></div>
+          <div class="sidebar-section-title">Legende</div>
+          <div class="legend-items" id="legendItems"></div>
+          <div class="legend-input-row">
+            <input type="text" id="newLegendLabel" placeholder="ex: 1-5 pages">
+            <button class="btn btn-add" onclick="addLegend()">+ Add</button>
+          </div>
+          <div class="sidebar-section-title" style="margin-top:auto;">Stats</div>
+          <div class="sidebar-stats">
+            <div class="sidebar-stat">
+              <span class="sidebar-stat-value" id="statFilled">0</span>
+              <span class="sidebar-stat-label">jours</span>
+            </div>
+            <div class="sidebar-stat">
+              <span class="sidebar-stat-value" id="statStreak">0</span>
+              <span class="sidebar-stat-label">serie</span>
+            </div>
+            <div class="sidebar-stat">
+              <span class="sidebar-stat-value" id="statPercent">0%</span>
+              <span class="sidebar-stat-label">annee</span>
+            </div>
+          </div>
+          <button class="btn btn-reset" onclick="resetAll()" style="margin-top:6px;width:100%;">Tout effacer</button>
+        </div>
+        <div class="tracker-scroll">
+          <table class="tracker-table" id="trackerGrid"></table>
         </div>
       </div>
-      <div class="tracker-scroll">
-        <table class="tracker-table" id="trackerGrid"></table>
-      </div>
     </div>
   </div>
 
-
-  <!-- Tamagotchi Buttons -->
-  <div class="tama-buttons">
-    <div class="tama-btn"></div>
-    <div class="tama-btn"></div>
-    <div class="tama-btn"></div>
-  </div>
-
-</div>
-
-<div class="page-tabs" id="pageTabs"></div>
-<div class="title-side">
-  <div class="page-title" id="pageTitle" contenteditable="true" spellcheck="false">Reading Tracker</div>
-  <p class="subtitle">~ 2026 ~</p>
-  <div class="stars-deco">&#9734; &#9734; &#9734; &#9734; &#9734;</div>
-  <!-- Stats -->
-  <div class="screen screen-dark">
-    <div class="section-title">Stats</div>
-    <div class="stats-row">
-      <div class="stat">
-        <div class="stat-value" id="statFilled">0</div>
-        <div class="stat-label">jours remplis</div>
-      </div>
-      <div class="stat">
-        <div class="stat-value" id="statStreak">0</div>
-        <div class="stat-label">meilleure serie</div>
-      </div>
-      <div class="stat">
-        <div class="stat-value" id="statPercent">0%</div>
-        <div class="stat-label">de l'annee</div>
-      </div>
-    </div>
-  </div>
-  <div class="actions">
-    <button class="btn btn-reset" onclick="resetAll()">Tout effacer</button>
-  </div>
-</div>
 </div>
 
 <script>
 const MONTHS = ['J','F','M','A','M','J','J','A','S','O','N','D'];
 const DAYS_IN_MONTH = [31,28,31,30,31,30,31,31,30,31,30,31];
 const YEAR = 2026;
-const STORE_KEY = 'trackerPages2026';
 
 const PALETTE = [
-  // Rose
   '#FFE5EC','#FFC2D1','#FF9EB8','#FF7AA0','#FF5C8A',
-  // Orange
   '#FFE8D6','#FFD1B0','#FFBA8A','#FFA364','#FF8C42',
-  // Jaune
   '#FFF9DB','#FFF3BF','#FFEC99','#FFE066','#FFD43B',
-  // Vert
   '#E6F4EA','#C7E9C0','#A8D8A8','#7BC47F','#4CAF50',
-  // Bleu
   '#E7F5FF','#D0EBFF','#A5D8FF','#74C0FC','#4DABF7',
-  // Violet
   '#F3F0FF','#E5DBFF','#D0BFFF','#B197FC','#9775FA',
-  // Gris
   '#F8F8F8','#DADADA','#B0B0B0','#7F7F7F','#3C3C3C',
 ];
 
 let pages = [];
 let currentPageId = null;
 let selectedColor = PALETTE[0];
-
-/* ── Pages persistence (server) ── */
 let saveTimeout = null;
 
 async function loadPages() {
@@ -662,54 +630,32 @@ async function loadPages() {
     const res = await fetch('/api/pages');
     const data = await res.json();
     pages = Array.isArray(data) && data.length > 0 ? data : [];
-  } catch {
-    pages = [];
-  }
-  if (pages.length === 0) {
-    pages.push(createPage('Reading Tracker'));
-    savePages();
-  }
+  } catch { pages = []; }
+  if (pages.length === 0) { pages.push(createPage('Reading Tracker')); savePages(); }
   if (!currentPageId) currentPageId = pages[0].id;
 }
 
 function savePages() {
   clearTimeout(saveTimeout);
   saveTimeout = setTimeout(() => {
-    fetch('/api/pages', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(pages),
-    });
+    fetch('/api/pages', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(pages) });
   }, 300);
 }
 
 function createPage(title) {
-  return { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), title: title, data: {}, legends: [] };
+  return { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), title, data: {}, legends: [] };
 }
 
-function currentPage() {
-  return pages.find(p => p.id === currentPageId) || pages[0];
-}
+function currentPage() { return pages.find(p => p.id === currentPageId) || pages[0]; }
 
-/* ── Init ── */
-async function init() {
-  await loadPages();
-  renderAll();
-}
+async function init() { await loadPages(); renderAll(); }
 
-function renderAll() {
-  renderTabs();
-  renderTitle();
-  renderPicker();
-  renderGrid();
-  renderLegend();
-  updateStats();
-}
+function renderAll() { renderTabs(); renderTitle(); renderPicker(); renderGrid(); renderLegend(); updateStats(); }
 
 /* ── Tabs ── */
 function renderTabs() {
-  const container = document.getElementById('pageTabs');
-  container.innerHTML = '';
+  const c = document.getElementById('pageTabs');
+  c.innerHTML = '';
   pages.forEach(page => {
     const tab = document.createElement('button');
     tab.className = 'page-tab' + (page.id === currentPageId ? ' active' : '');
@@ -724,31 +670,25 @@ function renderTabs() {
       tab.appendChild(close);
     }
     tab.onclick = () => switchPage(page.id);
-    container.appendChild(tab);
+    c.appendChild(tab);
   });
   const addBtn = document.createElement('button');
   addBtn.className = 'page-tab-add';
   addBtn.textContent = '+';
   addBtn.title = 'Nouvelle page';
   addBtn.onclick = addPage;
-  container.appendChild(addBtn);
+  c.appendChild(addBtn);
 }
 
-function switchPage(id) {
-  currentPageId = id;
-  selectedColor = PALETTE[0];
-  renderAll();
-}
+function switchPage(id) { currentPageId = id; selectedColor = PALETTE[0]; renderAll(); }
 
 function addPage() {
-  const title = 'Nouveau Tracker';
-  const page = createPage(title);
+  const page = createPage('Nouveau Tracker');
   pages.push(page);
   currentPageId = page.id;
   savePages();
   renderAll();
   document.getElementById('pageTitle').focus();
-  document.getElementById('pageTitle').select();
 }
 
 function deletePage(id) {
@@ -756,21 +696,20 @@ function deletePage(id) {
   if (!confirm('Supprimer cette page ?')) return;
   const idx = pages.findIndex(p => p.id === id);
   pages.splice(idx, 1);
-  if (currentPageId === id) {
-    currentPageId = pages[Math.min(idx, pages.length - 1)].id;
-  }
+  if (currentPageId === id) currentPageId = pages[Math.min(idx, pages.length - 1)].id;
   savePages();
   renderAll();
 }
 
 /* ── Title ── */
 function renderTitle() {
-  const el = document.getElementById('pageTitle');
-  el.textContent = currentPage().title;
+  document.getElementById('pageTitle').textContent = currentPage().title;
+  document.getElementById('bookTitle').textContent = currentPage().title;
 }
 
 document.getElementById('pageTitle').addEventListener('input', function() {
   currentPage().title = this.textContent;
+  document.getElementById('bookTitle').textContent = this.textContent;
   savePages();
   renderTabs();
 });
@@ -792,7 +731,6 @@ function renderPicker() {
 
   const container = document.getElementById('colorPicker');
   container.innerHTML = '';
-
   PALETTE.forEach(color => {
     const btn = document.createElement('button');
     btn.className = 'color-btn' + (color === selectedColor ? ' active' : '');
@@ -820,7 +758,6 @@ function renderLegend() {
     div.dataset.index = i;
     div.innerHTML = '<span class="legend-dot" style="background:'+item.color+'"></span>'+item.label+
       ' <span style="cursor:pointer;opacity:0.5;font-size:12px;" onclick="removeLegend('+i+')" title="Supprimer">x</span>';
-
     div.addEventListener('dragstart', () => { dragIdx = i; div.classList.add('dragging'); });
     div.addEventListener('dragend', () => { dragIdx = null; div.classList.remove('dragging'); container.querySelectorAll('.legend-item').forEach(el => el.classList.remove('drag-over')); });
     div.addEventListener('dragover', (e) => { e.preventDefault(); container.querySelectorAll('.legend-item').forEach(el => el.classList.remove('drag-over')); div.classList.add('drag-over'); });
@@ -832,7 +769,6 @@ function renderLegend() {
       savePages();
       renderLegend();
     });
-
     container.appendChild(div);
   });
 }
@@ -841,17 +777,13 @@ function addLegend() {
   const input = document.getElementById('newLegendLabel');
   const label = input.value.trim();
   if (!label || !selectedColor) return;
-  currentPage().legends.push({ color: selectedColor, label: label });
+  currentPage().legends.push({ color: selectedColor, label });
   savePages();
   renderLegend();
   input.value = '';
 }
 
-function removeLegend(i) {
-  currentPage().legends.splice(i, 1);
-  savePages();
-  renderLegend();
-}
+function removeLegend(i) { currentPage().legends.splice(i, 1); savePages(); renderLegend(); }
 
 /* ── Grid ── */
 function renderGrid() {
@@ -877,10 +809,7 @@ function renderGrid() {
         const dot = document.createElement('div');
         dot.className = 'dot';
         const key = month+'-'+day;
-        if (page.data[key]) {
-          dot.style.background = page.data[key];
-          dot.classList.add('filled');
-        }
+        if (page.data[key]) { dot.style.background = page.data[key]; dot.classList.add('filled'); }
         dot.onclick = () => clickDot(dot, key);
         td.appendChild(dot);
       }
@@ -893,15 +822,8 @@ function renderGrid() {
 
 function clickDot(dot, key) {
   const page = currentPage();
-  if (selectedColor === null) {
-    delete page.data[key];
-    dot.style.background = '#efe8d0';
-    dot.classList.remove('filled');
-  } else {
-    page.data[key] = selectedColor;
-    dot.style.background = selectedColor;
-    dot.classList.add('filled');
-  }
+  if (selectedColor === null) { delete page.data[key]; dot.style.background = '#efe8d0'; dot.classList.remove('filled'); }
+  else { page.data[key] = selectedColor; dot.style.background = selectedColor; dot.classList.add('filled'); }
   savePages();
   updateStats();
 }
@@ -913,13 +835,10 @@ function updateStats() {
   document.getElementById('statFilled').textContent = filled;
   const totalDays = DAYS_IN_MONTH.reduce((a, b) => a + b, 0);
   document.getElementById('statPercent').textContent = Math.round((filled / totalDays) * 100) + '%';
-
-  // Longest streak (best consecutive days ever on this page)
   let best = 0, cur = 0;
   for (let m = 0; m < 12; m++) {
     for (let d = 1; d <= DAYS_IN_MONTH[m]; d++) {
-      if (page.data[m+'-'+d]) { cur++; if (cur > best) best = cur; }
-      else { cur = 0; }
+      if (page.data[m+'-'+d]) { cur++; if (cur > best) best = cur; } else { cur = 0; }
     }
   }
   document.getElementById('statStreak').textContent = best;
@@ -935,25 +854,62 @@ function resetAll() {
 
 init();
 
+/* ── Responsive dot sizing ── */
 function resizeDots() {
   const shell = document.querySelector('.tama-shell');
+  const screen = document.querySelector('.screen');
   const shellStyle = getComputedStyle(shell);
-  const shellPadding = parseFloat(shellStyle.paddingTop) + parseFloat(shellStyle.paddingBottom);
-  const screenEl = document.querySelector('.screen');
-  const screenStyle = getComputedStyle(screenEl);
-  const screenPadding = parseFloat(screenStyle.paddingTop) + parseFloat(screenStyle.paddingBottom);
-  const screenBorder = parseFloat(screenStyle.borderTopWidth) + parseFloat(screenStyle.borderBottomWidth);
-  const sectionTitle = 24;
-  const headerRow = 20;
-  const shellBorder = 2;
-  const available = window.innerHeight - 20 - shellPadding - screenPadding - screenBorder - sectionTitle - headerRow - shellBorder - 8;
-  const spacing = 2;
-  const dotSize = Math.floor((available - 32 * spacing) / 31);
-  document.documentElement.style.setProperty('--dot-size', Math.max(12, dotSize) + 'px');
+  const screenStyle = getComputedStyle(screen);
+
+  // Shell max-height is 100dvh - 24px
+  const maxShellH = window.innerHeight - 24;
+
+  // Vertical overhead: shell padding/border + screen padding/border + section title + table header
+  const vOverhead =
+    parseFloat(shellStyle.paddingTop) + parseFloat(shellStyle.paddingBottom) +
+    parseFloat(shellStyle.borderTopWidth) + parseFloat(shellStyle.borderBottomWidth) +
+    parseFloat(screenStyle.paddingTop) + parseFloat(screenStyle.paddingBottom) +
+    parseFloat(screenStyle.borderTopWidth) + parseFloat(screenStyle.borderBottomWidth) +
+    (parseFloat(shellStyle.gap) || 8) +
+    30 + 20; // section title ~30px, table header row ~20px
+
+  const spacingV = 2;
+  const spacingH = 3;
+  const availH = maxShellH - vOverhead;
+  const dotFromH = Math.floor((availH - 32 * spacingV) / 31);
+
+  // Width
+  const trackerLayout = document.querySelector('.tracker-layout');
+  const isRow = getComputedStyle(trackerLayout).flexDirection === 'row';
+  const sidebar = document.querySelector('.sidebar');
+  const sidebarW = isRow ? (sidebar?.offsetWidth || 0) : 0;
+  const tlGap = isRow ? 16 : 0;
+  const pageStyle = getComputedStyle(document.querySelector('.page-layout'));
+  const pagePadH = parseFloat(pageStyle.paddingLeft) + parseFloat(pageStyle.paddingRight);
+
+  const hOverhead =
+    parseFloat(shellStyle.paddingLeft) + parseFloat(shellStyle.paddingRight) +
+    parseFloat(shellStyle.borderLeftWidth) + parseFloat(shellStyle.borderRightWidth) +
+    parseFloat(screenStyle.paddingLeft) + parseFloat(screenStyle.paddingRight) +
+    parseFloat(screenStyle.borderLeftWidth) + parseFloat(screenStyle.borderRightWidth) +
+    sidebarW + tlGap + 24 + pagePadH; // 24 = day label column
+
+  const availW = window.innerWidth - hOverhead;
+  const dotFromW = Math.floor((availW - 13 * spacingH) / 12);
+
+  // On mobile (sidebar stacked above grid), screen scrolls so ignore height constraint
+  const scrollable = getComputedStyle(screen).overflowY === 'auto';
+  const dotSize = Math.max(8, Math.min(scrollable ? dotFromW : Math.min(dotFromH, dotFromW), 32));
+
+  document.documentElement.style.setProperty('--dot-size', dotSize + 'px');
+  document.documentElement.style.setProperty('--dot-spacing-h', spacingH + 'px');
+  document.documentElement.style.setProperty('--dot-spacing-v', spacingV + 'px');
+  document.documentElement.style.setProperty('--label-size', (dotSize < 14 ? '0.45rem' : dotSize < 20 ? '0.55rem' : '0.65rem'));
 }
 resizeDots();
 window.addEventListener('resize', resizeDots);
 
+/* ── Custom cursor ── */
 const cursorEl = document.getElementById('customCursor');
 
 function updateCursor(x, y) {
@@ -975,9 +931,7 @@ document.addEventListener('touchmove', e => {
   updateCursor(t.clientX, t.clientY);
 });
 
-document.addEventListener('touchend', () => {
-  cursorEl.style.display = 'none';
-});
+document.addEventListener('touchend', () => { cursorEl.style.display = 'none'; });
 </script>
 </body>
 </html>
