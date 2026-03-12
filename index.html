@@ -939,6 +939,10 @@ document.body.addEventListener('touchstart', e => {
   cursorEl.style.display = 'block';
   const t = e.touches[0];
   updateCursor(t.pageX, t.pageY);
+  // Re-position after scroll settles
+  requestAnimationFrame(() => {
+    if (e.touches[0]) updateCursor(e.touches[0].pageX, e.touches[0].pageY);
+  });
 }, { passive: true, capture: true });
 
 document.body.addEventListener('touchmove', e => {
