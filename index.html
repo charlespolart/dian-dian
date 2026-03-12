@@ -920,10 +920,15 @@ const cursorEl = document.getElementById('customCursor');
 
 function updateCursor(x, y) {
   const vv = window.visualViewport;
-  const scale = vv ? vv.scale : 1;
-  cursorEl.style.left = x + 'px';
-  cursorEl.style.top = y + 'px';
-  cursorEl.style.transform = 'translate(-50%, -50%) scale(' + (1 / scale) + ')';
+  if (vv) {
+    cursorEl.style.left = (vv.offsetLeft + x / vv.scale) + 'px';
+    cursorEl.style.top = (vv.offsetTop + y / vv.scale) + 'px';
+    cursorEl.style.transform = 'translate(-50%, -50%) scale(' + (1 / vv.scale) + ')';
+  } else {
+    cursorEl.style.left = x + 'px';
+    cursorEl.style.top = y + 'px';
+    cursorEl.style.transform = 'translate(-50%, -50%)';
+  }
 }
 
 document.addEventListener('mousemove', e => {
