@@ -8,7 +8,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=DotGothic16&display=swap" rel="stylesheet">
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; cursor: none !important; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  @media (pointer: fine) {
+    * { cursor: none !important; }
+  }
 
   #customCursor {
     position: fixed;
@@ -17,6 +21,7 @@
     pointer-events: none;
     z-index: 99999;
     transform: translate(-50%, -50%);
+    display: none;
   }
 
   body {
@@ -925,13 +930,18 @@ document.addEventListener('mousemove', e => {
   updateCursor(e.clientX, e.clientY);
 });
 
+document.addEventListener('touchstart', e => {
+  cursorEl.style.display = '';
+  const t = e.touches[0];
+  updateCursor(t.clientX, t.clientY);
+}, { passive: true });
+
 document.addEventListener('touchmove', e => {
   cursorEl.style.display = '';
   const t = e.touches[0];
   updateCursor(t.clientX, t.clientY);
-});
+}, { passive: true });
 
-document.addEventListener('touchend', () => { cursorEl.style.display = 'none'; });
 </script>
 </body>
 </html>
