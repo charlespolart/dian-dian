@@ -38,12 +38,14 @@ echo "=== Building backend ==="
 cd "$BACKEND_DIR"
 npm ci
 npm run build
-npm prune --omit=dev
 
 # ── Database migrations ──
 echo ""
 echo "=== Running migrations ==="
 $NPX_PATH drizzle-kit migrate
+
+# Remove devDependencies for production
+npm prune --omit=dev
 
 # ── Frontend ──
 echo ""
