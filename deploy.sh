@@ -1,66 +1,81 @@
 #!/bin/bash
+set -e
 
-# Load NVM (Fix for "nvm: command not found" in non-interactive shell)
+# Load NVM
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
-SERVICE_NAME="year-checker"
-WORKING_DIR="/root/year-checker"
+SERVICE_NAME="diandian"
+WORKING_DIR="/root/dian-dian"
+BACKEND_DIR="$WORKING_DIR/backend"
+FRONTEND_DIR="$WORKING_DIR/frontend"
 SERVICE_FILE="/etc/systemd/system/$SERVICE_NAME.service"
 NODE_VERSION=$(nvm current)
 NODE_PATH="$HOME/.nvm/versions/node/$NODE_VERSION/bin/node"
+NPX_PATH="$HOME/.nvm/versions/node/$NODE_VERSION/bin/npx"
 
-# Ensure Node.js version is detected
 if [ -z "$NODE_VERSION" ]; then
-    echo "Error: Node.js is not installed or not managed by nvm."
+    echo "Error: Node.js not found. Install it via nvm."
     exit 1
 fi
 
-# Move to working directory
-echo "Moving to $WORKING_DIR..."
+echo "Using Node.js $NODE_VERSION"
 cd "$WORKING_DIR" || exit 1
 
-# Stop the service if it's running
-echo "Stopping $SERVICE_NAME service (if running)..."
+# ── Pull latest code ──
+echo ""
+echo "=== Pulling latest code ==="
+git pull origin main
+
+# ── Stop service ──
+echo ""
+echo "=== Stopping service ==="
 sudo systemctl stop $SERVICE_NAME 2>/dev/null || true
 
-# Install dependencies
-echo "Installing dependencies..."
-npm install
+# ── Backend ──
+echo ""
+echo "=== Building backend ==="
+cd "$BACKEND_DIR"
+npm ci --omit=dev
+npm run build
 
-# Create the systemd service file
-echo "Creating systemd service file at $SERVICE_FILE..."
+# ── Database migrations ──
+echo ""
+echo "=== Running migrations ==="
+$NPX_PATH drizzle-kit migrate
+
+# ── Frontend ──
+echo ""
+echo "=== Building frontend ==="
+cd "$FRONTEND_DIR"
+npm ci
+$NPX_PATH expo export --platform web
+
+# ── Systemd service ──
+echo ""
+echo "=== Setting up service ==="
 cat <<EOF | sudo tee $SERVICE_FILE
 [Unit]
-Description=Year Checker Service
-After=network.target
+Description=Dian Dian API + Frontend
+After=network.target postgresql.service
 
 [Service]
-EnvironmentFile=/etc/environment
-WorkingDirectory=$WORKING_DIR
-ExecStart=$NODE_PATH $WORKING_DIR/server.js
+WorkingDirectory=$BACKEND_DIR
+ExecStart=$NODE_PATH $BACKEND_DIR/dist/index.js
 Restart=always
+RestartSec=5
 User=root
 Group=root
 Environment=NODE_ENV=production
-ExecReload=/bin/kill -USR2 \$MAINPID
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-# Reload systemd to recognize new service
-echo "Reloading systemd..."
 sudo systemctl daemon-reload
-
-# Enable the service to start on boot
-echo "Enabling $SERVICE_NAME service..."
 sudo systemctl enable $SERVICE_NAME
-
-# Start the service
-echo "Starting $SERVICE_NAME..."
 sudo systemctl start $SERVICE_NAME
 
-# Show service status
-echo "Checking service status..."
+echo ""
+echo "=== Deploy complete ==="
 sudo systemctl status $SERVICE_NAME --no-pager
