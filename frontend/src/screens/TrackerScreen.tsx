@@ -350,6 +350,8 @@ const styles = StyleSheet.create({
   headerBlock: {
     alignItems: 'center',
     gap: 2,
+    width: '100%',
+    maxWidth: 350,
   },
   pageTitle: {
     fontFamily: FONTS.pixel,
@@ -368,7 +370,7 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.tabActiveBorder,
     borderStyle: 'dashed',
     paddingVertical: 4,
-    minWidth: 200,
+    width: '100%',
   },
   subtitle: {
     fontFamily: FONTS.dot,
