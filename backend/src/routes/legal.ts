@@ -330,25 +330,74 @@ router.get('/contact', (_req, res) => {
     <h1>Contact</h1>
     <p class="subtitle">We'd love to hear from you</p>
 
-    <h2>Support &amp; General Inquiries</h2>
-    <p>
-      For questions, feedback, account issues, or data requests, send us an
-      email:
-    </p>
-    <p style="text-align:center; margin: 24px 0;">
-      <a href="mailto:contact@mydiandian.app"
-         style="font-family:'Silkscreen',monospace; font-size:17px; color:#3b2e14; border:2px solid #a0855b; padding:8px 20px; text-decoration:none; display:inline-block; transition:background 0.15s,color 0.15s;"
-         onmouseover="this.style.background='#a0855b';this.style.color='#f5f0d0'"
-         onmouseout="this.style.background='transparent';this.style.color='#3b2e14'">
-        contact@mydiandian.app
-      </a>
+    <form id="contactForm" style="margin-top:20px;">
+      <label style="font-family:'Silkscreen',monospace;font-size:12px;display:block;margin-bottom:4px;">Name</label>
+      <input type="text" name="name" required
+        style="width:100%;padding:10px;font-family:'DotGothic16',monospace;font-size:14px;border:2px solid #d4c99a;border-radius:8px;background:#faf6e8;color:#5c4a2a;margin-bottom:14px;outline:none;" />
+
+      <label style="font-family:'Silkscreen',monospace;font-size:12px;display:block;margin-bottom:4px;">Email</label>
+      <input type="email" name="email" required
+        style="width:100%;padding:10px;font-family:'DotGothic16',monospace;font-size:14px;border:2px solid #d4c99a;border-radius:8px;background:#faf6e8;color:#5c4a2a;margin-bottom:14px;outline:none;" />
+
+      <label style="font-family:'Silkscreen',monospace;font-size:12px;display:block;margin-bottom:4px;">Message</label>
+      <textarea name="message" rows="5" required
+        style="width:100%;padding:10px;font-family:'DotGothic16',monospace;font-size:14px;border:2px solid #d4c99a;border-radius:8px;background:#faf6e8;color:#5c4a2a;margin-bottom:14px;outline:none;resize:vertical;"></textarea>
+
+      <button type="submit" id="submitBtn"
+        style="font-family:'Silkscreen',monospace;font-size:13px;padding:10px 24px;background:#d8e8c8;border:2px solid #b0c8a0;border-radius:10px;color:#708060;cursor:pointer;width:100%;transition:transform 0.15s;">
+        Send message
+      </button>
+    </form>
+
+    <div id="formMsg" style="text-align:center;margin-top:16px;font-size:14px;display:none;"></div>
+
+    <hr />
+
+    <p style="text-align:center;font-size:13px;color:#a0855b;">
+      Or email us directly at <a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a>
     </p>
 
-    <h2>Response Time</h2>
-    <p>
+    <p style="font-size:13px;color:#a0855b;margin-top:16px;">
       As a solo indie project, please allow up to <strong>48 hours</strong> for
       a response. We read every message.
     </p>
+
+    <script>
+      document.getElementById('contactForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('submitBtn');
+        const msg = document.getElementById('formMsg');
+        const form = e.target;
+        btn.disabled = true;
+        btn.textContent = 'Sending...';
+        msg.style.display = 'none';
+        try {
+          const res = await fetch('/api/contact', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: form.name.value,
+              email: form.email.value,
+              message: form.message.value,
+            }),
+          });
+          if (res.ok) {
+            msg.style.color = '#708060';
+            msg.textContent = 'Message sent! We\\'ll get back to you soon.';
+            form.reset();
+          } else {
+            msg.style.color = '#c0392b';
+            msg.textContent = 'Failed to send. Please try again or email us directly.';
+          }
+        } catch {
+          msg.style.color = '#c0392b';
+          msg.textContent = 'Network error. Please try again.';
+        }
+        msg.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Send message';
+      });
+    </script>
   `);
 
   res.type('html').send(html);

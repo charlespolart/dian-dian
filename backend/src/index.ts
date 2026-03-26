@@ -43,6 +43,31 @@ app.use('/api/legends', legendsRoutes);
 // Health check
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
+// Contact form
+import { Resend } from 'resend';
+const resend = new Resend(env.RESEND_API_KEY);
+const contactLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 5, message: { error: 'Too many messages, try again later' } });
+app.post('/api/contact', contactLimiter, async (req, res) => {
+  const { name, email, message } = req.body;
+  if (!name?.trim() || !email?.trim() || !message?.trim()) {
+    res.status(400).json({ error: 'All fields are required' });
+    return;
+  }
+  try {
+    await resend.emails.send({
+      from: 'Dian Dian Contact <noreply@mydiandian.app>',
+      to: 'contact@mydiandian.app',
+      replyTo: email.trim(),
+      subject: `[Dian Dian] Message from ${name.trim()}`,
+      html: `<p><strong>From:</strong> ${name.trim()} (${email.trim()})</p><hr/><p>${message.trim().replace(/\n/g, '<br/>')}</p>`,
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Contact form error:', err);
+    res.status(500).json({ error: 'Failed to send message' });
+  }
+});
+
 // WebSocket
 setupWebSocket(server);
 
