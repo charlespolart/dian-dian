@@ -112,16 +112,16 @@ export default function SettingsScreen({ onBack }: Props) {
         {/* Info */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('settings.about')}</Text>
-          <TouchableOpacity onPress={() => Linking.openURL('https://mydiandian.app/about')}>
+          <TouchableOpacity onPress={() => Linking.openURL(`https://mydiandian.app/about?lang=${lang}`)}>
             <Text style={styles.linkText}>{t('settings.about')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => Linking.openURL('https://mydiandian.app/contact')}>
+          <TouchableOpacity onPress={() => Linking.openURL(`https://mydiandian.app/contact?lang=${lang}`)}>
             <Text style={styles.linkText}>{t('settings.contact')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => Linking.openURL('https://mydiandian.app/privacy')}>
+          <TouchableOpacity onPress={() => Linking.openURL(`https://mydiandian.app/privacy?lang=${lang}`)}>
             <Text style={styles.linkText}>{t('settings.privacy')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => Linking.openURL('https://mydiandian.app/terms')}>
+          <TouchableOpacity onPress={() => Linking.openURL(`https://mydiandian.app/terms?lang=${lang}`)}>
             <Text style={styles.linkText}>{t('settings.terms')}</Text>
           </TouchableOpacity>
           <Text style={styles.versionText}>{t('settings.version')} 1.0.0</Text>
