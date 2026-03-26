@@ -48,8 +48,31 @@ setupWebSocket(server);
 // Serve frontend static files in production
 const frontendDist = path.resolve(__dirname, '../../frontend/dist');
 app.use(express.static(frontendDist));
+
+// SPA fallback — inject apple-touch-icon meta tags
+import { readFileSync } from 'fs';
+let indexHtml = '';
+try {
+  indexHtml = readFileSync(path.join(frontendDist, 'index.html'), 'utf-8');
+  if (!indexHtml.includes('apple-touch-icon')) {
+    indexHtml = indexHtml.replace(
+      '</head>',
+      '  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />\n' +
+      '  <meta name="apple-mobile-web-app-capable" content="yes" />\n' +
+      '  <meta name="apple-mobile-web-app-status-bar-style" content="default" />\n' +
+      '  <meta name="apple-mobile-web-app-title" content="Dian Dian" />\n' +
+      '  <meta name="theme-color" content="#f5f0d0" />\n' +
+      '</head>'
+    );
+  }
+} catch { /* dist not built yet */ }
+
 app.get('*', (_req, res) => {
-  res.sendFile(path.join(frontendDist, 'index.html'));
+  if (indexHtml) {
+    res.type('html').send(indexHtml);
+  } else {
+    res.sendFile(path.join(frontendDist, 'index.html'));
+  }
 });
 
 server.listen(env.PORT, () => {
