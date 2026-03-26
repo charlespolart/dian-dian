@@ -1,0 +1,12 @@
+{
+  "name": "Dian Dian",
+  "short_name": "Dian Dian",
+  "icons": [
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "/icon.png", "sizes": "512x512", "type": "image/png" }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f0d0",
+  "theme_color": "#f5f0d0"
+}
