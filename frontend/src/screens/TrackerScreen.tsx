@@ -37,15 +37,27 @@ export default function TrackerScreen({ onOpenSettings }: Props) {
   const tabOffset = useRef(0);
   const contentHeight = useRef(0);
   const layoutHeight = useRef(0);
+  const wasBouncing = useRef(false);
 
   const onScroll = useCallback((e: any) => {
     const y = e.nativeEvent.contentOffset.y;
     const maxScroll = contentHeight.current - layoutHeight.current;
+
+    // Ignore bounce zones
+    if (y < 0 || y > maxScroll) {
+      wasBouncing.current = true;
+      return;
+    }
+
+    // Skip first event after bounce to reset baseline
+    if (wasBouncing.current) {
+      wasBouncing.current = false;
+      lastScrollY.current = y;
+      return;
+    }
+
     const diff = y - lastScrollY.current;
     lastScrollY.current = y;
-
-    // Ignore bounce zones (top and bottom)
-    if (y < 0 || y > maxScroll) return;
 
     tabOffset.current = Math.min(0, Math.max(-TAB_H, tabOffset.current - diff));
     tabBarAnim.setValue(tabOffset.current);
