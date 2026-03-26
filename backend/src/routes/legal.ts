@@ -57,6 +57,8 @@ function layout(title: string, content: string, lang: Lang): string {
       line-height: 1.7;
       min-height: 100vh;
       padding: 24px 16px 64px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
     .container { max-width: 640px; margin: 0 auto; }
     .back-link {
