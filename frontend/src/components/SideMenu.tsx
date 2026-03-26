@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Animated, Pressable, useWindowDimensions } from 'react-native';
 import { COLORS, FONTS } from '../lib/theme';
+import SettingsIcon from '../../assets/settings.svg';
 import { useLanguage } from '../contexts/LanguageContext';
 import type { Page } from '../hooks/usePages';
 
@@ -93,7 +94,7 @@ export default function SideMenu({
             </TouchableOpacity>
             <View style={styles.divider} />
             <TouchableOpacity style={styles.menuItem} onPress={() => { onOpenSettings(); onClose(); }}>
-              <Text style={styles.menuItemIcon}>⚙</Text>
+              <SettingsIcon width={20} height={20} fill={COLORS.accent} />
               <Text style={styles.menuItemText}>{t('tracker.settings')}</Text>
             </TouchableOpacity>
           </View>
@@ -218,10 +219,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 8,
-  },
-  menuItemIcon: {
-    fontSize: 18,
-    color: COLORS.accent,
   },
   menuItemText: {
     fontFamily: FONTS.pixel,
