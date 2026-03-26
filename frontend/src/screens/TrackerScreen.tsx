@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Animated, StyleSheet, Alert, Platform, useWindowDimensions } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { usePages } from '../hooks/usePages';
 import { useCells } from '../hooks/useCells';
 import { useLegends } from '../hooks/useLegends';
@@ -27,10 +27,7 @@ export default function TrackerScreen({ onOpenSettings }: Props) {
   const [selectedColor, setSelectedColor] = useState<string | null>(PALETTE[0]);
   const [editingTitle, setEditingTitle] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const { width, height: windowHeight } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
-  const bottomInset = Math.max(insets.bottom, Platform.OS === 'web' ? 20 : 0);
-  const height = windowHeight - bottomInset;
+  const { width, height } = useWindowDimensions();
 
   // Collapsing header via diffClamp
   const TAB_H = 50;
@@ -237,7 +234,7 @@ export default function TrackerScreen({ onOpenSettings }: Props) {
 
       <ScrollView
         style={styles.outerScroll}
-        contentContainerStyle={[styles.pageLayout, isWide ? styles.pageLayoutCentered : [styles.pageLayoutMobile, { paddingBottom: bottomInset + 16 }]]}
+        contentContainerStyle={[styles.pageLayout, isWide ? styles.pageLayoutCentered : styles.pageLayoutMobile]}
         showsVerticalScrollIndicator={false}
         onScroll={!isWide ? onScroll : undefined}
         scrollEventThrottle={16}
