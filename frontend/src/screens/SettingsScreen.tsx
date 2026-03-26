@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, Platform, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert, Platform, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -53,7 +53,7 @@ export default function SettingsScreen({ onBack }: Props) {
         <View style={{ width: 80 }} />
       </View>
 
-      <View style={styles.content}>
+      <ScrollView style={styles.scrollArea} contentContainerStyle={styles.content}>
         {/* Language */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('settings.language')}</Text>
@@ -137,7 +137,7 @@ export default function SettingsScreen({ onBack }: Props) {
             <Text style={styles.deleteText}>{t('settings.deleteAccount')}</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -169,9 +169,12 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     textAlign: 'center',
   },
-  content: {
+  scrollArea: {
     flex: 1,
+  },
+  content: {
     padding: 20,
+    paddingBottom: 40,
     maxWidth: 500,
     width: '100%',
     alignSelf: 'center',
