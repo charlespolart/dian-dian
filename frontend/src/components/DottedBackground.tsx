@@ -27,6 +27,7 @@ export default function DottedBackground({ children }: { children: React.ReactNo
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: COLORS.bg,
   },
   content: {
     flex: 1,
