@@ -6,9 +6,10 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 interface Props {
   onSwitchToRegister: () => void;
+  onForgotPassword: () => void;
 }
 
-export default function LoginScreen({ onSwitchToRegister }: Props) {
+export default function LoginScreen({ onSwitchToRegister, onForgotPassword }: Props) {
   const { login } = useAuth();
   const { t } = useLanguage();
   const [email, setEmail] = useState('');
@@ -57,6 +58,10 @@ export default function LoginScreen({ onSwitchToRegister }: Props) {
           secureTextEntry
           autoComplete="password"
         />
+
+        <TouchableOpacity onPress={onForgotPassword}>
+          <Text style={styles.forgotLink}>{t('auth.forgotPassword')}</Text>
+        </TouchableOpacity>
 
         <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
           {loading ? <ActivityIndicator color={COLORS.btnAddText} /> : <Text style={styles.buttonText}>{t('auth.loginBtn')}</Text>}
@@ -153,6 +158,13 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     color: COLORS.btnAddText,
     textTransform: 'uppercase',
+  },
+  forgotLink: {
+    fontFamily: FONTS.dot,
+    color: COLORS.textMuted,
+    textAlign: 'right',
+    fontSize: 11,
+    marginBottom: 6,
   },
   link: {
     fontFamily: FONTS.dot,

@@ -10,13 +10,14 @@ import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import TrackerScreen from './src/screens/TrackerScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import { COLORS } from './src/lib/theme';
 import DottedBackground from './src/components/DottedBackground';
 import CustomCursor from './src/components/CustomCursor';
 
 function AppContent() {
   const { isLoading, isAuthenticated } = useAuth();
-  const [showRegister, setShowRegister] = useState(false);
+  const [authScreen, setAuthScreen] = useState<'login' | 'register' | 'forgot'>('login');
   const [showSettings, setShowSettings] = useState(false);
 
   if (isLoading) {
@@ -28,9 +29,9 @@ function AppContent() {
   }
 
   if (!isAuthenticated) {
-    return showRegister
-      ? <RegisterScreen onSwitchToLogin={() => setShowRegister(false)} />
-      : <LoginScreen onSwitchToRegister={() => setShowRegister(true)} />;
+    if (authScreen === 'register') return <RegisterScreen onSwitchToLogin={() => setAuthScreen('login')} />;
+    if (authScreen === 'forgot') return <ForgotPasswordScreen onBack={() => setAuthScreen('login')} />;
+    return <LoginScreen onSwitchToRegister={() => setAuthScreen('register')} onForgotPassword={() => setAuthScreen('forgot')} />;
   }
 
   if (showSettings) {

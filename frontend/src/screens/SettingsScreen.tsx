@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Alert, Platform } from 'react
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { apiFetch } from '../lib/api';
 import { COLORS, FONTS } from '../lib/theme';
 
 interface Props {
@@ -20,6 +21,23 @@ export default function SettingsScreen({ onBack }: Props) {
       Alert.alert(t('settings.logout'), t('settings.logoutConfirm'), [
         { text: t('common.cancel'), style: 'cancel' },
         { text: t('common.yes'), onPress: logout },
+      ]);
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    const doDelete = async () => {
+      try {
+        await apiFetch('/auth/account', { method: 'DELETE' });
+        logout();
+      } catch { /* ignore */ }
+    };
+    if (Platform.OS === 'web') {
+      if (confirm(t('settings.deleteAccountConfirm'))) doDelete();
+    } else {
+      Alert.alert(t('settings.deleteAccount'), t('settings.deleteAccountConfirm'), [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('common.delete'), style: 'destructive', onPress: doDelete },
       ]);
     }
   };
@@ -91,11 +109,20 @@ export default function SettingsScreen({ onBack }: Props) {
           <Text style={styles.comingSoon}>{t('settings.comingSoon')}</Text>
         </View>
 
+        {/* Version */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{t('settings.version')}</Text>
+          <Text style={styles.comingSoon}>1.0.0</Text>
+        </View>
+
         {/* Account */}
         <View style={[styles.section, { marginTop: 'auto' as any }]}>
           <Text style={styles.sectionTitle}>{t('settings.account')}</Text>
           <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
             <Text style={styles.logoutText}>{t('settings.logout')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.deleteBtn} onPress={handleDeleteAccount}>
+            <Text style={styles.deleteText}>{t('settings.deleteAccount')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -201,6 +228,21 @@ const styles = StyleSheet.create({
     fontSize: 11,
     letterSpacing: 1,
     color: COLORS.btnResetText,
+    textTransform: 'uppercase',
+  },
+  deleteBtn: {
+    borderWidth: 2,
+    borderColor: '#c0392b',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+  },
+  deleteText: {
+    fontFamily: FONTS.pixel,
+    fontSize: 11,
+    letterSpacing: 1,
+    color: '#c0392b',
     textTransform: 'uppercase',
   },
 });
