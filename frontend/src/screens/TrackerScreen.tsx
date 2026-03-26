@@ -239,9 +239,11 @@ export default function TrackerScreen({ onOpenSettings }: Props) {
       )}
 
       <ScrollView
-        style={styles.outerScroll}
+        style={[styles.outerScroll, Platform.OS === 'web' && { overscrollBehavior: 'none' } as any]}
         contentContainerStyle={[styles.pageLayout, isWide ? styles.pageLayoutCentered : styles.pageLayoutMobile]}
         showsVerticalScrollIndicator={false}
+        bounces={false}
+        overScrollMode="never"
         onScroll={!isWide ? onScroll : undefined}
         scrollEventThrottle={16}
       >
