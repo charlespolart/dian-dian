@@ -33,8 +33,17 @@ export default function CustomCursor() {
 
     let x = 0, y = 0;
     const update = () => {
-      img.style.left = x + 'px';
-      img.style.top = y + 'px';
+      const vv = window.visualViewport;
+      if (vv) {
+        const scale = vv.scale;
+        img.style.left = (x - vv.offsetLeft) / scale + 'px';
+        img.style.top = (y - vv.offsetTop) / scale + 'px';
+        img.style.width = 36 / scale + 'px';
+        img.style.height = 36 / scale + 'px';
+      } else {
+        img.style.left = x + 'px';
+        img.style.top = y + 'px';
+      }
     };
 
     const onMouseMove = (e: MouseEvent) => {
@@ -57,6 +66,11 @@ export default function CustomCursor() {
       update();
     };
 
+    // Reposition on viewport zoom/scroll
+    const onViewportChange = () => update();
+    window.visualViewport?.addEventListener('resize', onViewportChange);
+    window.visualViewport?.addEventListener('scroll', onViewportChange);
+
     document.addEventListener('mousemove', onMouseMove, { passive: true });
     document.addEventListener('touchstart', onTouchStart, { passive: true });
     document.addEventListener('touchmove', onTouchMove, { passive: true });
@@ -65,6 +79,8 @@ export default function CustomCursor() {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('touchstart', onTouchStart);
       document.removeEventListener('touchmove', onTouchMove);
+      window.visualViewport?.removeEventListener('resize', onViewportChange);
+      window.visualViewport?.removeEventListener('scroll', onViewportChange);
       img.remove();
       style.remove();
     };
