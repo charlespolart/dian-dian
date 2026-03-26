@@ -344,19 +344,6 @@ router.get('/contact', (_req, res) => {
       </a>
     </p>
 
-    <h2>Bug Reports &amp; Feature Requests</h2>
-    <p>
-      Found a bug or have an idea for a feature? Open an issue on our GitHub
-      repository:
-    </p>
-    <p style="text-align:center; margin: 24px 0;">
-      <a href="https://github.com/charlesmusic/dian-dian"
-         style="font-family:'Silkscreen',monospace; font-size:15px;"
-         target="_blank" rel="noopener noreferrer">
-        github.com/charlesmusic/dian-dian
-      </a>
-    </p>
-
     <h2>Response Time</h2>
     <p>
       As a solo indie project, please allow up to <strong>48 hours</strong> for
