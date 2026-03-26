@@ -32,21 +32,29 @@ export default function TrackerScreen({ onOpenSettings }: Props) {
   // Collapsing header via diffClamp
   const TAB_H = 50;
   const scrollY = useRef(new Animated.Value(0)).current;
-  // Clamp scrollY to >= 0 to prevent bounce pushing the bar up
-  const clampedScrollY = scrollY.interpolate({
-    inputRange: [-1, 0, 1],
-    outputRange: [0, 0, 1],
-    extrapolateRight: 'identity',
-  });
-  const clampedScroll = Animated.diffClamp(clampedScrollY, 0, TAB_H);
-  const tabTranslateY = clampedScroll.interpolate({
-    inputRange: [0, TAB_H],
-    outputRange: [0, -TAB_H],
-  });
-  const onScroll = Animated.event(
-    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-    { useNativeDriver: false },
-  );
+  const tabBarAnim = useRef(new Animated.Value(0)).current;
+  const lastScrollY = useRef(0);
+  const tabOffset = useRef(0);
+  const contentHeight = useRef(0);
+  const layoutHeight = useRef(0);
+
+  const onScroll = useCallback((e: any) => {
+    const y = e.nativeEvent.contentOffset.y;
+    const maxScroll = contentHeight.current - layoutHeight.current;
+    const diff = y - lastScrollY.current;
+    lastScrollY.current = y;
+
+    // Ignore bounce zones (top and bottom)
+    if (y < 0 || y > maxScroll) return;
+
+    tabOffset.current = Math.min(0, Math.max(-TAB_H, tabOffset.current - diff));
+    tabBarAnim.setValue(tabOffset.current);
+  }, []);
+
+  const onContentSizeChange = useCallback((_w: number, h: number) => { contentHeight.current = h; }, []);
+  const onScrollLayout = useCallback((e: any) => { layoutHeight.current = e.nativeEvent.layout.height; }, []);
+
+  const tabTranslateY = tabBarAnim;
 
   const currentPageId = activePageId && pages.find(p => p.id === activePageId)
     ? activePageId
@@ -239,12 +247,12 @@ export default function TrackerScreen({ onOpenSettings }: Props) {
       )}
 
       <ScrollView
-        style={[styles.outerScroll, Platform.OS === 'web' && { overscrollBehavior: 'none' } as any]}
+        style={styles.outerScroll}
         contentContainerStyle={[styles.pageLayout, isWide ? styles.pageLayoutCentered : styles.pageLayoutMobile]}
         showsVerticalScrollIndicator={false}
-        bounces={false}
-        overScrollMode="never"
         onScroll={!isWide ? onScroll : undefined}
+        onContentSizeChange={!isWide ? onContentSizeChange : undefined}
+        onLayout={!isWide ? onScrollLayout : undefined}
         scrollEventThrottle={16}
       >
         {isWide ? (
