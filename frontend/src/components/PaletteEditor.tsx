@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, Platform, Pressable } from 'react-native';
 import { COLORS, FONTS, DEFAULT_PALETTE } from '../lib/theme';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -181,7 +181,25 @@ export default function PaletteEditor({ palette, cells, legends, onSave, onClose
           {editingColor && currentColor && (
             <View style={styles.colorEditor}>
               <View style={styles.previewRow}>
-                <View style={[styles.preview, { backgroundColor: currentColor }]} />
+                {Platform.OS === 'web' ? (
+                  <TouchableOpacity
+                    style={[styles.preview, { backgroundColor: currentColor, position: 'relative', overflow: 'hidden' }]}
+                    activeOpacity={0.8}
+                  >
+                    <input
+                      type="color"
+                      value={currentColor}
+                      onChange={(e: any) => updateColorFromHex(e.target.value)}
+                      style={{
+                        position: 'absolute',
+                        top: 0, left: 0, width: '100%', height: '100%',
+                        opacity: 0, cursor: 'pointer',
+                      }}
+                    />
+                  </TouchableOpacity>
+                ) : (
+                  <View style={[styles.preview, { backgroundColor: currentColor }]} />
+                )}
                 <Text style={styles.previewHex}>{currentColor}</Text>
               </View>
 
@@ -345,9 +363,9 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   preview: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     borderWidth: 2,
     borderColor: COLORS.tabBorder,
   },
