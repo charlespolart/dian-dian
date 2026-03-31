@@ -13,21 +13,17 @@ import TrackerScreen from './src/screens/TrackerScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
-import VerifyEmailScreen from './src/screens/VerifyEmailScreen';
 import { COLORS } from './src/lib/theme';
 import DottedBackground from './src/components/DottedBackground';
 import CustomCursor from './src/components/CustomCursor';
 
 // Detect deep link params from URL (web only)
-function getUrlParams(): { resetToken?: string; verifyToken?: string } {
+function getUrlParams(): { resetToken?: string } {
   if (Platform.OS !== 'web') return {};
   const url = new URL(window.location.href);
   const path = url.pathname;
   if (path === '/reset-password') {
     return { resetToken: url.searchParams.get('token') || undefined };
-  }
-  if (path === '/verify-email') {
-    return { verifyToken: url.searchParams.get('token') || undefined };
   }
   return {};
 }
@@ -39,16 +35,14 @@ function clearUrlParams() {
 }
 
 function AppContent() {
-  const { isLoading, isAuthenticated, setEmailVerified } = useAuth();
+  const { isLoading, isAuthenticated } = useAuth();
   const [authScreen, setAuthScreen] = useState<'login' | 'register' | 'forgot'>('login');
   const [showSettings, setShowSettings] = useState(false);
   const [resetToken, setResetToken] = useState<string | undefined>();
-  const [verifyToken, setVerifyToken] = useState<string | undefined>();
 
   useEffect(() => {
     const params = getUrlParams();
     if (params.resetToken) setResetToken(params.resetToken);
-    if (params.verifyToken) setVerifyToken(params.verifyToken);
   }, []);
 
   if (isLoading) {
@@ -62,11 +56,6 @@ function AppContent() {
   // Reset password screen (shown regardless of auth state)
   if (resetToken) {
     return <ResetPasswordScreen token={resetToken} onDone={() => { setResetToken(undefined); clearUrlParams(); }} />;
-  }
-
-  // Verify email screen (shown regardless of auth state)
-  if (verifyToken) {
-    return <VerifyEmailScreen token={verifyToken} onDone={() => { setVerifyToken(undefined); setEmailVerified(true); clearUrlParams(); }} />;
   }
 
   if (!isAuthenticated) {

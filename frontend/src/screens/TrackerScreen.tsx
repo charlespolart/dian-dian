@@ -9,7 +9,6 @@ import { usePages } from '../hooks/usePages';
 import { useCells } from '../hooks/useCells';
 import { useLegends } from '../hooks/useLegends';
 import { useLanguage } from '../contexts/LanguageContext';
-import { useAuth } from '../contexts/AuthContext';
 import TrackerGrid from '../components/TrackerGrid';
 import PaletteEditor from '../components/PaletteEditor';
 import LegendEditor from '../components/LegendEditor';
@@ -28,8 +27,6 @@ interface Props {
 
 export default function TrackerScreen({ onOpenSettings }: Props) {
   const { t } = useLanguage();
-  const { emailVerified, resendVerification } = useAuth();
-  const [verificationSent, setVerificationSent] = useState(false);
   const { pages, createPage, updatePage, deletePage } = usePages();
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [brushColor, setBrushColor] = useState<string | null>(null);
@@ -253,15 +250,6 @@ export default function TrackerScreen({ onOpenSettings }: Props) {
 
   return (
     <SafeContainer style={styles.safeArea} edges={['top', 'bottom']}>
-      {/* Email verification banner */}
-      {!emailVerified && (
-        <View style={styles.verifyBanner}>
-          <Text style={styles.verifyText}>{t('auth.verifyEmailBanner')}</Text>
-          <TouchableOpacity onPress={async () => { await resendVerification(); setVerificationSent(true); }}>
-            <Text style={styles.verifyLink}>{verificationSent ? t('auth.verificationSent') : t('auth.resendVerification')}</Text>
-          </TouchableOpacity>
-        </View>
-      )}
       {/* Top bar: hamburger + horizontal tabs — collapses on scroll */}
       {!isWide && (
         <Animated.View style={[styles.topBarOverlay, { transform: [{ translateY: tabTranslateY }] }]}>
@@ -379,26 +367,6 @@ export default function TrackerScreen({ onOpenSettings }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-  },
-  verifyBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    backgroundColor: '#fff3cd',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  verifyText: {
-    fontFamily: FONTS.dot,
-    fontSize: 12,
-    color: '#856404',
-  },
-  verifyLink: {
-    fontFamily: FONTS.pixel,
-    fontSize: 10,
-    color: '#856404',
-    textDecorationLine: 'underline',
   },
   topBarOverlay: {
     position: 'absolute',

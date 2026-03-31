@@ -2,11 +2,11 @@ import { Router } from 'express';
 import { z } from 'zod';
 import * as argon2 from 'argon2';
 import { db } from '../db/index.js';
-import { users, refreshTokens, pages, passwordResetTokens, emailVerificationTokens } from '../db/schema.js';
+import { users, refreshTokens, pages, passwordResetTokens } from '../db/schema.js';
 import { signAccessToken, generateRefreshToken, hashToken } from '../lib/jwt.js';
 import { validate } from '../middleware/validate.js';
 import { requireAuth } from '../middleware/auth.js';
-import { sendPasswordResetEmail, sendVerificationEmail, sendAccountDeletedEmail } from '../lib/email.js';
+import { sendPasswordResetEmail, sendAccountDeletedEmail } from '../lib/email.js';
 import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
 
@@ -41,15 +41,6 @@ router.post('/register', validate(registerSchema), async (req, res) => {
     // Create default page
     await db.insert(pages).values({ userId: user.id, title: 'My Tracker', position: 0 });
 
-    // Send verification email
-    const verifyToken = generateToken();
-    await db.insert(emailVerificationTokens).values({
-      userId: user.id,
-      tokenHash: hashToken(verifyToken),
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h
-    });
-    sendVerificationEmail(email, verifyToken).catch(err => console.error('Email send error:', err));
-
     // Generate auth tokens
     const accessToken = await signAccessToken(user.id);
     const refreshToken = generateRefreshToken();
@@ -69,7 +60,7 @@ router.post('/register', validate(registerSchema), async (req, res) => {
       path: '/api/auth',
     });
 
-    res.status(201).json({ accessToken, refreshToken, userId: user.id, emailVerified: false });
+    res.status(201).json({ accessToken, refreshToken, userId: user.id });
   } catch (err) {
     console.error('Register error:', err);
     res.status(500).json({ error: 'Server error' });
@@ -111,7 +102,7 @@ router.post('/login', validate(loginSchema), async (req, res) => {
       path: '/api/auth',
     });
 
-    res.json({ accessToken, refreshToken, userId: user.id, emailVerified: user.emailVerified });
+    res.json({ accessToken, refreshToken, userId: user.id });
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Server error' });
@@ -172,51 +163,6 @@ router.post('/reset-password', validate(z.object({
     res.json({ ok: true });
   } catch (err) {
     console.error('Reset password error:', err);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Verify email
-router.post('/verify-email', validate(z.object({ token: z.string().min(1) })), async (req, res) => {
-  try {
-    const tokenH = hashToken(req.body.token);
-    const [stored] = await db.select().from(emailVerificationTokens).where(eq(emailVerificationTokens.tokenHash, tokenH)).limit(1);
-
-    if (!stored || stored.expiresAt < new Date()) {
-      res.status(400).json({ error: 'Invalid or expired verification link' });
-      return;
-    }
-
-    await db.update(users).set({ emailVerified: true }).where(eq(users.id, stored.userId));
-    await db.delete(emailVerificationTokens).where(eq(emailVerificationTokens.userId, stored.userId));
-
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('Verify email error:', err);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Resend verification email
-router.post('/resend-verification', requireAuth, async (req, res) => {
-  try {
-    const [user] = await db.select().from(users).where(eq(users.id, req.userId!)).limit(1);
-    if (!user) { res.status(404).json({ error: 'User not found' }); return; }
-    if (user.emailVerified) { res.json({ ok: true }); return; }
-
-    await db.delete(emailVerificationTokens).where(eq(emailVerificationTokens.userId, user.id));
-
-    const token = generateToken();
-    await db.insert(emailVerificationTokens).values({
-      userId: user.id,
-      tokenHash: hashToken(token),
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-    });
-
-    await sendVerificationEmail(user.email, token);
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('Resend verification error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
