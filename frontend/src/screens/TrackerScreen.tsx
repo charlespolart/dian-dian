@@ -214,7 +214,10 @@ export default function TrackerScreen({ onOpenSettings }: Props) {
               legends={legends}
               pickerColor={pickerColor}
               brushColor={brushColor}
-              onSelectLegend={(color) => setBrushColor(prev => prev === color ? null : color)}
+              onSelectLegend={(color) => {
+                if (color === '__eraser__') setBrushColor(null);
+                else setBrushColor(prev => prev === color ? null : color);
+              }}
               onCreateLegend={createLegend}
               onDeleteLegend={async (id, color) => {
                 await deleteLegend(id);

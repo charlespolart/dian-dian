@@ -32,6 +32,16 @@ export default function LegendList({ legends, pickerColor, brushColor, onSelectL
     <View style={styles.container}>
       {/* Legend items — clickable to select as brush */}
       <View style={styles.legends}>
+        {/* Eraser tool */}
+        <TouchableOpacity
+          style={[styles.legendItem, brushColor === null && styles.legendItemSelected]}
+          onPress={() => onSelectLegend('__eraser__')}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.legendDot, styles.eraserDot, brushColor === null && styles.legendDotSelected]} />
+          <Text style={[styles.legendLabel, brushColor === null && styles.legendLabelSelected]}>{t('tracker.eraser')}</Text>
+        </TouchableOpacity>
+
         {legends.map(legend => {
           const isSelected = brushColor?.toUpperCase() === legend.color.toUpperCase();
           return (
@@ -112,6 +122,11 @@ const styles = StyleSheet.create({
   legendDotSelected: {
     borderColor: '#8880a8',
     transform: [{ scale: 1.15 }],
+  },
+  eraserDot: {
+    backgroundColor: COLORS.bg,
+    borderStyle: 'dashed',
+    borderColor: COLORS.tabBorder,
   },
   legendLabel: {
     flex: 1,

@@ -30,13 +30,13 @@ export default function SideMenu({
   useEffect(() => {
     if (visible) {
       Animated.parallel([
-        Animated.timing(slideAnim, { toValue: 0, duration: 220, useNativeDriver: true }),
-        Animated.timing(fadeAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: 0, duration: 220, useNativeDriver: false }),
+        Animated.timing(fadeAnim, { toValue: 1, duration: 220, useNativeDriver: false }),
       ]).start();
     } else {
       Animated.parallel([
-        Animated.timing(slideAnim, { toValue: -MENU_WIDTH, duration: 180, useNativeDriver: true }),
-        Animated.timing(fadeAnim, { toValue: 0, duration: 180, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: -MENU_WIDTH, duration: 180, useNativeDriver: false }),
+        Animated.timing(fadeAnim, { toValue: 0, duration: 180, useNativeDriver: false }),
       ]).start();
     }
   }, [visible]);
