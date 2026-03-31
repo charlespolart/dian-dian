@@ -3,14 +3,16 @@ import { Platform } from 'react-native';
 import { Audio } from 'expo-av';
 
 const tapSrc = require('../../assets/dot-tap.mp3');
-const WEB_TAP_URL = '/dot-tap.mp3'; // served from public/
+const eraseSrc = require('../../assets/dot-erase.mp3');
 
-const SKIP_START = 0.07;
+const SKIP_START_TAP = 0;
+const SKIP_START_ERASE = 0;
 const VOLUME = 0.3;
 
 // ── Web Audio API singleton ──
 let ctx: AudioContext | null = null;
-let decodedBuffer: AudioBuffer | null = null;
+let tapBuffer: AudioBuffer | null = null;
+let eraseBuffer: AudioBuffer | null = null;
 let gainNode: GainNode | null = null;
 let unlocked = false;
 
@@ -24,23 +26,32 @@ function getContext(): AudioContext {
   return ctx;
 }
 
-async function loadBuffer(): Promise<void> {
-  if (decodedBuffer) return;
+async function loadWebBuffer(url: string): Promise<AudioBuffer> {
   const audioCtx = getContext();
-  const response = await fetch(WEB_TAP_URL);
+  const response = await fetch(url);
   const arrayBuffer = await response.arrayBuffer();
-  decodedBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+  return audioCtx.decodeAudioData(arrayBuffer);
 }
 
-function playBufferWeb(): void {
-  if (!ctx || !decodedBuffer || !gainNode) return;
+async function loadBuffers(): Promise<void> {
+  if (tapBuffer && eraseBuffer) return;
+  const [tap, erase] = await Promise.all([
+    tapBuffer ? tapBuffer : loadWebBuffer('/dot-tap.mp3'),
+    eraseBuffer ? eraseBuffer : loadWebBuffer('/dot-erase.mp3'),
+  ]);
+  tapBuffer = tap;
+  eraseBuffer = erase;
+}
+
+function playWeb(buffer: AudioBuffer, offset: number): void {
+  if (!ctx || !gainNode) return;
   const source = ctx.createBufferSource();
-  source.buffer = decodedBuffer;
+  source.buffer = buffer;
   source.connect(gainNode);
-  source.start(0, SKIP_START);
+  source.start(0, offset);
 }
 
-// ── Unlock: resume AudioContext + play silent buffer inside user gesture ──
+// ── Unlock ──
 if (typeof document !== 'undefined') {
   const unlock = () => {
     if (unlocked) return;
@@ -52,7 +63,7 @@ if (typeof document !== 'undefined') {
       src.connect(audioCtx.destination);
       src.start();
       unlocked = true;
-      loadBuffer();
+      loadBuffers();
       for (const evt of ['touchstart', 'touchend', 'click', 'keydown'] as const) {
         document.removeEventListener(evt, unlock, true);
       }
@@ -65,23 +76,40 @@ if (typeof document !== 'undefined') {
 
 // ── Hook ──
 export function useTapSound() {
-  const soundRef = useRef<Audio.Sound | null>(null);
+  const tapRef = useRef<Audio.Sound | null>(null);
+  const eraseRef = useRef<Audio.Sound | null>(null);
 
-  const play = useCallback(async () => {
+  const playTap = useCallback(async () => {
     try {
       if (Platform.OS === 'web') {
-        if (!decodedBuffer) await loadBuffer();
-        playBufferWeb();
+        if (!tapBuffer) await loadBuffers();
+        if (tapBuffer) playWeb(tapBuffer, SKIP_START_TAP);
       } else {
-        if (!soundRef.current) {
+        if (!tapRef.current) {
           const { sound } = await Audio.Sound.createAsync(tapSrc, { volume: VOLUME });
-          soundRef.current = sound;
+          tapRef.current = sound;
         }
-        await soundRef.current.setPositionAsync(SKIP_START * 1000);
-        await soundRef.current.playAsync();
+        await tapRef.current.setPositionAsync(SKIP_START_TAP * 1000);
+        await tapRef.current.playAsync();
       }
     } catch { /* ignore */ }
   }, []);
 
-  return play;
+  const playErase = useCallback(async () => {
+    try {
+      if (Platform.OS === 'web') {
+        if (!eraseBuffer) await loadBuffers();
+        if (eraseBuffer) playWeb(eraseBuffer, SKIP_START_ERASE);
+      } else {
+        if (!eraseRef.current) {
+          const { sound } = await Audio.Sound.createAsync(eraseSrc, { volume: VOLUME });
+          eraseRef.current = sound;
+        }
+        await eraseRef.current.setPositionAsync(SKIP_START_ERASE * 1000);
+        await eraseRef.current.playAsync();
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  return { playTap, playErase };
 }

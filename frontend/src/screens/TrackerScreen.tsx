@@ -31,7 +31,7 @@ export default function TrackerScreen({ onOpenSettings }: Props) {
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [brushColor, setBrushColor] = useState<string | null>(null);
   const confirm = useConfirm();
-  const playTap = useTapSound();
+  const { playTap, playErase } = useTapSound();
   const [paletteEditorOpen, setPaletteEditorOpen] = useState(false);
   const [legendEditorOpen, setLegendEditorOpen] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
@@ -95,10 +95,10 @@ export default function TrackerScreen({ onOpenSettings }: Props) {
       setCell(month, day, brushColor);
     } else {
       if (!currentColor) return; // Already empty, do nothing
-      // TODO: play eraser sound
+      playErase();
       deleteCell(month, day);
     }
-  }, [brushColor, setCell, deleteCell, getCellColor, playTap]);
+  }, [brushColor, setCell, deleteCell, getCellColor, playTap, playErase]);
 
   const handleAddPage = useCallback(async () => {
     const page = await createPage();
