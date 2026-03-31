@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Pressable, Platform } from 'react-native';
 import { COLORS, FONTS, DEFAULT_PALETTE } from '../lib/theme';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -15,7 +15,6 @@ interface Props {
 }
 
 const MAX_ROWS = 7;
-const ROW_SIZE = 6;
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } {
   const n = parseInt(hex.replace('#', ''), 16);
@@ -41,6 +40,25 @@ export default function PaletteEditor({ palette, cells, legends, onSave, onClose
   const [rInput, setRInput] = useState('');
   const [gInput, setGInput] = useState('');
   const [bInput, setBInput] = useState('');
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Auto-save with debounce
+  const scheduleAutoSave = useCallback((newRows: string[][]) => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      onSave(newRows, colorMapRef.current);
+    }, 500);
+  }, [onSave]);
+
+  // Save immediately on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current);
+        saveTimer.current = null;
+      }
+    };
+  }, []);
 
   const trackColorChange = (row: number, col: number, newColor: string) => {
     const origRow = originalPalette.current[row];
@@ -79,6 +97,7 @@ export default function PaletteEditor({ palette, cells, legends, onSave, onClose
         setRows(prev => {
           const next = prev.map(r => [...r]);
           next[editingColor.row][editingColor.col] = newHex;
+          scheduleAutoSave(next);
           return next;
         });
       }
@@ -100,6 +119,7 @@ export default function PaletteEditor({ palette, cells, legends, onSave, onClose
         setRows(prev => {
           const next = prev.map(r => [...r]);
           next[editingColor.row][editingColor.col] = hex;
+          scheduleAutoSave(next);
           return next;
         });
       }
@@ -109,12 +129,13 @@ export default function PaletteEditor({ palette, cells, legends, onSave, onClose
   const addRow = () => {
     if (rows.length >= MAX_ROWS) return;
     setRows(prev => {
-      // Find first missing default row
       const rowKey = (r: string[]) => r.map(c => c.toUpperCase()).join(',');
       const currentKeys = new Set(prev.map(rowKey));
       const missing = DEFAULT_PALETTE.find(defRow => !currentKeys.has(rowKey(defRow)));
       const newRow = missing ? [...missing] : ['#F8F8F8', '#DADADA', '#B0B0B0', '#888888', '#5C5C5C', '#3C3C3C'];
-      return [...prev, newRow];
+      const next = [...prev, newRow];
+      scheduleAutoSave(next);
+      return next;
     });
   };
 
@@ -130,14 +151,6 @@ export default function PaletteEditor({ palette, cells, legends, onSave, onClose
     const { inCells, inLegends } = getColorsInUse(rows[rowIdx]);
     const hasUsage = inCells.length > 0 || inLegends.length > 0;
 
-    const doDelete = () => {
-      setRows(prev => prev.filter((_, i) => i !== rowIdx));
-      if (editingColor?.row === rowIdx) setEditingColor(null);
-      else if (editingColor && editingColor.row > rowIdx) {
-        setEditingColor({ ...editingColor, row: editingColor.row - 1 });
-      }
-    };
-
     if (hasUsage) {
       confirmDialog({
         title: t('palette.deleteRow'),
@@ -146,34 +159,41 @@ export default function PaletteEditor({ palette, cells, legends, onSave, onClose
       });
       return;
     }
-    doDelete();
+
+    setRows(prev => {
+      const next = prev.filter((_, i) => i !== rowIdx);
+      scheduleAutoSave(next);
+      return next;
+    });
+    if (editingColor?.row === rowIdx) setEditingColor(null);
+    else if (editingColor && editingColor.row > rowIdx) {
+      setEditingColor({ ...editingColor, row: editingColor.row - 1 });
+    }
   };
 
-  const handleSave = () => {
-    onSave(rows, colorMapRef.current);
+  const handleClose = () => {
+    // Flush pending save
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+      onSave(rows, colorMapRef.current);
+    }
     onClose();
-  };
-
-  const handleReset = () => {
-    setRows(DEFAULT_PALETTE.map(r => [...r]));
-    setEditingColor(null);
   };
 
   const currentColor = editingColor ? rows[editingColor.row]?.[editingColor.col] : null;
 
   return (
     <View style={styles.overlay}>
-      <Pressable style={styles.backdrop} onPress={onClose} />
+      <Pressable style={styles.backdrop} onPress={handleClose} />
       <View style={styles.modal}>
         <View style={styles.header}>
           <Text style={styles.title}>{t('palette.title')}</Text>
-          <TouchableOpacity onPress={onClose}>
+          <TouchableOpacity onPress={handleClose}>
             <Text style={styles.closeBtn}>✕</Text>
           </TouchableOpacity>
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Rows */}
           {rows.map((row, rowIdx) => (
             <View key={rowIdx} style={styles.rowContainer}>
               <View style={styles.swatchRow}>
@@ -197,14 +217,12 @@ export default function PaletteEditor({ palette, cells, legends, onSave, onClose
             </View>
           ))}
 
-          {/* Add row */}
           {rows.length < MAX_ROWS && (
             <TouchableOpacity style={styles.addRowBtn} onPress={addRow}>
               <Text style={styles.addRowText}>{t('palette.addRow')}</Text>
             </TouchableOpacity>
           )}
 
-          {/* Color editor */}
           {editingColor && currentColor && (
             <View style={styles.colorEditor}>
               <View style={styles.previewRow}>
@@ -270,16 +288,6 @@ export default function PaletteEditor({ palette, cells, legends, onSave, onClose
             </View>
           )}
         </ScrollView>
-
-        {/* Footer */}
-        <View style={styles.footer}>
-          <TouchableOpacity style={styles.resetBtn} onPress={handleReset}>
-            <Text style={styles.resetBtnText}>{t('palette.reset')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-            <Text style={styles.saveBtnText}>{t('palette.save')}</Text>
-          </TouchableOpacity>
-        </View>
       </View>
     </View>
   );
@@ -440,44 +448,5 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     color: COLORS.inputText,
     textAlign: 'center',
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.sectionBorder,
-    gap: 10,
-  },
-  resetBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 2,
-    borderColor: COLORS.btnResetBorder,
-    borderRadius: 10,
-    backgroundColor: COLORS.btnReset,
-  },
-  resetBtnText: {
-    fontFamily: FONTS.pixel,
-    fontSize: 9,
-    letterSpacing: 1,
-    color: COLORS.btnResetText,
-    textTransform: 'uppercase',
-  },
-  saveBtn: {
-    flex: 1,
-    paddingVertical: 8,
-    borderWidth: 2,
-    borderColor: COLORS.btnAddBorder,
-    borderRadius: 10,
-    backgroundColor: COLORS.btnAdd,
-    alignItems: 'center',
-  },
-  saveBtnText: {
-    fontFamily: FONTS.pixel,
-    fontSize: 9,
-    letterSpacing: 1,
-    color: COLORS.btnAddText,
-    textTransform: 'uppercase',
   },
 });
