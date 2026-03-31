@@ -345,7 +345,7 @@ export default function TrackerScreen({ onOpenSettings }: Props) {
               else setBrushColor(newColor);
             }
           }}
-          onClose={() => setPaletteEditorOpen(false)}
+          onClose={() => { setPaletteEditorOpen(false); setLegendEditorOpen(true); }}
         />
       )}
 
