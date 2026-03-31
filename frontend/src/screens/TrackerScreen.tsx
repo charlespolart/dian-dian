@@ -30,7 +30,8 @@ export default function TrackerScreen({ onOpenSettings }: Props) {
   const [verificationSent, setVerificationSent] = useState(false);
   const { pages, createPage, updatePage, deletePage } = usePages();
   const [activePageId, setActivePageId] = useState<string | null>(null);
-  const [selectedColor, setSelectedColor] = useState<string | null>(DEFAULT_PALETTE[0][0]);
+  const [brushColor, setBrushColor] = useState<string | null>(null); // from legend selection
+  const [pickerColor, setPickerColor] = useState<string | null>(DEFAULT_PALETTE[0][0]); // for legend creation
   const [paletteEditorOpen, setPaletteEditorOpen] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -86,12 +87,12 @@ export default function TrackerScreen({ onOpenSettings }: Props) {
   const currentPalette = currentPage?.palette || DEFAULT_PALETTE;
 
   const handleCellPress = useCallback((month: number, day: number) => {
-    if (selectedColor) {
-      setCell(month, day, selectedColor);
+    if (brushColor) {
+      setCell(month, day, brushColor);
     } else {
       deleteCell(month, day);
     }
-  }, [selectedColor, setCell, deleteCell]);
+  }, [brushColor, setCell, deleteCell]);
 
   const handleAddPage = useCallback(async () => {
     const page = await createPage();
@@ -206,16 +207,26 @@ export default function TrackerScreen({ onOpenSettings }: Props) {
         <View style={[styles.trackerLayout, width >= 768 && styles.trackerLayoutRow]}>
           <View style={[styles.sidebar, width >= 768 && [styles.sidebarVertical, { width: SIDEBAR_W }]]}>
             <Text style={styles.sidebarTitle}>{t('tracker.colors')}</Text>
-            <ColorPicker palette={currentPalette} selectedColor={selectedColor} onSelect={setSelectedColor} onOpenPaletteConfig={() => setPaletteEditorOpen(true)} />
+            <ColorPicker palette={currentPalette} selectedColor={pickerColor} onSelect={setPickerColor} onOpenPaletteConfig={() => setPaletteEditorOpen(true)} />
 
-            <Text style={styles.sidebarTitle}>{t('tracker.legend')}</Text>
+            <View style={styles.legendHeader}>
+              <Text style={styles.sidebarTitle}>{t('tracker.legend')}</Text>
+              <TouchableOpacity
+                style={[styles.eraserBtn, brushColor === null && styles.eraserBtnActive]}
+                onPress={() => setBrushColor(null)}
+              >
+                <Text style={[styles.eraserBtnText, brushColor === null && styles.eraserBtnTextActive]}>✕</Text>
+              </TouchableOpacity>
+            </View>
             <LegendList
               legends={legends}
-              selectedColor={selectedColor}
+              pickerColor={pickerColor}
+              brushColor={brushColor}
+              onSelectLegend={(color) => setBrushColor(prev => prev === color ? null : color)}
               onCreateLegend={createLegend}
               onDeleteLegend={async (id, color) => {
                 await deleteLegend(id);
-                // Delete all cells with this color
+                if (brushColor?.toUpperCase() === color.toUpperCase()) setBrushColor(null);
                 const matching = cells.filter(c => c.color.toUpperCase() === color.toUpperCase());
                 await Promise.all(matching.map(c => deleteCell(c.month, c.day)));
               }}
@@ -233,7 +244,7 @@ export default function TrackerScreen({ onOpenSettings }: Props) {
             {currentPageId ? (
               <TrackerGrid
                 getCellColor={getCellColor}
-                selectedColor={selectedColor}
+                selectedColor={brushColor}
                 onCellPress={handleCellPress}
                 dotSize={dotSize}
               />
@@ -338,11 +349,11 @@ export default function TrackerScreen({ onOpenSettings }: Props) {
             }
 
             // Reset selected color if it's no longer in the new palette
-            if (palette && selectedColor) {
-              const newColor = colorMap[selectedColor.toUpperCase()] || selectedColor;
+            if (palette && brushColor) {
+              const newColor = colorMap[brushColor.toUpperCase()] || brushColor;
               const flat = palette.flat();
-              if (!flat.includes(newColor)) setSelectedColor(palette[0]?.[0] || null);
-              else setSelectedColor(newColor);
+              if (!flat.includes(newColor)) setBrushColor(null);
+              else setBrushColor(newColor);
             }
           }}
           onClose={() => setPaletteEditorOpen(false)}
@@ -552,6 +563,32 @@ const styles = StyleSheet.create({
     gap: 6,
     alignItems: 'center',
     paddingHorizontal: 8,
+  },
+  legendHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  eraserBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: COLORS.tabBorder,
+    borderStyle: 'dashed',
+  },
+  eraserBtnActive: {
+    backgroundColor: COLORS.tabActive,
+    borderColor: COLORS.tabActiveBorder,
+    borderStyle: 'solid',
+  },
+  eraserBtnText: {
+    fontFamily: FONTS.pixel,
+    fontSize: 9,
+    color: COLORS.textMuted,
+  },
+  eraserBtnTextActive: {
+    color: COLORS.accent,
   },
   sidebarVertical: {
     width: 160,

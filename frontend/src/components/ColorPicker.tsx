@@ -15,16 +15,6 @@ export default function ColorPicker({ palette, selectedColor, onSelect, onOpenPa
 
   return (
     <View style={styles.container}>
-      {/* Eraser */}
-      <View style={styles.eraserRow}>
-        <TouchableOpacity
-          style={[styles.swatch, styles.eraser, selectedColor === null && styles.selected]}
-          onPress={() => onSelect(null)}
-        >
-          <Text style={styles.eraserText}>x</Text>
-        </TouchableOpacity>
-      </View>
-
       {/* Palette grid: 6 per row */}
       <View style={styles.grid}>
         {palette.map((row, rowIdx) => (

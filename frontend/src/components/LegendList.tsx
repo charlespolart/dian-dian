@@ -6,21 +6,23 @@ import type { Legend } from '../hooks/useLegends';
 
 interface Props {
   legends: Legend[];
-  selectedColor: string | null;
+  pickerColor: string | null;
+  brushColor: string | null;
+  onSelectLegend: (color: string) => void;
   onCreateLegend: (color: string, label: string) => Promise<any>;
   onDeleteLegend: (id: string, color: string) => Promise<void>;
 }
 
-export default function LegendList({ legends, selectedColor, onCreateLegend, onDeleteLegend }: Props) {
+export default function LegendList({ legends, pickerColor, brushColor, onSelectLegend, onCreateLegend, onDeleteLegend }: Props) {
   const { t } = useLanguage();
   const [newLabel, setNewLabel] = useState('');
   const [adding, setAdding] = useState(false);
 
   const handleAdd = async () => {
-    if (!selectedColor || !newLabel.trim()) return;
+    if (!pickerColor || !newLabel.trim()) return;
     setAdding(true);
     try {
-      await onCreateLegend(selectedColor, newLabel.trim());
+      await onCreateLegend(pickerColor, newLabel.trim());
       setNewLabel('');
     } catch { /* ignore */ }
     setAdding(false);
@@ -28,43 +30,55 @@ export default function LegendList({ legends, selectedColor, onCreateLegend, onD
 
   return (
     <View style={styles.container}>
-      {/* Legend items */}
+      {/* Legend items — clickable to select as brush */}
       <View style={styles.legends}>
-        {legends.map(legend => (
-          <View key={legend.id} style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: legend.color }]} />
-            <Text style={styles.legendLabel} numberOfLines={1}>{legend.label}</Text>
-            <TouchableOpacity onPress={() => {
-              const doDelete = () => onDeleteLegend(legend.id, legend.color);
-              if (Platform.OS === 'web') {
-                if (confirm(t('tracker.deleteLegendConfirm'))) doDelete();
-              } else {
-                Alert.alert(t('common.delete'), t('tracker.deleteLegendConfirm'), [
-                  { text: t('common.cancel'), style: 'cancel' },
-                  { text: t('common.delete'), style: 'destructive', onPress: doDelete },
-                ]);
-              }
-            }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={styles.deleteText}>x</Text>
+        {legends.map(legend => {
+          const isSelected = brushColor?.toUpperCase() === legend.color.toUpperCase();
+          return (
+            <TouchableOpacity
+              key={legend.id}
+              style={[styles.legendItem, isSelected && styles.legendItemSelected]}
+              onPress={() => onSelectLegend(legend.color)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.legendDot, { backgroundColor: legend.color }, isSelected && styles.legendDotSelected]} />
+              <Text style={[styles.legendLabel, isSelected && styles.legendLabelSelected]} numberOfLines={1}>{legend.label}</Text>
+              <TouchableOpacity onPress={(e) => {
+                e.stopPropagation?.();
+                const doDelete = () => onDeleteLegend(legend.id, legend.color);
+                if (Platform.OS === 'web') {
+                  if (confirm(t('tracker.deleteLegendConfirm'))) doDelete();
+                } else {
+                  Alert.alert(t('common.delete'), t('tracker.deleteLegendConfirm'), [
+                    { text: t('common.cancel'), style: 'cancel' },
+                    { text: t('common.delete'), style: 'destructive', onPress: doDelete },
+                  ]);
+                }
+              }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Text style={styles.deleteText}>x</Text>
+              </TouchableOpacity>
             </TouchableOpacity>
-          </View>
-        ))}
+          );
+        })}
       </View>
 
       {/* Add legend input */}
       <View style={styles.inputRow}>
+        {pickerColor && (
+          <View style={[styles.pickerPreview, { backgroundColor: pickerColor }]} />
+        )}
         <TextInput
-          style={styles.input}
+          style={[styles.input, { flex: 1 }]}
           placeholder={t('tracker.legendPlaceholder')}
           placeholderTextColor="#b0a890"
           value={newLabel}
           onChangeText={setNewLabel}
           onSubmitEditing={handleAdd}
         />
-        <TouchableOpacity style={styles.addBtn} onPress={handleAdd} disabled={adding || !selectedColor}>
-          <Text style={styles.addBtnText}>{t('common.add')}</Text>
-        </TouchableOpacity>
       </View>
+      <TouchableOpacity style={styles.addBtn} onPress={handleAdd} disabled={adding || !pickerColor}>
+        <Text style={styles.addBtnText}>{t('common.add')}</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -80,9 +94,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingVertical: 3,
-    paddingHorizontal: 5,
-    borderRadius: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 7,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  legendItemSelected: {
+    backgroundColor: COLORS.tabActive,
+    borderColor: COLORS.tabActiveBorder,
   },
   legendDot: {
     width: 14,
@@ -91,11 +111,18 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'rgba(0,0,0,0.08)',
   },
+  legendDotSelected: {
+    borderColor: '#8880a8',
+    transform: [{ scale: 1.15 }],
+  },
   legendLabel: {
     flex: 1,
     fontFamily: FONTS.dot,
     fontSize: 12,
     color: COLORS.textLabel,
+  },
+  legendLabelSelected: {
+    color: COLORS.accent,
   },
   deleteText: {
     fontSize: 12,
@@ -103,8 +130,17 @@ const styles = StyleSheet.create({
     color: COLORS.textLabel,
   },
   inputRow: {
-    gap: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     marginTop: 2,
+  },
+  pickerPreview: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    borderColor: 'rgba(0,0,0,0.08)',
   },
   input: {
     fontFamily: FONTS.dot,
