@@ -87,7 +87,14 @@ export default function PaletteEditor({ palette, cells, legends, onSave, onClose
 
   const addRow = () => {
     if (rows.length >= MAX_ROWS) return;
-    setRows(prev => [...prev, ['#F8F8F8', '#DADADA', '#B0B0B0', '#888888', '#5C5C5C', '#3C3C3C']]);
+    setRows(prev => {
+      // Find first missing default row
+      const rowKey = (r: string[]) => r.map(c => c.toUpperCase()).join(',');
+      const currentKeys = new Set(prev.map(rowKey));
+      const missing = DEFAULT_PALETTE.find(defRow => !currentKeys.has(rowKey(defRow)));
+      const newRow = missing ? [...missing] : ['#F8F8F8', '#DADADA', '#B0B0B0', '#888888', '#5C5C5C', '#3C3C3C'];
+      return [...prev, newRow];
+    });
   };
 
   const getColorsInUse = useCallback((rowColors: string[]): { inCells: string[]; inLegends: string[] } => {
