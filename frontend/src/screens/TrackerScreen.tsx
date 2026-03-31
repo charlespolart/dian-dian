@@ -206,12 +206,7 @@ export default function TrackerScreen({ onOpenSettings }: Props) {
 
         <View style={[styles.trackerLayout, width >= 768 && styles.trackerLayoutRow]}>
           <View style={[styles.sidebar, width >= 768 && [styles.sidebarVertical, { width: SIDEBAR_W }]]}>
-            <View style={styles.legendHeaderRow}>
-              <Text style={styles.sidebarTitle}>{t('tracker.legend')}</Text>
-              <TouchableOpacity style={styles.legendEditBtn} onPress={() => setLegendEditorOpen(true)}>
-                <Text style={styles.legendEditBtnText}>{t('tracker.editLegends')}</Text>
-              </TouchableOpacity>
-            </View>
+            <Text style={styles.sidebarTitle}>{t('tracker.legend')}</Text>
             <LegendList
               legends={legends}
               brushColor={brushColor}
@@ -220,6 +215,9 @@ export default function TrackerScreen({ onOpenSettings }: Props) {
                 else setBrushColor(prev => prev === color ? null : color);
               }}
             />
+            <TouchableOpacity style={styles.legendEditBtn} onPress={() => setLegendEditorOpen(true)}>
+              <Text style={styles.legendEditBtnText}>{t('tracker.editLegends')}</Text>
+            </TouchableOpacity>
 
             <Text style={[styles.sidebarTitle, { marginTop: 8 }]}>{t('tracker.stats')}</Text>
             <Stats cells={cells} />
@@ -571,21 +569,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 8,
   },
-  legendHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
   legendEditBtn: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 5,
+    paddingVertical: 6,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: COLORS.tabBorder,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    marginTop: 4,
   },
   legendEditBtnText: {
     fontFamily: FONTS.pixel,
-    fontSize: 7,
+    fontSize: 9,
     letterSpacing: 1,
     color: COLORS.textMuted,
     textTransform: 'uppercase',
