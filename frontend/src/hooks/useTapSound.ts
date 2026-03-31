@@ -46,14 +46,12 @@ if (typeof document !== 'undefined') {
     if (unlocked) return;
     const audioCtx = getContext();
     audioCtx.resume().then(() => {
-      // Play silent buffer to fully prime iOS audio pipeline
       const silent = audioCtx.createBuffer(1, 1, audioCtx.sampleRate);
       const src = audioCtx.createBufferSource();
       src.buffer = silent;
       src.connect(audioCtx.destination);
       src.start();
       unlocked = true;
-      // Pre-decode actual sound
       loadBuffer();
       for (const evt of ['touchstart', 'touchend', 'click', 'keydown'] as const) {
         document.removeEventListener(evt, unlock, true);
