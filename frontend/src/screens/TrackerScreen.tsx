@@ -213,7 +213,12 @@ export default function TrackerScreen({ onOpenSettings }: Props) {
               legends={legends}
               selectedColor={selectedColor}
               onCreateLegend={createLegend}
-              onDeleteLegend={deleteLegend}
+              onDeleteLegend={async (id, color) => {
+                await deleteLegend(id);
+                // Delete all cells with this color
+                const matching = cells.filter(c => c.color.toUpperCase() === color.toUpperCase());
+                await Promise.all(matching.map(c => deleteCell(c.month, c.day)));
+              }}
             />
 
             <Text style={[styles.sidebarTitle, { marginTop: 8 }]}>{t('tracker.stats')}</Text>

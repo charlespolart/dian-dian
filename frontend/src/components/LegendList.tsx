@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Platform } from 'react-native';
 import { COLORS, FONTS } from '../lib/theme';
 import { useLanguage } from '../contexts/LanguageContext';
 import type { Legend } from '../hooks/useLegends';
@@ -8,7 +8,7 @@ interface Props {
   legends: Legend[];
   selectedColor: string | null;
   onCreateLegend: (color: string, label: string) => Promise<any>;
-  onDeleteLegend: (id: string) => Promise<void>;
+  onDeleteLegend: (id: string, color: string) => Promise<void>;
 }
 
 export default function LegendList({ legends, selectedColor, onCreateLegend, onDeleteLegend }: Props) {
@@ -34,7 +34,17 @@ export default function LegendList({ legends, selectedColor, onCreateLegend, onD
           <View key={legend.id} style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: legend.color }]} />
             <Text style={styles.legendLabel} numberOfLines={1}>{legend.label}</Text>
-            <TouchableOpacity onPress={() => onDeleteLegend(legend.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <TouchableOpacity onPress={() => {
+              const doDelete = () => onDeleteLegend(legend.id, legend.color);
+              if (Platform.OS === 'web') {
+                if (confirm(t('tracker.deleteLegendConfirm'))) doDelete();
+              } else {
+                Alert.alert(t('common.delete'), t('tracker.deleteLegendConfirm'), [
+                  { text: t('common.cancel'), style: 'cancel' },
+                  { text: t('common.delete'), style: 'destructive', onPress: doDelete },
+                ]);
+              }
+            }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <Text style={styles.deleteText}>x</Text>
             </TouchableOpacity>
           </View>
