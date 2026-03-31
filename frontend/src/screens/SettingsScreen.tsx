@@ -1,6 +1,10 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Linking, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+const SafeContainer = Platform.OS === 'web'
+  ? ({ children, ...props }: any) => <View style={props.style}>{children}</View>
+  : SafeAreaView;
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useConfirm } from '../hooks/useConfirm';
@@ -43,7 +47,7 @@ export default function SettingsScreen({ onBack }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+    <SafeContainer style={styles.safeArea} edges={['top', 'bottom']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backBtn}>
@@ -138,7 +142,7 @@ export default function SettingsScreen({ onBack }: Props) {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </SafeContainer>
   );
 }
 
