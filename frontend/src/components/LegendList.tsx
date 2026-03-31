@@ -64,21 +64,18 @@ export default function LegendList({ legends, pickerColor, brushColor, onSelectL
 
       {/* Add legend input */}
       <View style={styles.inputRow}>
-        {pickerColor && (
-          <View style={[styles.pickerPreview, { backgroundColor: pickerColor }]} />
-        )}
         <TextInput
-          style={[styles.input, { flex: 1 }]}
+          style={[styles.input, pickerColor ? { borderLeftWidth: 6, borderLeftColor: pickerColor } : null]}
           placeholder={t('tracker.legendPlaceholder')}
           placeholderTextColor="#b0a890"
           value={newLabel}
           onChangeText={setNewLabel}
           onSubmitEditing={handleAdd}
         />
+        <TouchableOpacity style={styles.addBtn} onPress={handleAdd} disabled={adding || !pickerColor}>
+          <Text style={styles.addBtnText}>+</Text>
+        </TouchableOpacity>
       </View>
-      <TouchableOpacity style={styles.addBtn} onPress={handleAdd} disabled={adding || !pickerColor}>
-        <Text style={styles.addBtnText}>{t('common.add')}</Text>
-      </TouchableOpacity>
     </View>
   );
 }
@@ -132,17 +129,11 @@ const styles = StyleSheet.create({
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 2,
-  },
-  pickerPreview: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 2,
-    borderColor: 'rgba(0,0,0,0.08)',
+    gap: 4,
+    marginTop: 4,
   },
   input: {
+    flex: 1,
     fontFamily: FONTS.dot,
     fontSize: 12,
     borderWidth: 2,
@@ -157,16 +148,15 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.btnAdd,
     borderWidth: 2,
     borderColor: COLORS.btnAddBorder,
-    borderRadius: 10,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    borderRadius: 8,
+    width: 32,
+    height: 32,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   addBtnText: {
     fontFamily: FONTS.pixel,
-    fontSize: 10,
-    letterSpacing: 1,
+    fontSize: 14,
     color: COLORS.btnAddText,
-    textTransform: 'uppercase',
   },
 });
