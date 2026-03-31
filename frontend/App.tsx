@@ -38,6 +38,11 @@ function AppContent() {
   const { isLoading, isAuthenticated } = useAuth();
   const [authScreen, setAuthScreen] = useState<'login' | 'register' | 'forgot'>('login');
   const [showSettings, setShowSettings] = useState(false);
+
+  // Reset UI state on logout
+  useEffect(() => {
+    if (!isAuthenticated) setShowSettings(false);
+  }, [isAuthenticated]);
   const [resetToken, setResetToken] = useState<string | undefined>();
 
   useEffect(() => {
