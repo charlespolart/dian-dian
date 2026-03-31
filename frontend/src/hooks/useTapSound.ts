@@ -20,7 +20,7 @@ export function useTapSound() {
           webAudio.current = new window.Audio(src);
           webAudio.current.volume = 0.3;
         }
-        webAudio.current.currentTime = 0;
+        webAudio.current.currentTime = 0.07; // Skip silence at start
         webAudio.current.play().catch(() => {});
       } else {
         // Native: use expo-av

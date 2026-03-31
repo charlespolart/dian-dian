@@ -91,13 +91,17 @@ export default function TrackerScreen({ onOpenSettings }: Props) {
   const currentPalette = currentPage?.palette || DEFAULT_PALETTE;
 
   const handleCellPress = useCallback((month: number, day: number) => {
-    playTap();
+    const currentColor = getCellColor(month, day);
     if (brushColor) {
+      if (currentColor === brushColor) return; // Same color, do nothing
+      playTap();
       setCell(month, day, brushColor);
     } else {
+      if (!currentColor) return; // Already empty, do nothing
+      // TODO: play eraser sound
       deleteCell(month, day);
     }
-  }, [brushColor, setCell, deleteCell, playTap]);
+  }, [brushColor, setCell, deleteCell, getCellColor, playTap]);
 
   const handleAddPage = useCallback(async () => {
     const page = await createPage();
