@@ -66,6 +66,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 2,
     borderColor: 'transparent',
+    width: '100%',
   },
   legendItemEraserMobile: {
     alignSelf: 'center',
