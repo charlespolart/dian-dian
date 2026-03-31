@@ -13,7 +13,13 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.mydiandian"
+      "bundleIdentifier": "app.mydiandian",
+      "buildNumber": "1",
+      "associatedDomains": ["applinks:mydiandian.app"],
+      "infoPlist": {
+        "NSCameraUsageDescription": "Not used",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
