@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, useWindowDimensions, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { COLORS, FONTS, DEFAULT_PALETTE } from '../lib/theme';
+import { COLORS, FONTS } from '../lib/theme';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useConfirm } from '../hooks/useConfirm';
+import PageCard from '../components/PageCard';
 import type { Page } from '../hooks/usePages';
 
 const SafeContainer = Platform.OS === 'web'
@@ -91,45 +92,20 @@ export default function PageListScreen({ pages, onSelectPage, onCreatePage, onDe
 
       {/* Page grid */}
       <ScrollView style={styles.scrollArea} contentContainerStyle={styles.grid}>
-        {filteredPages.map(page => {
-          const palette = page.palette ?? DEFAULT_PALETTE;
-          const colors = palette.flat().slice(0, 12);
-          return (
-            <TouchableOpacity
-              key={page.id}
-              style={[styles.card, { width: cardWidth }]}
-              onPress={() => onSelectPage(page.id)}
-              onLongPress={() => handleDelete(page.id)}
-              activeOpacity={0.8}
-            >
-              {/* Mini grid preview */}
-              <View style={styles.miniGrid}>
-                {Array.from({ length: 12 }, (_, m) => (
-                  <View key={m} style={styles.miniCol}>
-                    {Array.from({ length: 6 }, (_, d) => (
-                      <View key={d} style={[styles.miniDot, { backgroundColor: COLORS.dotEmpty }]} />
-                    ))}
-                  </View>
-                ))}
-              </View>
-
-              {/* Title */}
-              <Text style={styles.cardTitle} numberOfLines={1}>{page.title}</Text>
-
-              {/* Legend colors */}
-              <View style={styles.legendColors}>
-                {colors.slice(0, 8).map((c, i) => (
-                  <View key={i} style={[styles.legendMiniDot, { backgroundColor: c }]} />
-                ))}
-              </View>
-            </TouchableOpacity>
-          );
-        })}
+        {filteredPages.map(page => (
+          <PageCard
+            key={page.id}
+            page={page}
+            cardWidth={cardWidth}
+            onPress={() => onSelectPage(page.id)}
+            onLongPress={() => handleDelete(page.id)}
+          />
+        ))}
 
         {/* Add page button — only on current year */}
         {selectedYear === currentYear && (
           <TouchableOpacity
-            style={[styles.card, styles.addCard, { width: cardWidth }]}
+            style={[styles.addCard, { width: cardWidth }]}
             onPress={() => onCreatePage()}
           >
             <Text style={styles.addIcon}>+</Text>
@@ -204,51 +180,15 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 40,
   },
-  card: {
+  addCard: {
     backgroundColor: '#faf5ea',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: COLORS.shellBorder,
-    padding: 12,
-    gap: 8,
-    alignItems: 'center',
-  },
-  miniGrid: {
-    flexDirection: 'row',
-    gap: 2,
-    justifyContent: 'center',
-  },
-  miniCol: {
-    gap: 2,
-  },
-  miniDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-  },
-  cardTitle: {
-    fontFamily: FONTS.pixel,
-    fontSize: 10,
-    color: COLORS.title,
-    letterSpacing: 1,
-    textAlign: 'center',
-  },
-  legendColors: {
-    flexDirection: 'row',
-    gap: 3,
-    justifyContent: 'center',
-  },
-  legendMiniDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
-  },
-  addCard: {
     borderStyle: 'dashed',
     borderColor: COLORS.tabBorder,
     justifyContent: 'center',
+    alignItems: 'center',
+    padding: 12,
     minHeight: 100,
   },
   addIcon: {
