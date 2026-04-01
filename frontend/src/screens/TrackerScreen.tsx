@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Animated, StyleSheet, Platform, useWindowDimensions } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const SafeContainer = Platform.OS === 'web'
@@ -14,8 +14,6 @@ import PaletteEditor from '../components/PaletteEditor';
 import LegendEditor from '../components/LegendEditor';
 import LegendList from '../components/LegendList';
 import CellEditor from '../components/CellEditor';
-import PageTabs from '../components/PageTabs';
-import SideMenu from '../components/SideMenu';
 import Stats from '../components/Stats';
 import { useTapSound } from '../hooks/useTapSound';
 import { apiFetch } from '../lib/api';
@@ -23,64 +21,23 @@ import { useConfirm } from '../hooks/useConfirm';
 import { COLORS, FONTS, DEFAULT_PALETTE } from '../lib/theme';
 
 interface Props {
+  pageId: string;
+  onBack: () => void;
   onOpenSettings: () => void;
 }
 
-export default function TrackerScreen({ onOpenSettings }: Props) {
+export default function TrackerScreen({ pageId, onBack, onOpenSettings }: Props) {
   const { t } = useLanguage();
-  const { pages, createPage, updatePage, deletePage } = usePages();
-  const [activePageId, setActivePageId] = useState<string | null>(null);
+  const { pages, updatePage } = usePages();
   const confirm = useConfirm();
   const { playTap, playErase } = useTapSound();
   const [paletteEditorOpen, setPaletteEditorOpen] = useState(false);
   const [legendEditorOpen, setLegendEditorOpen] = useState(false);
   const [cellEditorTarget, setCellEditorTarget] = useState<{ month: number; day: number } | null>(null);
   const [editingTitle, setEditingTitle] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   const { width, height } = useWindowDimensions();
 
-  // Collapsing header via diffClamp
-  const TAB_H = 50;
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const tabBarAnim = useRef(new Animated.Value(0)).current;
-  const lastScrollY = useRef(0);
-  const tabOffset = useRef(0);
-  const contentHeight = useRef(0);
-  const layoutHeight = useRef(0);
-  const wasBouncing = useRef(false);
-
-  const onScroll = useCallback((e: any) => {
-    const y = e.nativeEvent.contentOffset.y;
-    const maxScroll = contentHeight.current - layoutHeight.current;
-
-    // Ignore bounce zones
-    if (y < 0 || y > maxScroll) {
-      wasBouncing.current = true;
-      return;
-    }
-
-    // Skip first event after bounce to reset baseline
-    if (wasBouncing.current) {
-      wasBouncing.current = false;
-      lastScrollY.current = y;
-      return;
-    }
-
-    const diff = y - lastScrollY.current;
-    lastScrollY.current = y;
-
-    tabOffset.current = Math.min(0, Math.max(-TAB_H, tabOffset.current - diff));
-    tabBarAnim.setValue(tabOffset.current);
-  }, []);
-
-  const onContentSizeChange = useCallback((_w: number, h: number) => { contentHeight.current = h; }, []);
-  const onScrollLayout = useCallback((e: any) => { layoutHeight.current = e.nativeEvent.layout.height; }, []);
-
-  const tabTranslateY = tabBarAnim;
-
-  const currentPageId = activePageId && pages.find(p => p.id === activePageId)
-    ? activePageId
-    : pages[0]?.id ?? null;
+  const currentPageId = pageId;
 
   const { cells, getCellColor, getCell, setCell, deleteCell, resetAll } = useCells(currentPageId);
   const { legends, createLegend, deleteLegend, reorderLegends } = useLegends(currentPageId);
@@ -91,25 +48,6 @@ export default function TrackerScreen({ onOpenSettings }: Props) {
   const handleCellPress = useCallback((month: number, day: number) => {
     setCellEditorTarget({ month, day });
   }, []);
-
-  const handleAddPage = useCallback(async () => {
-    const page = await createPage();
-    if (page) setActivePageId(page.id);
-  }, [createPage]);
-
-  const handleDeletePage = useCallback(async (id: string) => {
-    const ok = await confirm({
-      title: t('common.delete'),
-      message: t('tracker.deletePageConfirm'),
-      confirmText: t('common.delete'),
-      cancelText: t('common.cancel'),
-      destructive: true,
-    });
-    if (ok) {
-      await deletePage(id);
-      if (currentPageId === id) setActivePageId(null);
-    }
-  }, [deletePage, currentPageId, confirm, t]);
 
   const handleResetAll = useCallback(async () => {
     const ok = await confirm({
@@ -163,15 +101,6 @@ export default function TrackerScreen({ onOpenSettings }: Props) {
   const maxDot = isWide ? 48 : 32;
   const dotSize = Math.max(8, Math.min(isWide ? Math.min(dotFromH, dotFromW) : dotFromW, maxDot));
 
-  const renderTabs = () => (
-    <PageTabs
-      pages={pages}
-      activePageId={currentPageId}
-      onSelect={setActivePageId}
-      onAdd={handleAddPage}
-      onDelete={handleDeletePage}
-    />
-  );
 
   const renderHeader = () => (
     <View style={styles.headerBlock}>
@@ -235,40 +164,21 @@ export default function TrackerScreen({ onOpenSettings }: Props) {
 
   return (
     <SafeContainer style={styles.safeArea} edges={['top', 'bottom']}>
-      {/* Top bar: hamburger + horizontal tabs — collapses on scroll */}
-      {!isWide && (
-        <Animated.View style={[styles.topBarOverlay, { transform: [{ translateY: tabTranslateY }] }]}>
-          <View style={styles.topBar}>
-            <TouchableOpacity style={styles.hamburger} onPress={() => setMenuOpen(true)}>
-              <Text style={styles.hamburgerText}>☰</Text>
-            </TouchableOpacity>
-            <View style={styles.tabsBarInline}>
-              {renderTabs()}
-            </View>
-          </View>
-        </Animated.View>
-      )}
+      {/* Back button */}
+      <View style={styles.backBar}>
+        <TouchableOpacity style={styles.backBtn} onPress={onBack}>
+          <Text style={styles.backBtnText}>← {t('settings.back')}</Text>
+        </TouchableOpacity>
+      </View>
 
       <ScrollView
         style={styles.outerScroll}
         contentContainerStyle={[styles.pageLayout, isWide ? styles.pageLayoutCentered : styles.pageLayoutMobile]}
         showsVerticalScrollIndicator={false}
-        onScroll={!isWide ? onScroll : undefined}
-        onContentSizeChange={!isWide ? onContentSizeChange : undefined}
-        onLayout={!isWide ? onScrollLayout : undefined}
-        scrollEventThrottle={16}
       >
         {isWide ? (
           <View style={styles.wideLayout}>
             <View style={styles.leftColumn}>
-              <View style={styles.leftColumnTopRow}>
-                <TouchableOpacity style={styles.hamburgerWide} onPress={() => setMenuOpen(true)}>
-                  <Text style={styles.hamburgerText}>☰</Text>
-                </TouchableOpacity>
-                <View style={styles.tabsBarWide}>
-                  {renderTabs()}
-                </View>
-              </View>
               <View style={styles.leftColumnCenter}>
                 {renderHeader()}
               </View>
@@ -282,17 +192,6 @@ export default function TrackerScreen({ onOpenSettings }: Props) {
           </>
         )}
       </ScrollView>
-
-      <SideMenu
-        visible={menuOpen}
-        onClose={() => setMenuOpen(false)}
-        pages={pages}
-        activePageId={currentPageId}
-        onSelectPage={(id) => setActivePageId(id)}
-        onAddPage={handleAddPage}
-        onDeletePage={handleDeletePage}
-        onOpenSettings={onOpenSettings}
-      />
 
       {paletteEditorOpen && currentPageId && (
         <PaletteEditor
@@ -376,48 +275,18 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  topBarOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 10,
-    backgroundColor: COLORS.bg,
+  backBar: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    paddingHorizontal: 8,
-    paddingTop: 8,
-    paddingBottom: 4,
-    gap: 6,
+  backBtn: {
+    paddingVertical: 4,
   },
-  hamburger: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginBottom: 1,
-  },
-  hamburgerText: {
-    fontSize: 20,
+  backBtnText: {
+    fontFamily: FONTS.pixel,
+    fontSize: 11,
     color: COLORS.accent,
-  },
-  hamburgerWide: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginBottom: 1,
-  },
-  leftColumnTopRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    alignSelf: 'stretch',
-    gap: 6,
-  },
-  tabsBarWide: {
-    flex: 1,
-    overflow: 'hidden',
-  },
-  tabsBarInline: {
-    flex: 1,
+    letterSpacing: 1,
   },
   outerScroll: {
     flex: 1,

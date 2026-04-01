@@ -10,9 +10,11 @@ import { ConfirmProvider } from './src/hooks/useConfirm';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import TrackerScreen from './src/screens/TrackerScreen';
+import PageListScreen from './src/screens/PageListScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
+import { usePages } from './src/hooks/usePages';
 import { COLORS } from './src/lib/theme';
 import DottedBackground from './src/components/DottedBackground';
 import CustomCursor from './src/components/CustomCursor';
@@ -36,12 +38,14 @@ function clearUrlParams() {
 
 function AppContent() {
   const { isLoading, isAuthenticated } = useAuth();
+  const { pages, createPage, deletePage } = usePages();
   const [authScreen, setAuthScreen] = useState<'login' | 'register' | 'forgot'>('login');
   const [showSettings, setShowSettings] = useState(false);
+  const [activePageId, setActivePageId] = useState<string | null>(null);
 
   // Reset UI state on logout
   useEffect(() => {
-    if (!isAuthenticated) setShowSettings(false);
+    if (!isAuthenticated) { setShowSettings(false); setActivePageId(null); }
   }, [isAuthenticated]);
   const [resetToken, setResetToken] = useState<string | undefined>();
 
@@ -73,7 +77,20 @@ function AppContent() {
     return <SettingsScreen onBack={() => setShowSettings(false)} />;
   }
 
-  return <TrackerScreen onOpenSettings={() => setShowSettings(true)} />;
+  if (activePageId) {
+    return <TrackerScreen pageId={activePageId} onBack={() => setActivePageId(null)} onOpenSettings={() => setShowSettings(true)} />;
+  }
+
+  return <PageListScreen
+    pages={pages}
+    onSelectPage={setActivePageId}
+    onCreatePage={async (year) => {
+      const page = await createPage(undefined);
+      if (page) setActivePageId(page.id);
+    }}
+    onDeletePage={deletePage}
+    onOpenSettings={() => setShowSettings(true)}
+  />;
 }
 
 export default function App() {
