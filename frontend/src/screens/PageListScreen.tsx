@@ -26,11 +26,10 @@ export default function PageListScreen({ pages, onSelectPage, onCreatePage, onDe
 
   const currentYear = new Date().getFullYear();
 
-  // Get available years (only past years that have pages + current year)
   const years = useMemo(() => {
     const set = new Set(pages.map(p => p.year ?? currentYear));
-    set.add(currentYear); // Always include current year
-    return [...set].sort((a, b) => b - a).filter(y => y <= currentYear);
+    set.add(currentYear);
+    return [...set].sort((a, b) => b - a);
   }, [pages, currentYear]);
 
   const [selectedYear, setSelectedYear] = useState(currentYear);
@@ -67,28 +66,15 @@ export default function PageListScreen({ pages, onSelectPage, onCreatePage, onDe
       </View>
 
       {/* Year navigation */}
-      {years.length > 1 && (
-        <View style={styles.yearNav}>
-          <TouchableOpacity
-            onPress={() => setSelectedYear(y => { const prev = years.find(yr => yr < y); return prev ?? y; })}
-            disabled={selectedYear === years[years.length - 1]}
-          >
-            <Text style={[styles.yearArrow, selectedYear === years[years.length - 1] && styles.yearArrowDisabled]}>‹</Text>
-          </TouchableOpacity>
-          <Text style={styles.yearText}>{selectedYear}</Text>
-          <TouchableOpacity
-            onPress={() => setSelectedYear(y => { const next = [...years].reverse().find(yr => yr > y); return next ?? y; })}
-            disabled={selectedYear === currentYear}
-          >
-            <Text style={[styles.yearArrow, selectedYear === currentYear && styles.yearArrowDisabled]}>›</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-      {years.length <= 1 && (
-        <View style={styles.yearNav}>
-          <Text style={styles.yearText}>{selectedYear}</Text>
-        </View>
-      )}
+      <View style={styles.yearNav}>
+        <TouchableOpacity onPress={() => setSelectedYear(y => y - 1)}>
+          <Text style={styles.yearArrow}>‹</Text>
+        </TouchableOpacity>
+        <Text style={styles.yearText}>{selectedYear}</Text>
+        <TouchableOpacity onPress={() => setSelectedYear(y => y + 1)}>
+          <Text style={styles.yearArrow}>›</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Page grid */}
       <ScrollView style={styles.scrollArea} contentContainerStyle={styles.grid}>
@@ -102,16 +88,14 @@ export default function PageListScreen({ pages, onSelectPage, onCreatePage, onDe
           />
         ))}
 
-        {/* Add page button — only on current year */}
-        {selectedYear === currentYear && (
-          <TouchableOpacity
-            style={[styles.addCard, { width: cardWidth }]}
-            onPress={() => onCreatePage()}
-          >
-            <Text style={styles.addIcon}>+</Text>
-            <Text style={styles.addText}>{t('common.add').replace('+ ', '')}</Text>
-          </TouchableOpacity>
-        )}
+        {/* Add page button */}
+        <TouchableOpacity
+          style={[styles.addCard, { width: cardWidth }]}
+          onPress={() => onCreatePage()}
+        >
+          <Text style={styles.addIcon}>+</Text>
+          <Text style={styles.addText}>{t('common.add').replace('+ ', '')}</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeContainer>
   );
@@ -159,9 +143,6 @@ const styles = StyleSheet.create({
     fontSize: 28,
     color: COLORS.accent,
     paddingHorizontal: 8,
-  },
-  yearArrowDisabled: {
-    opacity: 0.2,
   },
   yearText: {
     fontFamily: FONTS.pixel,
