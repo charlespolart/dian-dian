@@ -41,6 +41,7 @@ class _CellEditorDialogState extends State<CellEditorDialog> {
   late int _day;
   final _commentController = TextEditingController();
   String? _selectedColor;
+  String? _selectedLegendId;
   bool _hasCell = false;
 
   static const List<String> _monthNames = [
@@ -61,10 +62,12 @@ class _CellEditorDialogState extends State<CellEditorDialog> {
     final cell = cells.getCell(_month, _day);
     if (cell != null) {
       _selectedColor = cell.color;
+      _selectedLegendId = null;
       _commentController.text = cell.comment ?? '';
       _hasCell = true;
     } else {
       _selectedColor = null;
+      _selectedLegendId = null;
       _commentController.text = '';
       _hasCell = false;
     }
@@ -378,11 +381,12 @@ class _CellEditorDialogState extends State<CellEditorDialog> {
   }
 
   Widget _buildLegendRow(LegendModel legend) {
-    final selected = _selectedColor == legend.color;
+    final selected = _selectedLegendId == legend.id;
     return GestureDetector(
       onTap: () {
         setState(() {
           _selectedColor = legend.color;
+          _selectedLegendId = legend.id;
         });
       },
       child: Container(

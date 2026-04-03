@@ -15,10 +15,16 @@ import 'screens/settings_screen.dart';
 import 'theme/app_theme.dart';
 import 'widgets/custom_cursor.dart';
 import 'widgets/dotted_background.dart';
+import 'package:flutter/services.dart';
 import 'widgets/undo_delete_bar.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: AppColors.bg,
+    statusBarIconBrightness: Brightness.dark,
+    statusBarBrightness: Brightness.light,
+  ));
   runApp(const DianDianApp());
 }
 
