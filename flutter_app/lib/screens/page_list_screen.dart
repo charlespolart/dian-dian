@@ -14,13 +14,17 @@ import '../widgets/confirm_dialog.dart';
 import '../widgets/marquee_text.dart';
 
 class PageListScreen extends StatefulWidget {
-  final void Function(String id) onSelectPage;
+  final void Function(String id, int year) onSelectPage;
   final VoidCallback onOpenSettings;
+  final int selectedYear;
+  final ValueChanged<int> onYearChanged;
 
   const PageListScreen({
     super.key,
     required this.onSelectPage,
     required this.onOpenSettings,
+    required this.selectedYear,
+    required this.onYearChanged,
   });
 
   @override
@@ -28,12 +32,13 @@ class PageListScreen extends StatefulWidget {
 }
 
 class _PageListScreenState extends State<PageListScreen> {
-  int _selectedYear = DateTime.now().year;
+  late int _selectedYear;
   int? _draggingIndex;
 
   @override
   void initState() {
     super.initState();
+    _selectedYear = widget.selectedYear;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final pagesProv = context.read<PagesProvider>();
       await pagesProv.fetchPages();
@@ -66,7 +71,7 @@ class _PageListScreenState extends State<PageListScreen> {
 
   Future<void> _createPage() async {
     final prov = context.read<PagesProvider>();
-    await prov.createPage('Untitled');
+    await prov.createPage('Untitled', year: _selectedYear);
     // Navigate to the newly created page
     final pages = _pagesForYear(prov.pages);
     if (pages.isNotEmpty && mounted) {
@@ -81,7 +86,7 @@ class _PageListScreenState extends State<PageListScreen> {
     cellsProv.setPageId(page.id);
     legendsProv.setPageId(page.id);
 
-    widget.onSelectPage(page.id);
+    widget.onSelectPage(page.id, page.year);
   }
 
   Future<void> _deletePage(PageModel page) async {
@@ -153,7 +158,7 @@ class _PageListScreenState extends State<PageListScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         GestureDetector(
-                          onTap: () => setState(() => _selectedYear--),
+                          onTap: () { setState(() => _selectedYear--); widget.onYearChanged(_selectedYear); },
                           child: Padding(
                             padding: const EdgeInsets.all(8),
                             child: Text(
@@ -175,7 +180,7 @@ class _PageListScreenState extends State<PageListScreen> {
                         ),
                         const SizedBox(width: 12),
                         GestureDetector(
-                          onTap: () => setState(() => _selectedYear++),
+                          onTap: () { setState(() => _selectedYear++); widget.onYearChanged(_selectedYear); },
                           child: Padding(
                             padding: const EdgeInsets.all(8),
                             child: Text(
@@ -265,7 +270,7 @@ class _PageListScreenState extends State<PageListScreen> {
                                           cells: previewCells,
                                           legends: previewLegends,
                                           onTap: () => _openTracker(page),
-                                          onLongPress: () => _deletePage(page),
+                                          onDelete: () => _deletePage(page),
                                           isDragGhost: _draggingIndex == index,
                                           dragHandle: Draggable<int>(
                                             data: index,
@@ -364,7 +369,7 @@ class _PageCard extends StatelessWidget {
   final List<CellModel> cells;
   final List<LegendModel> legends;
   final VoidCallback onTap;
-  final VoidCallback onLongPress;
+  final VoidCallback onDelete;
   final bool isDragGhost;
   final Widget? dragHandle;
 
@@ -373,7 +378,7 @@ class _PageCard extends StatelessWidget {
     required this.cells,
     required this.legends,
     required this.onTap,
-    required this.onLongPress,
+    required this.onDelete,
     this.isDragGhost = false,
     this.dragHandle,
   });
@@ -384,7 +389,6 @@ class _PageCard extends StatelessWidget {
       opacity: isDragGhost ? 0.3 : 1.0,
       child: GestureDetector(
         onTap: isDragGhost ? null : onTap,
-        onLongPress: isDragGhost ? null : onLongPress,
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
@@ -451,6 +455,27 @@ class _PageCard extends StatelessWidget {
               top: -8,
               left: -8,
               child: dragHandle!,
+            ),
+          // Delete button top-right
+          if (!isDragGhost)
+            Positioned(
+              top: -6,
+              right: -6,
+              child: GestureDetector(
+                onTap: onDelete,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.shell,
+                  ),
+                  child: Icon(
+                    Icons.close,
+                    size: 12,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ),
             ),
         ],
         ),

@@ -1,0 +1,1 @@
+ALTER TABLE "pages" ADD COLUMN "year" integer DEFAULT 2026 NOT NULL;
