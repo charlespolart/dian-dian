@@ -1,17 +1,21 @@
 import 'package:flutter/foundation.dart';
 
 import '../services/api_service.dart';
+import '../services/storage_service.dart';
 import '../services/ws_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
   final WsService _ws = WsService();
+  final StorageService _storage = StorageService();
 
   bool _isLoading = true;
   bool _isAuthenticated = false;
+  String? _email;
 
   bool get isLoading => _isLoading;
   bool get isAuthenticated => _isAuthenticated;
+  String? get email => _email;
 
   AuthProvider() {
     _api.onAuthExpired = _onAuthExpired;
@@ -24,6 +28,8 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> login(String email, String password) async {
     await _api.login(email, password);
+    _email = email;
+    await _storage.setEmail(email);
     _isAuthenticated = true;
     _ws.connect();
     notifyListeners();
@@ -31,6 +37,8 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> register(String email, String password) async {
     await _api.register(email, password);
+    _email = email;
+    await _storage.setEmail(email);
     _isAuthenticated = true;
     _ws.connect();
     notifyListeners();
@@ -41,7 +49,9 @@ class AuthProvider extends ChangeNotifier {
     try {
       await _api.logout();
     } finally {
+      _email = null;
       _isAuthenticated = false;
+      await _storage.deleteEmail();
       notifyListeners();
     }
   }
@@ -54,6 +64,7 @@ class AuthProvider extends ChangeNotifier {
       final restored = await _api.tryRestoreSession();
       _isAuthenticated = restored;
       if (restored) {
+        _email = await _storage.getEmail();
         _ws.connect();
       }
     } catch (e) {

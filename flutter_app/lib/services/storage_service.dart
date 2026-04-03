@@ -6,6 +6,7 @@ class StorageService {
   StorageService._internal();
 
   static const _refreshTokenKey = 'refresh_token';
+  static const _emailKey = 'user_email';
 
   final _storage = const FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
@@ -21,5 +22,17 @@ class StorageService {
 
   Future<void> deleteRefreshToken() async {
     await _storage.delete(key: _refreshTokenKey);
+  }
+
+  Future<String?> getEmail() async {
+    return _storage.read(key: _emailKey);
+  }
+
+  Future<void> setEmail(String email) async {
+    await _storage.write(key: _emailKey, value: email);
+  }
+
+  Future<void> deleteEmail() async {
+    await _storage.delete(key: _emailKey);
   }
 }

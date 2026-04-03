@@ -1,9 +1,23 @@
-import 'dart:ui';
-
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 enum Language { fr, en, zhCN, zhTW }
+
+/// Short labels for each language (used in compact selectors).
+const languageShortLabels = {
+  Language.fr: 'FR',
+  Language.en: 'EN',
+  Language.zhCN: '简',
+  Language.zhTW: '繁',
+};
+
+/// Translation keys for full language names.
+const languageNameKeys = {
+  Language.fr: 'settings.french',
+  Language.en: 'settings.english',
+  Language.zhCN: 'settings.chineseSimplified',
+  Language.zhTW: 'settings.chineseTraditional',
+};
 
 class LanguageProvider extends ChangeNotifier {
   static const _prefKey = 'app_language';
@@ -125,7 +139,9 @@ class LanguageProvider extends ChangeNotifier {
       'tracker.statYear': 'annee',
       'tracker.eraser': 'Gomme',
       'tracker.editLegends': 'Éditer',
+      'tracker.pickColor': 'Choisir une couleur',
       'tracker.noLegends': 'Aucune légende',
+      'tracker.noTrackers': 'Aucun tracker',
       'tracker.deleteLegendConfirmSimple': 'Supprimer cette légende ?',
       'tracker.resetAll': 'Tout effacer',
       'tracker.resetConfirm': 'Effacer toutes les cases ?',
@@ -159,6 +175,8 @@ class LanguageProvider extends ChangeNotifier {
       'settings.deleteAccount': 'Supprimer mon compte',
       'settings.deleteAccountConfirm':
           'Supprimer définitivement votre compte et toutes vos données ? Cette action est irréversible.',
+      'settings.typeDelete': 'Tapez DELETE pour confirmer',
+      'settings.typeEmail': 'Tapez votre email pour confirmer',
       'settings.deleteAccountSuccess': 'Compte supprimé.',
       'settings.back': 'Retour',
       'settings.comingSoon': 'Bientôt disponible',
@@ -211,7 +229,9 @@ class LanguageProvider extends ChangeNotifier {
       'tracker.statYear': 'year',
       'tracker.eraser': 'Eraser',
       'tracker.editLegends': 'Edit',
+      'tracker.pickColor': 'Pick a color',
       'tracker.noLegends': 'No legends',
+      'tracker.noTrackers': 'No trackers',
       'tracker.deleteLegendConfirmSimple': 'Delete this legend?',
       'tracker.resetAll': 'Clear all',
       'tracker.resetConfirm': 'Clear all cells?',
@@ -245,6 +265,8 @@ class LanguageProvider extends ChangeNotifier {
       'settings.deleteAccount': 'Delete my account',
       'settings.deleteAccountConfirm':
           'Permanently delete your account and all data? This cannot be undone.',
+      'settings.typeDelete': 'Type DELETE to confirm',
+      'settings.typeEmail': 'Type your email to confirm',
       'settings.deleteAccountSuccess': 'Account deleted.',
       'settings.back': 'Back',
       'settings.comingSoon': 'Coming soon',
@@ -296,7 +318,9 @@ class LanguageProvider extends ChangeNotifier {
       'tracker.statYear': '年度',
       'tracker.eraser': '橡皮擦',
       'tracker.editLegends': '编辑',
+      'tracker.pickColor': '选择颜色',
       'tracker.noLegends': '暂无图例',
+      'tracker.noTrackers': '暂无追踪器',
       'tracker.deleteLegendConfirmSimple': '删除此图例？',
       'tracker.resetAll': '全部清除',
       'tracker.resetConfirm': '清除所有格子？',
@@ -327,6 +351,8 @@ class LanguageProvider extends ChangeNotifier {
       'settings.logoutConfirm': '确定退出？',
       'settings.deleteAccount': '删除账户',
       'settings.deleteAccountConfirm': '永久删除您的账户和所有数据？此操作不可撤销。',
+      'settings.typeDelete': '输入 DELETE 以确认',
+      'settings.typeEmail': '输入您的邮箱以确认',
       'settings.deleteAccountSuccess': '账户已删除。',
       'settings.back': '返回',
       'settings.comingSoon': '即将推出',
@@ -378,7 +404,9 @@ class LanguageProvider extends ChangeNotifier {
       'tracker.statYear': '年度',
       'tracker.eraser': '橡皮擦',
       'tracker.editLegends': '編輯',
+      'tracker.pickColor': '選擇顏色',
       'tracker.noLegends': '暫無圖例',
+      'tracker.noTrackers': '暫無追蹤器',
       'tracker.deleteLegendConfirmSimple': '刪除此圖例？',
       'tracker.resetAll': '全部清除',
       'tracker.resetConfirm': '清除所有格子？',
@@ -409,6 +437,8 @@ class LanguageProvider extends ChangeNotifier {
       'settings.logoutConfirm': '確定登出？',
       'settings.deleteAccount': '刪除帳戶',
       'settings.deleteAccountConfirm': '永久刪除您的帳戶和所有資料？此操作不可撤銷。',
+      'settings.typeDelete': '輸入 DELETE 以確認',
+      'settings.typeEmail': '輸入您的電子郵件以確認',
       'settings.deleteAccountSuccess': '帳戶已刪除。',
       'settings.back': '返回',
       'settings.comingSoon': '即將推出',
