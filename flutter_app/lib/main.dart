@@ -14,6 +14,7 @@ import 'screens/tracker_screen.dart';
 import 'screens/settings_screen.dart';
 import 'theme/app_theme.dart';
 import 'widgets/dotted_background.dart';
+import 'widgets/undo_delete_bar.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -81,6 +82,8 @@ class _AppShellState extends State<AppShell> {
     final auth = context.read<AuthProvider>();
     if (!auth.isAuthenticated && _screen != AppScreen.login &&
         _screen != AppScreen.register && _screen != AppScreen.forgotPassword) {
+      // Cancel any pending page deletion on logout
+      context.read<PagesProvider>().cancelPendingDelete();
       setState(() {
         _screen = AppScreen.login;
         _activePageId = null;
@@ -115,9 +118,32 @@ class _AppShellState extends State<AppShell> {
             );
           }
 
-          return AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            child: _buildAppScreen(),
+          return Stack(
+            children: [
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: _buildAppScreen(),
+              ),
+              // Global undo delete bar
+              Consumer<PagesProvider>(
+                builder: (context, pagesProv, _) {
+                  if (pagesProv.pendingDeletePage == null) {
+                    return const SizedBox.shrink();
+                  }
+                  return Positioned(
+                    left: 16,
+                    right: 16,
+                    bottom: 24 + MediaQuery.of(context).padding.bottom,
+                    child: UndoDeleteBar(
+                      pageName: pagesProv.pendingDeletePage!.title,
+                      onUndo: () => pagesProv.undoDeletePage(),
+                      duration: const Duration(seconds: 8),
+                      key: ValueKey(pagesProv.pendingDeletePage!.id),
+                    ),
+                  );
+                },
+              ),
+            ],
           );
         },
       ),
