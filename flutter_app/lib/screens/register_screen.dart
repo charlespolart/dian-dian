@@ -5,6 +5,7 @@ import '../providers/auth_provider.dart';
 import '../providers/language_provider.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/language_dropdown.dart';
 
 class RegisterScreen extends StatefulWidget {
   final VoidCallback onSwitchToLogin;
@@ -73,13 +74,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Stars decoration
+      body: SafeArea(
+        child: Stack(
+          children: [
+            // Language selector top-right
+            Positioned(
+              top: 8,
+              right: 16,
+              child: LanguageDropdown(lang: lang),
+            ),
+            // Main content
+            Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Stars decoration
               Text(
                 '. * . . * .',
                 style: AppFonts.pixel(fontSize: 12, color: AppColors.star),
@@ -245,7 +258,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ],
           ),
         ),
+        ),
+      ),
+          ],
+        ),
       ),
     );
   }
 }
+
