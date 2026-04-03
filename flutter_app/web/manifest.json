@@ -1,11 +1,11 @@
 {
-    "name": "dian_dian",
-    "short_name": "dian_dian",
+    "name": "Dian Dian",
+    "short_name": "Dian Dian",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#F5F0D0",
     "theme_color": "#F5F0D0",
-    "description": "A new Flutter project.",
+    "description": "Dian Dian - Visual Year Tracker",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

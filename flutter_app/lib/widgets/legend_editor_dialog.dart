@@ -84,6 +84,7 @@ class _LegendEditorDialogState extends State<LegendEditorDialog> {
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             // Title
             Opacity(
