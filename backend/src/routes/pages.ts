@@ -25,7 +25,7 @@ router.get('/', async (req, res) => {
 });
 
 const createPageSchema = z.object({
-  title: z.string().min(1).max(200).default('New Tracker'),
+  title: z.string().min(1).max(35).default('New Tracker'),
   position: z.number().int().min(0).default(0),
 });
 
@@ -49,7 +49,7 @@ const paletteSchema = z.array(
 ).min(1).max(7);
 
 const updatePageSchema = z.object({
-  title: z.string().min(1).max(200).optional(),
+  title: z.string().min(1).max(35).optional(),
   position: z.number().int().min(0).optional(),
   palette: paletteSchema.nullable().optional(),
 });

@@ -46,6 +46,7 @@ export const cells = pgTable('cells', {
   month: smallint('month').notNull(),
   day: smallint('day').notNull(),
   color: text('color').notNull(),
+  comment: text('comment'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   primaryKey({ columns: [t.pageId, t.month, t.day] }),

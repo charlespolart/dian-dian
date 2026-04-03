@@ -34,13 +34,14 @@ const upsertCellSchema = z.object({
   month: z.number().int().min(0).max(11),
   day: z.number().int().min(1).max(31),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Couleur hex invalide'),
+  comment: z.string().max(200).nullable().optional(),
 });
 
 // Upsert cell (set color)
 router.put('/:pageId', validate(upsertCellSchema), async (req, res) => {
   try {
     const pageId = String(req.params.pageId);
-    const { month, day, color } = req.body;
+    const { month, day, color, comment } = req.body;
 
     // Verify page belongs to user
     const [page] = await db.select({ id: pages.id })
@@ -50,10 +51,10 @@ router.put('/:pageId', validate(upsertCellSchema), async (req, res) => {
     if (!page) { res.status(404).json({ error: 'Page not found' }); return; }
 
     const [cell] = await db.insert(cells)
-      .values({ pageId, month, day, color, updatedAt: new Date() })
+      .values({ pageId, month, day, color, comment: comment ?? null, updatedAt: new Date() })
       .onConflictDoUpdate({
         target: [cells.pageId, cells.month, cells.day],
-        set: { color, updatedAt: new Date() },
+        set: { color, comment: comment ?? null, updatedAt: new Date() },
       })
       .returning();
 

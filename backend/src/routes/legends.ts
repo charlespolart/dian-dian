@@ -32,7 +32,7 @@ router.get('/:pageId', async (req, res) => {
 
 const createLegendSchema = z.object({
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
-  label: z.string().min(1).max(100),
+  label: z.string().min(1).max(30),
   position: z.number().int().min(0).default(0),
 });
 
@@ -44,6 +44,12 @@ router.post('/:pageId', validate(createLegendSchema), async (req, res) => {
       .where(and(eq(pages.id, String(req.params.pageId)), eq(pages.userId, req.userId!)))
       .limit(1);
     if (!page) { res.status(404).json({ error: 'Page not found' }); return; }
+
+    // Max 12 legends per page
+    const existing = await db.select({ id: legends.id })
+      .from(legends)
+      .where(eq(legends.pageId, String(req.params.pageId)));
+    if (existing.length >= 12) { res.status(400).json({ error: 'Maximum 12 legends per page' }); return; }
 
     const [legend] = await db.insert(legends)
       .values({ pageId: String(req.params.pageId), ...req.body })
@@ -101,6 +107,39 @@ router.patch('/:pageId/recolor', validate(recolorLegendSchema), async (req, res)
     res.json({ ok: true });
   } catch (err) {
     console.error('Recolor legends error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Update legend (label/color)
+const updateLegendSchema = z.object({
+  label: z.string().min(1).max(30).optional(),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
+});
+
+router.patch('/:id', validate(updateLegendSchema), async (req, res) => {
+  try {
+    const [legend] = await db.select({ id: legends.id, pageId: legends.pageId })
+      .from(legends)
+      .where(eq(legends.id, String(req.params.id)))
+      .limit(1);
+    if (!legend) { res.status(404).json({ error: 'Legend not found' }); return; }
+
+    const [page] = await db.select({ id: pages.id })
+      .from(pages)
+      .where(and(eq(pages.id, legend.pageId), eq(pages.userId, req.userId!)))
+      .limit(1);
+    if (!page) { res.status(403).json({ error: 'Unauthorized' }); return; }
+
+    const [updated] = await db.update(legends)
+      .set(req.body)
+      .where(eq(legends.id, String(req.params.id)))
+      .returning();
+
+    broadcast(req.userId!, 'legend:updated', updated);
+    res.json(updated);
+  } catch (err) {
+    console.error('Update legend error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });

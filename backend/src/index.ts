@@ -80,13 +80,13 @@ setupWebSocket(server);
 // Legal pages (served before static files so routes take priority)
 app.use(legalRoutes);
 
-// Serve frontend static files in production
-const frontendDist = path.resolve(__dirname, '../../frontend/dist');
-app.use(express.static(frontendDist));
+// Serve Flutter web static files in production
+const webDist = path.resolve(__dirname, '../../flutter_app/build/web');
+app.use(express.static(webDist));
 
 // SPA fallback
 app.get('*', (_req, res) => {
-  res.sendFile(path.join(frontendDist, 'index.html'));
+  res.sendFile(path.join(webDist, 'index.html'));
 });
 
 server.listen(env.PORT, () => {
