@@ -52,6 +52,9 @@ jobs:
           SSH_CMD="ssh -i ~/.ssh/id_deploy $VPS_USER@$VPS_HOST"
           SCP_CMD="scp -i ~/.ssh/id_deploy"
 
+          # Create directories on server
+          $SSH_CMD "mkdir -p /root/dian-dian/backend/dist /root/dian-dian/backend/drizzle /root/dian-dian/flutter_app/build/web"
+
           # Sync backend (built files + node_modules + migrations)
           rsync -az --delete \
             -e "ssh -i ~/.ssh/id_deploy" \
