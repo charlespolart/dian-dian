@@ -83,15 +83,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Stars decoration
-              Text(
-                '. * . . * .',
-                style: AppFonts.pixel(
-                  fontSize: 12,
-                  color: AppColors.star,
-                ),
-              ),
-              const SizedBox(height: 16),
 
               // Chinese title
               Text(
@@ -111,16 +102,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   color: AppColors.subtitle,
                 ),
               ),
-              const SizedBox(height: 8),
-
-              // Stars decoration
-              Text(
-                '*  .  *  .  *',
-                style: AppFonts.pixel(
-                  fontSize: 10,
-                  color: AppColors.star,
-                ),
-              ),
               const SizedBox(height: 32),
 
               // Card
@@ -131,9 +112,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppColors.shellBorder),
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
+                child: AutofillGroup(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                     // Title
                     Text(
                       lang.t('auth.login'),
@@ -148,6 +130,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     TextField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
+                      autofillHints: const [AutofillHints.email, AutofillHints.username],
                       autocorrect: false,
                       style: AppFonts.dot(
                         fontSize: 14,
@@ -167,6 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     TextField(
                       controller: _passwordController,
                       obscureText: true,
+                      autofillHints: const [AutofillHints.password],
                       style: AppFonts.dot(
                         fontSize: 14,
                         color: AppColors.inputText,
@@ -243,7 +227,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 20),

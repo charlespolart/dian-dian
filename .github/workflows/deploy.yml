@@ -22,7 +22,6 @@ jobs:
         run: |
           npm ci
           npm run build
-          npm prune --omit=dev
 
       # ── Flutter web build ──
       - uses: subosito/flutter-action@v2
@@ -61,17 +60,13 @@ jobs:
             backend/dist/ \
             $VPS_USER@$VPS_HOST:/root/dian-dian/backend/dist/
 
-          rsync -az --delete \
-            -e "ssh -i ~/.ssh/id_deploy" \
-            backend/node_modules/ \
-            $VPS_USER@$VPS_HOST:/root/dian-dian/backend/node_modules/
-
           rsync -az \
             -e "ssh -i ~/.ssh/id_deploy" \
             backend/drizzle/ \
             $VPS_USER@$VPS_HOST:/root/dian-dian/backend/drizzle/
 
           $SCP_CMD backend/package.json $VPS_USER@$VPS_HOST:/root/dian-dian/backend/package.json
+          $SCP_CMD backend/package-lock.json $VPS_USER@$VPS_HOST:/root/dian-dian/backend/package-lock.json
           $SCP_CMD backend/drizzle.config.ts $VPS_USER@$VPS_HOST:/root/dian-dian/backend/drizzle.config.ts
 
           # Sync Flutter web build
@@ -80,11 +75,13 @@ jobs:
             flutter_app/build/web/ \
             $VPS_USER@$VPS_HOST:/root/dian-dian/flutter_app/build/web/
 
-          # Run migrations + restart on server
+          # Install deps, migrate, prune, restart on server
           $SSH_CMD << 'REMOTE'
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
             cd /root/dian-dian/backend
+            npm ci
             npx drizzle-kit migrate
+            npm prune --omit=dev
             sudo systemctl restart diandian
           REMOTE

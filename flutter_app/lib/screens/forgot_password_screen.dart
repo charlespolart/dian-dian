@@ -59,16 +59,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Column(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Stars decoration
-              Text(
-                '. * . . * .',
-                style: AppFonts.pixel(fontSize: 12, color: AppColors.star),
-              ),
-              const SizedBox(height: 16),
-
               // Chinese title
               Text(
                 '\u70B9\u70B9',
@@ -80,13 +75,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               Text(
                 'Dian Dian',
                 style: AppFonts.pixel(fontSize: 14, color: AppColors.subtitle),
-              ),
-              const SizedBox(height: 8),
-
-              // Stars decoration
-              Text(
-                '*  .  *  .  *',
-                style: AppFonts.pixel(fontSize: 10, color: AppColors.star),
               ),
               const SizedBox(height: 32),
 
@@ -188,6 +176,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 ),
               ),
             ],
+          ),
           ),
         ),
       ),

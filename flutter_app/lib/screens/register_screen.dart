@@ -92,14 +92,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Stars decoration
-              Text(
-                '. * . . * .',
-                style: AppFonts.pixel(fontSize: 12, color: AppColors.star),
-              ),
-              const SizedBox(height: 16),
-
-              // Chinese title
+                    // Chinese title
               Text(
                 '\u70B9\u70B9',
                 style: AppFonts.pixel(fontSize: 36, color: AppColors.title),
@@ -111,13 +104,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 'Dian Dian',
                 style: AppFonts.pixel(fontSize: 14, color: AppColors.subtitle),
               ),
-              const SizedBox(height: 8),
-
-              // Stars decoration
-              Text(
-                '*  .  *  .  *',
-                style: AppFonts.pixel(fontSize: 10, color: AppColors.star),
-              ),
               const SizedBox(height: 32),
 
               // Card
@@ -128,12 +114,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppColors.shellBorder),
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Title
-                    Text(
-                      lang.t('auth.register'),
+                child: AutofillGroup(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Title
+                      Text(
+                        lang.t('auth.register'),
                       style: AppFonts.pixel(
                         fontSize: 16,
                         color: AppColors.title,
@@ -145,6 +132,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     TextField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
+                      autofillHints: const [AutofillHints.email],
                       autocorrect: false,
                       style: AppFonts.dot(
                         fontSize: 14,
@@ -164,6 +152,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     TextField(
                       controller: _passwordController,
                       obscureText: true,
+                      autofillHints: const [AutofillHints.newPassword],
                       style: AppFonts.dot(
                         fontSize: 14,
                         color: AppColors.inputText,
@@ -242,7 +231,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ),
                     ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 20),

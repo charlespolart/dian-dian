@@ -70,9 +70,12 @@ class SettingsScreen extends StatelessWidget {
             ),
 
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 500),
+                    child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 8),
@@ -147,6 +150,8 @@ class SettingsScreen extends StatelessWidget {
                     const SizedBox(height: 40),
                   ],
                 ),
+              ),
+              ),
               ),
             ),
           ],
