@@ -77,6 +77,7 @@ enum AppScreen { login, register, forgotPassword, pageList, tracker, settings }
 class _AppShellState extends State<AppShell> {
   AppScreen _screen = AppScreen.login;
   String? _activePageId;
+  int _selectedYear = DateTime.now().year;
 
   @override
   void initState() {
@@ -196,7 +197,12 @@ class _AppShellState extends State<AppShell> {
       default:
         return PageListScreen(
           key: const ValueKey('pageList'),
-          onSelectPage: (id) => _navigate(AppScreen.tracker, pageId: id),
+          selectedYear: _selectedYear,
+          onYearChanged: (year) => _selectedYear = year,
+          onSelectPage: (id, year) {
+            _selectedYear = year;
+            _navigate(AppScreen.tracker, pageId: id);
+          },
           onOpenSettings: () => _navigate(AppScreen.settings),
         );
     }
