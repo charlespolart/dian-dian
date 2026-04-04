@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
@@ -13,6 +14,7 @@ import '../providers/premium_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_dialog.dart';
 import '../widgets/confirm_dialog.dart';
+import '../widgets/download_app_banner.dart';
 import '../widgets/global_stats_dialog.dart';
 import '../widgets/premium_gate_dialog.dart';
 import '../widgets/marquee_text.dart';
@@ -328,7 +330,7 @@ class _PageListScreenState extends State<PageListScreen> {
                                 left: 8,
                                 right: 8,
                                 top: 8,
-                                bottom: 72,
+                                bottom: kIsWeb ? 120 : 110,
                               ),
                               gridDelegate:
                                   SliverGridDelegateWithMaxCrossAxisExtent(
@@ -422,6 +424,8 @@ class _PageListScreenState extends State<PageListScreen> {
                       },
                     ),
             ),
+            // Download app banner (web only)
+            const DownloadAppBanner(),
           ],
         ),
           // Undo delete bar
@@ -429,7 +433,10 @@ class _PageListScreenState extends State<PageListScreen> {
       ),
 
       // Floating action button
-      floatingActionButton: GestureDetector(
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(bottom: kIsWeb ? 48 : 0),
+        child: GestureDetector(
         onTap: _createPage,
         child: Container(
           width: 48,
@@ -447,6 +454,7 @@ class _PageListScreenState extends State<PageListScreen> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

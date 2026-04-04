@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../providers/language_provider.dart';
 import '../providers/premium_provider.dart';
@@ -68,41 +70,32 @@ class PremiumGateDialog extends StatelessWidget {
 
             const SizedBox(height: 20),
 
-            // Upgrade button
-            GestureDetector(
-              onTap: () {
-                // Placeholder: toggle premium for testing
-                context.read<PremiumProvider>().setPremium(true);
-                Navigator.of(context).pop(true);
-              },
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: AppColors.accent,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Center(
-                  child: Text(
-                    lang.t('premium.upgrade'),
-                    style: AppFonts.pixel(fontSize: 12, color: Colors.white),
-                  ),
-                ),
+            if (kIsWeb) ...[
+              // On web: download the app
+              Text(
+                lang.t('premium.downloadApp'),
+                style: AppFonts.dot(fontSize: 12, color: AppColors.text),
+                textAlign: TextAlign.center,
               ),
-            ),
-            const SizedBox(height: 12),
+              const SizedBox(height: 12),
+              _buildStoreButtons(),
+            ] else ...[
+              // On mobile: upgrade button(s)
+              _PurchaseButtons(),
+              const SizedBox(height: 12),
 
-            // Restore purchases
-            GestureDetector(
-              onTap: () {
-                // Placeholder: will connect to store
-                Navigator.of(context).pop(false);
-              },
-              child: Text(
-                lang.t('premium.restore'),
-                style: AppFonts.dot(fontSize: 12, color: AppColors.textMuted),
+              // Restore purchases
+              GestureDetector(
+                onTap: () async {
+                  await context.read<PremiumProvider>().restorePurchases();
+                  if (context.mounted) Navigator.of(context).pop(false);
+                },
+                child: Text(
+                  lang.t('premium.restore'),
+                  style: AppFonts.dot(fontSize: 12, color: AppColors.textMuted),
+                ),
               ),
-            ),
+            ],
             const SizedBox(height: 8),
 
             // Cancel
@@ -116,6 +109,30 @@ class PremiumGateDialog extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  static const _appStoreUrl = 'https://apps.apple.com/app/dian-dian-year-tracker/id000000000';
+  static const _playStoreUrl = 'https://play.google.com/store/apps/details?id=app.mydiandian.dian_dian';
+
+  Widget _buildStoreButtons() {
+    final platform = defaultTargetPlatform;
+    final isIOS = platform == TargetPlatform.iOS || platform == TargetPlatform.macOS;
+    final isAndroid = platform == TargetPlatform.android;
+
+    final buttons = <Widget>[];
+
+    if (!isAndroid) {
+      buttons.add(_StoreButton(icon: Icons.apple, label: 'App Store', url: _appStoreUrl));
+    }
+    if (!isIOS) {
+      if (buttons.isNotEmpty) buttons.add(const SizedBox(width: 12));
+      buttons.add(_StoreButton(icon: Icons.shop, label: 'Google Play', url: _playStoreUrl));
+    }
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: buttons,
     );
   }
 
@@ -133,6 +150,115 @@ class PremiumGateDialog extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Shows available subscription products on mobile.
+class _PurchaseButtons extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final premium = context.read<PremiumProvider>();
+    final products = premium.purchaseService.products;
+    final lang = context.read<LanguageProvider>();
+
+    if (products.isEmpty) {
+      // No products loaded — show a generic upgrade button (fallback)
+      return GestureDetector(
+        onTap: () async {
+          final success = await premium.buyPremium();
+          if (!success && context.mounted) {
+            // Store not available or no products — toggle for testing
+            await premium.setPremium(true);
+            if (context.mounted) Navigator.of(context).pop(true);
+          }
+        },
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.accent,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Center(
+            child: Text(
+              lang.t('premium.upgrade'),
+              style: AppFonts.pixel(fontSize: 12, color: Colors.white),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Show each product as a button
+    return Column(
+      children: products.map((product) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: GestureDetector(
+            onTap: () async {
+              await premium.buyPremium(productId: product.id);
+            },
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              decoration: BoxDecoration(
+                color: AppColors.accent,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    product.title,
+                    style: AppFonts.pixel(fontSize: 11, color: Colors.white),
+                  ),
+                  Text(
+                    product.price,
+                    style: AppFonts.pixel(fontSize: 12, color: Colors.white),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _StoreButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String url;
+
+  const _StoreButton({required this.icon, required this.label, required this.url});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () async {
+        final uri = Uri.parse(url);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.inputBg,
+          border: Border.all(color: AppColors.inputBorder),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: AppColors.accent),
+            const SizedBox(width: 6),
+            Text(label, style: AppFonts.dot(fontSize: 12, color: AppColors.accent)),
+          ],
+        ),
       ),
     );
   }
