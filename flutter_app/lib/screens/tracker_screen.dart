@@ -77,7 +77,7 @@ class _TrackerScreenState extends State<TrackerScreen> {
     final premium = context.read<PremiumProvider>();
     if (!premium.isPremium) {
       final lang = context.read<LanguageProvider>();
-      PremiumGateDialog.show(context, feature: lang.t('premium.feature.export'));
+      PremiumGateDialog.show(context, feature: lang.t('premium.feature.stats'));
       return;
     }
     final cellsProv = context.read<CellsProvider>();

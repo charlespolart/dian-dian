@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 
 import '../services/api_service.dart';
@@ -12,10 +14,12 @@ class AuthProvider extends ChangeNotifier {
   bool _isLoading = true;
   bool _isAuthenticated = false;
   String? _email;
+  bool _isVip = false;
 
   bool get isLoading => _isLoading;
   bool get isAuthenticated => _isAuthenticated;
   String? get email => _email;
+  bool get isVip => _isVip;
 
   AuthProvider() {
     _api.onAuthExpired = _onAuthExpired;
@@ -27,8 +31,9 @@ class AuthProvider extends ChangeNotifier {
   // ---------------------------------------------------------------------------
 
   Future<void> login(String email, String password) async {
-    await _api.login(email, password);
+    final data = await _api.login(email, password);
     _email = email;
+    _isVip = data['vip'] == true;
     await _storage.setEmail(email);
     _isAuthenticated = true;
     _ws.connect();
@@ -38,6 +43,7 @@ class AuthProvider extends ChangeNotifier {
   Future<void> register(String email, String password) async {
     await _api.register(email, password);
     _email = email;
+    _isVip = false;
     await _storage.setEmail(email);
     _isAuthenticated = true;
     _ws.connect();
@@ -66,6 +72,14 @@ class AuthProvider extends ChangeNotifier {
       if (restored) {
         _email = await _storage.getEmail();
         _ws.connect();
+        // Fetch vip status
+        try {
+          final response = await _api.apiFetch('/api/auth/me');
+          if (response.statusCode == 200) {
+            final data = jsonDecode(response.body) as Map<String, dynamic>;
+            _isVip = data['vip'] == true;
+          }
+        } catch (_) {}
       }
     } catch (e) {
       debugPrint('AuthProvider: restore session failed: $e');
