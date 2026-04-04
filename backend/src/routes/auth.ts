@@ -102,7 +102,7 @@ router.post('/login', validate(loginSchema), async (req, res) => {
       path: '/api/auth',
     });
 
-    res.json({ accessToken, refreshToken, userId: user.id });
+    res.json({ accessToken, refreshToken, userId: user.id, vip: user.vip });
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Server error' });
@@ -229,6 +229,21 @@ router.post('/refresh', async (req, res) => {
     res.json({ accessToken, refreshToken: newRefreshToken });
   } catch (err) {
     console.error('Refresh error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Get current user info (vip status, etc.)
+router.get('/me', requireAuth, async (req, res) => {
+  try {
+    const [user] = await db.select({ id: users.id, email: users.email, vip: users.vip })
+      .from(users)
+      .where(eq(users.id, req.userId!))
+      .limit(1);
+    if (!user) { res.status(404).json({ error: 'User not found' }); return; }
+    res.json(user);
+  } catch (err) {
+    console.error('Get me error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });

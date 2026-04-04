@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
 import '../providers/premium_provider.dart';
+import 'cursor_picker_dialog.dart';
 
 /// Global animated GIF cursor overlay.
 /// Only active when user is authenticated and premium.
@@ -24,6 +25,14 @@ class _CustomCursorOverlayState extends State<CustomCursorOverlay> {
   Timer? _hideTimer;
 
   static const _size = 36.0;
+
+  String? _getCursorAsset(String cursorId) {
+    final option = cursorOptions.cast<CursorOption?>().firstWhere(
+      (o) => o!.id == cursorId,
+      orElse: () => null,
+    );
+    return option?.asset;
+  }
 
   @override
   void initState() {
@@ -61,10 +70,14 @@ class _CustomCursorOverlayState extends State<CustomCursorOverlay> {
   @override
   Widget build(BuildContext context) {
     final isAuth = context.watch<AuthProvider>().isAuthenticated;
-    final canUse = context.watch<PremiumProvider>().canUseAnimatedCursor;
-    final active = isAuth && canUse;
+    final premium = context.watch<PremiumProvider>();
+    final active = isAuth && premium.canUseAnimatedCursor;
 
     if (!active) return widget.child;
+
+    // Resolve cursor asset from cursorId
+    final cursorAsset = _getCursorAsset(premium.cursorId);
+    if (cursorAsset == null) return widget.child;
 
     return Stack(
       children: [
@@ -79,7 +92,7 @@ class _CustomCursorOverlayState extends State<CustomCursorOverlay> {
             top: _position.dy - _size / 2,
             child: IgnorePointer(
               child: Image.asset(
-                'assets/images/cursor.gif',
+                cursorAsset,
                 width: _size,
                 height: _size,
               ),

@@ -5,16 +5,22 @@ import '../services/purchase_service.dart';
 
 class PremiumProvider extends ChangeNotifier {
   static const _prefKey = 'is_premium';
+  static const _cursorEnabledKey = 'cursor_enabled';
+  static const _cursorIdKey = 'cursor_id';
   static const maxFreeTrackers = 3;
 
   bool _isPremium = false;
+  bool _cursorEnabled = false;
+  String _cursorId = 'cat';
   final PurchaseService _purchaseService = PurchaseService();
 
   bool get isPremium => _isPremium;
   int get maxTrackers => _isPremium ? 999 : maxFreeTrackers;
   bool get canUseCustomThemes => _isPremium;
-  bool get canUseAnimatedCursor => _isPremium;
+  bool get canUseAnimatedCursor => _isPremium && _cursorEnabled;
   bool get canExportImage => _isPremium;
+  bool get cursorEnabled => _cursorEnabled;
+  String get cursorId => _cursorId;
 
   PurchaseService get purchaseService => _purchaseService;
 
@@ -23,9 +29,11 @@ class PremiumProvider extends ChangeNotifier {
   }
 
   Future<void> _init() async {
-    // Load cached premium status
+    // Load cached state
     final prefs = await SharedPreferences.getInstance();
     _isPremium = prefs.getBool(_prefKey) ?? false;
+    _cursorEnabled = prefs.getBool(_cursorEnabledKey) ?? false;
+    _cursorId = prefs.getString(_cursorIdKey) ?? 'default';
     notifyListeners();
 
     // Initialize purchase service
@@ -54,6 +62,22 @@ class PremiumProvider extends ChangeNotifier {
   /// Restore previous purchases.
   Future<void> restorePurchases() async {
     await _purchaseService.restorePurchases();
+  }
+
+  /// Toggle animated cursor on/off.
+  Future<void> setCursorEnabled(bool value) async {
+    _cursorEnabled = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_cursorEnabledKey, value);
+    notifyListeners();
+  }
+
+  /// Set which cursor to use (for future multiple cursors).
+  Future<void> setCursorId(String id) async {
+    _cursorId = id;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_cursorIdKey, id);
+    notifyListeners();
   }
 
   /// Set premium status (also used for testing).

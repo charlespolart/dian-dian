@@ -11,6 +11,7 @@ import '../widgets/app_dialog.dart';
 import '../widgets/confirm_dialog.dart';
 import '../providers/theme_provider.dart';
 import '../widgets/language_picker_dialog.dart';
+import '../widgets/cursor_picker_dialog.dart';
 import '../widgets/premium_gate_dialog.dart';
 import '../widgets/theme_picker_dialog.dart';
 import '../widgets/top_bar.dart';
@@ -84,6 +85,21 @@ class SettingsScreen extends StatelessWidget {
                       return _buildLinkTile(
                         label: appThemeNames[themeProv.currentTheme]!,
                         onTap: () => showThemePickerDialog(context),
+                      );
+                    }),
+
+                    const SizedBox(height: 24),
+
+                    // Cursor section
+                    _buildSectionTitle(lang.t('settings.cursor')),
+                    const SizedBox(height: 8),
+                    Builder(builder: (context) {
+                      final premium = context.watch<PremiumProvider>();
+                      return _buildLinkTile(
+                        label: premium.cursorEnabled
+                            ? lang.t('settings.cursorAnimated')
+                            : lang.t('cursor.none'),
+                        onTap: () => showCursorPickerDialog(context),
                       );
                     }),
 
