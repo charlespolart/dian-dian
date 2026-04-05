@@ -40,6 +40,27 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
+  <script>
+    // Cursor touch handler — Dart sets window._onFlutterTouch as callback
+    window._onFlutterTouch = null;
+    document.addEventListener('touchstart', function(e) {
+      if (window._onFlutterTouch && e.touches.length > 0) {
+        var t = e.touches[0];
+        window._onFlutterTouch(t.clientX, t.clientY, 0);
+      }
+    });
+    document.addEventListener('touchmove', function(e) {
+      if (window._onFlutterTouch && e.touches.length > 0) {
+        var t = e.touches[0];
+        window._onFlutterTouch(t.clientX, t.clientY, 1);
+      }
+    });
+    document.addEventListener('touchend', function(e) {
+      if (window._onFlutterTouch) {
+        window._onFlutterTouch(0, 0, 2);
+      }
+    });
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
