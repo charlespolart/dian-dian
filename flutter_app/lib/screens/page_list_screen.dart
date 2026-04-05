@@ -332,7 +332,7 @@ class _PageListScreenState extends State<PageListScreen> {
                                 left: 8,
                                 right: 8,
                                 top: 8,
-                                bottom: 80 + MediaQuery.of(context).padding.bottom,
+                                bottom: _bannerVisible ? 110 : 80,
                               ),
                               gridDelegate:
                                   SliverGridDelegateWithMaxCrossAxisExtent(
@@ -437,9 +437,7 @@ class _PageListScreenState extends State<PageListScreen> {
           // FAB positioned manually
           Positioned(
             right: 16,
-            bottom: _bannerVisible
-                ? 56 + MediaQuery.of(context).padding.bottom
-                : 16 + MediaQuery.of(context).padding.bottom,
+            bottom: _bannerVisible ? 56 : 16,
             child: GestureDetector(
               onTap: _createPage,
               child: Container(

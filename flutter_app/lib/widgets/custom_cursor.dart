@@ -6,10 +6,15 @@ import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
 import '../providers/premium_provider.dart';
+import '../services/web_touch_handler_stub.dart'
+    if (dart.library.html) '../services/web_touch_handler_web.dart';
 import 'cursor_picker_dialog.dart';
 
 /// Global animated GIF cursor overlay.
-/// Only active when user is authenticated and premium.
+/// Uses three event sources for maximum compatibility:
+/// - Global pointer route (reliable on native iOS/Android)
+/// - Global pointer route (reliable on desktop web for mouse)
+/// - Raw browser touch events via JS interop (reliable on mobile web)
 class CustomCursorOverlay extends StatefulWidget {
   final Widget child;
 
@@ -22,8 +27,10 @@ class CustomCursorOverlay extends StatefulWidget {
 class _CustomCursorOverlayState extends State<CustomCursorOverlay> {
   Offset _position = Offset.zero;
   bool _visible = false;
+  bool _active = false;
   Timer? _hideTimer;
   bool _isTouchInput = false;
+  void Function()? _disposeWebTouch;
 
   static const _size = 36.0;
   static const _hideDelay = Duration(milliseconds: 1500);
@@ -39,12 +46,26 @@ class _CustomCursorOverlayState extends State<CustomCursorOverlay> {
   @override
   void initState() {
     super.initState();
+    // Native + desktop web: global pointer route
     GestureBinding.instance.pointerRouter.addGlobalRoute(_onGlobalPointerEvent);
+    // Mobile web: raw browser touch events (bypasses Flutter's broken pipeline)
+    _disposeWebTouch = setupWebTouchListeners(
+      onTouch: (x, y) {
+        if (!_active) return;
+        _isTouchInput = true;
+        _showAt(Offset(x, y), autoHide: true);
+      },
+      onTouchEnd: () {
+        if (!_active) return;
+        _startHideTimer();
+      },
+    );
   }
 
   @override
   void dispose() {
     GestureBinding.instance.pointerRouter.removeGlobalRoute(_onGlobalPointerEvent);
+    _disposeWebTouch?.call();
     _hideTimer?.cancel();
     super.dispose();
   }
@@ -61,8 +82,9 @@ class _CustomCursorOverlayState extends State<CustomCursorOverlay> {
       event.kind == PointerDeviceKind.unknown;
 
   void _onGlobalPointerEvent(PointerEvent event) {
+    if (!_active) return;
+
     if (event is PointerHoverEvent) {
-      // Mouse hover: show cursor, no auto-hide
       _isTouchInput = false;
       _showAt(event.position, autoHide: false);
     } else if (event is PointerDownEvent || event is PointerMoveEvent) {
@@ -71,9 +93,8 @@ class _CustomCursorOverlayState extends State<CustomCursorOverlay> {
     } else if (event is PointerUpEvent || event is PointerCancelEvent) {
       if (_isTouchInput) _startHideTimer();
     } else if (event is PointerRemovedEvent) {
-      // Mouse left the window: hide cursor
       if (!_isTouchInput) {
-        setState(() => _visible = false);
+        if (mounted) setState(() => _visible = false);
       }
     }
   }
@@ -104,46 +125,25 @@ class _CustomCursorOverlayState extends State<CustomCursorOverlay> {
   Widget build(BuildContext context) {
     final isAuth = context.watch<AuthProvider>().isAuthenticated;
     final premium = context.watch<PremiumProvider>();
-    final active = isAuth && premium.canUseAnimatedCursor;
+    final cursorAsset = isAuth && premium.canUseAnimatedCursor
+        ? _getCursorAsset(premium.cursorId)
+        : null;
 
-    if (!active) return widget.child;
+    _active = cursorAsset != null;
 
-    final cursorAsset = _getCursorAsset(premium.cursorId);
-    if (cursorAsset == null) return widget.child;
+    if (!_active) return widget.child;
 
-    _precacheIfNeeded(context, cursorAsset);
+    _precacheIfNeeded(context, cursorAsset!);
 
     return Stack(
       children: [
-        // Hide system cursor when GIF cursor is active
+        // Hide system cursor on desktop
         MouseRegion(
           cursor: SystemMouseCursors.none,
           hitTestBehavior: HitTestBehavior.translucent,
           child: widget.child,
         ),
-        // Full-screen transparent touch/pointer catcher
-        Positioned.fill(
-          child: Listener(
-            behavior: HitTestBehavior.translucent,
-            onPointerDown: (e) {
-              _isTouchInput = _isTouch(e);
-              _showAt(e.position, autoHide: _isTouchInput);
-            },
-            onPointerMove: (e) => _showAt(e.position, autoHide: _isTouchInput),
-            onPointerHover: (e) {
-              _isTouchInput = false;
-              _showAt(e.position, autoHide: false);
-            },
-            onPointerUp: (_) {
-              if (_isTouchInput) _startHideTimer();
-            },
-            onPointerCancel: (_) {
-              if (_isTouchInput) _startHideTimer();
-            },
-            child: const SizedBox.expand(),
-          ),
-        ),
-        // Cursor image
+        // Cursor image (no Listener overlay — it breaks mobile web)
         if (_visible)
           Positioned(
             left: _position.dx - _size / 2,
