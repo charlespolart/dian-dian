@@ -51,6 +51,7 @@ class DianDianApp extends StatelessWidget {
           title: 'Dian Dian',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.themeDataFor(themeProv.currentTheme).copyWith(
+            scaffoldBackgroundColor: AppColors.bg,
             pageTransitionsTheme: const PageTransitionsTheme(
               builders: {
                 TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),

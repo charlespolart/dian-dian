@@ -6,7 +6,9 @@ import '../theme/app_theme.dart';
 
 /// Banner shown only on web to invite users to download the native app.
 class DownloadAppBanner extends StatefulWidget {
-  const DownloadAppBanner({super.key});
+  final VoidCallback? onDismissed;
+
+  const DownloadAppBanner({super.key, this.onDismissed});
 
   @override
   State<DownloadAppBanner> createState() => _DownloadAppBannerState();
@@ -89,7 +91,10 @@ class _DownloadAppBannerState extends State<DownloadAppBanner> {
             ),
           ),
           GestureDetector(
-            onTap: () => setState(() => _dismissed = true),
+            onTap: () {
+              setState(() => _dismissed = true);
+              widget.onDismissed?.call();
+            },
             child: Padding(
               padding: const EdgeInsets.all(4),
               child: Icon(Icons.close, size: 14, color: AppColors.textMuted),

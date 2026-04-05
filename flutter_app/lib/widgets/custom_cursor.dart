@@ -1,7 +1,7 @@
 import 'dart:async';
-import 'dart:ui';
+import 'dart:ui' show PointerDeviceKind;
+import 'package:flutter/gestures.dart' show PointerHoverEvent;
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
@@ -35,45 +35,35 @@ class _CustomCursorOverlayState extends State<CustomCursorOverlay> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    GestureBinding.instance.pointerRouter.addGlobalRoute(_onPointerEvent);
-  }
-
-  @override
   void dispose() {
-    GestureBinding.instance.pointerRouter.removeGlobalRoute(_onPointerEvent);
     _hideTimer?.cancel();
     super.dispose();
   }
 
-  void _onPointerEvent(PointerEvent event) {
-    if (event is PointerHoverEvent ||
-        event is PointerMoveEvent ||
-        event is PointerDownEvent) {
-      setState(() {
-        _position = event.position;
-        _visible = true;
-      });
+  void _onPointerDown(PointerDownEvent event) => _showAt(event.position, event.kind);
+  void _onPointerMove(PointerMoveEvent event) => _showAt(event.position, event.kind);
+  void _onPointerHover(PointerHoverEvent event) => _showAt(event.position, event.kind);
 
-      _hideTimer?.cancel();
-      if (event.kind == PointerDeviceKind.touch) {
-        _hideTimer = Timer(const Duration(milliseconds: 1500), () {
-          if (mounted) setState(() => _visible = false);
-        });
-      }
-    } else if (event is PointerUpEvent &&
-        event.kind == PointerDeviceKind.touch) {
-      // Finger lifted: keep cursor visible, restart hide timer
-      _hideTimer?.cancel();
+  void _onPointerUp(PointerUpEvent event) {
+    // Finger lifted: keep cursor visible, start hide timer
+    _hideTimer?.cancel();
+    _hideTimer = Timer(const Duration(milliseconds: 1500), () {
+      if (mounted) setState(() => _visible = false);
+    });
+  }
+
+  void _showAt(Offset position, PointerDeviceKind kind) {
+    setState(() {
+      _position = position;
+      _visible = true;
+    });
+
+    _hideTimer?.cancel();
+    // For touch: auto-hide after 1.5s of no movement
+    if (kind == PointerDeviceKind.touch || kind == PointerDeviceKind.unknown) {
       _hideTimer = Timer(const Duration(milliseconds: 1500), () {
         if (mounted) setState(() => _visible = false);
       });
-    } else if (event is PointerRemovedEvent) {
-      // Mouse: hide immediately. Touch: let the timer handle it.
-      if (event.kind != PointerDeviceKind.touch) {
-        setState(() => _visible = false);
-      }
     }
   }
 
@@ -89,26 +79,33 @@ class _CustomCursorOverlayState extends State<CustomCursorOverlay> {
     final cursorAsset = _getCursorAsset(premium.cursorId);
     if (cursorAsset == null) return widget.child;
 
-    return Stack(
-      children: [
-        MouseRegion(
-          cursor: SystemMouseCursors.none,
-          hitTestBehavior: HitTestBehavior.translucent,
-          child: widget.child,
-        ),
-        if (_visible)
-          Positioned(
-            left: _position.dx - _size / 2,
-            top: _position.dy - _size / 2,
-            child: IgnorePointer(
-              child: Image.asset(
-                cursorAsset,
-                width: _size,
-                height: _size,
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: _onPointerDown,
+      onPointerMove: _onPointerMove,
+      onPointerHover: _onPointerHover,
+      onPointerUp: _onPointerUp,
+      child: Stack(
+        children: [
+          MouseRegion(
+            cursor: SystemMouseCursors.none,
+            hitTestBehavior: HitTestBehavior.translucent,
+            child: widget.child,
+          ),
+          if (_visible)
+            Positioned(
+              left: _position.dx - _size / 2,
+              top: _position.dy - _size / 2,
+              child: IgnorePointer(
+                child: Image.asset(
+                  cursorAsset,
+                  width: _size,
+                  height: _size,
+                ),
               ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }

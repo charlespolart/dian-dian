@@ -40,6 +40,7 @@ class PageListScreen extends StatefulWidget {
 class _PageListScreenState extends State<PageListScreen> {
   late int _selectedYear;
   int? _draggingIndex;
+  bool _bannerVisible = kIsWeb;
 
   @override
   void initState() {
@@ -199,6 +200,7 @@ class _PageListScreenState extends State<PageListScreen> {
         children: [
           Column(
         children: [
+
           // Header banner (covers safe area top)
           Container(
             decoration: BoxDecoration(
@@ -326,11 +328,11 @@ class _PageListScreenState extends State<PageListScreen> {
                             final maxExtent =
                                 constraints.maxWidth < 600 ? 180.0 : 200.0;
                             return GridView.builder(
-                              padding: const EdgeInsets.only(
+                              padding: EdgeInsets.only(
                                 left: 8,
                                 right: 8,
                                 top: 8,
-                                bottom: kIsWeb ? 120 : 110,
+                                bottom: 80 + MediaQuery.of(context).padding.bottom,
                               ),
                               gridDelegate:
                                   SliverGridDelegateWithMaxCrossAxisExtent(
@@ -425,36 +427,40 @@ class _PageListScreenState extends State<PageListScreen> {
                     ),
             ),
             // Download app banner (web only)
-            const DownloadAppBanner(),
+            DownloadAppBanner(
+              onDismissed: () => setState(() => _bannerVisible = false),
+            ),
           ],
         ),
           // Undo delete bar
-        ],
-      ),
 
-      // Floating action button
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: Padding(
-        padding: EdgeInsets.only(bottom: kIsWeb ? 48 : 0),
-        child: GestureDetector(
-        onTap: _createPage,
-        child: Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: AppColors.bg,
-            border: Border.all(color: AppColors.accent, width: 1.5),
-          ),
-          child: Center(
-            child: Icon(
-              Icons.add_rounded,
-              size: 26,
-              color: AppColors.accent,
+          // FAB positioned manually
+          Positioned(
+            right: 16,
+            bottom: _bannerVisible
+                ? 56 + MediaQuery.of(context).padding.bottom
+                : 16 + MediaQuery.of(context).padding.bottom,
+            child: GestureDetector(
+              onTap: _createPage,
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.bg,
+                  border: Border.all(color: AppColors.accent, width: 1.5),
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.add_rounded,
+                    size: 26,
+                    color: AppColors.accent,
+                  ),
+                ),
+              ),
             ),
           ),
-        ),
-      ),
+        ],
       ),
     );
   }
