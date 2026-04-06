@@ -185,12 +185,41 @@ class SettingsScreen extends StatelessWidget {
 
   Widget _buildPremiumTile(BuildContext context, LanguageProvider lang) {
     final premium = context.watch<PremiumProvider>();
+
+    if (premium.isPremium) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
+        decoration: BoxDecoration(
+          color: AppColors.shell,
+          border: Border.all(color: AppColors.accent.withValues(alpha: 0.4)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.star_rounded, size: 18, color: AppColors.accent),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                lang.t('premium.active'),
+                style: AppFonts.pixel(fontSize: 13, color: AppColors.accent),
+              ),
+            ),
+            GestureDetector(
+              onTap: () => _openUrl('https://apps.apple.com/account/subscriptions'),
+              child: Text(
+                lang.t('premium.manage'),
+                style: AppFonts.dot(fontSize: 11, color: AppColors.textMuted),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return _buildLinkTile(
-      label: premium.isPremium ? lang.t('premium.active') : lang.t('premium.free'),
-      onTap: () {
-        if (premium.isPremium) return;
-        PremiumGateDialog.show(context, feature: lang.t('premium.upgrade'));
-      },
+      label: lang.t('premium.free'),
+      onTap: () => PremiumGateDialog.show(context, feature: lang.t('premium.upgrade')),
     );
   }
 

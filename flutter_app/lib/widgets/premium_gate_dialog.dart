@@ -67,6 +67,7 @@ class PremiumGateDialog extends StatelessWidget {
             _buildBenefit(Icons.palette, lang.t('premium.feature.themes')),
             _buildBenefit(Icons.pets, lang.t('premium.feature.cursor')),
             _buildBenefit(Icons.image, lang.t('premium.feature.export')),
+            _buildBenefit(Icons.block, lang.t('premium.feature.noAds')),
 
             const SizedBox(height: 20),
 

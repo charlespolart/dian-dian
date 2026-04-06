@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+
+import 'api_service.dart';
 
 /// Reusable in-app purchase service.
 /// Wraps `in_app_purchase` package with a clean API.
@@ -21,13 +24,19 @@ class PurchaseService {
   // Product IDs — configure these in App Store Connect / Google Play Console
   String _premiumMonthlyId = '';
   String _premiumYearlyId = '';
+  String _premiumLifetimeId = '';
   Set<String> _productIds = {};
 
   /// Configure product IDs before calling init().
-  void configure({required String monthlyId, required String yearlyId}) {
+  void configure({
+    required String monthlyId,
+    required String yearlyId,
+    required String lifetimeId,
+  }) {
     _premiumMonthlyId = monthlyId;
     _premiumYearlyId = yearlyId;
-    _productIds = {monthlyId, yearlyId};
+    _premiumLifetimeId = lifetimeId;
+    _productIds = {monthlyId, yearlyId, lifetimeId};
   }
 
   final InAppPurchase _iap = InAppPurchase.instance;
@@ -147,16 +156,33 @@ class PurchaseService {
     }
   }
 
-  /// Verify purchase receipt.
-  /// For production: send receipt to your backend for server-side verification.
-  /// For now: trust the local purchase status.
+  /// Verify purchase receipt with the backend server.
   Future<bool> _verifyPurchase(PurchaseDetails purchase) async {
-    // TODO: Implement server-side receipt verification
-    // Send purchase.verificationData to your backend
-    // Backend verifies with Apple/Google servers
-    // Return true if valid
+    try {
+      final store = defaultTargetPlatform == TargetPlatform.iOS ||
+              defaultTargetPlatform == TargetPlatform.macOS
+          ? 'apple'
+          : 'google';
+      final response = await ApiService().apiFetch(
+        '/api/purchase/verify',
+        method: 'POST',
+        body: {
+          'store': store,
+          'productId': purchase.productID,
+          'verificationData': purchase.verificationData.serverVerificationData,
+          'transactionId': purchase.purchaseID ?? '',
+        },
+      );
 
-    // For now, trust the purchase
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return data['premium'] == true;
+      }
+    } catch (e) {
+      debugPrint('PurchaseService: Server verification failed: $e');
+    }
+
+    // Fallback: trust local purchase status if server unreachable
     return purchase.status == PurchaseStatus.purchased ||
         purchase.status == PurchaseStatus.restored;
   }

@@ -14,8 +14,10 @@ import '../providers/premium_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_dialog.dart';
 import '../widgets/confirm_dialog.dart';
+import '../widgets/ad_banner.dart';
 import '../widgets/download_app_banner.dart';
 import '../widgets/global_stats_dialog.dart';
+import '../widgets/swipe_nav.dart';
 import '../widgets/premium_gate_dialog.dart';
 import '../widgets/marquee_text.dart';
 
@@ -196,6 +198,7 @@ class _PageListScreenState extends State<PageListScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
+      resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
           Column(
@@ -212,7 +215,7 @@ class _PageListScreenState extends State<PageListScreen> {
             padding: EdgeInsets.fromLTRB(
               20,
               MediaQuery.of(context).padding.top + 2,
-              20,
+              8,
               2,
             ),
             child: Row(
@@ -237,62 +240,44 @@ class _PageListScreenState extends State<PageListScreen> {
                       ),
                     ],
                   ),
-                  // Year navigation centered
+                  // Year navigation centered (swipe + tap)
                   Expanded(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        GestureDetector(
-                          onTap: () { setState(() => _selectedYear--); widget.onYearChanged(_selectedYear); },
-                          child: Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Text(
-                              '<',
-                              style: AppFonts.pixel(
-                                fontSize: 18,
-                                color: AppColors.accent,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          '$_selectedYear',
-                          style: AppFonts.pixel(
-                            fontSize: 20,
-                            color: AppColors.title,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        GestureDetector(
-                          onTap: () { setState(() => _selectedYear++); widget.onYearChanged(_selectedYear); },
-                          child: Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Text(
-                              '>',
-                              style: AppFonts.pixel(
-                                fontSize: 18,
-                                color: AppColors.accent,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                    child: SwipeNav(
+                      arrowSize: 18,
+                      arrowColor: AppColors.accent,
+                      onPrev: () { setState(() => _selectedYear--); widget.onYearChanged(_selectedYear); },
+                      onNext: () { setState(() => _selectedYear++); widget.onYearChanged(_selectedYear); },
+                      center: Text(
+                        '$_selectedYear',
+                        style: AppFonts.pixel(fontSize: 20, color: AppColors.title),
+                      ),
                     ),
                   ),
+                  // Premium button (free users only)
+                  if (!context.watch<PremiumProvider>().isPremium)
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => PremiumGateDialog.show(context, feature: lang.t('premium.upgrade')),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+                        child: Icon(Icons.star_rounded, size: 24, color: AppColors.accent),
+                      ),
+                    ),
                   // Global stats button
                   GestureDetector(
+                    behavior: HitTestBehavior.opaque,
                     onTap: () => GlobalStatsDialog.show(context),
                     child: Padding(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                       child: Icon(Icons.bar_chart, size: 24, color: AppColors.accent),
                     ),
                   ),
                   // Settings button
                   GestureDetector(
+                    behavior: HitTestBehavior.opaque,
                     onTap: widget.onOpenSettings,
                     child: Padding(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                       child: SvgPicture.asset(
                         'assets/icons/settings_heart.svg',
                         width: 24,
@@ -332,7 +317,7 @@ class _PageListScreenState extends State<PageListScreen> {
                                 left: 8,
                                 right: 8,
                                 top: 8,
-                                bottom: _bannerVisible ? 110 : 80,
+                                bottom: _bannerVisible ? 90 : 80,
                               ),
                               gridDelegate:
                                   SliverGridDelegateWithMaxCrossAxisExtent(
@@ -374,22 +359,26 @@ class _PageListScreenState extends State<PageListScreen> {
                                             feedback: Material(
                                               color: Colors.transparent,
                                               child: Container(
-                                                padding: const EdgeInsets.all(6),
+                                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                                 decoration: BoxDecoration(
                                                   color: AppColors.shell,
                                                   borderRadius: BorderRadius.circular(6),
                                                   border: Border.all(color: AppColors.accent),
                                                 ),
-                                                child: Icon(
-                                                  Icons.drag_indicator,
-                                                  size: 16,
-                                                  color: AppColors.accent,
+                                                child: Text(
+                                                  '≡',
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    height: 1,
+                                                    color: AppColors.accent,
+                                                  ),
                                                 ),
                                               ),
                                             ),
-                                            childWhenDragging: const SizedBox(width: 18, height: 10),
-                                            child: Padding(
-                                              padding: const EdgeInsets.all(8),
+                                            childWhenDragging: const SizedBox(width: 28, height: 28),
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                              color: Colors.transparent,
                                               child: Text(
                                                 '≡',
                                                 style: TextStyle(
@@ -401,17 +390,17 @@ class _PageListScreenState extends State<PageListScreen> {
                                             ),
                                           ),
                                         ),
-                                        // Drop indicator
+                                        // Drop highlight overlay
                                         if (isOver)
-                                          Positioned(
-                                            left: 0,
-                                            right: 0,
-                                            top: -2,
+                                          Positioned.fill(
                                             child: Container(
-                                              height: 3,
                                               decoration: BoxDecoration(
-                                                color: AppColors.accent,
-                                                borderRadius: BorderRadius.circular(2),
+                                                color: AppColors.accent.withValues(alpha: 0.12),
+                                                borderRadius: BorderRadius.circular(10),
+                                                border: Border.all(
+                                                  color: AppColors.accent.withValues(alpha: 0.5),
+                                                  width: 2,
+                                                ),
                                               ),
                                             ),
                                           ),
@@ -432,12 +421,20 @@ class _PageListScreenState extends State<PageListScreen> {
             ),
           ],
         ),
-          // Undo delete bar
+          // Ad banner pinned to bottom (mobile free users only)
+          const Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: AdBannerWidget(),
+          ),
 
           // FAB positioned manually
           Positioned(
             right: 16,
-            bottom: _bannerVisible ? 56 : 16,
+            bottom: _bannerVisible
+                ? 56
+                : (!kIsWeb && !context.read<PremiumProvider>().isPremium ? 66 : 16),
             child: GestureDetector(
               onTap: _createPage,
               child: Container(
@@ -556,7 +553,11 @@ class _PageCard extends StatelessWidget {
             Positioned(
               top: 0,
               left: 0,
-              child: dragHandle!,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {}, // absorb taps so they don't open the tracker
+                child: dragHandle!,
+              ),
             ),
           // Delete button top-right
           if (!isDragGhost)

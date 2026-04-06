@@ -17,10 +17,10 @@ class PremiumProvider extends ChangeNotifier {
   final PurchaseService _purchaseService = PurchaseService();
 
   bool get isPremium => _isPremium || _isVip;
-  int get maxTrackers => _isPremium ? 999 : maxFreeTrackers;
-  bool get canUseCustomThemes => _isPremium;
-  bool get canUseAnimatedCursor => _isPremium && _cursorEnabled;
-  bool get canExportImage => _isPremium;
+  int get maxTrackers => isPremium ? 999 : maxFreeTrackers;
+  bool get canUseCustomThemes => isPremium;
+  bool get canUseAnimatedCursor => isPremium && _cursorEnabled;
+  bool get canExportImage => isPremium;
   bool get cursorEnabled => _cursorEnabled;
   String get cursorId => _cursorId;
 
@@ -42,6 +42,7 @@ class PremiumProvider extends ChangeNotifier {
     _purchaseService.configure(
       monthlyId: 'dian_dian_premium_monthly',
       yearlyId: 'dian_dian_premium_yearly',
+      lifetimeId: 'dian_dian_premium_lifetime',
     );
     _purchaseService.onPurchaseUpdated = _onPurchaseUpdated;
     await _purchaseService.init();

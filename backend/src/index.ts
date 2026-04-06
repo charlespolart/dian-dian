@@ -13,6 +13,7 @@ import pagesRoutes from './routes/pages.js';
 import cellsRoutes from './routes/cells.js';
 import legendsRoutes from './routes/legends.js';
 import legalRoutes from './routes/legal.js';
+import purchaseRoutes from './routes/purchase.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -39,6 +40,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/pages', pagesRoutes);
 app.use('/api/cells', cellsRoutes);
 app.use('/api/legends', legendsRoutes);
+app.use('/api/purchase', purchaseRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => res.json({ ok: true }));

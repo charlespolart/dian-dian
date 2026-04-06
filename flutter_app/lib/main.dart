@@ -21,6 +21,8 @@ import 'widgets/dotted_background.dart';
 import 'package:flutter/services.dart';
 import 'widgets/undo_delete_bar.dart';
 
+import 'services/ad_service.dart';
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
@@ -109,6 +111,17 @@ class _AppShellState extends State<AppShell> {
         cursorId: settings['cursorId'] as String?,
         cursorEnabled: settings['cursorEnabled'] as bool?,
       );
+    }
+
+    // Init or disable ads based on premium status
+    if (auth.isAuthenticated) {
+      final adService = AdService();
+      if (context.read<PremiumProvider>().isPremium) {
+        adService.disable();
+      } else {
+        adService.enable();
+        adService.init();
+      }
     }
 
     // Show onboarding after first login

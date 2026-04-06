@@ -42,6 +42,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (email.isEmpty || password.isEmpty) return;
 
+    // Validate email format locally
+    final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+    if (!emailRegex.hasMatch(email)) {
+      setState(() => _error = lang.t('auth.invalidEmail'));
+      return;
+    }
+
     if (password.length < 8) {
       setState(() => _error = lang.t('auth.passwordMin'));
       return;

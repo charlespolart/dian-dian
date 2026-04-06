@@ -8,6 +8,7 @@ import '../providers/legends_provider.dart';
 import '../theme/app_theme.dart';
 import 'app_dialog.dart';
 import 'legend_editor_dialog.dart';
+import 'swipe_nav.dart';
 
 class CellEditorDialog extends StatefulWidget {
   final int month;
@@ -160,13 +161,13 @@ class _CellEditorDialogState extends State<CellEditorDialog> {
 
     return AppDialog(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // Date navigation
             _buildDateNav(),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
 
             if (_hasCell)
               _buildViewMode(lang, legends)
@@ -179,36 +180,15 @@ class _CellEditorDialogState extends State<CellEditorDialog> {
   }
 
   Widget _buildDateNav() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        GestureDetector(
-          onTap: () => _navigateDay(-1),
-          child: Padding(
-            padding: const EdgeInsets.all(8),
-            child: Text(
-              '<',
-              style: AppFonts.pixel(fontSize: 16, color: AppColors.accent),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Text(
-          '$_day ${_monthNames[_month - 1]} ${widget.year}',
-          style: AppFonts.pixel(fontSize: 14, color: AppColors.title),
-        ),
-        const SizedBox(width: 12),
-        GestureDetector(
-          onTap: () => _navigateDay(1),
-          child: Padding(
-            padding: const EdgeInsets.all(8),
-            child: Text(
-              '>',
-              style: AppFonts.pixel(fontSize: 16, color: AppColors.accent),
-            ),
-          ),
-        ),
-      ],
+    return SwipeNav(
+      arrowSize: 16,
+      arrowColor: AppColors.accent,
+      onPrev: () => _navigateDay(-1),
+      onNext: () => _navigateDay(1),
+      center: Text(
+        '$_day ${_monthNames[_month - 1]} ${widget.year}',
+        style: AppFonts.pixel(fontSize: 14, color: AppColors.title),
+      ),
     );
   }
 

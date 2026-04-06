@@ -18,6 +18,7 @@ import '../widgets/dashed_border.dart';
 import '../widgets/legend_editor_dialog.dart';
 import '../widgets/premium_gate_dialog.dart';
 import '../widgets/stats_detail_dialog.dart';
+import '../widgets/ad_banner.dart';
 import '../widgets/tracker_grid.dart';
 
 class TrackerScreen extends StatefulWidget {
@@ -43,6 +44,7 @@ class _TrackerScreenState extends State<TrackerScreen> {
   static const _sidebarCollapsed = 32.0;
 
   bool _editingTitle = false;
+  double _bottomSafe = 0;
   bool _showLegendLabels = true;
   late TextEditingController _titleController;
 
@@ -57,6 +59,14 @@ class _TrackerScreenState extends State<TrackerScreen> {
     final pages = context.read<PagesProvider>().pages;
     final page = pages.firstWhere((p) => p.id == widget.pageId);
     _titleController = TextEditingController(text: page.title);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_bottomSafe == 0) {
+      _bottomSafe = MediaQuery.of(context).padding.bottom;
+    }
   }
 
   @override
@@ -148,17 +158,33 @@ class _TrackerScreenState extends State<TrackerScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: SafeArea(
-        child: useWideLayout
-            ? _buildLandscapeLayout(lang, cellsProv, legends, filledDays, streak, yearPercent)
-            : _buildPortraitLayout(lang, cellsProv, legends, filledDays, streak, yearPercent),
+      resizeToAvoidBottomInset: false,
+      body: MediaQuery.removeViewInsets(
+        context: context,
+        removeBottom: true,
+        child: Stack(
+        children: [
+          SafeArea(
+            bottom: false,
+            child: useWideLayout
+                ? _buildLandscapeLayout(lang, cellsProv, legends, filledDays, streak, yearPercent)
+                : _buildPortraitLayout(lang, cellsProv, legends, filledDays, streak, yearPercent),
+          ),
+          Positioned(
+            left: 0,
+            right: useWideLayout ? null : 0,
+            bottom: 0,
+            child: const AdBannerWidget(),
+          ),
+        ],
+      ),
       ),
     );
   }
 
   Widget _buildTopBar() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      padding: const EdgeInsets.only(left: 4, right: 0, top: 0, bottom: 0),
       child: Row(
         children: [
           GestureDetector(
@@ -210,7 +236,7 @@ class _TrackerScreenState extends State<TrackerScreen> {
             behavior: HitTestBehavior.opaque,
             onTap: _showDetailedStats,
             child: Padding(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
               child: Icon(Icons.bar_chart, size: 18, color: AppColors.accent),
             ),
           ),
@@ -218,7 +244,7 @@ class _TrackerScreenState extends State<TrackerScreen> {
             behavior: HitTestBehavior.opaque,
             onTap: _exportImage,
             child: Padding(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
               child: Icon(Icons.ios_share, size: 18, color: AppColors.accent),
             ),
           ),
@@ -335,7 +361,9 @@ class _TrackerScreenState extends State<TrackerScreen> {
   ) {
     final isTablet = MediaQuery.of(context).size.shortestSide >= 600;
 
-    return Column(
+    return Padding(
+      padding: EdgeInsets.only(bottom: _bottomSafe),
+      child: Column(
       children: [
         _buildTopBar(),
         Expanded(
@@ -366,6 +394,7 @@ class _TrackerScreenState extends State<TrackerScreen> {
           ),
         ),
       ],
+    ),
     );
   }
 

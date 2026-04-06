@@ -40,6 +40,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (email.isEmpty || password.isEmpty) return;
 
+    final lang = context.read<LanguageProvider>();
+    final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+    if (!emailRegex.hasMatch(email)) {
+      setState(() => _error = lang.t('auth.invalidEmail'));
+      return;
+    }
+
     setState(() {
       _loading = true;
       _error = null;
