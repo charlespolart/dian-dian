@@ -113,11 +113,6 @@ class _AppShellState extends State<AppShell> {
       );
     }
 
-    // Check server subscription status
-    if (auth.isAuthenticated) {
-      await context.read<PremiumProvider>().checkServerSubscription();
-    }
-
     // Init or disable ads based on premium status
     if (auth.isAuthenticated) {
       final adService = AdService();
