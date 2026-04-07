@@ -43,6 +43,7 @@ class AuthProvider extends ChangeNotifier {
       'language': data['language'],
       'cursorId': data['cursorId'],
       'cursorEnabled': data['cursorEnabled'],
+      'premium': data['premium'],
     };
     await _storage.setEmail(email);
     _isAuthenticated = true;
@@ -93,6 +94,7 @@ class AuthProvider extends ChangeNotifier {
               'language': data['language'],
               'cursorId': data['cursorId'],
               'cursorEnabled': data['cursorEnabled'],
+              'premium': data['premium'],
             };
           }
         } catch (_) {}

@@ -2,7 +2,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import * as argon2 from 'argon2';
 import { db } from '../db/index.js';
-import { users, refreshTokens, pages, passwordResetTokens } from '../db/schema.js';
+import { users, refreshTokens, pages, passwordResetTokens, subscriptions } from '../db/schema.js';
+import { and } from 'drizzle-orm';
 import { signAccessToken, generateRefreshToken, hashToken } from '../lib/jwt.js';
 import { validate } from '../middleware/validate.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -11,6 +12,16 @@ import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
 
 const router = Router();
+
+async function hasActiveSubscription(userId: string): Promise<boolean> {
+  const [sub] = await db.select()
+    .from(subscriptions)
+    .where(and(eq(subscriptions.userId, userId), eq(subscriptions.active, true)))
+    .limit(1);
+  if (!sub) return false;
+  if (sub.expiresAt && sub.expiresAt < new Date()) return false;
+  return true;
+}
 
 const registerSchema = z.object({
   email: z.string().email('Invalid email').max(255),
@@ -102,8 +113,9 @@ router.post('/login', validate(loginSchema), async (req, res) => {
       path: '/api/auth',
     });
 
+    const premium = await hasActiveSubscription(user.id);
     res.json({
-      accessToken, refreshToken, userId: user.id, vip: user.vip,
+      accessToken, refreshToken, userId: user.id, vip: user.vip, premium,
       theme: user.theme, language: user.language,
       cursorId: user.cursorId, cursorEnabled: user.cursorEnabled,
     });
@@ -253,7 +265,8 @@ router.get('/me', requireAuth, async (req, res) => {
       .where(eq(users.id, req.userId!))
       .limit(1);
     if (!user) { res.status(404).json({ error: 'User not found' }); return; }
-    res.json(user);
+    const premium = await hasActiveSubscription(user.id);
+    res.json({ ...user, premium });
   } catch (err) {
     console.error('Get me error:', err);
     res.status(500).json({ error: 'Server error' });
