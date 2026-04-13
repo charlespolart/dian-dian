@@ -20,7 +20,7 @@ const cursorOptions = [
   CursorOption(id: 'hi', nameKey: 'cursor.hi', asset: 'assets/cursors/cursor_hi.gif'),
   CursorOption(id: 'nyan', nameKey: 'cursor.nyan', asset: 'assets/cursors/cursor_nyan.gif'),
   CursorOption(id: 'molang', nameKey: 'cursor.molang', asset: 'assets/cursors/cursor_molang.gif'),
-  CursorOption(id: 'mochi', nameKey: 'cursor.mochi', asset: 'assets/cursors/cursor_mochi.gif', vipOnly: true),
+  // CursorOption(id: 'mochi', nameKey: 'cursor.mochi', asset: 'assets/cursors/cursor_mochi.gif', vipOnly: true),
 ];
 
 class CursorOption {

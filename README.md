@@ -7,10 +7,17 @@ A visual year tracker where you color-code each day of the year on a 12-month x 
 ## Features
 
 - **Year grid** -- 12 months x 31 days, color each day with a pastel palette + custom colors
-- **Multiple pages** -- Create separate trackers (reading, habits, mood, etc.)
+- **Multiple pages** -- Create separate trackers (mood, reading, exercise, sleep, period, etc.)
 - **Legends** -- Label colors with custom descriptions, drag-to-reorder
+- **Quick fill** -- Select a legend from the sidebar, then tap cells to fill instantly
 - **Cell editor** -- Tap a cell to assign a legend color and add a comment
-- **Stats** -- Days filled, best streak, yearly percentage
+- **Stats** -- Days filled, best streak, yearly percentage, distribution, monthly progress, day-of-week breakdown
+- **Global stats** -- Cross-tracker overview with most active tracker and per-tracker dot counts
+- **Export** -- Share any tracker as a PNG image
+- **Themes** -- 7 themes including Sakura, Forest, Midnight dark mode, and more
+- **Animated cursors** -- Fun cursor companions (premium)
+- **Premium** -- In-App Purchase (lifetime + subscriptions) with AdMob banner for free users
+- **Onboarding** -- Interactive walkthrough for new users
 - **Real-time sync** -- WebSocket-based, changes sync instantly across devices
 - **Multi-language** -- French, English, Simplified Chinese, Traditional Chinese (auto-detects device language)
 - **Cross-platform** -- Web, iOS, Android via Flutter
@@ -43,12 +50,12 @@ dian-dian/
 ├── flutter_app/
 │   ├── lib/
 │   │   ├── models/       # PageModel, CellModel, LegendModel
-│   │   ├── providers/    # Auth, Pages, Cells, Legends, Language
+│   │   ├── providers/    # Auth, Pages, Cells, Legends, Language, Premium, Theme
 │   │   ├── screens/      # Login, Register, PageList, Tracker, Settings
 │   │   ├── services/     # API, WebSocket, Storage
 │   │   ├── theme/        # Colors, fonts, theme
 │   │   └── widgets/      # Grid, dialogs, shared components
-│   ├── assets/           # Icons, fonts, sounds, images
+│   ├── assets/           # Icons, fonts, sounds, cursors, images
 │   └── pubspec.yaml
 ├── nginx.conf
 └── deploy.sh

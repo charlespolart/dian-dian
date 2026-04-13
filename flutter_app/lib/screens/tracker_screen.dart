@@ -46,6 +46,7 @@ class _TrackerScreenState extends State<TrackerScreen> {
   bool _editingTitle = false;
   double _bottomSafe = 0;
   bool _showLegendLabels = true;
+  String? _selectedLegendId;
   late TextEditingController _titleController;
 
   PageModel get _page {
@@ -253,7 +254,7 @@ class _TrackerScreenState extends State<TrackerScreen> {
     );
   }
 
-  Widget _buildGrid(CellsProvider cellsProv) {
+  Widget _buildGrid(CellsProvider cellsProv, List legends) {
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.all(6),
@@ -262,7 +263,23 @@ class _TrackerScreenState extends State<TrackerScreen> {
             year: _page.year,
             getCellColor: (month, day) => cellsProv.getCellColor(month, day),
             onCellPress: (month, day) {
-              CellEditorDialog.show(context, month: month, day: day, year: _page.year);
+              final existingCell = cellsProv.getCell(month, day);
+              if (existingCell != null) {
+                // Cell is filled → open dialog to view/edit comment
+                CellEditorDialog.show(context, month: month, day: day, year: _page.year);
+              } else if (_selectedLegendId != null) {
+                // Legend selected as brush → fill directly
+                try {
+                  final legend = legends.firstWhere((l) => l.id == _selectedLegendId);
+                  cellsProv.setCell(month, day, legend.color);
+                } catch (_) {
+                  // Legend was deleted, deselect
+                  setState(() => _selectedLegendId = null);
+                }
+              } else {
+                // No brush selected → open dialog
+                CellEditorDialog.show(context, month: month, day: day, year: _page.year);
+              }
             },
           ),
         ),
@@ -312,7 +329,7 @@ class _TrackerScreenState extends State<TrackerScreen> {
                   dashLength: 4,
                   gapLength: 3,
                 ),
-                _buildGrid(cellsProv),
+                _buildGrid(cellsProv, legends),
               ],
             ),
           ),
@@ -619,11 +636,26 @@ class _TrackerScreenState extends State<TrackerScreen> {
                         ),
                       ),
                     ...legends.map<Widget>((legend) {
-                      return Padding(
+                      final isSelected = _selectedLegendId == legend.id;
+                      return GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          setState(() {
+                            _selectedLegendId = isSelected ? null : legend.id;
+                          });
+                        },
+                        child: Padding(
                         padding: const EdgeInsets.only(bottom: 5),
                         child: showLabels
-                            ? Row(
-                                mainAxisSize: MainAxisSize.min,
+                            ? Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: isSelected ? AppColors.accent.withValues(alpha: 0.12) : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: isSelected ? Border.all(color: AppColors.accent, width: 1.5) : null,
+                                ),
+                                child: Row(
+                                mainAxisSize: MainAxisSize.max,
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
                                   Container(
@@ -645,15 +677,23 @@ class _TrackerScreenState extends State<TrackerScreen> {
                                     ),
                                   ),
                                 ],
-                              )
+                              ))
                             : Container(
-                                width: dotSize,
-                                height: dotSize,
+                                padding: const EdgeInsets.all(2),
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: _parseHex(legend.color),
+                                  border: isSelected ? Border.all(color: AppColors.accent, width: 2) : null,
+                                ),
+                                child: Container(
+                                  width: dotSize,
+                                  height: dotSize,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: _parseHex(legend.color),
+                                  ),
                                 ),
                               ),
+                      ),
                       );
                     }),
                     // Edit button right after legends
