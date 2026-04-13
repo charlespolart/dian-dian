@@ -89,6 +89,7 @@ class _CellEditorDialogState extends State<CellEditorDialog> {
   String? _selectedColor;
   String? _selectedLegendId;
   bool _hasCell = false;
+  bool _editingComment = false;
 
   static const List<String> _monthNames = [
     'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -111,11 +112,13 @@ class _CellEditorDialogState extends State<CellEditorDialog> {
       _selectedLegendId = null;
       _commentController.text = cell.comment ?? '';
       _hasCell = true;
+      _editingComment = false;
     } else {
       _selectedColor = null;
       _selectedLegendId = null;
       _commentController.text = '';
       _hasCell = false;
+      _editingComment = false;
     }
   }
 
@@ -192,7 +195,7 @@ class _CellEditorDialogState extends State<CellEditorDialog> {
     );
   }
 
-  /// View mode: cell exists — show color, legend label, comment, delete button
+  /// View mode: cell exists — show color, legend label, comment (editable), delete button
   Widget _buildViewMode(LanguageProvider lang, List<LegendModel> legends) {
     final legendLabel = _legendLabelForColor(_selectedColor!, legends);
     final comment = _commentController.text;
@@ -222,72 +225,168 @@ class _CellEditorDialogState extends State<CellEditorDialog> {
           ],
         ),
 
-        // Comment
-        if (comment.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: AppColors.screen,
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: AppColors.screenBorder),
-            ),
-            child: Text(
-              comment,
-              style: AppFonts.dot(fontSize: 12, color: AppColors.text),
+        const SizedBox(height: 12),
+
+        // Comment: view or edit
+        if (_editingComment) ...[
+          TextField(
+            controller: _commentController,
+            autofocus: true,
+            maxLength: 200,
+            maxLines: 2,
+            style: AppFonts.dot(fontSize: 13, color: AppColors.inputText),
+            decoration: InputDecoration(
+              hintText: 'Comment...',
+              hintStyle: AppFonts.dot(fontSize: 13, color: AppColors.textMuted),
+              counterStyle: AppFonts.dot(fontSize: 10, color: AppColors.textMuted),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),
           ),
-        ],
-
-        const SizedBox(height: 20),
-
-        // Buttons
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            GestureDetector(
-              onTap: () => Navigator.of(context).pop(),
-              child: Text(
-                lang.t('settings.back'),
-                style: AppFonts.pixel(fontSize: 12, color: AppColors.textMuted),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              GestureDetector(
+                onTap: () {
+                  // Reload original comment
+                  final cells = context.read<CellsProvider>();
+                  final cell = cells.getCell(_month, _day);
+                  _commentController.text = cell?.comment ?? '';
+                  setState(() => _editingComment = false);
+                },
+                child: Text(
+                  lang.t('common.cancel'),
+                  style: AppFonts.pixel(fontSize: 12, color: AppColors.textMuted),
+                ),
               ),
-            ),
-            const SizedBox(width: 20),
+              const SizedBox(width: 20),
+              GestureDetector(
+                onTap: () async {
+                  final cells = context.read<CellsProvider>();
+                  final newComment = _commentController.text.trim();
+                  await cells.setCell(
+                    _month, _day, _selectedColor!,
+                    comment: newComment.isNotEmpty ? newComment : null,
+                  );
+                  setState(() => _editingComment = false);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.btnAdd,
+                    border: Border.all(color: AppColors.btnAddBorder),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    lang.t('common.ok'),
+                    style: AppFonts.pixel(fontSize: 12, color: AppColors.btnAddText),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ] else ...[
+          // Show comment block with edit icon, or small "add" button if no comment
+          if (comment.isNotEmpty)
+            Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: AppColors.dotBorder, width: 0.5),
+                  ),
+                  child: Text(
+                    comment,
+                    style: AppFonts.dot(fontSize: 12, color: AppColors.subtitle),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => setState(() => _editingComment = true),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Icon(Icons.edit_outlined, size: 13, color: AppColors.textMuted),
+                  ),
+                ),
+              ],
+            )
+          else
             GestureDetector(
-              onTap: () async {
-                final cells = context.read<CellsProvider>();
-                await cells.deleteCell(_month, _day);
-                if (context.mounted) Navigator.of(context).pop();
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.btnReset,
-                  border: Border.all(color: AppColors.btnResetBorder),
-                  borderRadius: BorderRadius.circular(6),
-                ),
+              behavior: HitTestBehavior.opaque,
+              onTap: () => setState(() => _editingComment = true),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.delete_outline, size: 14, color: AppColors.btnResetText),
-                    const SizedBox(width: 6),
+                    Icon(Icons.add, size: 12, color: AppColors.textMuted),
+                    const SizedBox(width: 4),
                     Text(
-                      lang.t('common.delete'),
-                      style: AppFonts.pixel(
-                        fontSize: 12,
-                        color: AppColors.btnResetText,
-                      ),
+                      'Comment',
+                      style: AppFonts.dot(fontSize: 11, color: AppColors.textMuted),
                     ),
                   ],
                 ),
               ),
             ),
-          ],
-        ),
+
+          const SizedBox(height: 20),
+
+          // Buttons
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => Navigator.of(context).pop(),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  child: Text(
+                    lang.t('settings.back'),
+                    style: AppFonts.pixel(fontSize: 12, color: AppColors.textMuted),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 20),
+              GestureDetector(
+                onTap: () async {
+                  final cells = context.read<CellsProvider>();
+                  await cells.deleteCell(_month, _day);
+                  if (context.mounted) Navigator.of(context).pop();
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.btnReset,
+                    border: Border.all(color: AppColors.btnResetBorder),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.delete_outline, size: 14, color: AppColors.btnResetText),
+                      const SizedBox(width: 6),
+                      Text(
+                        lang.t('common.delete'),
+                        style: AppFonts.pixel(
+                          fontSize: 12,
+                          color: AppColors.btnResetText,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }
