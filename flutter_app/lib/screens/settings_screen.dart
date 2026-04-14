@@ -29,9 +29,23 @@ class SettingsScreen extends StatelessWidget {
   static const String _contactUrl = 'https://mydiandian.app/contact';
   static const String _privacyUrl = 'https://mydiandian.app/privacy';
   static const String _termsUrl = 'https://mydiandian.app/terms';
+  static const String _legalUrl = 'https://mydiandian.app/legal';
 
-  Future<void> _openUrl(String url) async {
-    final uri = Uri.parse(url);
+  Future<void> _openUrl(String url, {BuildContext? context}) async {
+    var finalUrl = url;
+    if (context != null) {
+      final lang = context.read<LanguageProvider>();
+      const langCodes = {
+        Language.fr: 'fr',
+        Language.en: 'en',
+        Language.zhCN: 'zh-CN',
+        Language.zhTW: 'zh-TW',
+      };
+      final code = langCodes[lang.lang] ?? 'en';
+      final sep = url.contains('?') ? '&' : '?';
+      finalUrl = '$url${sep}lang=$code';
+    }
+    final uri = Uri.parse(finalUrl);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
@@ -110,19 +124,23 @@ class SettingsScreen extends StatelessWidget {
                     const SizedBox(height: 8),
                     _buildLinkTile(
                       label: lang.t('settings.about'),
-                      onTap: () => _openUrl(_aboutUrl),
+                      onTap: () => _openUrl(_aboutUrl, context: context),
                     ),
                     _buildLinkTile(
                       label: lang.t('settings.contact'),
-                      onTap: () => _openUrl(_contactUrl),
+                      onTap: () => _openUrl(_contactUrl, context: context),
                     ),
                     _buildLinkTile(
                       label: lang.t('settings.privacy'),
-                      onTap: () => _openUrl(_privacyUrl),
+                      onTap: () => _openUrl(_privacyUrl, context: context),
                     ),
                     _buildLinkTile(
                       label: lang.t('settings.terms'),
-                      onTap: () => _openUrl(_termsUrl),
+                      onTap: () => _openUrl(_termsUrl, context: context),
+                    ),
+                    _buildLinkTile(
+                      label: lang.t('settings.legal'),
+                      onTap: () => _openUrl(_legalUrl, context: context),
                     ),
 
                     const SizedBox(height: 24),

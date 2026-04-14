@@ -94,9 +94,9 @@ function layout(title: string, content: string, lang: Lang): string {
 const privacy: Record<Lang, string> = {
   en: `
     <h1>Privacy Policy</h1>
-    <p class="subtitle">Last updated: March 26, 2026</p>
+    <p class="subtitle">Last updated: April 14, 2026</p>
     <h2>1. Introduction</h2>
-    <p>Dian Dian ("we", "us", "our") operates the mydiandian.app website and service. This Privacy Policy explains how we collect, use, and protect your personal information.</p>
+    <p>Dian Dian is published by OVERRIDE, SASU with a capital of 1 euro, registered under SIREN 953 122 868. This Privacy Policy explains how we collect, use, and protect your personal information.</p>
     <h2>2. Data We Collect</h2>
     <ul>
       <li><strong>Account information:</strong> email address and password (stored securely hashed).</li>
@@ -109,13 +109,17 @@ const privacy: Record<Lang, string> = {
       <li>To authenticate you and keep your account secure.</li>
       <li>To sync your tracker data across devices.</li>
     </ul>
-    <p>We do <strong>not</strong> use your data for advertising, profiling, or any purpose beyond operating the service.</p>
-    <h2>4. Third-Party Tracking</h2>
-    <p>We do <strong>not</strong> use any third-party analytics, tracking scripts, or advertising networks. No data is shared with or sold to third parties.</p>
+    <p>We do <strong>not</strong> sell your data or use it for profiling.</p>
+    <h2>4. Third-Party Services</h2>
+    <ul>
+      <li><strong>Google AdMob:</strong> the free version of the app displays banner ads via Google AdMob. AdMob may collect device identifiers and usage data according to <a href="https://policies.google.com/privacy" target="_blank">Google's Privacy Policy</a>. Premium users are not shown ads.</li>
+      <li><strong>Apple In-App Purchases:</strong> subscriptions and purchases are processed by Apple. We do not have access to your payment information. See <a href="https://www.apple.com/legal/privacy/" target="_blank">Apple's Privacy Policy</a>.</li>
+    </ul>
+    <p>We do <strong>not</strong> use any other third-party analytics or tracking scripts. No personal data is shared with or sold to third parties.</p>
     <h2>5. Cookies</h2>
-    <p>We use cookies <strong>solely for authentication</strong>. No tracking or advertising cookies.</p>
+    <p>We use cookies <strong>solely for authentication</strong> (session tokens). No tracking or advertising cookies are used on the website.</p>
     <h2>6. Data Storage &amp; Security</h2>
-    <p>Your data is stored on our own servers. Passwords are hashed using Argon2. All connections are encrypted via HTTPS.</p>
+    <p>Your data is stored on servers hosted by Vultr. Passwords are hashed using Argon2. All connections are encrypted via HTTPS.</p>
     <h2>7. Data Retention &amp; Deletion</h2>
     <p>We retain your data while your account is active. You can <strong>delete your account and all data</strong> at any time from the app.</p>
     <h2>8. Your Rights (GDPR)</h2>
@@ -128,9 +132,9 @@ const privacy: Record<Lang, string> = {
     <p>Questions? <a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a></p>`,
   fr: `
     <h1>Politique de confidentialité</h1>
-    <p class="subtitle">Dernière mise à jour : 26 mars 2026</p>
+    <p class="subtitle">Dernière mise à jour : 14 avril 2026</p>
     <h2>1. Introduction</h2>
-    <p>Dian Dian (« nous ») exploite le site mydiandian.app. Cette politique explique comment nous collectons, utilisons et protégeons vos données personnelles.</p>
+    <p>Dian Dian est édité par OVERRIDE, SASU au capital de 1 euro, immatriculée sous le SIREN 953 122 868. Cette politique explique comment nous collectons, utilisons et protégeons vos données personnelles.</p>
     <h2>2. Données collectées</h2>
     <ul>
       <li><strong>Informations de compte :</strong> adresse email et mot de passe (stocké de manière sécurisée, hashé).</li>
@@ -143,13 +147,17 @@ const privacy: Record<Lang, string> = {
       <li>Vous authentifier et sécuriser votre compte.</li>
       <li>Synchroniser vos données entre appareils.</li>
     </ul>
-    <p>Nous n'utilisons <strong>pas</strong> vos données à des fins publicitaires, de profilage ou autres.</p>
-    <h2>4. Suivi tiers</h2>
-    <p>Nous n'utilisons <strong>aucun</strong> outil d'analyse, script de suivi ou réseau publicitaire tiers. Aucune donnée n'est partagée ou vendue.</p>
+    <p>Nous ne <strong>vendons pas</strong> vos données et ne les utilisons pas à des fins de profilage.</p>
+    <h2>4. Services tiers</h2>
+    <ul>
+      <li><strong>Google AdMob :</strong> la version gratuite de l'application affiche des bannières publicitaires via Google AdMob. AdMob peut collecter des identifiants d'appareil et des données d'utilisation conformément à la <a href="https://policies.google.com/privacy" target="_blank">Politique de confidentialité de Google</a>. Les utilisateurs Premium ne voient pas de publicités.</li>
+      <li><strong>Achats intégrés Apple :</strong> les abonnements et achats sont traités par Apple. Nous n'avons pas accès à vos informations de paiement. Voir la <a href="https://www.apple.com/legal/privacy/" target="_blank">Politique de confidentialité d'Apple</a>.</li>
+    </ul>
+    <p>Nous n'utilisons <strong>aucun</strong> autre outil d'analyse ou script de suivi. Aucune donnée personnelle n'est partagée ou vendue à des tiers.</p>
     <h2>5. Cookies</h2>
-    <p>Nous utilisons des cookies <strong>uniquement pour l'authentification</strong>. Aucun cookie de suivi ou publicitaire.</p>
+    <p>Nous utilisons des cookies <strong>uniquement pour l'authentification</strong> (jetons de session). Aucun cookie de suivi ou publicitaire n'est utilisé sur le site web.</p>
     <h2>6. Stockage et sécurité</h2>
-    <p>Vos données sont stockées sur nos propres serveurs. Les mots de passe sont hashés avec Argon2. Toutes les connexions sont chiffrées via HTTPS.</p>
+    <p>Vos données sont stockées sur des serveurs hébergés par Vultr. Les mots de passe sont hashés avec Argon2. Toutes les connexions sont chiffrées via HTTPS.</p>
     <h2>7. Conservation et suppression</h2>
     <p>Nous conservons vos données tant que votre compte est actif. Vous pouvez <strong>supprimer votre compte et toutes vos données</strong> à tout moment depuis l'application.</p>
     <h2>8. Vos droits (RGPD)</h2>
@@ -162,9 +170,9 @@ const privacy: Record<Lang, string> = {
     <p>Questions ? <a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a></p>`,
   'zh-CN': `
     <h1>隐私政策</h1>
-    <p class="subtitle">最后更新：2026年3月26日</p>
+    <p class="subtitle">最后更新：2026年4月14日</p>
     <h2>1. 简介</h2>
-    <p>点点（"我们"）运营 mydiandian.app 网站和服务。本隐私政策说明我们如何收集、使用和保护您的个人信息。</p>
+    <p>点点由 OVERRIDE 公司（SASU，注册资本1欧元，SIREN 953 122 868）发布。本隐私政策说明我们如何收集、使用和保护您的个人信息。</p>
     <h2>2. 收集的数据</h2>
     <ul>
       <li><strong>账户信息：</strong>电子邮箱和密码（安全加密存储）。</li>
@@ -177,13 +185,17 @@ const privacy: Record<Lang, string> = {
       <li>验证身份并保护账户安全。</li>
       <li>跨设备同步追踪数据。</li>
     </ul>
-    <p>我们<strong>不会</strong>将您的数据用于广告、用户画像或服务运营以外的任何目的。</p>
-    <h2>4. 第三方追踪</h2>
-    <p>我们<strong>不使用</strong>任何第三方分析工具、追踪脚本或广告网络。不会与第三方共享或出售数据。</p>
+    <p>我们<strong>不会</strong>出售您的数据或将其用于用户画像。</p>
+    <h2>4. 第三方服务</h2>
+    <ul>
+      <li><strong>Google AdMob：</strong>免费版应用通过 Google AdMob 显示横幅广告。AdMob 可能根据 <a href="https://policies.google.com/privacy" target="_blank">Google 隐私政策</a>收集设备标识符和使用数据。高级用户不会看到广告。</li>
+      <li><strong>Apple 应用内购买：</strong>订阅和购买由 Apple 处理。我们无法访问您的支付信息。请参阅 <a href="https://www.apple.com/legal/privacy/" target="_blank">Apple 隐私政策</a>。</li>
+    </ul>
+    <p>我们<strong>不使用</strong>任何其他第三方分析工具或追踪脚本。不会与第三方共享或出售个人数据。</p>
     <h2>5. Cookie</h2>
-    <p>我们<strong>仅将 Cookie 用于身份验证</strong>。无追踪或广告 Cookie。</p>
+    <p>我们<strong>仅将 Cookie 用于身份验证</strong>（会话令牌）。网站上不使用追踪或广告 Cookie。</p>
     <h2>6. 数据存储与安全</h2>
-    <p>您的数据存储在我们自己的服务器上。密码使用 Argon2 加密。所有连接通过 HTTPS 加密。</p>
+    <p>您的数据存储在 Vultr 托管的服务器上。密码使用 Argon2 加密。所有连接通过 HTTPS 加密。</p>
     <h2>7. 数据保留与删除</h2>
     <p>账户活跃期间保留数据。您可以随时从应用中<strong>删除账户和所有数据</strong>。</p>
     <h2>8. 您的权利（GDPR）</h2>
@@ -196,9 +208,9 @@ const privacy: Record<Lang, string> = {
     <p>有问题？<a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a></p>`,
   'zh-TW': `
     <h1>隱私權政策</h1>
-    <p class="subtitle">最後更新：2026年3月26日</p>
+    <p class="subtitle">最後更新：2026年4月14日</p>
     <h2>1. 簡介</h2>
-    <p>點點（「我們」）營運 mydiandian.app 網站和服務。本隱私權政策說明我們如何收集、使用和保護您的個人資訊。</p>
+    <p>點點由 OVERRIDE 公司（SASU，註冊資本1歐元，SIREN 953 122 868）發布。本隱私權政策說明我們如何收集、使用和保護您的個人資訊。</p>
     <h2>2. 收集的資料</h2>
     <ul>
       <li><strong>帳戶資訊：</strong>電子郵件和密碼（安全加密儲存）。</li>
@@ -211,13 +223,17 @@ const privacy: Record<Lang, string> = {
       <li>驗證身分並保護帳戶安全。</li>
       <li>跨裝置同步追蹤資料。</li>
     </ul>
-    <p>我們<strong>不會</strong>將您的資料用於廣告、使用者分析或服務營運以外的任何目的。</p>
-    <h2>4. 第三方追蹤</h2>
-    <p>我們<strong>不使用</strong>任何第三方分析工具、追蹤指令碼或廣告網路。不會與第三方分享或出售資料。</p>
+    <p>我們<strong>不會</strong>出售您的資料或將其用於使用者分析。</p>
+    <h2>4. 第三方服務</h2>
+    <ul>
+      <li><strong>Google AdMob：</strong>免費版應用程式透過 Google AdMob 顯示橫幅廣告。AdMob 可能根據 <a href="https://policies.google.com/privacy" target="_blank">Google 隱私權政策</a>收集裝置識別碼和使用資料。進階使用者不會看到廣告。</li>
+      <li><strong>Apple 應用程式內購買：</strong>訂閱和購買由 Apple 處理。我們無法存取您的付款資訊。請參閱 <a href="https://www.apple.com/legal/privacy/" target="_blank">Apple 隱私權政策</a>。</li>
+    </ul>
+    <p>我們<strong>不使用</strong>任何其他第三方分析工具或追蹤指令碼。不會與第三方分享或出售個人資料。</p>
     <h2>5. Cookie</h2>
-    <p>我們<strong>僅將 Cookie 用於身分驗證</strong>。無追蹤或廣告 Cookie。</p>
+    <p>我們<strong>僅將 Cookie 用於身分驗證</strong>（工作階段權杖）。網站上不使用追蹤或廣告 Cookie。</p>
     <h2>6. 資料儲存與安全</h2>
-    <p>您的資料儲存在我們自己的伺服器上。密碼使用 Argon2 加密。所有連線透過 HTTPS 加密。</p>
+    <p>您的資料儲存在 Vultr 託管的伺服器上。密碼使用 Argon2 加密。所有連線透過 HTTPS 加密。</p>
     <h2>7. 資料保留與刪除</h2>
     <p>帳戶活躍期間保留資料。您可以隨時從應用程式中<strong>刪除帳戶和所有資料</strong>。</p>
     <h2>8. 您的權利（GDPR）</h2>
@@ -510,6 +526,88 @@ function contactContent(lang: Lang): string {
 router.get('/contact', (req, res) => {
   const lang = detectLang(req);
   res.type('html').send(layout(lang === 'fr' ? 'Contact' : lang.startsWith('zh') ? '联系我们' : 'Contact', contactContent(lang), lang));
+});
+
+// ── Legal Notice (Mentions légales) ──
+
+const legal: Record<Lang, string> = {
+  en: `
+    <h1>Legal Notice</h1>
+    <h2>Publisher</h2>
+    <ul>
+      <li><strong>Company:</strong> OVERRIDE</li>
+      <li><strong>Legal form:</strong> SASU (Société par Actions Simplifiée Unipersonnelle)</li>
+      <li><strong>Share capital:</strong> 1 euro</li>
+      <li><strong>SIREN:</strong> 953 122 868</li>
+      <li><strong>Registered office:</strong> 12 Rue de Porspol, 29660 Carantec, France</li>
+      <li><strong>Publication director:</strong> Charles Polart</li>
+      <li><strong>Contact:</strong> <a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a></li>
+    </ul>
+    <h2>Hosting</h2>
+    <ul>
+      <li><strong>Provider:</strong> Vultr Holdings LLC</li>
+      <li><strong>Address:</strong> 14 Cliffwood Ave, Suite 300, Matawan, NJ 07747, USA</li>
+      <li><strong>Website:</strong> <a href="https://www.vultr.com" target="_blank">vultr.com</a></li>
+    </ul>`,
+  fr: `
+    <h1>Mentions légales</h1>
+    <h2>Éditeur</h2>
+    <ul>
+      <li><strong>Société :</strong> OVERRIDE</li>
+      <li><strong>Forme juridique :</strong> SASU (Société par Actions Simplifiée Unipersonnelle)</li>
+      <li><strong>Capital social :</strong> 1 euro</li>
+      <li><strong>SIREN :</strong> 953 122 868</li>
+      <li><strong>Siège social :</strong> 12 Rue de Porspol, 29660 Carantec, France</li>
+      <li><strong>Directeur de la publication :</strong> Charles Polart</li>
+      <li><strong>Contact :</strong> <a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a></li>
+    </ul>
+    <h2>Hébergement</h2>
+    <ul>
+      <li><strong>Prestataire :</strong> Vultr Holdings LLC</li>
+      <li><strong>Adresse :</strong> 14 Cliffwood Ave, Suite 300, Matawan, NJ 07747, USA</li>
+      <li><strong>Site web :</strong> <a href="https://www.vultr.com" target="_blank">vultr.com</a></li>
+    </ul>`,
+  'zh-CN': `
+    <h1>法律声明</h1>
+    <h2>发布者</h2>
+    <ul>
+      <li><strong>公司：</strong>OVERRIDE</li>
+      <li><strong>法律形式：</strong>SASU（简易股份有限公司）</li>
+      <li><strong>注册资本：</strong>1 欧元</li>
+      <li><strong>SIREN：</strong>953 122 868</li>
+      <li><strong>注册地址：</strong>12 Rue de Porspol, 29660 Carantec, France</li>
+      <li><strong>出版总监：</strong>Charles Polart</li>
+      <li><strong>联系方式：</strong><a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a></li>
+    </ul>
+    <h2>托管服务</h2>
+    <ul>
+      <li><strong>服务商：</strong>Vultr Holdings LLC</li>
+      <li><strong>地址：</strong>14 Cliffwood Ave, Suite 300, Matawan, NJ 07747, USA</li>
+      <li><strong>网站：</strong><a href="https://www.vultr.com" target="_blank">vultr.com</a></li>
+    </ul>`,
+  'zh-TW': `
+    <h1>法律聲明</h1>
+    <h2>發布者</h2>
+    <ul>
+      <li><strong>公司：</strong>OVERRIDE</li>
+      <li><strong>法律形式：</strong>SASU（簡易股份有限公司）</li>
+      <li><strong>註冊資本：</strong>1 歐元</li>
+      <li><strong>SIREN：</strong>953 122 868</li>
+      <li><strong>註冊地址：</strong>12 Rue de Porspol, 29660 Carantec, France</li>
+      <li><strong>出版總監：</strong>Charles Polart</li>
+      <li><strong>聯繫方式：</strong><a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a></li>
+    </ul>
+    <h2>託管服務</h2>
+    <ul>
+      <li><strong>服務商：</strong>Vultr Holdings LLC</li>
+      <li><strong>地址：</strong>14 Cliffwood Ave, Suite 300, Matawan, NJ 07747, USA</li>
+      <li><strong>網站：</strong><a href="https://www.vultr.com" target="_blank">vultr.com</a></li>
+    </ul>`,
+};
+
+router.get('/legal', (req, res) => {
+  const lang = detectLang(req);
+  res.type('html').send(layout(lang === 'fr' ? 'Mentions légales' : lang.startsWith('zh') ? '法律声明' : 'Legal Notice', legal[lang], lang));
 });
 
 export default router;

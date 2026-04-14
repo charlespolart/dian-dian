@@ -206,6 +206,7 @@ class LanguageProvider extends ChangeNotifier {
       'settings.contact': 'Contact',
       'settings.privacy': 'Politique de confidentialité',
       'settings.terms': "Conditions d'utilisation",
+      'settings.legal': 'Mentions légales',
 
       // Common
       'common.cancel': 'Annuler',
@@ -342,6 +343,7 @@ class LanguageProvider extends ChangeNotifier {
       'settings.contact': 'Contact',
       'settings.privacy': 'Privacy Policy',
       'settings.terms': 'Terms of Use',
+      'settings.legal': 'Legal Notice',
 
       // Common
       'common.cancel': 'Cancel',
@@ -474,6 +476,7 @@ class LanguageProvider extends ChangeNotifier {
       'settings.contact': '联系我们',
       'settings.privacy': '隐私政策',
       'settings.terms': '使用条款',
+      'settings.legal': '法律声明',
 
       // Common
       'common.cancel': '取消',
@@ -606,6 +609,7 @@ class LanguageProvider extends ChangeNotifier {
       'settings.contact': '聯絡我們',
       'settings.privacy': '隱私權政策',
       'settings.terms': '使用條款',
+      'settings.legal': '法律聲明',
 
       // Common
       'common.cancel': '取消',
