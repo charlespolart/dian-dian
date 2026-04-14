@@ -3,20 +3,20 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
 
-enum Language { fr, en, zhCN, zhTW }
+enum Language { en, fr, zhCN, zhTW }
 
 /// Short labels for each language (used in compact selectors).
 const languageShortLabels = {
-  Language.fr: 'FR',
   Language.en: 'EN',
+  Language.fr: 'FR',
   Language.zhCN: '简',
   Language.zhTW: '繁',
 };
 
 /// Translation keys for full language names.
 const languageNameKeys = {
-  Language.fr: 'settings.french',
   Language.en: 'settings.english',
+  Language.fr: 'settings.french',
   Language.zhCN: 'settings.chineseSimplified',
   Language.zhTW: 'settings.chineseTraditional',
 };
