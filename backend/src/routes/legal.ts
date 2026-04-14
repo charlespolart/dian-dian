@@ -77,11 +77,48 @@ function layout(title: string, content: string, lang: Lang): string {
     a:hover { color: #3b2e14; }
     hr { border: none; border-top: 2px dashed #d4c99a; margin: 32px 0; }
     .footer { margin-top: 48px; font-size: 12px; color: #a0855b; text-align: center; }
+    .lang-select {
+      position: relative; display: inline-block; font-family: 'Silkscreen', monospace; font-size: 11px;
+    }
+    .lang-btn {
+      display: flex; align-items: center; gap: 4px; padding: 5px 10px;
+      background: #ebe5c5; border: 1.5px solid #d4c99a; border-radius: 8px;
+      color: #a0855b; cursor: pointer; font-family: inherit; font-size: inherit;
+      transition: border-color 0.15s;
+    }
+    .lang-btn:hover { border-color: #a0855b; }
+    .lang-btn svg { width: 14px; height: 14px; fill: none; stroke: #a0855b; stroke-width: 1.5; }
+    .lang-menu {
+      display: none; position: absolute; right: 0; top: calc(100% + 4px);
+      background: #faf6e8; border: 1.5px solid #d4c99a; border-radius: 8px;
+      overflow: hidden; z-index: 10; min-width: 100%;
+    }
+    .lang-select.open .lang-menu { display: block; }
+    .lang-menu a {
+      display: block; padding: 6px 12px; color: #5c4a2a; text-decoration: none;
+      font-family: 'Silkscreen', monospace; font-size: 11px;
+    }
+    .lang-menu a:hover { background: #ebe5c5; }
+    .lang-menu a.active { color: #3b2e14; font-weight: bold; }
   </style>
 </head>
 <body>
   <div class="container">
-    <a class="back-link" href="/">&larr; ${ui.backToApp[lang]}</a>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <a class="back-link" style="margin-bottom:0" href="/">&larr; ${ui.backToApp[lang]}</a>
+      <div class="lang-select" id="langSelect">
+        <button class="lang-btn" onclick="document.getElementById('langSelect').classList.toggle('open')">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>
+          ${{ en: 'EN', fr: 'FR', 'zh-CN': '简', 'zh-TW': '繁' }[lang]}
+        </button>
+        <div class="lang-menu">
+          <a href="?lang=en" class="${lang === 'en' ? 'active' : ''}">EN</a>
+          <a href="?lang=fr" class="${lang === 'fr' ? 'active' : ''}">FR</a>
+          <a href="?lang=zh-CN" class="${lang === 'zh-CN' ? 'active' : ''}">简</a>
+          <a href="?lang=zh-TW" class="${lang === 'zh-TW' ? 'active' : ''}">繁</a>
+        </div>
+      </div>
+    </div>
     ${content}
     <div class="footer">${ui.footer[lang]}</div>
   </div>
