@@ -236,7 +236,7 @@ class _CellEditorDialogState extends State<CellEditorDialog> {
             maxLines: 2,
             style: AppFonts.dot(fontSize: 13, color: AppColors.inputText),
             decoration: InputDecoration(
-              hintText: 'Comment...',
+              hintText: '${lang.t('common.comment')}...',
               hintStyle: AppFonts.dot(fontSize: 13, color: AppColors.textMuted),
               counterStyle: AppFonts.dot(fontSize: 10, color: AppColors.textMuted),
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -326,7 +326,7 @@ class _CellEditorDialogState extends State<CellEditorDialog> {
                     Icon(Icons.add, size: 12, color: AppColors.textMuted),
                     const SizedBox(width: 4),
                     Text(
-                      'Comment',
+                      lang.t('common.comment'),
                       style: AppFonts.dot(fontSize: 11, color: AppColors.textMuted),
                     ),
                   ],
@@ -418,7 +418,7 @@ class _CellEditorDialogState extends State<CellEditorDialog> {
           maxLines: 2,
           style: AppFonts.dot(fontSize: 13, color: AppColors.inputText),
           decoration: InputDecoration(
-            hintText: 'Comment...',
+            hintText: '${lang.t('common.comment')}...',
             hintStyle: AppFonts.dot(
               fontSize: 13,
               color: AppColors.textMuted,
