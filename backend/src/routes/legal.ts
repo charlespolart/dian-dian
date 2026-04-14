@@ -479,69 +479,15 @@ function contactContent(lang: Lang): string {
     <h1>${{ en: 'Contact', fr: 'Contact', 'zh-CN': '联系我们', 'zh-TW': '聯繫我們' }[lang]}</h1>
     <p class="subtitle">${{ en: "We'd love to hear from you", fr: 'Nous serions ravis de vous entendre', 'zh-CN': '我们很想听到您的意见', 'zh-TW': '我們很想聽到您的意見' }[lang]}</p>
 
-    <form id="contactForm" style="margin-top:20px;">
-      <label style="font-family:'Silkscreen',monospace;font-size:12px;display:block;margin-bottom:4px;">${ui.name[lang]}</label>
-      <input type="text" name="name" required
-        style="width:100%;padding:10px;font-family:'DotGothic16',monospace;font-size:14px;border:2px solid #d4c99a;border-radius:8px;background:#faf6e8;color:#5c4a2a;margin-bottom:14px;outline:none;" />
-
-      <label style="font-family:'Silkscreen',monospace;font-size:12px;display:block;margin-bottom:4px;">${ui.email[lang]}</label>
-      <input type="email" name="email" required
-        style="width:100%;padding:10px;font-family:'DotGothic16',monospace;font-size:14px;border:2px solid #d4c99a;border-radius:8px;background:#faf6e8;color:#5c4a2a;margin-bottom:14px;outline:none;" />
-
-      <label style="font-family:'Silkscreen',monospace;font-size:12px;display:block;margin-bottom:4px;">${ui.message[lang]}</label>
-      <textarea name="message" rows="5" required
-        style="width:100%;padding:10px;font-family:'DotGothic16',monospace;font-size:14px;border:2px solid #d4c99a;border-radius:8px;background:#faf6e8;color:#5c4a2a;margin-bottom:14px;outline:none;resize:vertical;"></textarea>
-
-      <button type="submit" id="submitBtn"
-        style="font-family:'Silkscreen',monospace;font-size:13px;padding:10px 24px;background:#d8e8c8;border:2px solid #b0c8a0;border-radius:10px;color:#708060;cursor:pointer;width:100%;transition:transform 0.15s;">
-        ${ui.sendMessage[lang]}
-      </button>
-    </form>
-
-    <div id="formMsg" style="text-align:center;margin-top:16px;font-size:14px;display:none;"></div>
-
-    <hr />
-
-    <p style="text-align:center;font-size:13px;color:#a0855b;">
-      ${ui.orEmail[lang]} <a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a>
+    <p style="text-align:center;margin-top:24px;">
+      <a href="mailto:contact@mydiandian.app" style="display:inline-block;padding:12px 24px;background:#d8e8c8;border:2px solid #b0c8a0;border-radius:10px;color:#708060;text-decoration:none;font-family:'Silkscreen',monospace;font-size:13px;">
+        contact@mydiandian.app
+      </a>
     </p>
 
-    <p style="font-size:13px;color:#a0855b;margin-top:16px;">
-      ${{ en: 'As a solo indie project, please allow up to <strong>48 hours</strong> for a response. We read every message.', fr: 'En tant que projet indépendant, veuillez prévoir jusqu\'à <strong>48 heures</strong> pour une réponse. Nous lisons chaque message.', 'zh-CN': '作为个人独立项目，请允许最多 <strong>48 小时</strong>的回复时间。我们会阅读每条消息。', 'zh-TW': '作為個人獨立專案，請允許最多 <strong>48 小時</strong>的回覆時間。我們會閱讀每則訊息。' }[lang]}
-    </p>
-
-    <script>
-      document.getElementById('contactForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const btn = document.getElementById('submitBtn');
-        const msg = document.getElementById('formMsg');
-        const form = e.target;
-        btn.disabled = true;
-        btn.textContent = '${jsEscape(ui.sending[lang])}';
-        msg.style.display = 'none';
-        try {
-          const res = await fetch('/api/contact', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: form.name.value, email: form.email.value, message: form.message.value }),
-          });
-          if (res.ok) {
-            msg.style.color = '#708060';
-            msg.textContent = '${jsEscape(ui.sent[lang])}';
-            form.reset();
-          } else {
-            msg.style.color = '#c0392b';
-            msg.textContent = '${jsEscape(ui.sendFailed[lang])}';
-          }
-        } catch {
-          msg.style.color = '#c0392b';
-          msg.textContent = '${jsEscape(ui.networkError[lang])}';
-        }
-        msg.style.display = 'block';
-        btn.disabled = false;
-        btn.textContent = '${jsEscape(ui.sendMessage[lang])}';
-      });
-    </script>`;
+    <p style="font-size:13px;color:#a0855b;margin-top:24px;text-align:center;">
+      ${{ en: 'As a solo indie project, please allow up to <strong>48 hours</strong> for a response.', fr: 'En tant que projet indépendant, veuillez prévoir jusqu\'à <strong>48 heures</strong> pour une réponse.', 'zh-CN': '作为个人独立项目，请允许最多 <strong>48 小时</strong>的回复时间。', 'zh-TW': '作為個人獨立專案，請允許最多 <strong>48 小時</strong>的回覆時間。' }[lang]}
+    </p>`;
 }
 
 router.get('/contact', (req, res) => {
