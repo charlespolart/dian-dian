@@ -161,11 +161,9 @@ const privacy: Record<Lang, string> = {
     <p>We retain your data while your account is active. You can <strong>delete your account and all data</strong> at any time from the app.</p>
     <h2>8. Your Rights (GDPR)</h2>
     <p>If you are in the EEA, you have the right to access, correct, delete, export, or restrict processing of your data. Contact us at <a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a>.</p>
-    <h2>9. Children</h2>
-    <p>Dian Dian is not intended for children under 13. We do not knowingly collect data from children under 13.</p>
-    <h2>10. Changes</h2>
+    <h2>9. Changes</h2>
     <p>We may update this policy. Material changes will be communicated via email.</p>
-    <h2>11. Contact</h2>
+    <h2>10. Contact</h2>
     <p>Questions? <a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a></p>`,
   fr: `
     <h1>Politique de confidentialité</h1>
@@ -199,11 +197,9 @@ const privacy: Record<Lang, string> = {
     <p>Nous conservons vos données tant que votre compte est actif. Vous pouvez <strong>supprimer votre compte et toutes vos données</strong> à tout moment depuis l'application.</p>
     <h2>8. Vos droits (RGPD)</h2>
     <p>Si vous êtes dans l'EEE, vous avez le droit d'accéder, corriger, supprimer, exporter ou restreindre le traitement de vos données. Contactez-nous à <a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a>.</p>
-    <h2>9. Enfants</h2>
-    <p>Dian Dian n'est pas destiné aux enfants de moins de 13 ans.</p>
-    <h2>10. Modifications</h2>
+    <h2>9. Modifications</h2>
     <p>Nous pouvons mettre à jour cette politique. Les changements importants seront communiqués par email.</p>
-    <h2>11. Contact</h2>
+    <h2>10. Contact</h2>
     <p>Questions ? <a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a></p>`,
   'zh-CN': `
     <h1>隐私政策</h1>
@@ -237,11 +233,9 @@ const privacy: Record<Lang, string> = {
     <p>账户活跃期间保留数据。您可以随时从应用中<strong>删除账户和所有数据</strong>。</p>
     <h2>8. 您的权利（GDPR）</h2>
     <p>如果您在欧洲经济区，您有权访问、更正、删除、导出或限制处理您的数据。请联系 <a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a>。</p>
-    <h2>9. 儿童</h2>
-    <p>点点不面向13岁以下的儿童。</p>
-    <h2>10. 变更</h2>
+    <h2>9. 变更</h2>
     <p>我们可能会更新本政策。重大变更将通过电子邮件通知。</p>
-    <h2>11. 联系</h2>
+    <h2>10. 联系</h2>
     <p>有问题？<a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a></p>`,
   'zh-TW': `
     <h1>隱私權政策</h1>
@@ -275,11 +269,9 @@ const privacy: Record<Lang, string> = {
     <p>帳戶活躍期間保留資料。您可以隨時從應用程式中<strong>刪除帳戶和所有資料</strong>。</p>
     <h2>8. 您的權利（GDPR）</h2>
     <p>如果您在歐洲經濟區，您有權存取、更正、刪除、匯出或限制處理您的資料。請聯繫 <a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a>。</p>
-    <h2>9. 兒童</h2>
-    <p>點點不面向13歲以下的兒童。</p>
-    <h2>10. 變更</h2>
+    <h2>9. 變更</h2>
     <p>我們可能會更新本政策。重大變更將透過電子郵件通知。</p>
-    <h2>11. 聯繫</h2>
+    <h2>10. 聯繫</h2>
     <p>有問題？<a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a></p>`,
 };
 
@@ -296,108 +288,100 @@ const terms: Record<Lang, string> = {
     <p class="subtitle">Last updated: March 26, 2026</p>
     <h2>1. Acceptance</h2>
     <p>By using Dian Dian ("the Service"), you agree to these Terms. If you do not agree, please do not use the Service.</p>
-    <h2>2. Eligibility</h2>
-    <p>You must be at least <strong>13 years old</strong> to use Dian Dian.</p>
-    <h2>3. Your Account</h2>
+    <h2>2. Your Account</h2>
     <ul>
       <li>You are responsible for keeping your credentials secure.</li>
       <li>You are responsible for all activity under your account.</li>
       <li>Notify us immediately if you suspect unauthorized access.</li>
     </ul>
-    <h2>4. Your Content</h2>
+    <h2>3. Your Content</h2>
     <p>All tracker data and content you create <strong>belongs to you</strong>. We do not claim ownership.</p>
-    <h2>5. Acceptable Use</h2>
+    <h2>4. Acceptable Use</h2>
     <p>You agree <strong>not</strong> to: use the Service unlawfully, attempt unauthorized access, disrupt the Service, automate access without permission, or harass others.</p>
-    <h2>6. Service Availability</h2>
+    <h2>5. Service Availability</h2>
     <p>The Service is provided <strong>"as is"</strong> without warranties. We do not guarantee uninterrupted or error-free access.</p>
-    <h2>7. Limitation of Liability</h2>
+    <h2>6. Limitation of Liability</h2>
     <p>To the fullest extent permitted by law, we shall not be liable for any indirect, incidental, or consequential damages.</p>
-    <h2>8. Account Termination</h2>
+    <h2>7. Account Termination</h2>
     <p>You may delete your account at any time. We may suspend accounts that violate these Terms.</p>
-    <h2>9. Changes</h2>
+    <h2>8. Changes</h2>
     <p>We may update these Terms. Material changes will be communicated via email.</p>
-    <h2>10. Contact</h2>
+    <h2>9. Contact</h2>
     <p>Questions? <a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a></p>`,
   fr: `
     <h1>Conditions d'utilisation</h1>
     <p class="subtitle">Dernière mise à jour : 26 mars 2026</p>
     <h2>1. Acceptation</h2>
     <p>En utilisant Dian Dian (« le Service »), vous acceptez ces Conditions. Si vous n'êtes pas d'accord, veuillez ne pas utiliser le Service.</p>
-    <h2>2. Éligibilité</h2>
-    <p>Vous devez avoir au moins <strong>13 ans</strong> pour utiliser Dian Dian.</p>
-    <h2>3. Votre compte</h2>
+    <h2>2. Votre compte</h2>
     <ul>
       <li>Vous êtes responsable de la sécurité de vos identifiants.</li>
       <li>Vous êtes responsable de toute activité sur votre compte.</li>
       <li>Prévenez-nous immédiatement en cas d'accès non autorisé.</li>
     </ul>
-    <h2>4. Votre contenu</h2>
+    <h2>3. Votre contenu</h2>
     <p>Toutes les données et le contenu que vous créez <strong>vous appartiennent</strong>. Nous ne revendiquons aucun droit de propriété.</p>
-    <h2>5. Utilisation acceptable</h2>
+    <h2>4. Utilisation acceptable</h2>
     <p>Vous vous engagez à <strong>ne pas</strong> : utiliser le Service illégalement, tenter un accès non autorisé, perturber le Service, automatiser l'accès sans permission, ou harceler d'autres utilisateurs.</p>
-    <h2>6. Disponibilité du service</h2>
+    <h2>5. Disponibilité du service</h2>
     <p>Le Service est fourni <strong>« tel quel »</strong> sans garantie. Nous ne garantissons pas un accès ininterrompu ou sans erreur.</p>
-    <h2>7. Limitation de responsabilité</h2>
+    <h2>6. Limitation de responsabilité</h2>
     <p>Dans les limites permises par la loi, nous ne serons pas responsables des dommages indirects, accessoires ou consécutifs.</p>
-    <h2>8. Résiliation de compte</h2>
+    <h2>7. Résiliation de compte</h2>
     <p>Vous pouvez supprimer votre compte à tout moment. Nous pouvons suspendre les comptes qui violent ces Conditions.</p>
-    <h2>9. Modifications</h2>
+    <h2>8. Modifications</h2>
     <p>Nous pouvons mettre à jour ces Conditions. Les changements importants seront communiqués par email.</p>
-    <h2>10. Contact</h2>
+    <h2>9. Contact</h2>
     <p>Questions ? <a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a></p>`,
   'zh-CN': `
     <h1>使用条款</h1>
     <p class="subtitle">最后更新：2026年3月26日</p>
     <h2>1. 接受条款</h2>
     <p>使用点点（"本服务"）即表示您同意这些条款。如不同意，请勿使用本服务。</p>
-    <h2>2. 资格</h2>
-    <p>您必须年满 <strong>13 周岁</strong>才能使用点点。</p>
-    <h2>3. 您的账户</h2>
+    <h2>2. 您的账户</h2>
     <ul>
       <li>您有责任保管好登录凭证的安全。</li>
       <li>您对账户下的所有活动负责。</li>
       <li>如怀疑未经授权的访问，请立即通知我们。</li>
     </ul>
-    <h2>4. 您的内容</h2>
+    <h2>3. 您的内容</h2>
     <p>您创建的所有追踪数据和内容<strong>归您所有</strong>。我们不主张所有权。</p>
-    <h2>5. 合理使用</h2>
+    <h2>4. 合理使用</h2>
     <p>您同意<strong>不会</strong>：非法使用服务、尝试未经授权的访问、干扰服务、未经许可自动化访问或骚扰他人。</p>
-    <h2>6. 服务可用性</h2>
+    <h2>5. 服务可用性</h2>
     <p>服务按<strong>"现状"</strong>提供，不附带任何保证。我们不保证服务不间断或无错误。</p>
-    <h2>7. 责任限制</h2>
+    <h2>6. 责任限制</h2>
     <p>在法律允许的最大范围内，我们不对任何间接、附带或后果性损害承担责任。</p>
-    <h2>8. 账户终止</h2>
+    <h2>7. 账户终止</h2>
     <p>您可以随时删除账户。我们可能会暂停违反这些条款的账户。</p>
-    <h2>9. 变更</h2>
+    <h2>8. 变更</h2>
     <p>我们可能会更新这些条款。重大变更将通过电子邮件通知。</p>
-    <h2>10. 联系</h2>
+    <h2>9. 联系</h2>
     <p>有问题？<a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a></p>`,
   'zh-TW': `
     <h1>使用條款</h1>
     <p class="subtitle">最後更新：2026年3月26日</p>
     <h2>1. 接受條款</h2>
     <p>使用點點（「本服務」）即表示您同意這些條款。如不同意，請勿使用本服務。</p>
-    <h2>2. 資格</h2>
-    <p>您必須年滿 <strong>13 歲</strong>才能使用點點。</p>
-    <h2>3. 您的帳戶</h2>
+    <h2>2. 您的帳戶</h2>
     <ul>
       <li>您有責任保管好登入憑證的安全。</li>
       <li>您對帳戶下的所有活動負責。</li>
       <li>如懷疑未經授權的存取，請立即通知我們。</li>
     </ul>
-    <h2>4. 您的內容</h2>
+    <h2>3. 您的內容</h2>
     <p>您建立的所有追蹤資料和內容<strong>歸您所有</strong>。我們不主張所有權。</p>
-    <h2>5. 合理使用</h2>
+    <h2>4. 合理使用</h2>
     <p>您同意<strong>不會</strong>：非法使用服務、嘗試未經授權的存取、干擾服務、未經許可自動化存取或騷擾他人。</p>
-    <h2>6. 服務可用性</h2>
+    <h2>5. 服務可用性</h2>
     <p>服務按<strong>「現狀」</strong>提供，不附帶任何保證。我們不保證服務不間斷或無錯誤。</p>
-    <h2>7. 責任限制</h2>
+    <h2>6. 責任限制</h2>
     <p>在法律允許的最大範圍內，我們不對任何間接、附帶或後果性損害承擔責任。</p>
-    <h2>8. 帳戶終止</h2>
+    <h2>7. 帳戶終止</h2>
     <p>您可以隨時刪除帳戶。我們可能會暫停違反這些條款的帳戶。</p>
-    <h2>9. 變更</h2>
+    <h2>8. 變更</h2>
     <p>我們可能會更新這些條款。重大變更將透過電子郵件通知。</p>
-    <h2>10. 聯繫</h2>
+    <h2>9. 聯繫</h2>
     <p>有問題？<a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a></p>`,
 };
 
