@@ -45,18 +45,46 @@ class TrackerGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Each cell = dotSize + gap. We pick the axis that constrains us.
         final hasW = constraints.maxWidth.isFinite;
         final hasH = constraints.maxHeight.isFinite;
-        final cellW = hasW ? constraints.maxWidth / _cols : double.infinity;
-        final cellH = hasH ? constraints.maxHeight / _rows : double.infinity;
-        final cellSize = cellW < cellH ? cellW : cellH;
-        final dotSize = cellSize * 0.78;
-        final labelSize = (dotSize * 0.65).clamp(6.0, 12.0);
 
-        // Total grid size
-        final gridW = cellSize * _cols;
-        final gridH = cellSize * _rows;
+        // First pass: estimate cell size from raw constraints, ignoring text scale.
+        final estCellW = hasW ? constraints.maxWidth / _cols : 30.0;
+        final estCellH = hasH ? constraints.maxHeight / _rows : 30.0;
+        final estCellSize = estCellW < estCellH ? estCellW : estCellH;
+        final labelSize = (estCellSize * 0.78 * 0.65).clamp(6.0, 12.0);
+
+        // Measure how big the widest day label ("30") actually renders at the
+        // user's iOS Dynamic Type scale. Pixel font is proportional, so a
+        // scaled "30" (or any wide-digit pair) can overflow a fixed cell.
+        final textScaler = MediaQuery.textScalerOf(context);
+        final dayPainter = TextPainter(
+          text: TextSpan(
+            text: '30',
+            style: AppFonts.pixel(fontSize: labelSize),
+          ),
+          textDirection: TextDirection.ltr,
+          textScaler: textScaler,
+        )..layout();
+
+        // Label column / row height grow to fit the scaled label.
+        // The dot columns then absorb whatever width is left.
+        final labelColWidth = dayPainter.width + 4 > estCellSize
+            ? dayPainter.width + 4
+            : estCellSize;
+        final rowHeight = dayPainter.height + 2 > estCellSize
+            ? dayPainter.height + 2
+            : estCellSize;
+
+        final dotColW = hasW
+            ? (constraints.maxWidth - labelColWidth) / 12
+            : estCellSize;
+        // Dots stay square — pick the smaller of width-budget and row-height.
+        final cellSize = dotColW < rowHeight ? dotColW : rowHeight;
+        final dotSize = cellSize * 0.78;
+
+        final gridW = labelColWidth + cellSize * 12;
+        final gridH = rowHeight * _rows;
 
         return SizedBox(
           width: gridW,
@@ -65,10 +93,10 @@ class TrackerGrid extends StatelessWidget {
             children: [
               // Month headers row
               SizedBox(
-                height: cellSize,
+                height: rowHeight,
                 child: Row(
                   children: [
-                    SizedBox(width: cellSize),
+                    SizedBox(width: labelColWidth),
                     ...List.generate(12, (m) {
                       return SizedBox(
                         width: cellSize,
@@ -90,12 +118,12 @@ class TrackerGrid extends StatelessWidget {
               ...List.generate(31, (dayIdx) {
                 final day = dayIdx + 1;
                 return SizedBox(
-                  height: cellSize,
+                  height: rowHeight,
                   child: Row(
                     children: [
                       // Day label
                       SizedBox(
-                        width: cellSize,
+                        width: labelColWidth,
                         child: Center(
                           child: Text(
                             '$day',
@@ -115,7 +143,6 @@ class TrackerGrid extends StatelessWidget {
 
                         return SizedBox(
                           width: cellSize,
-                          height: cellSize,
                           child: Center(
                             child: GestureDetector(
                               onTap: valid ? () => onCellPress(month, day) : null,
