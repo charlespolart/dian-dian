@@ -101,7 +101,14 @@ class _TrackerScreenState extends State<TrackerScreen> {
     );
   }
 
-  Future<void> _exportImage() async {
+  Future<void> _exportImage(BuildContext buttonContext) async {
+    // iPad requires sharePositionOrigin to anchor the share popover —
+    // capture before any awaits so the RenderBox is guaranteed alive.
+    final box = buttonContext.findRenderObject() as RenderBox?;
+    final origin = box != null && box.hasSize
+        ? box.localToGlobal(Offset.zero) & box.size
+        : null;
+
     final premium = context.read<PremiumProvider>();
     if (!premium.isPremium) {
       final lang = context.read<LanguageProvider>();
@@ -128,6 +135,7 @@ class _TrackerScreenState extends State<TrackerScreen> {
       final bytes = byteData.buffer.asUint8List();
       await Share.shareXFiles(
         [XFile.fromData(bytes, name: '${_page.title}.png', mimeType: 'image/png')],
+        sharePositionOrigin: origin,
       );
     } catch (e) {
       debugPrint('Export failed: $e');
@@ -241,12 +249,14 @@ class _TrackerScreenState extends State<TrackerScreen> {
               child: Icon(Icons.bar_chart, size: 18, color: AppColors.accent),
             ),
           ),
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: _exportImage,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-              child: Icon(Icons.ios_share, size: 18, color: AppColors.accent),
+          Builder(
+            builder: (ctx) => GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _exportImage(ctx),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                child: Icon(Icons.ios_share, size: 18, color: AppColors.accent),
+              ),
             ),
           ),
         ],
@@ -505,12 +515,14 @@ class _TrackerScreenState extends State<TrackerScreen> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            GestureDetector(
-                              behavior: HitTestBehavior.opaque,
-                              onTap: _exportImage,
-                              child: Padding(
-                                padding: const EdgeInsets.all(6),
-                                child: Icon(Icons.ios_share, size: 20, color: AppColors.accent),
+                            Builder(
+                              builder: (ctx) => GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: () => _exportImage(ctx),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(6),
+                                  child: Icon(Icons.ios_share, size: 20, color: AppColors.accent),
+                                ),
                               ),
                             ),
                           ],
