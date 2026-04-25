@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -320,33 +322,48 @@ class _OnboardingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 400),
-        child: Container(
-        padding: const EdgeInsets.all(28),
-        decoration: BoxDecoration(
-          color: AppColors.shell,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.shellBorder),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            illustration,
-            const SizedBox(height: 28),
-            Text(
-              title,
-              style: AppFonts.pixel(fontSize: 18, color: AppColors.title),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Card renders at a natural size based on width budget.
+          // FittedBox(scaleDown) shrinks it uniformly if the page is too short
+          // (Larger Text, landscape, small phones) — never overflows, no scroll.
+          final cardWidth = math.min(400.0, constraints.maxWidth);
+          return Center(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.center,
+              child: SizedBox(
+                width: cardWidth,
+                child: Container(
+                  padding: const EdgeInsets.all(28),
+                  decoration: BoxDecoration(
+                    color: AppColors.shell,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.shellBorder),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      illustration,
+                      const SizedBox(height: 28),
+                      Text(
+                        title,
+                        style: AppFonts.pixel(fontSize: 18, color: AppColors.title),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        description,
+                        style: AppFonts.dot(fontSize: 14, color: AppColors.text),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
-            const SizedBox(height: 12),
-            Text(
-              description,
-              style: AppFonts.dot(fontSize: 14, color: AppColors.text),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
+          );
+        },
       ),
     );
   }
