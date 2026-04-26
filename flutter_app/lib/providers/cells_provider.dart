@@ -99,7 +99,7 @@ class CellsProvider extends ChangeNotifier {
           'month': month,
           'day': day,
           'color': color,
-          if (comment != null) 'comment': comment,
+          'comment': ?comment,
         },
       );
 
