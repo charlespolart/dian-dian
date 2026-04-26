@@ -23,8 +23,6 @@ class PurchaseService {
 
   // Product IDs — configure these in App Store Connect / Google Play Console
   String _premiumMonthlyId = '';
-  String _premiumYearlyId = '';
-  String _premiumLifetimeId = '';
   Set<String> _productIds = {};
 
   /// Configure product IDs before calling init().
@@ -34,8 +32,6 @@ class PurchaseService {
     required String lifetimeId,
   }) {
     _premiumMonthlyId = monthlyId;
-    _premiumYearlyId = yearlyId;
-    _premiumLifetimeId = lifetimeId;
     _productIds = {monthlyId, yearlyId, lifetimeId};
   }
 

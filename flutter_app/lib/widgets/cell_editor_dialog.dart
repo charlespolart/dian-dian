@@ -355,8 +355,9 @@ class _CellEditorDialogState extends State<CellEditorDialog> {
               GestureDetector(
                 onTap: () async {
                   final cells = context.read<CellsProvider>();
+                  final navigator = Navigator.of(context);
                   await cells.deleteCell(_month, _day);
-                  if (context.mounted) Navigator.of(context).pop();
+                  navigator.pop();
                 },
                 child: Container(
                   padding: const EdgeInsets.symmetric(
@@ -456,6 +457,7 @@ class _CellEditorDialogState extends State<CellEditorDialog> {
                   ? null
                   : () async {
                       final cells = context.read<CellsProvider>();
+                      final navigator = Navigator.of(context);
                       final comment = _commentController.text.trim();
                       await cells.setCell(
                         _month,
@@ -463,7 +465,7 @@ class _CellEditorDialogState extends State<CellEditorDialog> {
                         _selectedColor!,
                         comment: comment.isNotEmpty ? comment : null,
                       );
-                      if (context.mounted) Navigator.of(context).pop();
+                      navigator.pop();
                     },
               child: Container(
                 padding: const EdgeInsets.symmetric(

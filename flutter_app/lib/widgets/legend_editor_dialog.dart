@@ -276,12 +276,13 @@ class _LegendEditorDialogState extends State<LegendEditorDialog> {
       // Apply color to the legend and recolor matching cells
       final legend = _legends[_recolorIndex!];
       final oldColor = legend.color as String;
+      final cells = context.read<CellsProvider>();
       setState(() {
         _recolorIndex = null;
       });
       await _prov.updateLegend(legend.id, color: hex);
       if (oldColor != hex) {
-        await context.read<CellsProvider>().recolorCells({oldColor: hex});
+        await cells.recolorCells({oldColor: hex});
       }
       _refresh();
     } else {

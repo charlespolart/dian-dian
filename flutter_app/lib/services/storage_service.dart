@@ -8,9 +8,7 @@ class StorageService {
   static const _refreshTokenKey = 'refresh_token';
   static const _emailKey = 'user_email';
 
-  final _storage = const FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
-  );
+  final _storage = const FlutterSecureStorage();
 
   Future<String?> getRefreshToken() async {
     return _storage.read(key: _refreshTokenKey);

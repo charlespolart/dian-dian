@@ -133,9 +133,11 @@ class _TrackerScreenState extends State<TrackerScreen> {
       if (byteData == null) return;
 
       final bytes = byteData.buffer.asUint8List();
-      await Share.shareXFiles(
-        [XFile.fromData(bytes, name: '${_page.title}.png', mimeType: 'image/png')],
-        sharePositionOrigin: origin,
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile.fromData(bytes, name: '${_page.title}.png', mimeType: 'image/png')],
+          sharePositionOrigin: origin,
+        ),
       );
     } catch (e) {
       debugPrint('Export failed: $e');
