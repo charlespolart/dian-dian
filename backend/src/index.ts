@@ -85,6 +85,13 @@ setupWebSocket(server);
 // Legal pages (served before static files so routes take priority)
 app.use(legalRoutes);
 
+// AdMob app-ads.txt — verifies our domain authorizes this AdMob publisher.
+app.get('/app-ads.txt', (_req, res) => {
+  res
+    .type('text/plain')
+    .send('google.com, pub-7932342939488027, DIRECT, f08c47fec0942fa0\n');
+});
+
 // Serve Flutter web static files in production
 const webDist = path.resolve(__dirname, '../../flutter_app/build/web');
 app.use(express.static(webDist));
