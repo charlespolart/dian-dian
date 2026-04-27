@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -24,12 +25,13 @@ class SettingsScreen extends StatelessWidget {
     required this.onBack,
   });
 
-  static const String _version = '1.0.0';
-  static const String _aboutUrl = 'https://mydiandian.app/about';
-  static const String _contactUrl = 'https://mydiandian.app/contact';
-  static const String _privacyUrl = 'https://mydiandian.app/privacy';
-  static const String _termsUrl = 'https://mydiandian.app/terms';
-  static const String _legalUrl = 'https://mydiandian.app/legal';
+  static final Future<String> _versionFuture = PackageInfo.fromPlatform()
+      .then((info) => info.version);
+  static const String _aboutUrl = 'https://diandian.overridedev.com/about';
+  static const String _contactUrl = 'https://diandian.overridedev.com/contact';
+  static const String _privacyUrl = 'https://diandian.overridedev.com/privacy';
+  static const String _termsUrl = 'https://diandian.overridedev.com/terms';
+  static const String _legalUrl = 'https://diandian.overridedev.com/legal';
 
   Future<void> _openUrl(String url, {BuildContext? context}) async {
     var finalUrl = url;
@@ -147,12 +149,18 @@ class SettingsScreen extends StatelessWidget {
 
                     // Version
                     Center(
-                      child: Text(
-                        '${lang.t('settings.version')} $_version',
-                        style: AppFonts.dot(
-                          fontSize: 12,
-                          color: AppColors.textMuted,
-                        ),
+                      child: FutureBuilder<String>(
+                        future: _versionFuture,
+                        builder: (context, snapshot) {
+                          final version = snapshot.data ?? '';
+                          return Text(
+                            '${lang.t('settings.version')} $version',
+                            style: AppFonts.dot(
+                              fontSize: 12,
+                              color: AppColors.textMuted,
+                            ),
+                          );
+                        },
                       ),
                     ),
 
