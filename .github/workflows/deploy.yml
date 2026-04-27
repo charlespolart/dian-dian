@@ -35,9 +35,11 @@ jobs:
             --exclude=node_modules --exclude=dist --exclude=.env \
             backend/ $VPS_USER@$VPS_HOST:/root/dian-dian/backend/"
 
-          # Top-level orchestration files
-          $SCP_CMD Caddyfile $VPS_USER@$VPS_HOST:/root/dian-dian/Caddyfile
-          $SCP_CMD compose.yaml $VPS_USER@$VPS_HOST:/root/dian-dian/compose.yaml
+          # Top-level orchestration files — staged in /tmp so we can do an
+          # in-place rewrite on the server (preserves Caddyfile's inode, which
+          # the Caddy container needs since it's bind-mounted).
+          $SCP_CMD Caddyfile $VPS_USER@$VPS_HOST:/tmp/dian-dian-Caddyfile
+          $SCP_CMD compose.yaml $VPS_USER@$VPS_HOST:/tmp/dian-dian-compose.yaml
 
           $SSH_CMD << 'REMOTE'
             set -e
@@ -48,6 +50,14 @@ jobs:
               curl -fsSL https://get.docker.com | sh
               sudo systemctl enable --now docker
             fi
+
+            mkdir -p /root/dian-dian
+            # In-place rewrite (truncate + write) keeps the same inode, so the
+            # bind-mounted /etc/caddy/Caddyfile inside the container immediately
+            # sees the new content.
+            cat /tmp/dian-dian-Caddyfile > /root/dian-dian/Caddyfile
+            cat /tmp/dian-dian-compose.yaml > /root/dian-dian/compose.yaml
+            rm -f /tmp/dian-dian-Caddyfile /tmp/dian-dian-compose.yaml
 
             cd /root/dian-dian
 
