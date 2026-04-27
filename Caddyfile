@@ -18,3 +18,9 @@ diandian.overridedev.com {
 	# the Express backend. WebSocket upgrades are handled automatically.
 	reverse_proxy localhost:3001
 }
+
+# Legacy domain — keeps users on app v1.0.0 working until they upgrade.
+# Same backend, no caching layer (those users hit /api/* anyway).
+mydiandian.app {
+	reverse_proxy localhost:3001
+}
