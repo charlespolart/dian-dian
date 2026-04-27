@@ -1,0 +1,41 @@
+services:
+  caddy:
+    image: caddy:2-alpine
+    # network_mode: host so Caddy reaches the host's services on localhost
+    # and binds 80/443 directly without docker port-forward overhead.
+    network_mode: host
+    restart: unless-stopped
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data    # certs + ACME state, survives restarts
+      - caddy_config:/config
+
+  # Express backend. Built from ./backend on every deploy.
+  # network_mode: host → listens on host's :3001 (Caddy reaches it via
+  # localhost) and reaches Postgres at localhost:5433 either way (Docker dev
+  # postgres or a native postgres on prod).
+  backend:
+    build: ./backend
+    network_mode: host
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dian_dian
+      POSTGRES_USER: postgres
+      POSTGRES_HOST_AUTH_METHOD: trust  # password-less local-only access
+    # 127.0.0.1 ONLY — never expose Postgres on the public VPS interface.
+    # Backend (network_mode: host) reaches it via localhost:5433.
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  caddy_data:
+  caddy_config:
+  postgres_data:
