@@ -113,7 +113,7 @@ class PremiumGateDialog extends StatelessWidget {
     );
   }
 
-  static const _appStoreUrl = 'https://apps.apple.com/app/dian-dian-year-tracker/id000000000';
+  static const _appStoreUrl = 'https://apps.apple.com/app/dian-dian-year-tracker/id6761432329';
   static const _playStoreUrl = 'https://play.google.com/store/apps/details?id=app.mydiandian.dian_dian';
 
   Widget _buildStoreButtons() {

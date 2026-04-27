@@ -66,8 +66,8 @@ app.post('/api/contact', contactLimiter, async (req, res) => {
   const safeMessage = escapeHtml(message.trim()).replace(/\n/g, '<br/>');
   try {
     await resend.emails.send({
-      from: 'Dian Dian Contact <noreply@mydiandian.app>',
-      to: 'contact@mydiandian.app',
+      from: 'Dian Dian Contact <noreply@overridedev.com>',
+      to: 'contact@overridedev.com',
       replyTo: email.trim(),
       subject: `[Dian Dian] Message from ${safeName}`,
       html: `<p><strong>From:</strong> ${safeName} (${safeEmail})</p><hr/><p>${safeMessage}</p>`,
@@ -92,13 +92,11 @@ app.get('/app-ads.txt', (_req, res) => {
     .send('google.com, pub-7932342939488027, DIRECT, f08c47fec0942fa0\n');
 });
 
-// Serve Flutter web static files in production
-const webDist = path.resolve(__dirname, '../../flutter_app/build/web');
-app.use(express.static(webDist));
-
-// SPA fallback
+// Web is intentionally limited to the server-rendered landing + legal pages.
+// All app interaction (login, tracker, password reset OTP) lives in the
+// iOS/Android app — no Flutter web build is served.
 app.get('*', (_req, res) => {
-  res.sendFile(path.join(webDist, 'index.html'));
+  res.redirect(302, '/');
 });
 
 server.listen(env.PORT, () => {

@@ -20,8 +20,7 @@ function detectLang(req: Request): Lang {
 }
 
 const ui = {
-  backToApp: { en: 'Back to app', fr: "Retour à l'app", 'zh-CN': '返回应用', 'zh-TW': '返回應用' },
-  footer: { en: 'Dian Dian (点点) — mydiandian.app', fr: 'Dian Dian (点点) — mydiandian.app', 'zh-CN': '点点 — mydiandian.app', 'zh-TW': '點點 — mydiandian.app' },
+  footer: { en: 'Dian Dian (点点) — diandian.overridedev.com', fr: 'Dian Dian (点点) — diandian.overridedev.com', 'zh-CN': '点点 — diandian.overridedev.com', 'zh-TW': '點點 — diandian.overridedev.com' },
   sendMessage: { en: 'Send message', fr: 'Envoyer', 'zh-CN': '发送消息', 'zh-TW': '發送訊息' },
   sending: { en: 'Sending...', fr: 'Envoi...', 'zh-CN': '发送中...', 'zh-TW': '發送中...' },
   sent: { en: 'Message sent! We will get back to you soon.', fr: 'Message envoyé ! Nous reviendrons vers vous rapidement.', 'zh-CN': '消息已发送！我们会尽快回复。', 'zh-TW': '訊息已發送！我們會盡快回覆。' },
@@ -104,8 +103,7 @@ function layout(title: string, content: string, lang: Lang): string {
 </head>
 <body>
   <div class="container">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-      <a class="back-link" style="margin-bottom:0" href="/">&larr; ${ui.backToApp[lang]}</a>
+    <div style="display:flex;justify-content:flex-end;align-items:center;margin-bottom:16px;">
       <div class="lang-select" id="langSelect">
         <button class="lang-btn" onclick="document.getElementById('langSelect').classList.toggle('open')">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>
@@ -160,11 +158,11 @@ const privacy: Record<Lang, string> = {
     <h2>7. Data Retention &amp; Deletion</h2>
     <p>We retain your data while your account is active. You can <strong>delete your account and all data</strong> at any time from the app.</p>
     <h2>8. Your Rights (GDPR)</h2>
-    <p>If you are in the EEA, you have the right to access, correct, delete, export, or restrict processing of your data. Contact us at <a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a>.</p>
+    <p>If you are in the EEA, you have the right to access, correct, delete, export, or restrict processing of your data. Contact us at <a href="mailto:contact@overridedev.com">contact@overridedev.com</a>.</p>
     <h2>9. Changes</h2>
     <p>We may update this policy. Material changes will be communicated via email.</p>
     <h2>10. Contact</h2>
-    <p>Questions? <a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a></p>`,
+    <p>Questions? <a href="mailto:contact@overridedev.com">contact@overridedev.com</a></p>`,
   fr: `
     <h1>Politique de confidentialité</h1>
     <p class="subtitle">Dernière mise à jour : 14 avril 2026</p>
@@ -196,11 +194,11 @@ const privacy: Record<Lang, string> = {
     <h2>7. Conservation et suppression</h2>
     <p>Nous conservons vos données tant que votre compte est actif. Vous pouvez <strong>supprimer votre compte et toutes vos données</strong> à tout moment depuis l'application.</p>
     <h2>8. Vos droits (RGPD)</h2>
-    <p>Si vous êtes dans l'EEE, vous avez le droit d'accéder, corriger, supprimer, exporter ou restreindre le traitement de vos données. Contactez-nous à <a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a>.</p>
+    <p>Si vous êtes dans l'EEE, vous avez le droit d'accéder, corriger, supprimer, exporter ou restreindre le traitement de vos données. Contactez-nous à <a href="mailto:contact@overridedev.com">contact@overridedev.com</a>.</p>
     <h2>9. Modifications</h2>
     <p>Nous pouvons mettre à jour cette politique. Les changements importants seront communiqués par email.</p>
     <h2>10. Contact</h2>
-    <p>Questions ? <a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a></p>`,
+    <p>Questions ? <a href="mailto:contact@overridedev.com">contact@overridedev.com</a></p>`,
   'zh-CN': `
     <h1>隐私政策</h1>
     <p class="subtitle">最后更新：2026年4月14日</p>
@@ -232,11 +230,11 @@ const privacy: Record<Lang, string> = {
     <h2>7. 数据保留与删除</h2>
     <p>账户活跃期间保留数据。您可以随时从应用中<strong>删除账户和所有数据</strong>。</p>
     <h2>8. 您的权利（GDPR）</h2>
-    <p>如果您在欧洲经济区，您有权访问、更正、删除、导出或限制处理您的数据。请联系 <a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a>。</p>
+    <p>如果您在欧洲经济区，您有权访问、更正、删除、导出或限制处理您的数据。请联系 <a href="mailto:contact@overridedev.com">contact@overridedev.com</a>。</p>
     <h2>9. 变更</h2>
     <p>我们可能会更新本政策。重大变更将通过电子邮件通知。</p>
     <h2>10. 联系</h2>
-    <p>有问题？<a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a></p>`,
+    <p>有问题？<a href="mailto:contact@overridedev.com">contact@overridedev.com</a></p>`,
   'zh-TW': `
     <h1>隱私權政策</h1>
     <p class="subtitle">最後更新：2026年4月14日</p>
@@ -268,11 +266,11 @@ const privacy: Record<Lang, string> = {
     <h2>7. 資料保留與刪除</h2>
     <p>帳戶活躍期間保留資料。您可以隨時從應用程式中<strong>刪除帳戶和所有資料</strong>。</p>
     <h2>8. 您的權利（GDPR）</h2>
-    <p>如果您在歐洲經濟區，您有權存取、更正、刪除、匯出或限制處理您的資料。請聯繫 <a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a>。</p>
+    <p>如果您在歐洲經濟區，您有權存取、更正、刪除、匯出或限制處理您的資料。請聯繫 <a href="mailto:contact@overridedev.com">contact@overridedev.com</a>。</p>
     <h2>9. 變更</h2>
     <p>我們可能會更新本政策。重大變更將透過電子郵件通知。</p>
     <h2>10. 聯繫</h2>
-    <p>有問題？<a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a></p>`,
+    <p>有問題？<a href="mailto:contact@overridedev.com">contact@overridedev.com</a></p>`,
 };
 
 router.get('/privacy', (req, res) => {
@@ -307,7 +305,7 @@ const terms: Record<Lang, string> = {
     <h2>8. Changes</h2>
     <p>We may update these Terms. Material changes will be communicated via email.</p>
     <h2>9. Contact</h2>
-    <p>Questions? <a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a></p>`,
+    <p>Questions? <a href="mailto:contact@overridedev.com">contact@overridedev.com</a></p>`,
   fr: `
     <h1>Conditions d'utilisation</h1>
     <p class="subtitle">Dernière mise à jour : 26 mars 2026</p>
@@ -332,7 +330,7 @@ const terms: Record<Lang, string> = {
     <h2>8. Modifications</h2>
     <p>Nous pouvons mettre à jour ces Conditions. Les changements importants seront communiqués par email.</p>
     <h2>9. Contact</h2>
-    <p>Questions ? <a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a></p>`,
+    <p>Questions ? <a href="mailto:contact@overridedev.com">contact@overridedev.com</a></p>`,
   'zh-CN': `
     <h1>使用条款</h1>
     <p class="subtitle">最后更新：2026年3月26日</p>
@@ -357,7 +355,7 @@ const terms: Record<Lang, string> = {
     <h2>8. 变更</h2>
     <p>我们可能会更新这些条款。重大变更将通过电子邮件通知。</p>
     <h2>9. 联系</h2>
-    <p>有问题？<a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a></p>`,
+    <p>有问题？<a href="mailto:contact@overridedev.com">contact@overridedev.com</a></p>`,
   'zh-TW': `
     <h1>使用條款</h1>
     <p class="subtitle">最後更新：2026年3月26日</p>
@@ -382,7 +380,7 @@ const terms: Record<Lang, string> = {
     <h2>8. 變更</h2>
     <p>我們可能會更新這些條款。重大變更將透過電子郵件通知。</p>
     <h2>9. 聯繫</h2>
-    <p>有問題？<a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a></p>`,
+    <p>有問題？<a href="mailto:contact@overridedev.com">contact@overridedev.com</a></p>`,
 };
 
 router.get('/terms', (req, res) => {
@@ -480,8 +478,8 @@ function contactContent(lang: Lang): string {
     <p class="subtitle">${{ en: "We'd love to hear from you", fr: 'Nous serions ravis de vous entendre', 'zh-CN': '我们很想听到您的意见', 'zh-TW': '我們很想聽到您的意見' }[lang]}</p>
 
     <p style="text-align:center;margin-top:24px;">
-      <a href="mailto:contact@mydiandian.app" style="display:inline-block;padding:12px 24px;background:#d8e8c8;border:2px solid #b0c8a0;border-radius:10px;color:#708060;text-decoration:none;font-family:'Silkscreen',monospace;font-size:13px;">
-        contact@mydiandian.app
+      <a href="mailto:contact@overridedev.com" style="display:inline-block;padding:12px 24px;background:#d8e8c8;border:2px solid #b0c8a0;border-radius:10px;color:#708060;text-decoration:none;font-family:'Silkscreen',monospace;font-size:13px;">
+        contact@overridedev.com
       </a>
     </p>
 
@@ -508,7 +506,7 @@ const legal: Record<Lang, string> = {
       <li><strong>SIREN:</strong> 953 122 868</li>
       <li><strong>Registered office:</strong> 12 Rue de Porspol, 29660 Carantec, France</li>
       <li><strong>Publication director:</strong> Charles Polart</li>
-      <li><strong>Contact:</strong> <a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a></li>
+      <li><strong>Contact:</strong> <a href="mailto:contact@overridedev.com">contact@overridedev.com</a></li>
     </ul>
     <h2>Hosting</h2>
     <ul>
@@ -526,7 +524,7 @@ const legal: Record<Lang, string> = {
       <li><strong>SIREN :</strong> 953 122 868</li>
       <li><strong>Siège social :</strong> 12 Rue de Porspol, 29660 Carantec, France</li>
       <li><strong>Directeur de la publication :</strong> Charles Polart</li>
-      <li><strong>Contact :</strong> <a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a></li>
+      <li><strong>Contact :</strong> <a href="mailto:contact@overridedev.com">contact@overridedev.com</a></li>
     </ul>
     <h2>Hébergement</h2>
     <ul>
@@ -544,7 +542,7 @@ const legal: Record<Lang, string> = {
       <li><strong>SIREN：</strong>953 122 868</li>
       <li><strong>注册地址：</strong>12 Rue de Porspol, 29660 Carantec, France</li>
       <li><strong>出版总监：</strong>Charles Polart</li>
-      <li><strong>联系方式：</strong><a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a></li>
+      <li><strong>联系方式：</strong><a href="mailto:contact@overridedev.com">contact@overridedev.com</a></li>
     </ul>
     <h2>托管服务</h2>
     <ul>
@@ -562,7 +560,7 @@ const legal: Record<Lang, string> = {
       <li><strong>SIREN：</strong>953 122 868</li>
       <li><strong>註冊地址：</strong>12 Rue de Porspol, 29660 Carantec, France</li>
       <li><strong>出版總監：</strong>Charles Polart</li>
-      <li><strong>聯繫方式：</strong><a href="mailto:contact@mydiandian.app">contact@mydiandian.app</a></li>
+      <li><strong>聯繫方式：</strong><a href="mailto:contact@overridedev.com">contact@overridedev.com</a></li>
     </ul>
     <h2>託管服務</h2>
     <ul>
@@ -575,6 +573,69 @@ const legal: Record<Lang, string> = {
 router.get('/legal', (req, res) => {
   const lang = detectLang(req);
   res.type('html').send(layout(lang === 'fr' ? 'Mentions légales' : lang.startsWith('zh') ? '法律声明' : 'Legal Notice', legal[lang], lang));
+});
+
+// ── Landing (root) ──
+
+const landing: Record<Lang, string> = {
+  en: `
+    <h1 style="text-align:center;font-size:48px;color:#3b2e14;margin-bottom:8px;">点点</h1>
+    <p style="text-align:center;font-family:'Silkscreen',monospace;font-size:14px;color:#a0855b;margin-bottom:32px;">Dian Dian — Year Tracker</p>
+    <p style="text-align:center;font-size:16px;margin-bottom:32px;">Color every day of your year. Track habits, mood, periods — anything you want.</p>
+    <p style="text-align:center;margin-bottom:48px;">
+      <a href="https://apps.apple.com/app/id6761432329" style="display:inline-block;padding:12px 24px;background:#d8e8c8;border:2px solid #708060;border-radius:8px;color:#3b2e14;text-decoration:none;font-family:'Silkscreen',monospace;font-size:14px;">Download on the App Store</a>
+    </p>
+    <p style="text-align:center;font-size:13px;color:#a0855b;">
+      <a href="/privacy" style="margin:0 8px;">Privacy</a> ·
+      <a href="/terms" style="margin:0 8px;">Terms</a> ·
+      <a href="/legal" style="margin:0 8px;">Legal Notice</a> ·
+      <a href="/contact" style="margin:0 8px;">Contact</a>
+    </p>`,
+  fr: `
+    <h1 style="text-align:center;font-size:48px;color:#3b2e14;margin-bottom:8px;">点点</h1>
+    <p style="text-align:center;font-family:'Silkscreen',monospace;font-size:14px;color:#a0855b;margin-bottom:32px;">Dian Dian — Tracker annuel</p>
+    <p style="text-align:center;font-size:16px;margin-bottom:32px;">Coloriez chaque jour de votre année. Suivez vos habitudes, humeur, règles — tout ce que vous voulez.</p>
+    <p style="text-align:center;margin-bottom:48px;">
+      <a href="https://apps.apple.com/app/id6761432329" style="display:inline-block;padding:12px 24px;background:#d8e8c8;border:2px solid #708060;border-radius:8px;color:#3b2e14;text-decoration:none;font-family:'Silkscreen',monospace;font-size:14px;">Télécharger sur l'App Store</a>
+    </p>
+    <p style="text-align:center;font-size:13px;color:#a0855b;">
+      <a href="/privacy" style="margin:0 8px;">Confidentialité</a> ·
+      <a href="/terms" style="margin:0 8px;">CGU</a> ·
+      <a href="/legal" style="margin:0 8px;">Mentions légales</a> ·
+      <a href="/contact" style="margin:0 8px;">Contact</a>
+    </p>`,
+  'zh-CN': `
+    <h1 style="text-align:center;font-size:48px;color:#3b2e14;margin-bottom:8px;">点点</h1>
+    <p style="text-align:center;font-family:'Silkscreen',monospace;font-size:14px;color:#a0855b;margin-bottom:32px;">Dian Dian — 年度追踪器</p>
+    <p style="text-align:center;font-size:16px;margin-bottom:32px;">为您一年中的每一天上色。追踪习惯、心情、周期——任何您想要的。</p>
+    <p style="text-align:center;margin-bottom:48px;">
+      <a href="https://apps.apple.com/app/id6761432329" style="display:inline-block;padding:12px 24px;background:#d8e8c8;border:2px solid #708060;border-radius:8px;color:#3b2e14;text-decoration:none;font-family:'Silkscreen',monospace;font-size:14px;">在 App Store 下载</a>
+    </p>
+    <p style="text-align:center;font-size:13px;color:#a0855b;">
+      <a href="/privacy" style="margin:0 8px;">隐私</a> ·
+      <a href="/terms" style="margin:0 8px;">条款</a> ·
+      <a href="/legal" style="margin:0 8px;">法律声明</a> ·
+      <a href="/contact" style="margin:0 8px;">联系</a>
+    </p>`,
+  'zh-TW': `
+    <h1 style="text-align:center;font-size:48px;color:#3b2e14;margin-bottom:8px;">點點</h1>
+    <p style="text-align:center;font-family:'Silkscreen',monospace;font-size:14px;color:#a0855b;margin-bottom:32px;">Dian Dian — 年度追蹤器</p>
+    <p style="text-align:center;font-size:16px;margin-bottom:32px;">為您一年中的每一天上色。追蹤習慣、心情、週期——任何您想要的。</p>
+    <p style="text-align:center;margin-bottom:48px;">
+      <a href="https://apps.apple.com/app/id6761432329" style="display:inline-block;padding:12px 24px;background:#d8e8c8;border:2px solid #708060;border-radius:8px;color:#3b2e14;text-decoration:none;font-family:'Silkscreen',monospace;font-size:14px;">在 App Store 下載</a>
+    </p>
+    <p style="text-align:center;font-size:13px;color:#a0855b;">
+      <a href="/privacy" style="margin:0 8px;">隱私</a> ·
+      <a href="/terms" style="margin:0 8px;">條款</a> ·
+      <a href="/legal" style="margin:0 8px;">法律聲明</a> ·
+      <a href="/contact" style="margin:0 8px;">聯繫</a>
+    </p>`,
+};
+
+router.get('/', (req, res) => {
+  const lang = detectLang(req);
+  const titles = { en: 'Year Tracker', fr: 'Tracker annuel', 'zh-CN': '年度追踪器', 'zh-TW': '年度追蹤器' };
+  res.type('html').send(layout(titles[lang], landing[lang], lang));
 });
 
 export default router;
