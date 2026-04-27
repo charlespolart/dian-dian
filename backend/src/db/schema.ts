@@ -3,7 +3,8 @@ import { pgTable, uuid, text, smallint, integer, boolean, timestamp, primaryKey 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
   email: text('email').notNull().unique(),
-  passwordHash: text('password_hash').notNull(),
+  // Null for users who only sign in via OAuth — their identity comes from oauth_accounts.
+  passwordHash: text('password_hash'),
   emailVerified: boolean('email_verified').notNull().default(false),
   vip: boolean('vip').notNull().default(false),
   theme: text('theme').notNull().default('defaultTheme'),
@@ -13,10 +14,24 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+// Links a user to an OAuth provider's stable user id ("subject"). A single user
+// row can have multiple oauth_accounts rows (e.g. both Apple and Google linked).
+export const oauthAccounts = pgTable('oauth_accounts', {
+  provider: text('provider').notNull(), // 'apple' | 'google'
+  subject: text('subject').notNull(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  primaryKey({ columns: [t.provider, t.subject] }),
+]);
+
+// Stores a hashed 6-digit OTP code for password reset (not a link token).
+// `attempts` caps brute-force guessing — code is invalidated after 5 wrong tries.
 export const passwordResetTokens = pgTable('password_reset_tokens', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   tokenHash: text('token_hash').notNull(),
+  attempts: integer('attempts').notNull().default(0),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });

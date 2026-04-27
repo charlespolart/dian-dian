@@ -11,7 +11,6 @@ import 'providers/theme_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/forgot_password_screen.dart';
-import 'screens/reset_password_screen.dart';
 import 'screens/page_list_screen.dart';
 import 'screens/tracker_screen.dart';
 import 'screens/onboarding_screen.dart';
@@ -83,28 +82,16 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-enum AppScreen { login, register, forgotPassword, resetPassword, onboarding, pageList, tracker, settings }
+enum AppScreen { login, register, forgotPassword, onboarding, pageList, tracker, settings }
 
 class _AppShellState extends State<AppShell> {
   AppScreen _screen = AppScreen.login;
   String? _activePageId;
-  String? _resetToken;
   int _selectedYear = DateTime.now().year;
 
   @override
   void initState() {
     super.initState();
-    // Email reset-password links open the web build at /reset-password?token=xxx.
-    // On native, Uri.base is file:// so this no-ops.
-    final uri = Uri.base;
-    if (uri.path.endsWith('/reset-password')) {
-      final token = uri.queryParameters['token'];
-      if (token != null && token.isNotEmpty) {
-        _screen = AppScreen.resetPassword;
-        _resetToken = token;
-      }
-    }
-    // Reset to login on auth expiry
     final auth = context.read<AuthProvider>();
     auth.addListener(_onAuthChange);
   }
@@ -148,8 +135,7 @@ class _AppShellState extends State<AppShell> {
       }
     }
     if (!auth.isAuthenticated && _screen != AppScreen.login &&
-        _screen != AppScreen.register && _screen != AppScreen.forgotPassword &&
-        _screen != AppScreen.resetPassword) {
+        _screen != AppScreen.register && _screen != AppScreen.forgotPassword) {
       // Cancel any pending page deletion on logout
       context.read<PagesProvider>().cancelPendingDelete();
       setState(() {
@@ -229,12 +215,6 @@ class _AppShellState extends State<AppShell> {
         return ForgotPasswordScreen(
           key: const ValueKey('forgot'),
           onBack: () => _navigate(AppScreen.login),
-        );
-      case AppScreen.resetPassword:
-        return ResetPasswordScreen(
-          key: ValueKey('reset_${_resetToken ?? ''}'),
-          token: _resetToken ?? '',
-          onBackToLogin: () => _navigate(AppScreen.login),
         );
       default:
         return LoginScreen(
