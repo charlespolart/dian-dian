@@ -60,7 +60,7 @@ function layout(title: string, content: string, lang: Lang): string {
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
     }
-    .container { max-width: 640px; margin: 0 auto; }
+    .container { max-width: 640px; margin: 0 auto; position: relative; }
     .back-link {
       display: inline-block; margin-bottom: 24px; color: #a0855b;
       text-decoration: none; font-family: 'Silkscreen', monospace; font-size: 13px;
@@ -77,8 +77,10 @@ function layout(title: string, content: string, lang: Lang): string {
     hr { border: none; border-top: 2px dashed #d4c99a; margin: 32px 0; }
     .footer { margin-top: 48px; font-size: 12px; color: #a0855b; text-align: center; }
     .lang-select {
-      position: relative; display: inline-block; font-family: 'Silkscreen', monospace; font-size: 11px;
+      position: absolute; top: 0; right: 0; display: inline-block;
+      font-family: 'Silkscreen', monospace; font-size: 11px;
     }
+    .lang-menu-wrap { position: relative; }
     .lang-btn {
       display: flex; align-items: center; gap: 4px; padding: 5px 10px;
       background: #ebe5c5; border: 1.5px solid #d4c99a; border-radius: 8px;
@@ -103,8 +105,8 @@ function layout(title: string, content: string, lang: Lang): string {
 </head>
 <body>
   <div class="container">
-    <div style="display:flex;justify-content:flex-end;align-items:center;margin-bottom:16px;">
-      <div class="lang-select" id="langSelect">
+    <div class="lang-select" id="langSelect">
+      <div class="lang-menu-wrap">
         <button class="lang-btn" onclick="document.getElementById('langSelect').classList.toggle('open')">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>
           ${{ en: 'EN', fr: 'FR', 'zh-CN': '简', 'zh-TW': '繁' }[lang]}
