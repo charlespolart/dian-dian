@@ -1,0 +1,20 @@
+diandian.overridedev.com {
+	encode gzip
+
+	# Hashed/versioned assets — safe to cache long.
+	@hashed path_regexp ^/(assets|canvaskit|fonts|icons)/
+	header @hashed Cache-Control "public, max-age=2592000, immutable"
+
+	# main.dart.js / index.html / wasm — change every build but keep the same
+	# filename, so MUST revalidate.
+	@mutable path_regexp \.(js|css|html|json|wasm)$
+	header @mutable Cache-Control "no-cache, must-revalidate"
+
+	# Root images / fonts — short cache.
+	@media path_regexp \.(png|jpg|jpeg|gif|ico|svg|woff2?)$
+	header @media Cache-Control "public, max-age=86400, must-revalidate"
+
+	# Everything else (API, /reset-password, legal pages, etc.) — proxy to
+	# the Express backend. WebSocket upgrades are handled automatically.
+	reverse_proxy localhost:3001
+}

@@ -28,6 +28,17 @@
 	<false/>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-7932342939488027~8345138925</string>
+	<key>GIDClientID</key>
+	<string>1095494651933-1urfthmoit2psn69l0he340fdg14didm.apps.googleusercontent.com</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.1095494651933-1urfthmoit2psn69l0he340fdg14didm</string>
+			</array>
+		</dict>
+	</array>
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict>

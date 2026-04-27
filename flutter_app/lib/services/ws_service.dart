@@ -32,7 +32,7 @@ class WsService {
   final List<WsListener> _listeners = [];
 
   static String get _baseWsUrl =>
-      kDebugMode ? 'ws://localhost:3001' : 'wss://mydiandian.app';
+      kDebugMode ? 'ws://localhost:3001' : 'wss://diandian.overridedev.com';
 
   bool get isConnected => _channel != null;
 

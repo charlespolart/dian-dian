@@ -6,6 +6,8 @@ import '../providers/language_provider.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/language_dropdown.dart';
+import '../widgets/oauth_buttons.dart';
+import '../widgets/password_field.dart';
 
 class RegisterScreen extends StatefulWidget {
   final VoidCallback onSwitchToLogin;
@@ -135,6 +137,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 20),
 
+                    OAuthButtons(
+                      onError: (msg) => setState(() => _error = msg),
+                    ),
+
                     // Email
                     TextField(
                       controller: _emailController,
@@ -156,39 +162,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: 12),
 
                     // Password
-                    TextField(
+                    PasswordField(
                       controller: _passwordController,
-                      obscureText: true,
+                      labelText: lang.t('auth.password'),
                       autofillHints: const [AutofillHints.newPassword],
-                      style: AppFonts.dot(
-                        fontSize: 14,
-                        color: AppColors.inputText,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: lang.t('auth.password'),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 12,
-                        ),
-                      ),
                     ),
                     const SizedBox(height: 12),
 
                     // Confirm password
-                    TextField(
+                    PasswordField(
                       controller: _confirmPasswordController,
-                      obscureText: true,
-                      style: AppFonts.dot(
-                        fontSize: 14,
-                        color: AppColors.inputText,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: lang.t('auth.confirmPassword'),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 12,
-                        ),
-                      ),
+                      labelText: lang.t('auth.confirmPassword'),
                       onSubmitted: (_) => _register(),
                     ),
                     const SizedBox(height: 16),

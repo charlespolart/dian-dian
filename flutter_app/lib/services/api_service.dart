@@ -19,7 +19,7 @@ class ApiService {
   VoidCallback? onAuthExpired;
 
   static String get baseUrl =>
-      kDebugMode ? 'http://localhost:3001' : 'https://mydiandian.app';
+      kDebugMode ? 'http://localhost:3001' : 'https://diandian.overridedev.com';
 
   String? get accessToken => _accessToken;
 
@@ -186,12 +186,35 @@ class ApiService {
     }
   }
 
-  Future<void> resetPassword(String token, String password) async {
+  Future<Map<String, dynamic>> oauthSignIn({
+    required String provider,
+    required String identityToken,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/auth/oauth');
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'provider': provider, 'identityToken': identityToken}),
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw ApiException(response.statusCode, _errorMessage(response));
+    }
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    _accessToken = data['accessToken'] as String;
+    await _storage.setRefreshToken(data['refreshToken'] as String);
+    return data;
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String code,
+    required String password,
+  }) async {
     final uri = Uri.parse('$baseUrl/api/auth/reset-password');
     final response = await http.post(
       uri,
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'token': token, 'password': password}),
+      body: jsonEncode({'email': email, 'code': code, 'password': password}),
     );
 
     if (response.statusCode != 200) {

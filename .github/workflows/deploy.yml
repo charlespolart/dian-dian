@@ -5,37 +5,11 @@ on:
     branches: [master]
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      # ── Backend build ──
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: backend/package-lock.json
-
-      - name: Build backend
-        working-directory: backend
-        run: |
-          npm ci
-          npm run build
-
-      # ── Flutter web build ──
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-
-      - name: Build Flutter web
-        working-directory: flutter_app
-        run: |
-          flutter pub get
-          flutter build web --release
-
-      # ── Deploy to VPS ──
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
@@ -50,38 +24,40 @@ jobs:
         run: |
           SSH_CMD="ssh -i ~/.ssh/id_deploy $VPS_USER@$VPS_HOST"
           SCP_CMD="scp -i ~/.ssh/id_deploy"
+          RSYNC="rsync -az -e 'ssh -i ~/.ssh/id_deploy'"
 
-          # Create directories on server
-          $SSH_CMD "mkdir -p /root/dian-dian/backend/dist /root/dian-dian/backend/drizzle /root/dian-dian/flutter_app/build/web"
+          $SSH_CMD "mkdir -p /root/dian-dian/backend"
 
-          # Sync backend (built files + node_modules + migrations)
-          rsync -az --delete \
-            -e "ssh -i ~/.ssh/id_deploy" \
-            backend/dist/ \
-            $VPS_USER@$VPS_HOST:/root/dian-dian/backend/dist/
+          # Backend source (Dockerfile builds it inside the image; we sync
+          # everything except node_modules / dist / .env which are produced or
+          # injected at runtime).
+          eval "$RSYNC --delete \
+            --exclude=node_modules --exclude=dist --exclude=.env \
+            backend/ $VPS_USER@$VPS_HOST:/root/dian-dian/backend/"
 
-          rsync -az \
-            -e "ssh -i ~/.ssh/id_deploy" \
-            backend/drizzle/ \
-            $VPS_USER@$VPS_HOST:/root/dian-dian/backend/drizzle/
+          # Top-level orchestration files
+          $SCP_CMD Caddyfile $VPS_USER@$VPS_HOST:/root/dian-dian/Caddyfile
+          $SCP_CMD compose.yaml $VPS_USER@$VPS_HOST:/root/dian-dian/compose.yaml
 
-          $SCP_CMD backend/package.json $VPS_USER@$VPS_HOST:/root/dian-dian/backend/package.json
-          $SCP_CMD backend/package-lock.json $VPS_USER@$VPS_HOST:/root/dian-dian/backend/package-lock.json
-          $SCP_CMD backend/drizzle.config.ts $VPS_USER@$VPS_HOST:/root/dian-dian/backend/drizzle.config.ts
-
-          # Sync Flutter web build
-          rsync -az --delete \
-            -e "ssh -i ~/.ssh/id_deploy" \
-            flutter_app/build/web/ \
-            $VPS_USER@$VPS_HOST:/root/dian-dian/flutter_app/build/web/
-
-          # Install deps, migrate, prune, restart on server
           $SSH_CMD << 'REMOTE'
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-            cd /root/dian-dian/backend
-            npm ci
-            npx drizzle-kit migrate
-            npm prune --omit=dev
-            sudo systemctl restart diandian
+            set -e
+
+            # First-run bootstrap: install Docker + Compose v2 if absent.
+            if ! command -v docker >/dev/null 2>&1; then
+              echo "Installing Docker..."
+              curl -fsSL https://get.docker.com | sh
+              sudo systemctl enable --now docker
+            fi
+
+            cd /root/dian-dian
+
+            sudo docker compose build backend
+            sudo docker compose up -d postgres caddy backend
+
+            # Wait for backend to be ready, then run migrations inside the container.
+            sleep 2
+            sudo docker compose exec -T backend npx drizzle-kit migrate
+
+            sudo docker compose exec -T caddy caddy validate --config /etc/caddy/Caddyfile
+            sudo docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile
           REMOTE

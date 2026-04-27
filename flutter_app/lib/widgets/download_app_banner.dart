@@ -18,7 +18,7 @@ class _DownloadAppBannerState extends State<DownloadAppBanner> {
   bool _dismissed = false;
 
   // TODO: replace with real store URLs once published
-  static const _appStoreUrl = 'https://apps.apple.com/app/dian-dian-year-tracker/id000000000';
+  static const _appStoreUrl = 'https://apps.apple.com/app/dian-dian-year-tracker/id6761432329';
   static const _playStoreUrl = 'https://play.google.com/store/apps/details?id=app.mydiandian.dian_dian';
 
   Future<void> _openUrl(String url) async {

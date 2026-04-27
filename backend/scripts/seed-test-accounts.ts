@@ -8,8 +8,8 @@ import { db } from '../src/db/index.js';
 import { users, pages, legends, cells, subscriptions } from '../src/db/schema.js';
 import { eq } from 'drizzle-orm';
 
-const PREMIUM_EMAIL = 'premium@mydiandian.app';
-const FREE_EMAIL = 'free@mydiandian.app';
+const PREMIUM_EMAIL = 'premium@overridedev.com';
+const FREE_EMAIL = 'free@overridedev.com';
 const PASSWORD = 'TestTest123!';
 
 async function main() {

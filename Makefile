@@ -1,13 +1,16 @@
-.PHONY: app app-web back ipa help
+.PHONY: app back db db-down ipa help
 
 app:     ## Flutter (prompts device if multiple)
 	cd flutter_app && flutter run
 
-app-web: ## Flutter on Chrome
-	cd flutter_app && flutter run -d chrome
-
 back:    ## Backend (tsx watch)
 	cd backend && npm run dev
+
+db:      ## Start Postgres in Docker
+	docker compose up -d postgres
+
+db-down: ## Stop Postgres container
+	docker compose stop postgres
 
 ipa:     ## Build iOS App Store IPA
 	cd flutter_app && flutter build ipa --release && open build/ios/ipa

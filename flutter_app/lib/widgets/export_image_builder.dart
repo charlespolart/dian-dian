@@ -287,7 +287,7 @@ class _ExportLayout extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                'mydiandian.app',
+                'diandian.overridedev.com',
                 style: AppFonts.dot(fontSize: 10, color: AppColors.textMuted),
               ),
             ],
