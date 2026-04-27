@@ -6,6 +6,13 @@ function required(key: string): string {
   return value;
 }
 
+function commaList(key: string): string[] {
+  return (process.env[key] || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 export const env = {
   DATABASE_URL: required('DATABASE_URL'),
   JWT_SECRET: required('JWT_SECRET'),
@@ -13,4 +20,10 @@ export const env = {
   PORT: parseInt(process.env.PORT || '3000', 10),
   CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:8081',
   APP_URL: process.env.APP_URL || 'http://localhost:8081',
+  // Bundle ids accepted as Apple identity-token `aud`. Must include each iOS
+  // app id that uses Sign in with Apple (e.g. app.mydiandian).
+  APPLE_BUNDLE_IDS: commaList('APPLE_BUNDLE_IDS'),
+  // Google OAuth 2.0 client ids accepted as ID-token `aud` (iOS + Android +
+  // Web each have their own client id in Google Cloud Console).
+  GOOGLE_CLIENT_IDS: commaList('GOOGLE_CLIENT_IDS'),
 };

@@ -61,6 +61,25 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Signs in (or signs up) via Apple/Google. Pass the provider id ('apple' or
+  /// 'google') and the identity token returned by the platform SDK.
+  Future<void> oauthSignIn({required String provider, required String identityToken}) async {
+    final data = await _api.oauthSignIn(provider: provider, identityToken: identityToken);
+    _email = data['email'] as String? ?? _email;
+    _isVip = data['vip'] == true;
+    _serverSettings = {
+      'theme': data['theme'],
+      'language': data['language'],
+      'cursorId': data['cursorId'],
+      'cursorEnabled': data['cursorEnabled'],
+      'premium': data['premium'],
+    };
+    if (_email != null) await _storage.setEmail(_email!);
+    _isAuthenticated = true;
+    _ws.connect();
+    notifyListeners();
+  }
+
   Future<void> logout() async {
     _ws.disconnect();
     try {

@@ -6,6 +6,8 @@ import '../providers/language_provider.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/language_dropdown.dart';
+import '../widgets/oauth_buttons.dart';
+import '../widgets/password_field.dart';
 
 class LoginScreen extends StatefulWidget {
   final VoidCallback onSwitchToRegister;
@@ -133,6 +135,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 20),
 
+                    OAuthButtons(
+                      onError: (msg) => setState(() => _error = msg),
+                    ),
+
                     // Email
                     TextField(
                       controller: _emailController,
@@ -154,21 +160,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 12),
 
                     // Password
-                    TextField(
+                    PasswordField(
                       controller: _passwordController,
-                      obscureText: true,
+                      labelText: lang.t('auth.password'),
                       autofillHints: const [AutofillHints.password],
-                      style: AppFonts.dot(
-                        fontSize: 14,
-                        color: AppColors.inputText,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: lang.t('auth.password'),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 12,
-                        ),
-                      ),
                       onSubmitted: (_) => _login(),
                     ),
                     const SizedBox(height: 8),
