@@ -43,6 +43,9 @@ class TrackerGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final today = DateTime.now();
+    final showToday = year == today.year;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final hasW = constraints.maxWidth.isFinite;
@@ -140,6 +143,9 @@ class TrackerGrid extends StatelessWidget {
                         final maxDays = getDaysInMonth(month, year);
                         final valid = day <= maxDays;
                         final color = valid ? getCellColor(month, day) : null;
+                        final isToday = showToday &&
+                            month == today.month &&
+                            day == today.day;
 
                         return SizedBox(
                           width: cellSize,
@@ -147,21 +153,38 @@ class TrackerGrid extends StatelessWidget {
                             child: GestureDetector(
                               onTap: valid ? () => onCellPress(month, day) : null,
                               child: valid
-                                  ? Container(
-                                      width: dotSize,
-                                      height: dotSize,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: color != null
-                                            ? _parseColor(color)
-                                            : AppColors.dotEmpty,
-                                        border: color == null
-                                            ? Border.all(
-                                                color: AppColors.dotBorder,
-                                                width: 0.5,
-                                              )
-                                            : null,
-                                      ),
+                                  ? Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        Container(
+                                          width: dotSize,
+                                          height: dotSize,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: color != null
+                                                ? _parseColor(color)
+                                                : AppColors.dotEmpty,
+                                            border: color == null
+                                                ? Border.all(
+                                                    color: AppColors.dotBorder,
+                                                    width: 0.5,
+                                                  )
+                                                : null,
+                                          ),
+                                        ),
+                                        if (isToday)
+                                          Container(
+                                            width: dotSize + 4,
+                                            height: dotSize + 4,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: AppColors.accent,
+                                                width: 1.5,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
                                     )
                                   : SizedBox(width: dotSize, height: dotSize),
                             ),
