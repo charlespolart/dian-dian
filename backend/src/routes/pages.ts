@@ -26,7 +26,6 @@ router.get('/', async (req, res) => {
 
 const createPageSchema = z.object({
   title: z.string().min(1).max(35).default('New Tracker'),
-  year: z.number().int().min(2000).max(2100).default(new Date().getFullYear()),
   position: z.number().int().min(0).default(0),
 });
 

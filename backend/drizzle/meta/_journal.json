@@ -71,6 +71,13 @@
       "when": 1777273340993,
       "tag": "0009_open_shadowcat",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1777559266683,
+      "tag": "0010_jittery_wither",
+      "breakpoints": true
     }
   ]
 }

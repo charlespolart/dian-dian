@@ -1,5 +1,6 @@
 class CellModel {
   final String pageId;
+  final int year;
   final int month;
   final int day;
   final String color;
@@ -8,6 +9,7 @@ class CellModel {
 
   const CellModel({
     required this.pageId,
+    required this.year,
     required this.month,
     required this.day,
     required this.color,
@@ -18,6 +20,7 @@ class CellModel {
   factory CellModel.fromJson(Map<String, dynamic> json) {
     return CellModel(
       pageId: (json['pageId'] ?? json['page_id'] ?? '') as String,
+      year: (json['year'] ?? DateTime.now().year) as int,
       month: (json['month'] ?? 1) as int,
       day: (json['day'] ?? 1) as int,
       color: (json['color'] ?? '') as String,
@@ -29,6 +32,7 @@ class CellModel {
   Map<String, dynamic> toJson() {
     return {
       'page_id': pageId,
+      'year': year,
       'month': month,
       'day': day,
       'color': color,
@@ -39,6 +43,7 @@ class CellModel {
 
   CellModel copyWith({
     String? pageId,
+    int? year,
     int? month,
     int? day,
     String? color,
@@ -47,6 +52,7 @@ class CellModel {
   }) {
     return CellModel(
       pageId: pageId ?? this.pageId,
+      year: year ?? this.year,
       month: month ?? this.month,
       day: day ?? this.day,
       color: color ?? this.color,

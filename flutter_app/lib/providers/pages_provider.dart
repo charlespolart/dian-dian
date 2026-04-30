@@ -42,14 +42,13 @@ class PagesProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> createPage(String title, {int? year}) async {
+  Future<void> createPage(String title) async {
     try {
       final response = await _api.apiFetch(
         '/api/pages',
         method: 'POST',
         body: {
           'title': title,
-          'year': year ?? DateTime.now().year,
           'position': _pages.length,
         },
       );
