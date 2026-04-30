@@ -22,14 +22,17 @@ import 'package:flutter/services.dart';
 import 'widgets/undo_delete_bar.dart';
 
 import 'services/ad_service.dart';
+import 'services/purchase_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
     statusBarColor: AppColors.bg,
     statusBarIconBrightness: Brightness.dark,
     statusBarBrightness: Brightness.light,
   ));
+  // Configure RevenueCat early so the listener is ready when providers init.
+  await PurchaseService().init();
   runApp(const DianDianApp());
 }
 
@@ -100,6 +103,14 @@ class _AppShellState extends State<AppShell> {
     final auth = context.read<AuthProvider>();
     // Sync VIP → Premium
     context.read<PremiumProvider>().setVip(auth.isVip);
+
+    // Identify the user with RevenueCat so purchases stick to the backend user.
+    final purchases = PurchaseService();
+    if (auth.isAuthenticated && auth.userId != null) {
+      purchases.logIn(auth.userId!);
+    } else if (!auth.isAuthenticated) {
+      purchases.logOut();
+    }
 
     // Apply server settings to providers
     final settings = auth.serverSettings;
@@ -241,8 +252,10 @@ class _AppShellState extends State<AppShell> {
         return TrackerScreen(
           key: ValueKey('tracker_$_activePageId'),
           pageId: _activePageId!,
+          initialYear: _selectedYear,
           onBack: () => _navigate(AppScreen.pageList),
           onOpenSettings: () => _navigate(AppScreen.settings),
+          onYearChanged: (year) => _selectedYear = year,
         );
       default:
         return PageListScreen(

@@ -1,21 +1,22 @@
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
 
 import '../providers/language_provider.dart';
 import '../providers/premium_provider.dart';
+import '../services/store_links.dart';
 import '../theme/app_theme.dart';
 import 'app_dialog.dart';
 
 /// Dialog shown when a free user tries to access a premium feature.
-/// Shows what premium includes and an upgrade button.
+/// Shows what premium includes, then opens the RevenueCat paywall on upgrade.
 class PremiumGateDialog extends StatelessWidget {
   final String feature;
 
   const PremiumGateDialog({super.key, required this.feature});
 
-  /// Shows the dialog. Returns true if the user upgraded (for testing).
+  /// Shows the dialog. Returns true if the user is now premium.
   static Future<bool> show(BuildContext context, {required String feature}) async {
     final result = await showDialog<bool>(
       context: context,
@@ -34,11 +35,9 @@ class PremiumGateDialog extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Crown icon
             Icon(Icons.workspace_premium, size: 36, color: AppColors.accent),
             const SizedBox(height: 12),
 
-            // Title
             Text(
               lang.t('premium.title'),
               style: AppFonts.pixel(fontSize: 18, color: AppColors.title),
@@ -62,17 +61,16 @@ class PremiumGateDialog extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Benefits list
             _buildBenefit(Icons.grid_view, lang.t('premium.feature.trackers')),
             _buildBenefit(Icons.palette, lang.t('premium.feature.themes')),
             _buildBenefit(Icons.pets, lang.t('premium.feature.cursor')),
             _buildBenefit(Icons.image, lang.t('premium.feature.export')),
+            _buildBenefit(Icons.bar_chart, lang.t('premium.feature.stats')),
             _buildBenefit(Icons.block, lang.t('premium.feature.noAds')),
 
             const SizedBox(height: 20),
 
             if (kIsWeb) ...[
-              // On web: download the app
               Text(
                 lang.t('premium.downloadApp'),
                 style: AppFonts.dot(fontSize: 12, color: AppColors.text),
@@ -81,15 +79,14 @@ class PremiumGateDialog extends StatelessWidget {
               const SizedBox(height: 12),
               _buildStoreButtons(),
             ] else ...[
-              // On mobile: upgrade button(s)
-              _PurchaseButtons(),
+              _UpgradeButton(),
               const SizedBox(height: 12),
 
-              // Restore purchases
               GestureDetector(
                 onTap: () async {
-                  await context.read<PremiumProvider>().restorePurchases();
-                  if (context.mounted) Navigator.of(context).pop(false);
+                  final premium = context.read<PremiumProvider>();
+                  final restored = await premium.restorePurchases();
+                  if (context.mounted) Navigator.of(context).pop(restored);
                 },
                 child: Text(
                   lang.t('premium.restore'),
@@ -99,7 +96,6 @@ class PremiumGateDialog extends StatelessWidget {
             ],
             const SizedBox(height: 8),
 
-            // Cancel
             GestureDetector(
               onTap: () => Navigator.of(context).pop(false),
               child: Text(
@@ -113,9 +109,6 @@ class PremiumGateDialog extends StatelessWidget {
     );
   }
 
-  static const _appStoreUrl = 'https://apps.apple.com/app/dian-dian-year-tracker/id6761432329';
-  static const _playStoreUrl = 'https://play.google.com/store/apps/details?id=app.mydiandian.dian_dian';
-
   Widget _buildStoreButtons() {
     final platform = defaultTargetPlatform;
     final isIOS = platform == TargetPlatform.iOS || platform == TargetPlatform.macOS;
@@ -124,11 +117,11 @@ class PremiumGateDialog extends StatelessWidget {
     final buttons = <Widget>[];
 
     if (!isAndroid) {
-      buttons.add(_StoreButton(icon: Icons.apple, label: 'App Store', url: _appStoreUrl));
+      buttons.add(_StoreButton(icon: Icons.apple, label: 'App Store', onOpen: StoreLinks.openAppStore));
     }
     if (!isIOS) {
       if (buttons.isNotEmpty) buttons.add(const SizedBox(width: 12));
-      buttons.add(_StoreButton(icon: Icons.shop, label: 'Google Play', url: _playStoreUrl));
+      buttons.add(_StoreButton(icon: Icons.shop, label: 'Google Play', onOpen: StoreLinks.openPlayStore));
     }
 
     return Row(
@@ -156,75 +149,43 @@ class PremiumGateDialog extends StatelessWidget {
   }
 }
 
-/// Shows available subscription products on mobile.
-class _PurchaseButtons extends StatelessWidget {
+/// Opens the RevenueCat-managed paywall. Falls back to closing the dialog
+/// silently if the user dismisses it, or pops `true` if they convert.
+class _UpgradeButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final premium = context.read<PremiumProvider>();
-    final products = premium.purchaseService.products;
     final lang = context.read<LanguageProvider>();
 
-    if (products.isEmpty) {
-      // No products loaded — show a generic upgrade button (fallback)
-      return GestureDetector(
-        onTap: () async {
-          final success = await premium.buyPremium();
-          if (!success && context.mounted) {
-            // Store not available or no products — toggle for testing
-            await premium.setPremium(true);
-            if (context.mounted) Navigator.of(context).pop(true);
-          }
-        },
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: AppColors.accent,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Center(
-            child: Text(
-              lang.t('premium.upgrade'),
-              style: AppFonts.pixel(fontSize: 12, color: Colors.white),
-            ),
+    return GestureDetector(
+      onTap: () async {
+        final premium = context.read<PremiumProvider>();
+        final result = await RevenueCatUI.presentPaywall(
+          displayCloseButton: true,
+        );
+        if (!context.mounted) return;
+        // Reflect any state change immediately, even if the listener hasn't
+        // fired yet.
+        if (result == PaywallResult.purchased ||
+            result == PaywallResult.restored) {
+          Navigator.of(context).pop(true);
+        } else if (premium.isPremium) {
+          Navigator.of(context).pop(true);
+        }
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.accent,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Center(
+          child: Text(
+            lang.t('premium.upgrade'),
+            style: AppFonts.pixel(fontSize: 12, color: Colors.white),
           ),
         ),
-      );
-    }
-
-    // Show each product as a button
-    return Column(
-      children: products.map((product) {
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: GestureDetector(
-            onTap: () async {
-              await premium.buyPremium(productId: product.id);
-            },
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-              decoration: BoxDecoration(
-                color: AppColors.accent,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    product.title,
-                    style: AppFonts.pixel(fontSize: 11, color: Colors.white),
-                  ),
-                  Text(
-                    product.price,
-                    style: AppFonts.pixel(fontSize: 12, color: Colors.white),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      }).toList(),
+      ),
     );
   }
 }
@@ -232,19 +193,14 @@ class _PurchaseButtons extends StatelessWidget {
 class _StoreButton extends StatelessWidget {
   final IconData icon;
   final String label;
-  final String url;
+  final Future<void> Function() onOpen;
 
-  const _StoreButton({required this.icon, required this.label, required this.url});
+  const _StoreButton({required this.icon, required this.label, required this.onOpen});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () async {
-        final uri = Uri.parse(url);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-        }
-      },
+      onTap: onOpen,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(

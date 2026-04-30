@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
+import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../providers/auth_provider.dart';
@@ -232,7 +234,13 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
             GestureDetector(
-              onTap: () => _openUrl('https://apps.apple.com/account/subscriptions'),
+              onTap: () {
+                if (kIsWeb) {
+                  _openUrl('https://apps.apple.com/account/subscriptions');
+                } else {
+                  RevenueCatUI.presentCustomerCenter();
+                }
+              },
               child: Text(
                 lang.t('premium.manage'),
                 style: AppFonts.dot(fontSize: 11, color: AppColors.textMuted),

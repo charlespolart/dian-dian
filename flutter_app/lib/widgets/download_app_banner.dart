@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 
+import '../services/store_links.dart';
 import '../theme/app_theme.dart';
 
 /// Banner shown only on web to invite users to download the native app.
@@ -17,17 +17,6 @@ class DownloadAppBanner extends StatefulWidget {
 class _DownloadAppBannerState extends State<DownloadAppBanner> {
   bool _dismissed = false;
 
-  // TODO: replace with real store URLs once published
-  static const _appStoreUrl = 'https://apps.apple.com/app/dian-dian-year-tracker/id6761432329';
-  static const _playStoreUrl = 'https://play.google.com/store/apps/details?id=app.mydiandian.dian_dian';
-
-  Future<void> _openUrl(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
-
   List<Widget> _buildStoreLinks() {
     final platform = defaultTargetPlatform;
     final isIOS = platform == TargetPlatform.iOS || platform == TargetPlatform.macOS;
@@ -36,19 +25,19 @@ class _DownloadAppBannerState extends State<DownloadAppBanner> {
     final links = <Widget>[];
 
     if (!isAndroid) {
-      links.add(_storeLink(Icons.apple, 'App Store', _appStoreUrl));
+      links.add(_storeLink(Icons.apple, 'App Store', StoreLinks.openAppStore));
     }
     if (!isIOS) {
       if (links.isNotEmpty) links.add(const SizedBox(width: 16));
-      links.add(_storeLink(Icons.shop, 'Google Play', _playStoreUrl));
+      links.add(_storeLink(Icons.shop, 'Google Play', StoreLinks.openPlayStore));
     }
 
     return links;
   }
 
-  Widget _storeLink(IconData icon, String label, String url) {
+  Widget _storeLink(IconData icon, String label, Future<void> Function() onOpen) {
     return GestureDetector(
-      onTap: () => _openUrl(url),
+      onTap: onOpen,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
