@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'providers/auth_provider.dart';
 import 'providers/cells_provider.dart';
@@ -88,15 +89,69 @@ class AppShell extends StatefulWidget {
 enum AppScreen { login, register, forgotPassword, onboarding, pageList, tracker, settings }
 
 class _AppShellState extends State<AppShell> {
+  static const _lastTrackerIdKey = 'last_tracker_id';
+  static const _lastTrackerYearKey = 'last_tracker_year';
+
   AppScreen _screen = AppScreen.login;
   String? _activePageId;
   int _selectedYear = DateTime.now().year;
+  bool _restoreAttempted = false;
+  // Keeps the splash screen up while we decide whether to land on the
+  // page list or jump straight back into the user's last tracker.
+  bool _restoreInProgress = true;
 
   @override
   void initState() {
     super.initState();
     final auth = context.read<AuthProvider>();
     auth.addListener(_onAuthChange);
+  }
+
+  /// Reopens the last tracker the user was viewing, if it still exists.
+  /// Runs once per app launch after the first successful auth.
+  Future<void> _restoreLastTracker() async {
+    if (_restoreAttempted) return;
+    _restoreAttempted = true;
+
+    final prefs = await SharedPreferences.getInstance();
+    final pageId = prefs.getString(_lastTrackerIdKey);
+    if (pageId == null || !mounted) return;
+    final year = prefs.getInt(_lastTrackerYearKey) ?? DateTime.now().year;
+
+    // Make sure pages are loaded so we can verify the tracker still exists.
+    final pagesProv = context.read<PagesProvider>();
+    if (pagesProv.pages.isEmpty) {
+      await pagesProv.fetchPages();
+      if (!mounted) return;
+    }
+    final exists = pagesProv.pages.any((p) => p.id == pageId);
+    if (!exists) {
+      await prefs.remove(_lastTrackerIdKey);
+      await prefs.remove(_lastTrackerYearKey);
+      return;
+    }
+
+    // Wire providers as if the user had tapped the tracker in the page list.
+    context.read<CellsProvider>().setContext(pageId: pageId, year: year);
+    context.read<LegendsProvider>().setPageId(pageId);
+    if (!mounted) return;
+    setState(() {
+      _screen = AppScreen.tracker;
+      _activePageId = pageId;
+      _selectedYear = year;
+    });
+  }
+
+  Future<void> _saveLastTracker(String pageId, int year) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_lastTrackerIdKey, pageId);
+    await prefs.setInt(_lastTrackerYearKey, year);
+  }
+
+  Future<void> _clearLastTracker() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_lastTrackerIdKey);
+    await prefs.remove(_lastTrackerYearKey);
   }
 
   void _onAuthChange() async {
@@ -141,18 +196,33 @@ class _AppShellState extends State<AppShell> {
       final shouldShow = await OnboardingScreen.shouldShow();
       if (!mounted) return;
       if (shouldShow) {
-        setState(() => _screen = AppScreen.onboarding);
+        setState(() {
+          _screen = AppScreen.onboarding;
+          _restoreInProgress = false;
+        });
         return;
       }
+      // No onboarding due → try to reopen the last tracker the user had open.
+      await _restoreLastTracker();
+      if (mounted && _restoreInProgress) {
+        setState(() => _restoreInProgress = false);
+      }
     }
+    if (!mounted) return;
     if (!auth.isAuthenticated && _screen != AppScreen.login &&
         _screen != AppScreen.register && _screen != AppScreen.forgotPassword) {
       // Cancel any pending page deletion on logout
       context.read<PagesProvider>().cancelPendingDelete();
+      _clearLastTracker();
+      _restoreAttempted = false;
       setState(() {
         _screen = AppScreen.login;
         _activePageId = null;
+        _restoreInProgress = false;
       });
+    } else if (!auth.isAuthenticated) {
+      // Already on an auth screen — just drop the splash.
+      if (_restoreInProgress) setState(() => _restoreInProgress = false);
     }
   }
 
@@ -161,6 +231,13 @@ class _AppShellState extends State<AppShell> {
       _screen = screen;
       if (pageId != null) _activePageId = pageId;
     });
+    if (screen == AppScreen.tracker && pageId != null) {
+      _saveLastTracker(pageId, _selectedYear);
+    } else if (screen == AppScreen.pageList) {
+      // User explicitly went back to the list — forget which tracker was open.
+      _clearLastTracker();
+      _activePageId = null;
+    }
   }
 
   @override
@@ -175,6 +252,11 @@ class _AppShellState extends State<AppShell> {
       child: Consumer<AuthProvider>(
         builder: (context, auth, _) {
           if (auth.isLoading) return const _LoadingScreen();
+          // Hold the splash while we figure out where to land — avoids a
+          // visible flash of the page list before jumping to the saved tracker.
+          if (auth.isAuthenticated && _restoreInProgress) {
+            return const _LoadingScreen();
+          }
 
           if (!auth.isAuthenticated) {
             return AnimatedSwitcher(
@@ -255,7 +337,12 @@ class _AppShellState extends State<AppShell> {
           initialYear: _selectedYear,
           onBack: () => _navigate(AppScreen.pageList),
           onOpenSettings: () => _navigate(AppScreen.settings),
-          onYearChanged: (year) => _selectedYear = year,
+          onYearChanged: (year) {
+            _selectedYear = year;
+            if (_activePageId != null) {
+              _saveLastTracker(_activePageId!, year);
+            }
+          },
         );
       default:
         return PageListScreen(
