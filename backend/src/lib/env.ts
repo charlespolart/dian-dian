@@ -16,7 +16,10 @@ function commaList(key: string): string[] {
 export const env = {
   DATABASE_URL: required('DATABASE_URL'),
   JWT_SECRET: required('JWT_SECRET'),
-  RESEND_API_KEY: required('RESEND_API_KEY'),
+  // Email providers: at least one of these must be set. MailerSend is
+  // preferred when both are configured (transition period from Resend).
+  MAILERSEND_API_TOKEN: process.env.MAILERSEND_API_TOKEN,
+  RESEND_API_KEY: process.env.RESEND_API_KEY,
   PORT: parseInt(process.env.PORT || '3000', 10),
   CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:8081',
   APP_URL: process.env.APP_URL || 'http://localhost:8081',
@@ -27,3 +30,7 @@ export const env = {
   // Web each have their own client id in Google Cloud Console).
   GOOGLE_CLIENT_IDS: commaList('GOOGLE_CLIENT_IDS'),
 };
+
+if (!env.MAILERSEND_API_TOKEN && !env.RESEND_API_KEY) {
+  throw new Error('Set MAILERSEND_API_TOKEN or RESEND_API_KEY');
+}
