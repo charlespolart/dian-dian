@@ -14,6 +14,7 @@ class AuthProvider extends ChangeNotifier {
   bool _isLoading = true;
   bool _isAuthenticated = false;
   String? _email;
+  String? _userId;
   bool _isVip = false;
 
   // Server-synced settings (populated on login / restore)
@@ -22,6 +23,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isAuthenticated => _isAuthenticated;
   String? get email => _email;
+  String? get userId => _userId;
   bool get isVip => _isVip;
   Map<String, dynamic>? get serverSettings => _serverSettings;
 
@@ -37,6 +39,7 @@ class AuthProvider extends ChangeNotifier {
   Future<void> login(String email, String password) async {
     final data = await _api.login(email, password);
     _email = email;
+    _userId = data['userId'] as String?;
     _isVip = data['vip'] == true;
     _serverSettings = {
       'theme': data['theme'],
@@ -52,8 +55,9 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> register(String email, String password) async {
-    await _api.register(email, password);
+    final data = await _api.register(email, password);
     _email = email;
+    _userId = data['userId'] as String?;
     _isVip = false;
     await _storage.setEmail(email);
     _isAuthenticated = true;
@@ -66,6 +70,7 @@ class AuthProvider extends ChangeNotifier {
   Future<void> oauthSignIn({required String provider, required String identityToken}) async {
     final data = await _api.oauthSignIn(provider: provider, identityToken: identityToken);
     _email = data['email'] as String? ?? _email;
+    _userId = data['userId'] as String? ?? _userId;
     _isVip = data['vip'] == true;
     _serverSettings = {
       'theme': data['theme'],
@@ -86,6 +91,7 @@ class AuthProvider extends ChangeNotifier {
       await _api.logout();
     } finally {
       _email = null;
+      _userId = null;
       _isAuthenticated = false;
       await _storage.deleteEmail();
       notifyListeners();
@@ -107,6 +113,7 @@ class AuthProvider extends ChangeNotifier {
           final response = await _api.apiFetch('/api/auth/me');
           if (response.statusCode == 200) {
             final data = jsonDecode(response.body) as Map<String, dynamic>;
+            _userId = data['id'] as String?;
             _isVip = data['vip'] == true;
             _serverSettings = {
               'theme': data['theme'],
@@ -133,6 +140,7 @@ class AuthProvider extends ChangeNotifier {
 
   void _onAuthExpired() {
     _ws.disconnect();
+    _userId = null;
     _isAuthenticated = false;
     notifyListeners();
   }

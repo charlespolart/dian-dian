@@ -1,204 +1,126 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:flutter/services.dart' show PlatformException;
+import 'package:purchases_flutter/purchases_flutter.dart';
 
-import 'api_service.dart';
+import 'revenue_cat_config.dart';
 
-/// Reusable in-app purchase service.
-/// Wraps `in_app_purchase` package with a clean API.
+/// Wraps the RevenueCat SDK with a small, app-friendly API.
 ///
-/// Usage:
-///   final service = PurchaseService();
-///   await service.init();
-///   service.onPurchaseUpdated = (isPremium) { ... };
-///   await service.buyPremium();
-///   await service.restorePurchases();
-///   service.dispose();
+/// Lifecycle:
+///   - [init] once at app start (configures the SDK)
+///   - [logIn] when the user signs in (associates purchases with the backend user)
+///   - [logOut] when the user signs out
+///   - [onPremiumChanged] fires whenever the `premium` entitlement flips
 class PurchaseService {
   static final PurchaseService _instance = PurchaseService._internal();
   factory PurchaseService() => _instance;
   PurchaseService._internal();
 
-  // Product IDs — configure these in App Store Connect / Google Play Console
-  String _premiumMonthlyId = '';
-  Set<String> _productIds = {};
+  bool _initialized = false;
+  bool _premiumActive = false;
+  Offerings? _offerings;
 
-  /// Configure product IDs before calling init().
-  void configure({
-    required String monthlyId,
-    required String yearlyId,
-    required String lifetimeId,
-  }) {
-    _premiumMonthlyId = monthlyId;
-    _productIds = {monthlyId, yearlyId, lifetimeId};
-  }
+  /// Called whenever the `premium` entitlement state changes.
+  void Function(bool isPremium)? onPremiumChanged;
 
-  final InAppPurchase _iap = InAppPurchase.instance;
-  StreamSubscription<List<PurchaseDetails>>? _subscription;
-  List<ProductDetails> _products = [];
-  bool _available = false;
+  bool get isPremiumActive => _premiumActive;
+  bool get isInitialized => _initialized;
+  Offerings? get offerings => _offerings;
+  Offering? get currentOffering => _offerings?.current;
 
-  /// Called when purchase status changes. true = premium active.
-  void Function(bool isPremium)? onPurchaseUpdated;
-
-  List<ProductDetails> get products => _products;
-  bool get isAvailable => _available;
-
-  /// Initialize the purchase service. Call once at app start.
+  /// Configure the SDK. Safe to call multiple times — only runs once.
   Future<void> init() async {
-    if (kIsWeb) return; // Not available on web
-
-    _available = await _iap.isAvailable();
-    if (!_available) {
-      debugPrint('PurchaseService: Store not available');
-      return;
-    }
-
-    // Listen to purchase updates
-    _subscription = _iap.purchaseStream.listen(
-      _onPurchaseUpdate,
-      onDone: () => _subscription?.cancel(),
-      onError: (error) => debugPrint('PurchaseService: Stream error: $error'),
-    );
-
-    // Load products
-    await _loadProducts();
-  }
-
-  Future<void> _loadProducts() async {
-    final response = await _iap.queryProductDetails(_productIds);
-    if (response.error != null) {
-      debugPrint('PurchaseService: Error loading products: ${response.error}');
-      return;
-    }
-    if (response.notFoundIDs.isNotEmpty) {
-      debugPrint('PurchaseService: Products not found: ${response.notFoundIDs}');
-    }
-    _products = response.productDetails;
-    debugPrint('PurchaseService: Loaded ${_products.length} products');
-  }
-
-  /// Buy the premium subscription (monthly by default, or specify productId).
-  Future<bool> buyPremium({String? productId}) async {
-    if (!_available || _products.isEmpty) {
-      debugPrint('PurchaseService: Not available or no products');
-      return false;
-    }
-
-    final id = productId ?? _premiumMonthlyId;
-    final product = _products.cast<ProductDetails?>().firstWhere(
-      (p) => p!.id == id,
-      orElse: () => _products.isNotEmpty ? _products.first : null,
-    );
-
-    if (product == null) {
-      debugPrint('PurchaseService: Product $id not found');
-      return false;
-    }
-
-    final purchaseParam = PurchaseParam(productDetails: product);
+    if (_initialized) return;
+    final apiKey = RevenueCatConfig.apiKeyForPlatform();
+    if (apiKey == null) return; // unsupported platform (web, etc.)
 
     try {
-      // Use buyNonConsumable for subscriptions
-      return await _iap.buyNonConsumable(purchaseParam: purchaseParam);
+      await Purchases.setLogLevel(kReleaseMode ? LogLevel.warn : LogLevel.debug);
+      await Purchases.configure(PurchasesConfiguration(apiKey));
+      _initialized = true;
+
+      Purchases.addCustomerInfoUpdateListener(_onCustomerInfoUpdate);
+
+      // Prime state from current customer + offerings.
+      await _refreshOfferings();
+      final info = await Purchases.getCustomerInfo();
+      _onCustomerInfoUpdate(info);
     } catch (e) {
-      debugPrint('PurchaseService: Buy failed: $e');
-      return false;
+      debugPrint('PurchaseService.init failed: $e');
     }
   }
 
-  /// Restore previous purchases (required by Apple).
-  Future<void> restorePurchases() async {
-    if (!_available) return;
-    await _iap.restorePurchases();
-  }
-
-  void _onPurchaseUpdate(List<PurchaseDetails> purchaseDetailsList) {
-    for (final purchase in purchaseDetailsList) {
-      _handlePurchase(purchase);
-    }
-  }
-
-  Future<void> _handlePurchase(PurchaseDetails purchase) async {
-    switch (purchase.status) {
-      case PurchaseStatus.purchased:
-      case PurchaseStatus.restored:
-        // Verify the purchase
-        final valid = await _verifyPurchase(purchase);
-        if (valid) {
-          onPurchaseUpdated?.call(true);
-        }
-        break;
-
-      case PurchaseStatus.error:
-        debugPrint('PurchaseService: Purchase error: ${purchase.error}');
-        onPurchaseUpdated?.call(false);
-        break;
-
-      case PurchaseStatus.canceled:
-        debugPrint('PurchaseService: Purchase canceled');
-        break;
-
-      case PurchaseStatus.pending:
-        debugPrint('PurchaseService: Purchase pending');
-        break;
-    }
-
-    // Complete the purchase (required by both stores)
-    if (purchase.pendingCompletePurchase) {
-      await _iap.completePurchase(purchase);
-    }
-  }
-
-  /// Verify purchase receipt with the backend server.
-  Future<bool> _verifyPurchase(PurchaseDetails purchase) async {
+  /// Associate the SDK with a backend user id. Call after login.
+  /// RevenueCat merges anonymous purchases into the identified user.
+  Future<void> logIn(String userId) async {
+    if (!_initialized) return;
     try {
-      final store = defaultTargetPlatform == TargetPlatform.iOS ||
-              defaultTargetPlatform == TargetPlatform.macOS
-          ? 'apple'
-          : 'google';
-      final response = await ApiService().apiFetch(
-        '/api/purchase/verify',
-        method: 'POST',
-        body: {
-          'store': store,
-          'productId': purchase.productID,
-          'verificationData': purchase.verificationData.serverVerificationData,
-          'transactionId': purchase.purchaseID ?? '',
-        },
-      );
+      final result = await Purchases.logIn(userId);
+      _onCustomerInfoUpdate(result.customerInfo);
+      await _refreshOfferings();
+    } catch (e) {
+      debugPrint('PurchaseService.logIn failed: $e');
+    }
+  }
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        return data['premium'] == true;
+  /// Reset to anonymous user. Call on logout.
+  Future<void> logOut() async {
+    if (!_initialized) return;
+    try {
+      final info = await Purchases.logOut();
+      _onCustomerInfoUpdate(info);
+    } catch (e) {
+      debugPrint('PurchaseService.logOut failed: $e');
+    }
+  }
+
+  /// Purchase a specific package. Returns true if the user is now premium.
+  Future<bool> purchasePackage(Package package) async {
+    if (!_initialized) return false;
+    try {
+      final result = await Purchases.purchase(PurchaseParams.package(package));
+      _onCustomerInfoUpdate(result.customerInfo);
+      return _premiumActive;
+    } on PlatformException catch (e) {
+      final code = PurchasesErrorHelper.getErrorCode(e);
+      if (code == PurchasesErrorCode.purchaseCancelledError) {
+        return false; // user cancelled, not an error
       }
-    } catch (e) {
-      debugPrint('PurchaseService: Server verification failed: $e');
+      debugPrint('PurchaseService.purchasePackage error: ${e.message}');
+      return false;
     }
-
-    // Fallback: trust local purchase status if server unreachable
-    return purchase.status == PurchaseStatus.purchased ||
-        purchase.status == PurchaseStatus.restored;
   }
 
-  /// Check if there's an active subscription.
-  /// Called at app start to restore premium status.
-  Future<bool> checkActiveSubscription() async {
-    if (kIsWeb || !_available) return false;
-
-    // On iOS, restorePurchases will trigger the purchase stream
-    // which will call onPurchaseUpdated
-    await restorePurchases();
-
-    // Give the stream a moment to process
-    await Future.delayed(const Duration(seconds: 2));
-
-    return false; // The actual result comes via onPurchaseUpdated callback
+  /// Restore purchases (Apple requirement). Returns true if a premium
+  /// entitlement was found.
+  Future<bool> restorePurchases() async {
+    if (!_initialized) return false;
+    try {
+      final info = await Purchases.restorePurchases();
+      _onCustomerInfoUpdate(info);
+      return _premiumActive;
+    } catch (e) {
+      debugPrint('PurchaseService.restorePurchases failed: $e');
+      return false;
+    }
   }
 
-  void dispose() {
-    _subscription?.cancel();
+  Future<void> _refreshOfferings() async {
+    try {
+      _offerings = await Purchases.getOfferings();
+    } catch (e) {
+      debugPrint('PurchaseService._refreshOfferings failed: $e');
+    }
+  }
+
+  void _onCustomerInfoUpdate(CustomerInfo info) {
+    final isPremium = info.entitlements.active
+        .containsKey(RevenueCatConfig.premiumEntitlement);
+    if (isPremium != _premiumActive) {
+      _premiumActive = isPremium;
+      onPremiumChanged?.call(isPremium);
+    }
   }
 }

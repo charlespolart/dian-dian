@@ -160,11 +160,11 @@ const privacy: Record<Lang, string> = {
     <h2>7. Data Retention &amp; Deletion</h2>
     <p>We retain your data while your account is active. You can <strong>delete your account and all data</strong> at any time from the app.</p>
     <h2>8. Your Rights (GDPR)</h2>
-    <p>If you are in the EEA, you have the right to access, correct, delete, export, or restrict processing of your data. Contact us at <a href="mailto:contact@overridedev.com">contact@overridedev.com</a>.</p>
+    <p>If you are in the EEA, you have the right to access, correct, delete, export, or restrict processing of your data. Contact us at <a href="mailto:diandian@overridedev.com">diandian@overridedev.com</a>.</p>
     <h2>9. Changes</h2>
     <p>We may update this policy. Material changes will be communicated via email.</p>
     <h2>10. Contact</h2>
-    <p>Questions? <a href="mailto:contact@overridedev.com">contact@overridedev.com</a></p>`,
+    <p>Questions? <a href="mailto:diandian@overridedev.com">diandian@overridedev.com</a></p>`,
   fr: `
     <h1>Politique de confidentialité</h1>
     <p class="subtitle">Dernière mise à jour : 14 avril 2026</p>
@@ -196,11 +196,11 @@ const privacy: Record<Lang, string> = {
     <h2>7. Conservation et suppression</h2>
     <p>Nous conservons vos données tant que votre compte est actif. Vous pouvez <strong>supprimer votre compte et toutes vos données</strong> à tout moment depuis l'application.</p>
     <h2>8. Vos droits (RGPD)</h2>
-    <p>Si vous êtes dans l'EEE, vous avez le droit d'accéder, corriger, supprimer, exporter ou restreindre le traitement de vos données. Contactez-nous à <a href="mailto:contact@overridedev.com">contact@overridedev.com</a>.</p>
+    <p>Si vous êtes dans l'EEE, vous avez le droit d'accéder, corriger, supprimer, exporter ou restreindre le traitement de vos données. Contactez-nous à <a href="mailto:diandian@overridedev.com">diandian@overridedev.com</a>.</p>
     <h2>9. Modifications</h2>
     <p>Nous pouvons mettre à jour cette politique. Les changements importants seront communiqués par email.</p>
     <h2>10. Contact</h2>
-    <p>Questions ? <a href="mailto:contact@overridedev.com">contact@overridedev.com</a></p>`,
+    <p>Questions ? <a href="mailto:diandian@overridedev.com">diandian@overridedev.com</a></p>`,
   'zh-CN': `
     <h1>隐私政策</h1>
     <p class="subtitle">最后更新：2026年4月14日</p>
@@ -232,11 +232,11 @@ const privacy: Record<Lang, string> = {
     <h2>7. 数据保留与删除</h2>
     <p>账户活跃期间保留数据。您可以随时从应用中<strong>删除账户和所有数据</strong>。</p>
     <h2>8. 您的权利（GDPR）</h2>
-    <p>如果您在欧洲经济区，您有权访问、更正、删除、导出或限制处理您的数据。请联系 <a href="mailto:contact@overridedev.com">contact@overridedev.com</a>。</p>
+    <p>如果您在欧洲经济区，您有权访问、更正、删除、导出或限制处理您的数据。请联系 <a href="mailto:diandian@overridedev.com">diandian@overridedev.com</a>。</p>
     <h2>9. 变更</h2>
     <p>我们可能会更新本政策。重大变更将通过电子邮件通知。</p>
     <h2>10. 联系</h2>
-    <p>有问题？<a href="mailto:contact@overridedev.com">contact@overridedev.com</a></p>`,
+    <p>有问题？<a href="mailto:diandian@overridedev.com">diandian@overridedev.com</a></p>`,
   'zh-TW': `
     <h1>隱私權政策</h1>
     <p class="subtitle">最後更新：2026年4月14日</p>
@@ -268,11 +268,11 @@ const privacy: Record<Lang, string> = {
     <h2>7. 資料保留與刪除</h2>
     <p>帳戶活躍期間保留資料。您可以隨時從應用程式中<strong>刪除帳戶和所有資料</strong>。</p>
     <h2>8. 您的權利（GDPR）</h2>
-    <p>如果您在歐洲經濟區，您有權存取、更正、刪除、匯出或限制處理您的資料。請聯繫 <a href="mailto:contact@overridedev.com">contact@overridedev.com</a>。</p>
+    <p>如果您在歐洲經濟區，您有權存取、更正、刪除、匯出或限制處理您的資料。請聯繫 <a href="mailto:diandian@overridedev.com">diandian@overridedev.com</a>。</p>
     <h2>9. 變更</h2>
     <p>我們可能會更新本政策。重大變更將透過電子郵件通知。</p>
     <h2>10. 聯繫</h2>
-    <p>有問題？<a href="mailto:contact@overridedev.com">contact@overridedev.com</a></p>`,
+    <p>有問題？<a href="mailto:diandian@overridedev.com">diandian@overridedev.com</a></p>`,
 };
 
 router.get('/privacy', (req, res) => {
@@ -307,7 +307,7 @@ const terms: Record<Lang, string> = {
     <h2>8. Changes</h2>
     <p>We may update these Terms. Material changes will be communicated via email.</p>
     <h2>9. Contact</h2>
-    <p>Questions? <a href="mailto:contact@overridedev.com">contact@overridedev.com</a></p>`,
+    <p>Questions? <a href="mailto:diandian@overridedev.com">diandian@overridedev.com</a></p>`,
   fr: `
     <h1>Conditions d'utilisation</h1>
     <p class="subtitle">Dernière mise à jour : 26 mars 2026</p>
@@ -332,7 +332,7 @@ const terms: Record<Lang, string> = {
     <h2>8. Modifications</h2>
     <p>Nous pouvons mettre à jour ces Conditions. Les changements importants seront communiqués par email.</p>
     <h2>9. Contact</h2>
-    <p>Questions ? <a href="mailto:contact@overridedev.com">contact@overridedev.com</a></p>`,
+    <p>Questions ? <a href="mailto:diandian@overridedev.com">diandian@overridedev.com</a></p>`,
   'zh-CN': `
     <h1>使用条款</h1>
     <p class="subtitle">最后更新：2026年3月26日</p>
@@ -357,7 +357,7 @@ const terms: Record<Lang, string> = {
     <h2>8. 变更</h2>
     <p>我们可能会更新这些条款。重大变更将通过电子邮件通知。</p>
     <h2>9. 联系</h2>
-    <p>有问题？<a href="mailto:contact@overridedev.com">contact@overridedev.com</a></p>`,
+    <p>有问题？<a href="mailto:diandian@overridedev.com">diandian@overridedev.com</a></p>`,
   'zh-TW': `
     <h1>使用條款</h1>
     <p class="subtitle">最後更新：2026年3月26日</p>
@@ -382,7 +382,7 @@ const terms: Record<Lang, string> = {
     <h2>8. 變更</h2>
     <p>我們可能會更新這些條款。重大變更將透過電子郵件通知。</p>
     <h2>9. 聯繫</h2>
-    <p>有問題？<a href="mailto:contact@overridedev.com">contact@overridedev.com</a></p>`,
+    <p>有問題？<a href="mailto:diandian@overridedev.com">diandian@overridedev.com</a></p>`,
 };
 
 router.get('/terms', (req, res) => {
@@ -480,8 +480,8 @@ function contactContent(lang: Lang): string {
     <p class="subtitle">${{ en: "We'd love to hear from you", fr: 'Nous serions ravis de vous entendre', 'zh-CN': '我们很想听到您的意见', 'zh-TW': '我們很想聽到您的意見' }[lang]}</p>
 
     <p style="text-align:center;margin-top:24px;">
-      <a href="mailto:contact@overridedev.com" style="display:inline-block;padding:12px 24px;background:#d8e8c8;border:2px solid #b0c8a0;border-radius:10px;color:#708060;text-decoration:none;font-family:'Silkscreen',monospace;font-size:13px;">
-        contact@overridedev.com
+      <a href="mailto:diandian@overridedev.com" style="display:inline-block;padding:12px 24px;background:#d8e8c8;border:2px solid #b0c8a0;border-radius:10px;color:#708060;text-decoration:none;font-family:'Silkscreen',monospace;font-size:13px;">
+        diandian@overridedev.com
       </a>
     </p>
 
@@ -508,7 +508,7 @@ const legal: Record<Lang, string> = {
       <li><strong>SIREN:</strong> 953 122 868</li>
       <li><strong>Registered office:</strong> 12 Rue de Porspol, 29660 Carantec, France</li>
       <li><strong>Publication director:</strong> Charles Polart</li>
-      <li><strong>Contact:</strong> <a href="mailto:contact@overridedev.com">contact@overridedev.com</a></li>
+      <li><strong>Contact:</strong> <a href="mailto:diandian@overridedev.com">diandian@overridedev.com</a></li>
     </ul>
     <h2>Hosting</h2>
     <ul>
@@ -526,7 +526,7 @@ const legal: Record<Lang, string> = {
       <li><strong>SIREN :</strong> 953 122 868</li>
       <li><strong>Siège social :</strong> 12 Rue de Porspol, 29660 Carantec, France</li>
       <li><strong>Directeur de la publication :</strong> Charles Polart</li>
-      <li><strong>Contact :</strong> <a href="mailto:contact@overridedev.com">contact@overridedev.com</a></li>
+      <li><strong>Contact :</strong> <a href="mailto:diandian@overridedev.com">diandian@overridedev.com</a></li>
     </ul>
     <h2>Hébergement</h2>
     <ul>
@@ -544,7 +544,7 @@ const legal: Record<Lang, string> = {
       <li><strong>SIREN：</strong>953 122 868</li>
       <li><strong>注册地址：</strong>12 Rue de Porspol, 29660 Carantec, France</li>
       <li><strong>出版总监：</strong>Charles Polart</li>
-      <li><strong>联系方式：</strong><a href="mailto:contact@overridedev.com">contact@overridedev.com</a></li>
+      <li><strong>联系方式：</strong><a href="mailto:diandian@overridedev.com">diandian@overridedev.com</a></li>
     </ul>
     <h2>托管服务</h2>
     <ul>
@@ -562,7 +562,7 @@ const legal: Record<Lang, string> = {
       <li><strong>SIREN：</strong>953 122 868</li>
       <li><strong>註冊地址：</strong>12 Rue de Porspol, 29660 Carantec, France</li>
       <li><strong>出版總監：</strong>Charles Polart</li>
-      <li><strong>聯繫方式：</strong><a href="mailto:contact@overridedev.com">contact@overridedev.com</a></li>
+      <li><strong>聯繫方式：</strong><a href="mailto:diandian@overridedev.com">diandian@overridedev.com</a></li>
     </ul>
     <h2>託管服務</h2>
     <ul>

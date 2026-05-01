@@ -56,22 +56,33 @@ class _PageListScreenState extends State<PageListScreen> {
     });
   }
 
+  /// Fetches preview cells for the active year + legends (year-agnostic).
   void _fetchPreviews(List<PageModel> pages) {
     final cellsProv = context.read<CellsProvider>();
     final legendsProv = context.read<LegendsProvider>();
     for (final page in pages) {
-      cellsProv.fetchPreviewCells(page.id);
+      cellsProv.fetchPreviewCells(page.id, _selectedYear);
       legendsProv.fetchPreviewLegends(page.id);
     }
   }
 
-  List<PageModel> _pagesForYear(List<PageModel> pages) {
-    return pages.where((p) => p.year == _selectedYear).toList()
+  void _changeYear(int delta) {
+    setState(() => _selectedYear += delta);
+    widget.onYearChanged(_selectedYear);
+    // Re-fetch cell previews for the new year (legends are year-agnostic).
+    final cellsProv = context.read<CellsProvider>();
+    for (final page in context.read<PagesProvider>().pages) {
+      cellsProv.fetchPreviewCells(page.id, _selectedYear);
+    }
+  }
+
+  List<PageModel> _sortedPages(List<PageModel> pages) {
+    return List<PageModel>.of(pages)
       ..sort((a, b) => a.position.compareTo(b.position));
   }
 
-  void _onReorderPages(List<PageModel> yearPages, int fromIndex, int toIndex) {
-    final ids = yearPages.map((p) => p.id).toList();
+  void _onReorderPages(List<PageModel> sortedPages, int fromIndex, int toIndex) {
+    final ids = sortedPages.map((p) => p.id).toList();
     final movedId = ids.removeAt(fromIndex);
     ids.insert(toIndex, movedId);
     context.read<PagesProvider>().reorderPages(ids);
@@ -158,10 +169,9 @@ class _PageListScreenState extends State<PageListScreen> {
     if (title == null || title.isEmpty || !mounted) return;
 
     final prov = context.read<PagesProvider>();
-    await prov.createPage(title, year: _selectedYear);
-    final pages = _pagesForYear(prov.pages);
-    if (pages.isNotEmpty && mounted) {
-      final newest = pages.last;
+    await prov.createPage(title);
+    if (prov.pages.isNotEmpty && mounted) {
+      final newest = _sortedPages(prov.pages).last;
       _openTracker(newest);
     }
   }
@@ -169,10 +179,10 @@ class _PageListScreenState extends State<PageListScreen> {
   void _openTracker(PageModel page) {
     final cellsProv = context.read<CellsProvider>();
     final legendsProv = context.read<LegendsProvider>();
-    cellsProv.setPageId(page.id);
+    cellsProv.setContext(pageId: page.id, year: _selectedYear);
     legendsProv.setPageId(page.id);
 
-    widget.onSelectPage(page.id, page.year);
+    widget.onSelectPage(page.id, _selectedYear);
   }
 
   Future<void> _deletePage(PageModel page) async {
@@ -194,7 +204,7 @@ class _PageListScreenState extends State<PageListScreen> {
   Widget build(BuildContext context) {
     final lang = context.watch<LanguageProvider>();
     final pages = context.watch<PagesProvider>().pages;
-    final yearPages = _pagesForYear(pages);
+    final sortedPages = _sortedPages(pages);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -245,8 +255,8 @@ class _PageListScreenState extends State<PageListScreen> {
                     child: SwipeNav(
                       arrowSize: 18,
                       arrowColor: AppColors.accent,
-                      onPrev: () { setState(() => _selectedYear--); widget.onYearChanged(_selectedYear); },
-                      onNext: () { setState(() => _selectedYear++); widget.onYearChanged(_selectedYear); },
+                      onPrev: () => _changeYear(-1),
+                      onNext: () => _changeYear(1),
                       center: Text(
                         '$_selectedYear',
                         style: AppFonts.pixel(fontSize: 20, color: AppColors.title),
@@ -266,7 +276,7 @@ class _PageListScreenState extends State<PageListScreen> {
                   // Global stats button
                   GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: () => GlobalStatsDialog.show(context),
+                    onTap: () => GlobalStatsDialog.show(context, year: _selectedYear),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                       child: Icon(Icons.bar_chart, size: 24, color: AppColors.accent),
@@ -295,7 +305,7 @@ class _PageListScreenState extends State<PageListScreen> {
 
             // Page grid
             Expanded(
-              child: yearPages.isEmpty
+              child: sortedPages.isEmpty
                   ? Center(
                       child: Text(
                         lang.t('tracker.noTrackers'),
@@ -327,17 +337,17 @@ class _PageListScreenState extends State<PageListScreen> {
                                 // Grid is 12 wide × 31 tall → ratio ~0.45 with title space
                                 childAspectRatio: 0.45,
                               ),
-                              itemCount: yearPages.length,
+                              itemCount: sortedPages.length,
                               itemBuilder: (_, index) {
-                                final page = yearPages[index];
+                                final page = sortedPages[index];
                                 final previewCells =
-                                    cellsProv.getPreviewCells(page.id);
+                                    cellsProv.getPreviewCells(page.id, _selectedYear);
                                 final previewLegends =
                                     legendsProv.getPreviewLegends(page.id);
                                 return DragTarget<int>(
                                   onWillAcceptWithDetails: (d) => d.data != index,
                                   onAcceptWithDetails: (d) =>
-                                      _onReorderPages(yearPages, d.data, index),
+                                      _onReorderPages(sortedPages, d.data, index),
                                   builder: (context, candidateData, _) {
                                     final isOver = candidateData.isNotEmpty;
                                     return Stack(
@@ -345,6 +355,7 @@ class _PageListScreenState extends State<PageListScreen> {
                                       children: [
                                         _PageCard(
                                           page: page,
+                                          year: _selectedYear,
                                           cells: previewCells,
                                           legends: previewLegends,
                                           onTap: () => _openTracker(page),
@@ -464,6 +475,7 @@ class _PageListScreenState extends State<PageListScreen> {
 /// A card displaying a page with a full grid preview, legend dots, and title.
 class _PageCard extends StatelessWidget {
   final PageModel page;
+  final int year;
   final List<CellModel> cells;
   final List<LegendModel> legends;
   final VoidCallback onTap;
@@ -473,6 +485,7 @@ class _PageCard extends StatelessWidget {
 
   const _PageCard({
     required this.page,
+    required this.year,
     required this.cells,
     required this.legends,
     required this.onTap,
@@ -542,7 +555,7 @@ class _PageCard extends StatelessWidget {
                   border: Border.all(color: AppColors.screenBorder),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: _MiniGrid(cells: cells, year: page.year),
+                child: _MiniGrid(cells: cells, year: year),
               ),
             ),
               ],

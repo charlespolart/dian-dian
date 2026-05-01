@@ -19,18 +19,23 @@ import '../widgets/legend_editor_dialog.dart';
 import '../widgets/premium_gate_dialog.dart';
 import '../widgets/stats_detail_dialog.dart';
 import '../widgets/ad_banner.dart';
+import '../widgets/swipe_nav.dart';
 import '../widgets/tracker_grid.dart';
 
 class TrackerScreen extends StatefulWidget {
   final String pageId;
+  final int initialYear;
   final VoidCallback onBack;
   final VoidCallback onOpenSettings;
+  final ValueChanged<int>? onYearChanged;
 
   const TrackerScreen({
     super.key,
     required this.pageId,
+    required this.initialYear,
     required this.onBack,
     required this.onOpenSettings,
+    this.onYearChanged,
   });
 
   @override
@@ -48,6 +53,7 @@ class _TrackerScreenState extends State<TrackerScreen> {
   bool _showLegendLabels = true;
   String? _selectedLegendId;
   late TextEditingController _titleController;
+  late int _year;
 
   PageModel get _page {
     final pages = context.read<PagesProvider>().pages;
@@ -57,9 +63,17 @@ class _TrackerScreenState extends State<TrackerScreen> {
   @override
   void initState() {
     super.initState();
+    _year = widget.initialYear;
     final pages = context.read<PagesProvider>().pages;
     final page = pages.firstWhere((p) => p.id == widget.pageId);
     _titleController = TextEditingController(text: page.title);
+  }
+
+  void _changeYear(int delta) {
+    final newYear = _year + delta;
+    setState(() => _year = newYear);
+    context.read<CellsProvider>().setYear(newYear);
+    widget.onYearChanged?.call(newYear);
   }
 
   @override
@@ -97,7 +111,7 @@ class _TrackerScreenState extends State<TrackerScreen> {
       context,
       cells: cellsProv.cells,
       legends: legends,
-      year: _page.year,
+      year: _year,
     );
   }
 
@@ -123,7 +137,7 @@ class _TrackerScreenState extends State<TrackerScreen> {
       final image = await ExportImageBuilder.capture(
         context: context,
         title: _page.title,
-        year: _page.year,
+        year: _year,
         cells: cellsProv.cells,
         legends: legends,
       );
@@ -160,7 +174,7 @@ class _TrackerScreenState extends State<TrackerScreen> {
     // Stats calculation
     final filledDays = cellsProv.cells.length;
     final streak = _calculateStreak(cellsProv);
-    final daysInYear = _isLeapYear(_page.year) ? 366 : 365;
+    final daysInYear = _isLeapYear(_year) ? 366 : 365;
     final yearPercent =
         daysInYear > 0 ? (filledDays / daysInYear * 100).round() : 0;
 
@@ -272,13 +286,13 @@ class _TrackerScreenState extends State<TrackerScreen> {
         padding: const EdgeInsets.all(6),
         child: Center(
           child: TrackerGrid(
-            year: _page.year,
+            year: _year,
             getCellColor: (month, day) => cellsProv.getCellColor(month, day),
             onCellPress: (month, day) {
               final existingCell = cellsProv.getCell(month, day);
               if (existingCell != null) {
                 // Cell is filled → open dialog to view/edit comment
-                CellEditorDialog.show(context, month: month, day: day, year: _page.year);
+                CellEditorDialog.show(context, month: month, day: day, year: _year);
               } else if (_selectedLegendId != null) {
                 // Legend selected as brush → fill directly
                 try {
@@ -290,7 +304,7 @@ class _TrackerScreenState extends State<TrackerScreen> {
                 }
               } else {
                 // No brush selected → open dialog
-                CellEditorDialog.show(context, month: month, day: day, year: _page.year);
+                CellEditorDialog.show(context, month: month, day: day, year: _year);
               }
             },
           ),
@@ -484,16 +498,43 @@ class _TrackerScreenState extends State<TrackerScreen> {
                                   onSubmitted: (_) => _saveTitle(),
                                   onTapOutside: (_) => _saveTitle(),
                                 )
-                              : Text(
-                                  _page.title,
-                                  style: AppFonts.pixel(fontSize: 36, color: AppColors.title).copyWith(letterSpacing: 2),
-                                  textAlign: TextAlign.center,
-                                  softWrap: true,
+                              : LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    const maxLines = 4;
+                                    const sizes = [36.0, 30.0, 24.0, 20.0, 16.0];
+                                    final scaler = MediaQuery.textScalerOf(context);
+
+                                    // Pick the largest font size that fits in 3 lines.
+                                    double fontSize = sizes.last;
+                                    for (final size in sizes) {
+                                      final style = AppFonts.pixel(fontSize: size, color: AppColors.title).copyWith(letterSpacing: 2);
+                                      final painter = TextPainter(
+                                        text: TextSpan(text: _page.title, style: style),
+                                        textDirection: TextDirection.ltr,
+                                        textAlign: TextAlign.center,
+                                        maxLines: maxLines,
+                                        textScaler: scaler,
+                                      )..layout(maxWidth: constraints.maxWidth);
+                                      if (!painter.didExceedMaxLines) {
+                                        fontSize = size;
+                                        break;
+                                      }
+                                    }
+
+                                    return Text(
+                                      _page.title,
+                                      style: AppFonts.pixel(fontSize: fontSize, color: AppColors.title).copyWith(letterSpacing: 2),
+                                      textAlign: TextAlign.center,
+                                      softWrap: true,
+                                      maxLines: maxLines,
+                                      overflow: TextOverflow.ellipsis,
+                                    );
+                                  },
                                 ),
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          '~ ${_page.year} ~',
+                          '~ $_year ~',
                           style: AppFonts.dot(fontSize: 24, color: AppColors.subtitle, fontWeight: FontWeight.w500).copyWith(letterSpacing: 3),
                         ),
                         const SizedBox(height: 8),
@@ -601,18 +642,24 @@ class _TrackerScreenState extends State<TrackerScreen> {
               ),
             ),
 
-            // Year
+            // Year (interactive when sidebar is expanded)
             if (showLabels)
-              Text(
-                '~ ${_page.year} ~',
-                style: AppFonts.dot(fontSize: 12, color: AppColors.subtitle),
-                textAlign: TextAlign.center,
+              SwipeNav(
+                arrowSize: 11,
+                arrowColor: AppColors.accent,
+                arrowPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                onPrev: () => _changeYear(-1),
+                onNext: () => _changeYear(1),
+                center: Text(
+                  '$_year',
+                  style: AppFonts.dot(fontSize: 12, color: AppColors.subtitle),
+                ),
               )
             else
               RotatedBox(
                 quarterTurns: 3,
                 child: Text(
-                  '${_page.year}',
+                  '$_year',
                   style: AppFonts.pixel(fontSize: 9, color: AppColors.subtitle),
                 ),
               ),
@@ -863,11 +910,11 @@ class _TrackerScreenState extends State<TrackerScreen> {
     DateTime check = DateTime(now.year, now.month, now.day);
 
     // Only calculate streak for the page's year
-    if (check.year != _page.year) {
-      check = DateTime(_page.year, 12, 31);
+    if (check.year != _year) {
+      check = DateTime(_year, 12, 31);
     }
 
-    while (check.year == _page.year) {
+    while (check.year == _year) {
       final cell = cellsProv.getCell(check.month, check.day);
       if (cell != null) {
         streak++;

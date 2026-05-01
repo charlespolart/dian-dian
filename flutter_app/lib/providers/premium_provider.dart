@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
@@ -32,50 +33,40 @@ class PremiumProvider extends ChangeNotifier {
   }
 
   Future<void> _init() async {
-    // Load cached state
+    // Load cached state for instant UI on cold start.
     final prefs = await SharedPreferences.getInstance();
     _isPremium = prefs.getBool(_prefKey) ?? false;
     _cursorEnabled = prefs.getBool(_cursorEnabledKey) ?? false;
     _cursorId = prefs.getString(_cursorIdKey) ?? 'default';
     notifyListeners();
 
-    // Initialize purchase service
-    _purchaseService.configure(
-      monthlyId: 'dian_dian_premium_monthly',
-      yearlyId: 'dian_dian_premium_yearly',
-      lifetimeId: 'dian_dian_premium_lifetime',
-    );
-    _purchaseService.onPurchaseUpdated = _onPurchaseUpdated;
+    _purchaseService.onPremiumChanged = _onPremiumChanged;
     await _purchaseService.init();
-
-    // Check for active subscription (restores purchases)
-    if (!_isPremium) {
-      await _purchaseService.checkActiveSubscription();
-    }
   }
 
-  void _onPurchaseUpdated(bool isPremium) {
-    setPremium(isPremium);
+  void _onPremiumChanged(bool isPremium) {
+    _setPremiumCached(isPremium);
   }
 
-  /// Buy premium subscription.
-  Future<bool> buyPremium({String? productId}) async {
-    return _purchaseService.buyPremium(productId: productId);
+  /// Buy a specific RC package (monthly / yearly / lifetime).
+  Future<bool> purchasePackage(Package package) async {
+    return _purchaseService.purchasePackage(package);
   }
 
   /// Restore previous purchases.
-  Future<void> restorePurchases() async {
-    await _purchaseService.restorePurchases();
+  Future<bool> restorePurchases() async {
+    return _purchaseService.restorePurchases();
   }
 
-  /// Check subscription status from server.
+  /// Check subscription status from server (used as a backup, e.g. if RC
+  /// listener missed an update). The webhook keeps the DB authoritative.
   Future<void> checkServerSubscription() async {
     try {
       final response = await ApiService().apiFetch('/api/purchase/status');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         if (data['premium'] == true && !_isPremium) {
-          await setPremium(true);
+          await _setPremiumCached(true);
         }
       }
     } catch (_) {}
@@ -113,7 +104,6 @@ class PremiumProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_cursorEnabledKey, value);
     notifyListeners();
-    // Sync to server (fire-and-forget)
     ApiService().apiFetch('/api/auth/settings', method: 'PATCH', body: {'cursorEnabled': value}).ignore();
   }
 
@@ -123,21 +113,13 @@ class PremiumProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_cursorIdKey, id);
     notifyListeners();
-    // Sync to server (fire-and-forget)
     ApiService().apiFetch('/api/auth/settings', method: 'PATCH', body: {'cursorId': id}).ignore();
   }
 
-  /// Set premium status (also used for testing).
-  Future<void> setPremium(bool value) async {
+  Future<void> _setPremiumCached(bool value) async {
     _isPremium = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_prefKey, value);
     notifyListeners();
-  }
-
-  @override
-  void dispose() {
-    _purchaseService.dispose();
-    super.dispose();
   }
 }

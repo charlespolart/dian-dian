@@ -49,8 +49,7 @@ app.use('/api/purchase', purchaseRoutes);
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
 // Contact form
-import { Resend } from 'resend';
-const resend = new Resend(env.RESEND_API_KEY);
+import { sendEmail } from './lib/email.js';
 function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
@@ -65,9 +64,9 @@ app.post('/api/contact', contactLimiter, async (req, res) => {
   const safeEmail = escapeHtml(email.trim());
   const safeMessage = escapeHtml(message.trim()).replace(/\n/g, '<br/>');
   try {
-    await resend.emails.send({
-      from: 'Dian Dian Contact <noreply@overridedev.com>',
-      to: 'contact@overridedev.com',
+    await sendEmail({
+      to: 'diandian@overridedev.com',
+      fromName: 'Dian Dian Contact',
       replyTo: email.trim(),
       subject: `[Dian Dian] Message from ${safeName}`,
       html: `<p><strong>From:</strong> ${safeName} (${safeEmail})</p><hr/><p>${safeMessage}</p>`,
