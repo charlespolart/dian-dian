@@ -10,23 +10,23 @@ import { eq, and } from 'drizzle-orm';
 const router = Router();
 router.use(requireAuth);
 
-// Old Flutter clients (pre-multiyear) don't send a year. Fall back to the
-// current calendar year so they see at least *something* coherent until users
-// update from the App Store.
-function fallbackYear(input: unknown): number {
+// Legacy clients (≤ 1.1.0) don't send a year — we fall back to the page's
+// own pages.year so their stored data continues to render correctly. New
+// clients always send year explicitly.
+function pickYear(input: unknown, pageYear: number): number {
   if (typeof input === 'number' && Number.isInteger(input)) return input;
   if (typeof input === 'string') {
     const n = parseInt(input, 10);
     if (!Number.isNaN(n)) return n;
   }
-  return new Date().getFullYear();
+  return pageYear;
 }
 
-// Get cells for a page. Filtered by year (defaults to current year) unless
-// `?all=true` is passed — used by global all-time stats.
+// Get cells for a page. Filtered by year (defaults to the page's own year for
+// legacy compat) unless `?all=true` is passed — used by global all-time stats.
 router.get('/:pageId', async (req, res) => {
   try {
-    const [page] = await db.select({ id: pages.id })
+    const [page] = await db.select({ id: pages.id, year: pages.year })
       .from(pages)
       .where(and(eq(pages.id, String(req.params.pageId)), eq(pages.userId, req.userId!)))
       .limit(1);
@@ -39,7 +39,7 @@ router.get('/:pageId', async (req, res) => {
       return;
     }
 
-    const year = fallbackYear(req.query.year);
+    const year = pickYear(req.query.year, page.year);
     const result = await db.select()
       .from(cells)
       .where(and(eq(cells.pageId, pageId), eq(cells.year, year)));
@@ -62,13 +62,13 @@ router.put('/:pageId', validate(upsertCellSchema), async (req, res) => {
   try {
     const pageId = String(req.params.pageId);
     const { month, day, color, comment } = req.body;
-    const year = fallbackYear(req.body.year);
 
-    const [page] = await db.select({ id: pages.id })
+    const [page] = await db.select({ id: pages.id, year: pages.year })
       .from(pages)
       .where(and(eq(pages.id, pageId), eq(pages.userId, req.userId!)))
       .limit(1);
     if (!page) { res.status(404).json({ error: 'Page not found' }); return; }
+    const year = pickYear(req.body.year, page.year);
 
     const [cell] = await db.insert(cells)
       .values({ pageId, year, month, day, color, comment: comment ?? null, updatedAt: new Date() })
@@ -96,13 +96,13 @@ router.delete('/:pageId', validate(deleteCellSchema), async (req, res) => {
   try {
     const pageId = String(req.params.pageId);
     const { month, day } = req.body;
-    const year = fallbackYear(req.body.year);
 
-    const [page] = await db.select({ id: pages.id })
+    const [page] = await db.select({ id: pages.id, year: pages.year })
       .from(pages)
       .where(and(eq(pages.id, pageId), eq(pages.userId, req.userId!)))
       .limit(1);
     if (!page) { res.status(404).json({ error: 'Page not found' }); return; }
+    const year = pickYear(req.body.year, page.year);
 
     await db.delete(cells)
       .where(and(
@@ -154,13 +154,13 @@ router.patch('/:pageId/recolor', validate(recolorSchema), async (req, res) => {
 router.delete('/:pageId/all', async (req, res) => {
   try {
     const pageId = String(req.params.pageId);
-    const [page] = await db.select({ id: pages.id })
+    const [page] = await db.select({ id: pages.id, year: pages.year })
       .from(pages)
       .where(and(eq(pages.id, pageId), eq(pages.userId, req.userId!)))
       .limit(1);
     if (!page) { res.status(404).json({ error: 'Page not found' }); return; }
 
-    const year = fallbackYear(req.body?.year ?? req.query.year);
+    const year = pickYear(req.body?.year ?? req.query.year, page.year);
     await db.delete(cells)
       .where(and(eq(cells.pageId, pageId), eq(cells.year, year)));
 

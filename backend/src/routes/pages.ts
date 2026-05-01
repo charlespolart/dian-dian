@@ -27,6 +27,9 @@ router.get('/', async (req, res) => {
 const createPageSchema = z.object({
   title: z.string().min(1).max(35).default('New Tracker'),
   position: z.number().int().min(0).default(0),
+  // Optional: only sent by legacy clients (≤ 1.1.0). The field is kept on the
+  // table but new clients ignore it.
+  year: z.number().int().min(2000).max(2100).optional(),
 });
 
 // Create page
