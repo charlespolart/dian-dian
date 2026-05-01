@@ -1,13 +1,13 @@
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
 
 import '../providers/language_provider.dart';
 import '../providers/premium_provider.dart';
 import '../services/store_links.dart';
 import '../theme/app_theme.dart';
 import 'app_dialog.dart';
+import 'custom_paywall_dialog.dart';
 
 /// Dialog shown when a free user tries to access a premium feature.
 /// Shows what premium includes, then opens the RevenueCat paywall on upgrade.
@@ -149,8 +149,7 @@ class PremiumGateDialog extends StatelessWidget {
   }
 }
 
-/// Opens the RevenueCat-managed paywall. Falls back to closing the dialog
-/// silently if the user dismisses it, or pops `true` if they convert.
+/// Opens the in-app pixel-art paywall. Pops `true` if the user becomes premium.
 class _UpgradeButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -158,19 +157,9 @@ class _UpgradeButton extends StatelessWidget {
 
     return GestureDetector(
       onTap: () async {
-        final premium = context.read<PremiumProvider>();
-        final result = await RevenueCatUI.presentPaywall(
-          displayCloseButton: true,
-        );
+        final premium = await CustomPaywallDialog.show(context);
         if (!context.mounted) return;
-        // Reflect any state change immediately, even if the listener hasn't
-        // fired yet.
-        if (result == PaywallResult.purchased ||
-            result == PaywallResult.restored) {
-          Navigator.of(context).pop(true);
-        } else if (premium.isPremium) {
-          Navigator.of(context).pop(true);
-        }
+        if (premium) Navigator.of(context).pop(true);
       },
       child: Container(
         width: double.infinity,
