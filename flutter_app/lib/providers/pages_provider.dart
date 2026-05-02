@@ -42,7 +42,9 @@ class PagesProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> createPage(String title) async {
+  /// Creates a new page on the server and returns the created [PageModel],
+  /// or `null` if the request failed.
+  Future<PageModel?> createPage(String title) async {
     try {
       final response = await _api.apiFetch(
         '/api/pages',
@@ -59,10 +61,12 @@ class PagesProvider extends ChangeNotifier {
           _pages.add(page);
         }
         notifyListeners();
+        return page;
       }
     } catch (e) {
       debugPrint('PagesProvider: createPage failed: $e');
     }
+    return null;
   }
 
   Future<void> updatePage(String id, Map<String, dynamic> updates) async {
