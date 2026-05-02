@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -101,82 +103,27 @@ class _PageListScreenState extends State<PageListScreen> {
       }
     }
 
-    final lang = context.read<LanguageProvider>();
-    final controller = TextEditingController();
-    final title = await showDialog<String>(
+    final created = await showDialog<PageModel?>(
       context: context,
-      builder: (ctx) => AppDialog(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                lang.t('tracker.newTracker'),
-                style: AppFonts.pixel(fontSize: 16, color: AppColors.title),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller,
-                autofocus: true,
-                maxLength: 35,
-                style: AppFonts.dot(fontSize: 14, color: AppColors.inputText),
-                decoration: InputDecoration(
-                  hintText: lang.t('tracker.titleHint'),
-                  counterText: '',
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 10,
-                  ),
-                  isDense: true,
-                ),
-                onSubmitted: (v) => Navigator.of(ctx).pop(v.trim()),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.of(ctx).pop(),
-                    child: Text(
-                      lang.t('common.cancel'),
-                      style: AppFonts.pixel(fontSize: 12, color: AppColors.textMuted),
-                    ),
-                  ),
-                  const SizedBox(width: 20),
-                  GestureDetector(
-                    onTap: () => Navigator.of(ctx).pop(controller.text.trim()),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: AppColors.btnAdd,
-                        border: Border.all(color: AppColors.btnAddBorder),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        lang.t('common.create'),
-                        style: AppFonts.pixel(fontSize: 12, color: AppColors.btnAddText),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+      barrierDismissible: false,
+      builder: (_) => const _CreateTrackerDialog(),
     );
 
-    if (title == null || title.isEmpty || !mounted) return;
-
-    final prov = context.read<PagesProvider>();
-    await prov.createPage(title);
-    if (prov.pages.isNotEmpty && mounted) {
-      final newest = _sortedPages(prov.pages).last;
-      _openTracker(newest);
+    if (created != null && mounted) {
+      _openTracker(created);
     }
   }
 
   void _openTracker(PageModel page) {
+    // Free-tier guard: trackers beyond the first 3 (by createdAt) are locked.
+    final premium = context.read<PremiumProvider>();
+    final pages = context.read<PagesProvider>().pages;
+    if (premium.lockedTrackerIds(pages).contains(page.id)) {
+      final lang = context.read<LanguageProvider>();
+      PremiumGateDialog.show(context, feature: lang.t('premium.trackerLimit'));
+      return;
+    }
+
     final cellsProv = context.read<CellsProvider>();
     final legendsProv = context.read<LegendsProvider>();
     cellsProv.setContext(pageId: page.id, year: _selectedYear);
@@ -317,6 +264,9 @@ class _PageListScreenState extends State<PageListScreen> {
                     )
                   : Consumer2<CellsProvider, LegendsProvider>(
                       builder: (context, cellsProv, legendsProv, _) {
+                        final lockedIds = context
+                            .read<PremiumProvider>()
+                            .lockedTrackerIds(sortedPages);
                         return LayoutBuilder(
                           builder: (context, constraints) {
                             // Responsive: fit 2 cards on phone, more on tablet
@@ -361,6 +311,7 @@ class _PageListScreenState extends State<PageListScreen> {
                                           onTap: () => _openTracker(page),
                                           onDelete: () => _deletePage(page),
                                           isDragGhost: _draggingIndex == index,
+                                          isLocked: lockedIds.contains(page.id),
                                           dragHandle: Draggable<int>(
                                             data: index,
                                             onDragStarted: () =>
@@ -481,6 +432,7 @@ class _PageCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onDelete;
   final bool isDragGhost;
+  final bool isLocked;
   final Widget? dragHandle;
 
   const _PageCard({
@@ -491,13 +443,15 @@ class _PageCard extends StatelessWidget {
     required this.onTap,
     required this.onDelete,
     this.isDragGhost = false,
+    this.isLocked = false,
     this.dragHandle,
   });
 
   @override
   Widget build(BuildContext context) {
+    final cardOpacity = isDragGhost ? 0.3 : (isLocked ? 0.55 : 1.0);
     return Opacity(
-      opacity: isDragGhost ? 0.3 : 1.0,
+      opacity: cardOpacity,
       child: GestureDetector(
         onTap: isDragGhost ? null : onTap,
       child: Container(
@@ -561,6 +515,27 @@ class _PageCard extends StatelessWidget {
               ],
             ),
           ),
+          // Lock badge (free tier — tracker beyond the first 3 by createdAt)
+          if (isLocked)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.shell.withValues(alpha: 0.85),
+                      border: Border.all(color: AppColors.accent, width: 1.5),
+                    ),
+                    child: Icon(
+                      Icons.lock_outline,
+                      size: 18,
+                      color: AppColors.accent,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           // Drag handle top-left
           if (dragHandle != null)
             Positioned(
@@ -677,5 +652,126 @@ class _MiniGrid extends StatelessWidget {
   static Color _hexToColor(String hex) {
     final h = hex.replaceFirst('#', '');
     return Color(int.parse('FF$h', radix: 16));
+  }
+}
+
+/// "New tracker" prompt that owns the create request — the button shows a
+/// spinner once the network call has been running for [_spinnerDelay], so
+/// fast networks never flash one. Pops with the created [PageModel] on
+/// success or `null` on cancel/failure.
+class _CreateTrackerDialog extends StatefulWidget {
+  const _CreateTrackerDialog();
+
+  @override
+  State<_CreateTrackerDialog> createState() => _CreateTrackerDialogState();
+}
+
+class _CreateTrackerDialogState extends State<_CreateTrackerDialog> {
+  static const _spinnerDelay = Duration(milliseconds: 250);
+
+  final _controller = TextEditingController();
+  Timer? _spinnerTimer;
+  bool _busy = false;
+  bool _showSpinner = false;
+
+  @override
+  void dispose() {
+    _spinnerTimer?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _create() async {
+    if (_busy) return;
+    final title = _controller.text.trim();
+    if (title.isEmpty) return;
+
+    setState(() => _busy = true);
+    _spinnerTimer = Timer(_spinnerDelay, () {
+      if (mounted) setState(() => _showSpinner = true);
+    });
+
+    final created = await context.read<PagesProvider>().createPage(title);
+
+    _spinnerTimer?.cancel();
+    if (!mounted) return;
+    Navigator.of(context).pop(created);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final lang = context.read<LanguageProvider>();
+    return AppDialog(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              lang.t('tracker.newTracker'),
+              style: AppFonts.pixel(fontSize: 16, color: AppColors.title),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _controller,
+              autofocus: true,
+              maxLength: 35,
+              enabled: !_busy,
+              style: AppFonts.dot(fontSize: 14, color: AppColors.inputText),
+              decoration: InputDecoration(
+                hintText: lang.t('tracker.titleHint'),
+                counterText: '',
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12, vertical: 10,
+                ),
+                isDense: true,
+              ),
+              onSubmitted: (_) => _create(),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                GestureDetector(
+                  onTap: _busy ? null : () => Navigator.of(context).pop(),
+                  child: Text(
+                    lang.t('common.cancel'),
+                    style: AppFonts.pixel(
+                      fontSize: 12,
+                      color: _busy ? AppColors.dotEmpty : AppColors.textMuted,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 20),
+                GestureDetector(
+                  onTap: _create,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.btnAdd,
+                      border: Border.all(color: AppColors.btnAddBorder),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: _showSpinner
+                        ? SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 1.5,
+                              color: AppColors.btnAddText,
+                            ),
+                          )
+                        : Text(
+                            lang.t('common.create'),
+                            style: AppFonts.pixel(fontSize: 12, color: AppColors.btnAddText),
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
