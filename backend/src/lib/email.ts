@@ -1,26 +1,10 @@
-import { MailerSend, EmailParams, Sender, Recipient } from 'mailersend';
 import { Resend } from 'resend';
 import { env } from './env.js';
 
-// Pick a provider once at module load. MailerSend wins when both keys are
-// present so the prod cutover happens the moment MAILERSEND_API_TOKEN lands
-// in the environment — no code change required.
-type Provider = 'mailersend' | 'resend';
-const provider: Provider = env.MAILERSEND_API_TOKEN ? 'mailersend' : 'resend';
+const resend = new Resend(env.RESEND_API_KEY);
 
-const mailerSend = env.MAILERSEND_API_TOKEN
-    ? new MailerSend({ apiKey: env.MAILERSEND_API_TOKEN })
-    : null;
-const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
-
-// MailerSend is set up on the diandian.* subdomain so each app stays isolated;
-// Resend was on the apex while we only had one app — the subdomain isn't
-// verified there yet, so during the transition Resend keeps using the apex.
-const FROM_EMAIL_MAILERSEND = 'noreply@diandian.overridedev.com';
-const FROM_EMAIL_RESEND = 'noreply@overridedev.com';
+const FROM_EMAIL = 'diandian@overridedev.com';
 const FROM_NAME = 'Dian Dian';
-
-console.log(`[email] using ${provider}`);
 
 export interface EmailOptions {
   to: string;
@@ -33,32 +17,9 @@ export interface EmailOptions {
 }
 
 export async function sendEmail(opts: EmailOptions): Promise<void> {
-  if (provider === 'mailersend') {
-    await sendViaMailerSend(opts);
-  } else {
-    await sendViaResend(opts);
-  }
-}
-
-async function sendViaMailerSend(opts: EmailOptions): Promise<void> {
-  if (!mailerSend) throw new Error('MailerSend not configured');
-  const sender = new Sender(FROM_EMAIL_MAILERSEND, opts.fromName ?? FROM_NAME);
-  const params = new EmailParams()
-    .setFrom(sender)
-    .setTo([new Recipient(opts.to)])
-    .setSubject(opts.subject)
-    .setHtml(opts.html);
-  if (opts.replyTo) {
-    params.setReplyTo(new Sender(opts.replyTo));
-  }
-  await mailerSend.email.send(params);
-}
-
-async function sendViaResend(opts: EmailOptions): Promise<void> {
-  if (!resend) throw new Error('Resend not configured');
   const fromName = opts.fromName ?? FROM_NAME;
   await resend.emails.send({
-    from: `${fromName} <${FROM_EMAIL_RESEND}>`,
+    from: `${fromName} <${FROM_EMAIL}>`,
     to: opts.to,
     replyTo: opts.replyTo,
     subject: opts.subject,
