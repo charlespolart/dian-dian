@@ -75,9 +75,11 @@ The postgres named volume `dian-dian_postgres_data` survives `down` (only `down 
 ```bash
 mkdir -p /srv/dian-dian/{postgres,caddy/data,caddy/config,ops/scripts}
 
-# Postgres in the playbook image runs as UID 999 (the postgres user in the
-# alpine image). Chown so the container can write to the bind mount.
-chown -R 999:999 /srv/dian-dian/postgres
+# Postgres in the alpine image runs as UID 70 (not 999 — the official
+# Debian-based image uses 999, but alpine inherits the community user
+# with UID 70). Verify on the host with:
+#   docker run --rm postgres:16-alpine id postgres
+chown -R 70:70 /srv/dian-dian/postgres
 chmod 700 /srv/dian-dian/postgres
 ```
 
@@ -95,8 +97,8 @@ ls "$src" | head    # should show pgdata/ or PG_VERSION etc.
 # not the directory itself, into the bind mount.
 cp -a "$src/." /srv/dian-dian/postgres/
 
-# Re-chown after copy (cp -a preserves the original 999:999, but be safe).
-chown -R 999:999 /srv/dian-dian/postgres
+# Re-chown after copy (cp -a preserves the original 70:70, but be safe).
+chown -R 70:70 /srv/dian-dian/postgres
 ```
 
 Verify:
@@ -109,7 +111,7 @@ If you don't see `pgdata/` — the legacy compose used the postgres default loca
 mkdir -p /srv/dian-dian/postgres/pgdata
 shopt -s dotglob
 mv /srv/dian-dian/postgres/* /srv/dian-dian/postgres/pgdata/ 2>/dev/null || true
-chown -R 999:999 /srv/dian-dian/postgres
+chown -R 70:70 /srv/dian-dian/postgres
 ```
 
 ---
