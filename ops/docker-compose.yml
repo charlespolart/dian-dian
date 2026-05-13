@@ -1,0 +1,39 @@
+# Base compose — env-neutral. Layer ops/docker-compose.dev.yml or
+# ops/docker-compose.prod.yml on top; the base alone isn't runnable
+# (backend has neither `image` nor `build`).
+name: dian-dian
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-dian_dian}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_HOST_AUTH_METHOD: ${POSTGRES_HOST_AUTH_METHOD:-trust}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    healthcheck:
+      # SELECT from pg_class forces postgres through the catalog so we don't
+      # report healthy while DDL is in flight (pg_isready can lie).
+      test:
+        - "CMD-SHELL"
+        - "psql -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-dian_dian} -tAc 'SELECT 1 FROM pg_class LIMIT 1' >/dev/null"
+      interval: 3s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  backend:
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}@postgres:5432/${POSTGRES_DB:-dian_dian}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/api/health >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s

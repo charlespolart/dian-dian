@@ -1,11 +1,62 @@
 name: Deploy
 
 on:
-  push:
-    branches: [master]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to deploy (latest = HEAD short SHA, or pass a 7-char SHA to roll back)"
+        required: false
+        default: latest
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
 
 jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tag }}
+      image_name: ${{ steps.meta.outputs.image_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: meta
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          if [ "${{ github.event.inputs.tag }}" = "latest" ]; then
+            echo "tag=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          fi
+          owner_lc="${OWNER,,}"  # GHCR requires lowercase
+          echo "image_name=ghcr.io/${owner_lc}/dian-dian-backend" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          target: runtime
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.image_name }}:${{ steps.meta.outputs.tag }}
+            ${{ steps.meta.outputs.image_name }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   deploy:
+    needs: build-and-push
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,57 +68,66 @@ jobs:
           chmod 600 ~/.ssh/id_deploy
           ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Deploy to server
+      - name: Sync compose + Caddyfile
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
         run: |
-          SSH_CMD="ssh -i ~/.ssh/id_deploy $VPS_USER@$VPS_HOST"
-          SCP_CMD="scp -i ~/.ssh/id_deploy"
-          RSYNC="rsync -az -e 'ssh -i ~/.ssh/id_deploy'"
+          # No --delete — anything outside the repo on the VPS (postgres data
+          # dir, caddy volumes, .env) must survive.
+          rsync -az -e 'ssh -i ~/.ssh/id_deploy' \
+            ops/docker-compose.yml \
+            ops/docker-compose.prod.yml \
+            "$VPS_USER@$VPS_HOST:/srv/dian-dian/ops/"
 
-          $SSH_CMD "mkdir -p /root/dian-dian/backend"
+          # Caddyfile via cat > to preserve the inode of the bind mount.
+          # The Caddy container holds onto the file via the original inode;
+          # replacing the file (rsync would) leaves the container serving
+          # the old config until a restart.
+          scp -i ~/.ssh/id_deploy ops/Caddyfile \
+            "$VPS_USER@$VPS_HOST:/tmp/dian-dian-Caddyfile"
+          ssh -i ~/.ssh/id_deploy "$VPS_USER@$VPS_HOST" \
+            "mkdir -p /srv/dian-dian/ops && cat /tmp/dian-dian-Caddyfile > /srv/dian-dian/ops/Caddyfile && rm /tmp/dian-dian-Caddyfile"
 
-          # Backend source (Dockerfile builds it inside the image; we sync
-          # everything except node_modules / dist / .env which are produced or
-          # injected at runtime).
-          eval "$RSYNC --delete \
-            --exclude=node_modules --exclude=dist --exclude=.env \
-            backend/ $VPS_USER@$VPS_HOST:/root/dian-dian/backend/"
+      - name: Pull image, migrate, restart
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+        run: |
+          # Quoted heredoc → no local expansion. IMAGE_TAG is passed inline
+          # so the remote shell sees it expanded once.
+          ssh -i ~/.ssh/id_deploy "$VPS_USER@$VPS_HOST" \
+            "IMAGE_TAG='$IMAGE_TAG' bash -s" << 'REMOTE'
+          set -euo pipefail
+          cd /srv/dian-dian
+          echo "$IMAGE_TAG" > .deployed-tag
 
-          # Top-level orchestration files — staged in /tmp so we can do an
-          # in-place rewrite on the server (preserves Caddyfile's inode, which
-          # the Caddy container needs since it's bind-mounted).
-          $SCP_CMD Caddyfile $VPS_USER@$VPS_HOST:/tmp/dian-dian-Caddyfile
-          $SCP_CMD compose.yaml $VPS_USER@$VPS_HOST:/tmp/dian-dian-compose.yaml
+          COMPOSE="docker compose --env-file /srv/dian-dian/.env \
+            -f ops/docker-compose.yml \
+            -f ops/docker-compose.prod.yml"
 
-          $SSH_CMD << 'REMOTE'
-            set -e
+          IMAGE_TAG="$IMAGE_TAG" $COMPOSE pull backend
+          IMAGE_TAG="$IMAGE_TAG" $COMPOSE up -d --wait postgres
 
-            # First-run bootstrap: install Docker + Compose v2 if absent.
-            if ! command -v docker >/dev/null 2>&1; then
-              echo "Installing Docker..."
-              curl -fsSL https://get.docker.com | sh
-              sudo systemctl enable --now docker
+          # Migrate with 3× retry: pg_filenode.map races with concurrent DDL
+          # can fail the first attempt right after postgres starts.
+          for attempt in 1 2 3; do
+            if IMAGE_TAG="$IMAGE_TAG" $COMPOSE run --rm --no-deps -T backend npx drizzle-kit migrate </dev/null; then
+              break
             fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "migrate failed 3 times, aborting"
+              exit 1
+            fi
+            sleep 5
+          done
 
-            mkdir -p /root/dian-dian
-            # In-place rewrite (truncate + write) keeps the same inode, so the
-            # bind-mounted /etc/caddy/Caddyfile inside the container immediately
-            # sees the new content.
-            cat /tmp/dian-dian-Caddyfile > /root/dian-dian/Caddyfile
-            cat /tmp/dian-dian-compose.yaml > /root/dian-dian/compose.yaml
-            rm -f /tmp/dian-dian-Caddyfile /tmp/dian-dian-compose.yaml
+          IMAGE_TAG="$IMAGE_TAG" $COMPOSE up -d --wait
 
-            cd /root/dian-dian
+          # Reload Caddy in place — the Caddyfile may have changed.
+          $COMPOSE exec -T caddy caddy validate --config /etc/caddy/Caddyfile
+          $COMPOSE exec -T caddy caddy reload --config /etc/caddy/Caddyfile
 
-            sudo docker compose build backend
-            sudo docker compose up -d postgres caddy backend
-
-            # Wait for backend to be ready, then run migrations inside the container.
-            sleep 2
-            sudo docker compose exec -T backend npx drizzle-kit migrate
-
-            sudo docker compose exec -T caddy caddy validate --config /etc/caddy/Caddyfile
-            sudo docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile
+          docker image prune -f
           REMOTE
