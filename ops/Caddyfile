@@ -15,12 +15,13 @@ diandian.overridedev.com {
 	header @media Cache-Control "public, max-age=86400, must-revalidate"
 
 	# Everything else (API, /reset-password, legal pages, etc.) — proxy to
-	# the Express backend. WebSocket upgrades are handled automatically.
-	reverse_proxy localhost:3001
+	# the Express backend on the docker network. WebSocket upgrades are
+	# handled automatically by Caddy.
+	reverse_proxy backend:3001
 }
 
 # Legacy domain — keeps users on app v1.0.0 working until they upgrade.
 # Same backend, no caching layer (those users hit /api/* anyway).
 mydiandian.app {
-	reverse_proxy localhost:3001
+	reverse_proxy backend:3001
 }

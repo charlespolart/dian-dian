@@ -1,0 +1,40 @@
+# Prod overlay — image from GHCR (no build), bind volumes under /srv,
+# env_file injects every secret from /srv/dian-dian/.env, Caddy reverse proxy.
+#
+# Usage (from /srv/dian-dian/ on the VPS):
+#   docker compose -f ops/docker-compose.yml -f ops/docker-compose.prod.yml up -d --wait
+services:
+  postgres:
+    restart: always
+    # No published ports in prod — only the backend on the docker network
+    # reaches postgres, via the `postgres` hostname.
+    volumes:
+      - /srv/dian-dian/postgres:/var/lib/postgresql/data
+
+  backend:
+    image: ghcr.io/charlespolart/dian-dian-backend:${IMAGE_TAG:-latest}
+    restart: always
+    # env_file injects every secret (RESEND_API_KEY, REVENUECAT_WEBHOOK_SECRET,
+    # APPLE_BUNDLE_IDS, GOOGLE_CLIENT_IDS, etc.) without listing each one
+    # under `environment:`. Add a var to `.env` and a redeploy picks it up.
+    env_file:
+      - /srv/dian-dian/.env
+    environment:
+      NODE_ENV: production
+      # Fail-closed validation: missing var aborts `compose up` instead of
+      # letting the backend boot with an empty secret.
+      JWT_SECRET: ${JWT_SECRET:?must be set}
+
+  caddy:
+    image: caddy:2-alpine
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - /srv/dian-dian/caddy/data:/data
+      - /srv/dian-dian/caddy/config:/config

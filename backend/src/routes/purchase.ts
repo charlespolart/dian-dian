@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { timingSafeEqual } from 'node:crypto';
 import { db } from '../db/index.js';
 import { subscriptions } from '../db/schema.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -49,6 +50,10 @@ router.get('/status', requireAuth, async (req, res) => {
 // (Integrations → Webhooks) with this URL and the secret below as the
 // Authorization header.
 // Docs: https://www.revenuecat.com/docs/integrations/webhooks
+//
+// Note: RC does NOT sign the body with HMAC. The only auth is the static
+// secret echoed back in the `Authorization` header. See:
+//   ~/Documents/Coding/playbook/third-party/revenuecat.md
 // ---------------------------------------------------------------------------
 type RcEventType =
   | 'INITIAL_PURCHASE'
@@ -77,16 +82,25 @@ interface RcEvent {
   transaction_id?: string;
 }
 
-router.post('/webhook', async (req, res) => {
-  const expected = process.env.REVENUECAT_WEBHOOK_SECRET;
-  if (!expected) {
-    console.error('REVENUECAT_WEBHOOK_SECRET not configured');
-    res.status(500).json({ error: 'Webhook not configured' });
-    return;
-  }
+/// Constant-time comparison of the `Authorization` header against the
+/// configured secret. Fails closed (returns false) when either is missing —
+/// which yields a 401 from the handler so RC stops retrying instead of
+/// looping on a 5xx until the secret is set.
+function verifyAuthorization(header: string | undefined): boolean {
+  if (!header) return false;
+  const secret = process.env.REVENUECAT_WEBHOOK_SECRET;
+  if (!secret) return false;
+  const a = Buffer.from(header, 'utf8');
+  const b = Buffer.from(secret, 'utf8');
+  if (a.length !== b.length) return false; // timingSafeEqual requires equal-length buffers
+  return timingSafeEqual(a, b);
+}
 
-  const auth = req.headers.authorization;
-  if (auth !== expected) {
+router.post('/webhook', async (req, res) => {
+  if (!process.env.REVENUECAT_WEBHOOK_SECRET) {
+    console.error('REVENUECAT_WEBHOOK_SECRET not configured');
+  }
+  if (!verifyAuthorization(req.headers.authorization)) {
     res.status(401).json({ error: 'Unauthorized' });
     return;
   }
@@ -155,33 +169,31 @@ interface UpsertParams {
   active: boolean;
 }
 
+/// Atomic upsert keyed by original_transaction_id. RC may retry the same
+/// event if we don't 2xx in 60s, so we need this to be idempotent — running
+/// the same event twice must converge to the same row, not error out on the
+/// unique constraint.
 async function upsertSubscription(params: UpsertParams): Promise<void> {
   if (!params.txId) return; // can't dedupe without a transaction id
 
-  const existing = await db.select()
-    .from(subscriptions)
-    .where(eq(subscriptions.originalTransactionId, params.txId))
-    .limit(1);
-
-  if (existing.length > 0) {
-    await db.update(subscriptions)
-      .set({
-        active: params.active,
-        productId: params.productId,
-        expiresAt: params.expiresAt,
-        updatedAt: new Date(),
-      })
-      .where(eq(subscriptions.originalTransactionId, params.txId));
-  } else {
-    await db.insert(subscriptions).values({
+  await db.insert(subscriptions)
+    .values({
       userId: params.userId,
       store: params.store,
       productId: params.productId,
       originalTransactionId: params.txId,
       expiresAt: params.expiresAt,
       active: params.active,
+    })
+    .onConflictDoUpdate({
+      target: subscriptions.originalTransactionId,
+      set: {
+        active: params.active,
+        productId: params.productId,
+        expiresAt: params.expiresAt,
+        updatedAt: new Date(),
+      },
     });
-  }
 }
 
 async function deactivateByTransaction(txId: string): Promise<void> {
