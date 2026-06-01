@@ -273,24 +273,9 @@ class _ExportLayout extends StatelessWidget {
           const SizedBox(height: 10),
 
           // Footer
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '点点 Dian Dian',
-                style: AppFonts.pixel(fontSize: 9, color: AppColors.textMuted),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '·',
-                style: AppFonts.dot(fontSize: 11, color: AppColors.textMuted),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'diandian.overridedev.com',
-                style: AppFonts.dot(fontSize: 10, color: AppColors.textMuted),
-              ),
-            ],
+          Text(
+            '点点 Dian Dian',
+            style: AppFonts.pixel(fontSize: 9, color: AppColors.textMuted),
           ),
         ],
       ),
