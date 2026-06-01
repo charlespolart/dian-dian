@@ -15,6 +15,7 @@ import '../widgets/confirm_dialog.dart';
 import '../providers/theme_provider.dart';
 import '../widgets/language_picker_dialog.dart';
 import '../widgets/cursor_picker_dialog.dart';
+import '../widgets/in_app_web_page.dart';
 import '../widgets/premium_gate_dialog.dart';
 import '../widgets/theme_picker_dialog.dart';
 import '../widgets/top_bar.dart';
@@ -35,21 +36,19 @@ class SettingsScreen extends StatelessWidget {
   static const String _termsUrl = 'https://diandian.overridedev.com/terms';
   static const String _legalUrl = 'https://diandian.overridedev.com/legal';
 
-  Future<void> _openUrl(String url, {BuildContext? context}) async {
-    var finalUrl = url;
-    if (context != null) {
-      final lang = context.read<LanguageProvider>();
-      const langCodes = {
-        Language.fr: 'fr',
-        Language.en: 'en',
-        Language.zhCN: 'zh-CN',
-        Language.zhTW: 'zh-TW',
-      };
-      final code = langCodes[lang.lang] ?? 'en';
-      final sep = url.contains('?') ? '&' : '?';
-      finalUrl = '$url${sep}lang=$code';
-    }
-    final uri = Uri.parse(finalUrl);
+  /// Opens a self-hosted legal/about page inside the app via WebView.
+  void _openLegal(BuildContext context, String url, String title) {
+    final lang = context.read<LanguageProvider>();
+    showInAppWebPage(
+      context,
+      uri: localizedDianDianUri(url, lang.lang),
+      title: title,
+    );
+  }
+
+  /// Hands off to another app (App Store subscription page) — stays external.
+  Future<void> _openExternal(String url) async {
+    final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
@@ -128,23 +127,23 @@ class SettingsScreen extends StatelessWidget {
                     const SizedBox(height: 8),
                     _buildLinkTile(
                       label: lang.t('settings.about'),
-                      onTap: () => _openUrl(_aboutUrl, context: context),
+                      onTap: () => _openLegal(context, _aboutUrl, lang.t('settings.about')),
                     ),
                     _buildLinkTile(
                       label: lang.t('settings.contact'),
-                      onTap: () => _openUrl(_contactUrl, context: context),
+                      onTap: () => _openLegal(context, _contactUrl, lang.t('settings.contact')),
                     ),
                     _buildLinkTile(
                       label: lang.t('settings.privacy'),
-                      onTap: () => _openUrl(_privacyUrl, context: context),
+                      onTap: () => _openLegal(context, _privacyUrl, lang.t('settings.privacy')),
                     ),
                     _buildLinkTile(
                       label: lang.t('settings.terms'),
-                      onTap: () => _openUrl(_termsUrl, context: context),
+                      onTap: () => _openLegal(context, _termsUrl, lang.t('settings.terms')),
                     ),
                     _buildLinkTile(
                       label: lang.t('settings.legal'),
-                      onTap: () => _openUrl(_legalUrl, context: context),
+                      onTap: () => _openLegal(context, _legalUrl, lang.t('settings.legal')),
                     ),
 
                     const SizedBox(height: 24),
@@ -236,7 +235,7 @@ class SettingsScreen extends StatelessWidget {
             GestureDetector(
               onTap: () {
                 if (kIsWeb) {
-                  _openUrl('https://apps.apple.com/account/subscriptions');
+                  _openExternal('https://apps.apple.com/account/subscriptions');
                 } else {
                   RevenueCatUI.presentCustomerCenter();
                 }

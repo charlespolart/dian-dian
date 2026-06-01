@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../providers/language_provider.dart';
 import '../providers/premium_provider.dart';
 import '../services/purchase_service.dart';
 import '../theme/app_theme.dart';
 import 'app_dialog.dart';
+import 'in_app_web_page.dart';
 
 /// Pixel-art paywall that uses RevenueCat under the hood for offerings,
 /// purchases, and restore — but renders the UI in Dian Dian's own style.
@@ -138,20 +138,13 @@ class _CustomPaywallDialogState extends State<CustomPaywallDialog> {
     }
   }
 
-  Future<void> _openLegalUrl(String base) async {
+  void _openLegalUrl(String base, String title) {
     final lang = context.read<LanguageProvider>();
-    const langCodes = {
-      Language.fr: 'fr',
-      Language.en: 'en',
-      Language.zhCN: 'zh-CN',
-      Language.zhTW: 'zh-TW',
-    };
-    final code = langCodes[lang.lang] ?? 'en';
-    final sep = base.contains('?') ? '&' : '?';
-    final uri = Uri.parse('$base${sep}lang=$code');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
+    showInAppWebPage(
+      context,
+      uri: localizedDianDianUri(base, lang.lang),
+      title: title,
+    );
   }
 
   @override
@@ -272,9 +265,9 @@ class _CustomPaywallDialogState extends State<CustomPaywallDialog> {
                 children: [
                   _footerLink(lang.t('premium.restore'), _restore),
                   _dot(),
-                  _footerLink(lang.t('premium.terms'), () => _openLegalUrl(_termsUrl)),
+                  _footerLink(lang.t('premium.terms'), () => _openLegalUrl(_termsUrl, lang.t('premium.terms'))),
                   _dot(),
-                  _footerLink(lang.t('premium.privacy'), () => _openLegalUrl(_privacyUrl)),
+                  _footerLink(lang.t('premium.privacy'), () => _openLegalUrl(_privacyUrl, lang.t('premium.privacy'))),
                 ],
               ),
               const SizedBox(height: 14),
