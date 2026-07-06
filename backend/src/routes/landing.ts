@@ -230,7 +230,7 @@ function page(lang: Lang): string {
       --ink:#55536b; --head:#6a6a98; --muted:#8f8aa0; --line:#E2D8C0;
       --title:#403f57;
       --green:#D8E8C8; --green-bd:#8AA378; --green-tx:#33402a;
-      --accent:#8080A8;
+      --accent:#8080A8; --pad:24px;
       --p-pink:#FF9EB8; --p-orange:#FFBA8A; --p-yellow:#FFD84D;
       --p-green:#7BC47F; --p-blue:#74C0FC; --p-purple:#B197FC;
     }
@@ -243,7 +243,7 @@ function page(lang: Lang): string {
       line-height:1.7; -webkit-font-smoothing:antialiased; overflow-x:hidden;
     }
     img{max-width:100%;display:block;height:auto}
-    .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+    .wrap{max-width:1080px;margin:0 auto;padding:0 var(--pad)}
     .pix{font-family:'Silkscreen',monospace}
 
     .topbar{display:flex;align-items:center;justify-content:space-between;padding:18px 0}
@@ -273,7 +273,7 @@ function page(lang: Lang): string {
     .phone img{border-radius:28px;width:100%;height:auto}
 
     section{padding:56px 0}
-    .feature{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center}
+    .feature{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center;max-width:1080px;margin:0 auto;padding-left:var(--pad);padding-right:var(--pad)}
     .feature .fig{display:flex;justify-content:center}
     .feature .phone{max-width:238px}
     .feature.rev .fig{order:2}
@@ -307,19 +307,6 @@ function page(lang: Lang): string {
     .js .reveal{opacity:0;transform:translateY(20px)}
     .reveal.in{opacity:1;transform:none;transition:opacity .7s ease,transform .7s ease}
 
-    @media (prefers-reduced-motion:no-preference){
-      .hero .eyebrow{animation:up .6s .04s both}
-      .hero h1{animation:up .6s .12s both}
-      .hero .sub{animation:up .6s .2s both}
-      .hero .cta-row{animation:up .6s .28s both}
-      .hero .dots{animation:up .6s .36s both}
-      .hero .fig{animation:up .7s .28s both}
-      .hero .phone{animation:float 6s ease-in-out infinite 1s}
-      .dots i{opacity:0;animation:pop .5s both}
-      @keyframes up{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
-      @keyframes pop{from{opacity:0;transform:scale(.2)}to{opacity:1;transform:scale(1)}}
-      @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
-    }
     @media (prefers-reduced-motion:reduce){ .js .reveal{opacity:1;transform:none} }
 
     @media (max-width:820px){
@@ -332,6 +319,7 @@ function page(lang: Lang): string {
       .feature p:not(.kick){margin-left:auto;margin-right:auto}
       section{padding:44px 0}
     }
+    @media (max-width:520px){ :root{--pad:26px} }
     @media (max-width:420px){
       .brand{font-size:19px}
       .langs a{padding:5px 6px}
