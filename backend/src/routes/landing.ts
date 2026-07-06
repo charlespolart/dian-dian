@@ -242,7 +242,7 @@ function page(lang: Lang): string {
       background-size:22px 22px; background-position:-11px -11px;
       line-height:1.7; -webkit-font-smoothing:antialiased; overflow-x:hidden;
     }
-    img{max-width:100%;display:block}
+    img{max-width:100%;display:block;height:auto}
     .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
     .pix{font-family:'Silkscreen',monospace}
 
@@ -268,14 +268,14 @@ function page(lang: Lang): string {
     .btn-store:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(112,128,96,.4)}
     .btn-store svg{width:17px;height:17px;fill:var(--green-tx);margin-top:-2px}
 
-    .phone{border-radius:38px;padding:7px;background:#242433;max-width:300px;width:100%;margin:0 auto;
-      box-shadow:0 26px 50px -22px rgba(64,52,88,.55),0 8px 16px -8px rgba(64,52,88,.3)}
-    .phone img{border-radius:31px;width:100%}
+    .phone{border-radius:34px;padding:6px;background:#242433;max-width:262px;width:100%;margin:0 auto;
+      box-shadow:0 24px 46px -22px rgba(64,52,88,.55),0 7px 14px -8px rgba(64,52,88,.3)}
+    .phone img{border-radius:28px;width:100%;height:auto}
 
     section{padding:56px 0}
     .feature{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center}
     .feature .fig{display:flex;justify-content:center}
-    .feature .phone{max-width:270px}
+    .feature .phone{max-width:238px}
     .feature.rev .fig{order:2}
     .kick{font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:3px;color:var(--accent);text-transform:uppercase;margin-bottom:15px}
     .feature h2{font-family:'DotGothic16',sans-serif;font-weight:400;font-size:clamp(22px,3vw,31px);color:var(--title);line-height:1.32}
@@ -286,7 +286,7 @@ function page(lang: Lang): string {
     .themes h2{font-family:'DotGothic16',sans-serif;font-weight:400;font-size:clamp(24px,3.4vw,34px);color:var(--title)}
     .themes p.lead{font-size:16px;margin:16px auto 0;max-width:34em}
     .themes .phones{display:flex;justify-content:center;gap:30px;flex-wrap:wrap;margin-top:40px}
-    .themes .phone{max-width:236px}
+    .themes .phone{max-width:206px}
 
     .chips{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-top:8px}
     .chip{display:inline-flex;align-items:center;gap:9px;background:var(--paper2);border:1.5px solid var(--line);border-radius:999px;padding:9px 16px;font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.5px;color:#5f5d72}
