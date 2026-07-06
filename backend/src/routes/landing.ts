@@ -167,11 +167,26 @@ function storeButton(c: Copy): string {
   return `<a class="btn-store" href="${APP_STORE_URL}" target="_blank" rel="noopener">${APPLE_GLYPH}<span>${c.cta}</span></a>`;
 }
 
-function langSwitch(lang: Lang): string {
-  const items: [Lang, string][] = [['en', 'EN'], ['fr', 'FR'], ['zh-CN', '简'], ['zh-TW', '繁']];
-  return items
-    .map(([code, label]) => `<a class="${code === lang ? 'on' : ''}" href="?lang=${code}" hreflang="${code}">${label}</a>`)
+const LANG_LABELS: Record<Lang, string> = { en: 'EN', fr: 'FR', 'zh-CN': '简', 'zh-TW': '繁' };
+const LANG_NAMES: Record<Lang, string> = { en: 'English', fr: 'Français', 'zh-CN': '简体中文', 'zh-TW': '繁體中文' };
+const GLOBE_SVG =
+  '<svg class="globe" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>';
+const CHEVRON_SVG = '<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
+
+function langPicker(lang: Lang): string {
+  const order: Lang[] = ['en', 'fr', 'zh-CN', 'zh-TW'];
+  const menu = order
+    .map(
+      (code) =>
+        `<a href="?lang=${code}" hreflang="${code}" role="menuitem" class="${code === lang ? 'on' : ''}"><span class="code">${LANG_LABELS[code]}</span> ${LANG_NAMES[code]}</a>`
+    )
     .join('');
+  return `<div class="langpick" id="langpick">
+        <button class="langpick-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Language" onclick="var o=this.parentNode.classList.toggle('open');this.setAttribute('aria-expanded',o)">
+          ${GLOBE_SVG}<span>${LANG_LABELS[lang]}</span>${CHEVRON_SVG}
+        </button>
+        <div class="langpick-menu" role="menu">${menu}</div>
+      </div>`;
 }
 
 function page(lang: Lang): string {
@@ -243,18 +258,27 @@ function page(lang: Lang): string {
       line-height:1.7; -webkit-font-smoothing:antialiased; overflow-x:hidden;
     }
     img{max-width:100%;display:block;height:auto}
-    .wrap{max-width:1080px;margin:0 auto;padding:0 var(--pad)}
+    .wrap{max-width:1080px;margin:0 auto;padding-left:var(--pad);padding-right:var(--pad)}
     .pix{font-family:'Silkscreen',monospace}
 
-    .topbar{display:flex;align-items:center;justify-content:space-between;padding:18px 0}
+    .topbar{display:flex;align-items:center;justify-content:space-between;padding-top:18px;padding-bottom:18px}
     .brand{font-family:'Silkscreen',monospace;font-size:22px;color:var(--head);letter-spacing:1px;text-decoration:none;display:flex;gap:9px;align-items:baseline}
     .brand small{font-size:9px;color:var(--muted);letter-spacing:3px}
-    .langs{display:flex;gap:2px;align-items:center;font-family:'Silkscreen',monospace;font-size:11px}
-    .langs a{color:var(--muted);text-decoration:none;padding:5px 8px;border-radius:7px;border:1px solid transparent}
-    .langs a:hover{color:var(--head)}
-    .langs a.on{color:var(--head);background:var(--paper2);border-color:var(--line)}
+    .langpick{position:relative}
+    .langpick-btn{display:inline-flex;align-items:center;gap:7px;background:var(--paper2);border:1.5px solid var(--line);border-radius:10px;padding:7px 12px;font-family:'Silkscreen',monospace;font-size:11px;color:var(--head);cursor:pointer;transition:border-color .15s}
+    .langpick-btn:hover{border-color:var(--accent)}
+    .langpick-btn .globe{width:14px;height:14px;fill:none;stroke:var(--accent);stroke-width:1.6}
+    .langpick-btn .chev{width:9px;height:9px;fill:none;stroke:currentColor;stroke-width:2;transition:transform .18s}
+    .langpick.open .chev{transform:rotate(180deg)}
+    .langpick-menu{position:absolute;right:0;top:calc(100% + 6px);min-width:158px;background:var(--paper2);border:1.5px solid var(--line);border-radius:12px;box-shadow:0 14px 30px -14px rgba(64,52,88,.45);overflow:hidden;display:none;z-index:30}
+    .langpick.open .langpick-menu{display:block}
+    .langpick-menu a{display:flex;align-items:center;gap:9px;padding:10px 14px;color:var(--ink);text-decoration:none;font-family:'DotGothic16',monospace;font-size:13px}
+    .langpick-menu a .code{font-family:'Silkscreen',monospace;font-size:10px;color:var(--muted);min-width:20px}
+    .langpick-menu a:hover{background:var(--paper)}
+    .langpick-menu a.on{background:var(--paper);color:var(--head)}
+    .langpick-menu a.on .code{color:var(--accent)}
 
-    .hero{display:grid;grid-template-columns:1.05fr .95fr;gap:44px;align-items:center;padding:32px 0 60px}
+    .hero{display:grid;grid-template-columns:1.05fr .95fr;gap:44px;align-items:center;padding-top:32px;padding-bottom:60px}
     .eyebrow{font-family:'Silkscreen',monospace;font-size:12px;letter-spacing:3px;color:var(--accent);text-transform:uppercase;margin-bottom:20px}
     .hero h1{font-family:'DotGothic16',sans-serif;font-weight:400;font-size:clamp(30px,5.4vw,52px);line-height:1.16;color:var(--title);letter-spacing:.5px}
     .hero .sub{font-size:clamp(15px,1.7vw,18px);color:var(--ink);margin-top:20px;max-width:30em}
@@ -292,7 +316,7 @@ function page(lang: Lang): string {
     .chip{display:inline-flex;align-items:center;gap:9px;background:var(--paper2);border:1.5px solid var(--line);border-radius:999px;padding:9px 16px;font-family:'Silkscreen',monospace;font-size:11px;letter-spacing:.5px;color:#5f5d72}
     .chip i{width:10px;height:10px;border-radius:50%;flex:none}
 
-    .final{text-align:center;padding:66px 0 44px}
+    .final{text-align:center;padding-top:66px;padding-bottom:44px}
     .final h2{font-family:'DotGothic16',sans-serif;font-weight:400;font-size:clamp(24px,3.6vw,36px);color:var(--title);margin-bottom:28px}
 
     footer{border-top:2px dashed var(--line);margin-top:24px;padding:36px 0 64px;text-align:center}
@@ -329,7 +353,7 @@ function page(lang: Lang): string {
 <body>
   <header class="wrap topbar">
     <a class="brand" href="/">点点 <small>DIAN DIAN</small></a>
-    <nav class="langs" aria-label="Language">${langSwitch(lang)}</nav>
+    ${langPicker(lang)}
   </header>
 
   <main>
@@ -389,6 +413,21 @@ function page(lang: Lang): string {
 
   <script>
     (function () {
+      // Language picker: close on outside click or Escape.
+      var pick = document.getElementById('langpick');
+      if (pick) {
+        document.addEventListener('click', function (e) {
+          if (!pick.contains(e.target)) {
+            pick.classList.remove('open');
+            var b = pick.querySelector('.langpick-btn');
+            if (b) b.setAttribute('aria-expanded', 'false');
+          }
+        });
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape') pick.classList.remove('open');
+        });
+      }
+      // Scroll reveal (skipped when the user prefers reduced motion).
       if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
       var io = new IntersectionObserver(function (entries) {
         entries.forEach(function (e) {
