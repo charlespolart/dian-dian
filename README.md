@@ -2,7 +2,7 @@
 
 A visual year tracker where you color-code each day of the year on a 12-month × 31-day grid. Built with a pixel art aesthetic and a cozy book-style design.
 
-**Live:** [mydiandian.app](https://mydiandian.app)
+**Live:** [App Store](https://apps.apple.com/app/id6761432329) · [diandian.overridedev.com](https://diandian.overridedev.com) (landing + legal pages)
 
 ## Features
 

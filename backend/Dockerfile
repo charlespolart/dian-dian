@@ -22,6 +22,8 @@ RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY drizzle ./drizzle
 COPY drizzle.config.ts ./
+# Static assets served by express.static (landing screenshots, favicon).
+COPY public ./public
 # Distinct port from a possible host postgres; matches PORT in compose.
 EXPOSE 3001
 CMD ["node", "dist/index.js"]
@@ -37,5 +39,6 @@ RUN npm ci
 COPY tsconfig.json drizzle.config.ts ./
 COPY drizzle ./drizzle
 COPY src ./src
+COPY public ./public
 EXPOSE 3001
 CMD ["npx", "tsx", "watch", "src/index.ts"]

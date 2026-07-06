@@ -13,6 +13,7 @@ import pagesRoutes from './routes/pages.js';
 import cellsRoutes from './routes/cells.js';
 import legendsRoutes from './routes/legends.js';
 import legalRoutes from './routes/legal.js';
+import landingRoutes from './routes/landing.js';
 import purchaseRoutes from './routes/purchase.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -81,8 +82,14 @@ app.post('/api/contact', contactLimiter, async (req, res) => {
 // WebSocket
 setupWebSocket(server);
 
-// Legal pages (served before static files so routes take priority)
+// Landing (root) + legal pages, served before the static assets and the
+// SPA catch-all so their routes take priority.
+app.use(landingRoutes);
 app.use(legalRoutes);
+
+// Static assets for the landing + legal pages (screenshots, icons).
+// `.png`/`.jpg` under /shots get a short revalidated cache via Caddy.
+app.use(express.static(path.join(__dirname, '../public'), { maxAge: '1d', index: false }));
 
 // AdMob app-ads.txt — verifies our domain authorizes this AdMob publisher.
 app.get('/app-ads.txt', (_req, res) => {

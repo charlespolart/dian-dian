@@ -200,11 +200,6 @@ docker compose --env-file .env -f ops/docker-compose.yml -f ops/docker-compose.p
   logs --tail=50 backend
 ```
 
-Verify the legacy domain too:
-```bash
-curl -sSI https://mydiandian.app/api/health | head -3
-```
-
 ---
 
 ## 10. Clean up the legacy stack
