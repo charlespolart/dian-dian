@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Explicit rather than relying on a plugin manifest merge: the app talks
+         to the API and the WebSocket sync on every launch. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="Dian Dian"
         android:name="${applicationName}"

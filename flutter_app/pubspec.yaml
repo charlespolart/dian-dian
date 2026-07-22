@@ -126,5 +126,7 @@ flutter_launcher_icons:
     background_color: "#F5F0D0"
     theme_color: "#F5F0D0"
   image_path: "assets/images/icon.png"
-  adaptive_icon_background: "#F5F0D0"
+  # Must match the icon artwork's own background (#FEF3E5), otherwise the
+  # inset adaptive foreground shows a visible square seam on Android launchers.
+  adaptive_icon_background: "#FEF3E5"
   adaptive_icon_foreground: "assets/images/icon.png"

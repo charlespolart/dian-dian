@@ -1,4 +1,4 @@
-.PHONY: app back db db-down ipa deploy help
+.PHONY: app back db db-down ipa aab deploy help
 
 COMPOSE_DEV := docker compose -f ops/docker-compose.yml -f ops/docker-compose.dev.yml
 
@@ -16,6 +16,10 @@ db-down: ## Stop Postgres container
 
 ipa:     ## Build iOS App Store IPA
 	cd flutter_app && flutter build ipa --release && open build/ios/ipa
+
+aab:     ## Build Android Play Store bundle (needs android/key.properties)
+	cd flutter_app && flutter build appbundle --release \
+	  && open build/app/outputs/bundle/release
 
 deploy:  ## Trigger a production deploy via GH Actions (HEAD short SHA)
 	./ops/scripts/deploy.sh
