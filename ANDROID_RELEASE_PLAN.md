@@ -63,13 +63,20 @@ directement en production.
 
 ### Étapes
 
-1. **Vérifier si OVERRIDE a déjà un D-U-N-S** (beaucoup de sociétés françaises
-   en ont un). Recherche gratuite chez Dun & Bradstreet avec le SIREN
-   `953 122 868`. Si absent → en demander un (gratuit, **jusqu'à 30 jours**).
-   👉 *À lancer en tout premier, c'est le seul délai incompressible.*
+1. ✅ **D-U-N-S obtenu : `280715872`** (attribué à OVERRIDE, confirmé par Apple
+   le 10/03/2026 — il était requis pour l'inscription organisation à l'Apple
+   Developer Program). Aucun délai d'attente.
 2. Créer le compte sur `play.google.com/console` → type **Organisation**.
 3. Payer les 25 $ (une seule fois, à vie, tous produits confondus).
 4. Vérification d'identité + du compte de paiement (documents société).
+
+**⚠️ La raison sociale et l'adresse doivent correspondre au caractère près
+à la fiche D&B** (`OVERRIDE`, 12 Rue de Porspol, 29660 Carantec). Un écart =
+compte bloqué en vérification.
+
+**Compte Google à utiliser :** un compte au nom de la société, conservé sur le
+long terme (pas un compte perso). Contrairement à Pinterest, **un seul compte
+Play suffit pour toutes les apps d'OVERRIDE**.
 
 ---
 
