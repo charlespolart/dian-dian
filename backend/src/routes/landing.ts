@@ -222,6 +222,8 @@ function page(lang: Lang): string {
   <title>${c.title}</title>
   <meta name="description" content="${c.desc}" />
   <link rel="canonical" href="${ORIGIN}/" />
+  <!-- Pinterest domain claim (Settings > Link to Pinterest > Websites). -->
+  <meta name="p:domain_verify" content="4e11e9894c8ce2a874618b2cff418414" />
   <link rel="alternate" hreflang="en" href="${ORIGIN}/?lang=en" />
   <link rel="alternate" hreflang="fr" href="${ORIGIN}/?lang=fr" />
   <link rel="alternate" hreflang="zh-Hans" href="${ORIGIN}/?lang=zh-CN" />
