@@ -93,12 +93,15 @@ router.post('/login', validate(loginSchema), async (req, res) => {
     const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
     if (!user || !user.passwordHash) {
       // OAuth-only users have no password — generic message keeps providers private.
+      // Log IP only (no email → no PII in logs) so a brute-force is visible live.
+      console.warn('auth: failed login', { ip: req.ip });
       res.status(401).json({ error: 'Invalid email or password' });
       return;
     }
 
     const valid = await argon2.verify(user.passwordHash, password);
     if (!valid) {
+      console.warn('auth: failed login', { ip: req.ip });
       res.status(401).json({ error: 'Invalid email or password' });
       return;
     }

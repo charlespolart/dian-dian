@@ -13,7 +13,8 @@ export async function signAccessToken(userId: string): Promise<string> {
 }
 
 export async function verifyAccessToken(token: string): Promise<string> {
-  const { payload } = await jwtVerify(token, secret);
+  // Pin the algorithm at verification: never trust the token header's `alg`.
+  const { payload } = await jwtVerify(token, secret, { algorithms: ['HS256'] });
   if (!payload.sub) throw new Error('Invalid token');
   return payload.sub;
 }

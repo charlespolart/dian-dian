@@ -19,7 +19,13 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   try {
     req.userId = await verifyAccessToken(header.slice(7));
     next();
-  } catch {
+  } catch (err) {
+    // Routine expiry is normal token lifecycle (the app refreshes) — stay quiet.
+    // Log everything else: a malformed/tampered token is worth seeing.
+    const code = (err as { code?: string } | null)?.code;
+    if (code !== 'ERR_JWT_EXPIRED') {
+      console.warn('auth: rejected token', { ip: req.ip, code });
+    }
     res.status(401).json({ error: 'Invalid or expired token' });
   }
 }

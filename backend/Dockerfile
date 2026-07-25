@@ -24,6 +24,10 @@ COPY drizzle ./drizzle
 COPY drizzle.config.ts ./
 # Static assets served by express.static (landing screenshots, favicon).
 COPY public ./public
+# Drop root: run as the unprivileged `node` user baked into the base image.
+# The app is read-only at runtime (no writes to /app), and drizzle-kit migrate
+# only reads drizzle/ + connects to the DB, so no chown is needed.
+USER node
 # Distinct port from a possible host postgres; matches PORT in compose.
 EXPOSE 3001
 CMD ["node", "dist/index.js"]

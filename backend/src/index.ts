@@ -24,22 +24,54 @@ const server = createServer(app);
 // Trust proxy (behind nginx)
 app.set('trust proxy', 1);
 
-// Security
-app.use(helmet({ contentSecurityPolicy: false }));
+// Security. CSP is tuned for the server-rendered landing + legal pages, which
+// use inline <style>, inline <script>, inline event handlers and Google Fonts.
+// No user-controlled HTML is rendered (the ?lang param is allow-listed), so
+// 'unsafe-inline' here carries no real XSS risk. The mobile app hits /api/*
+// (JSON) — CSP is a browser directive and does not affect it.
+app.use(helmet({
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: {
+      defaultSrc: ["'self'"],
+      imgSrc: ["'self'", 'data:', 'https:'],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrcAttr: ["'unsafe-inline'"],
+      connectSrc: ["'self'"],
+      frameAncestors: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+      objectSrc: ["'none'"],
+    },
+  },
+}));
 app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 
-// Rate limiting on login/register only
+// Rate limiting. IP-keyed (trust proxy is set → real client IP via Caddy's
+// X-Forwarded-For). Login/register brute-force, plus password-reset and OAuth
+// which either send email (spam/cost) or run JWKS verification (cost).
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 min
   max: 30,
+  message: { error: 'Too many attempts, try again in 15 minutes' },
+});
+// Stricter budget for the email-sending path — forgot-password is rare per
+// user, so a low cap barely touches legit traffic but stops inbox spam.
+const forgotLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 min
+  max: 5,
   message: { error: 'Too many attempts, try again in 15 minutes' },
 });
 
 // Routes
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/forgot-password', forgotLimiter);
+app.use('/api/auth/oauth', authLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/pages', pagesRoutes);
 app.use('/api/cells', cellsRoutes);

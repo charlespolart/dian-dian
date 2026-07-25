@@ -70,11 +70,22 @@ const reorderSchema = z.object({
 // Reorder legends
 router.put('/:pageId/reorder', validate(reorderSchema), async (req, res) => {
   try {
+    const pageId = String(req.params.pageId);
+
+    // Ownership: the page must belong to the caller.
+    const [page] = await db.select({ id: pages.id })
+      .from(pages)
+      .where(and(eq(pages.id, pageId), eq(pages.userId, req.userId!)))
+      .limit(1);
+    if (!page) { res.status(404).json({ error: 'Page not found' }); return; }
+
     const { ids } = req.body;
+    // Constrain each update to a legend on THIS page, so foreign ids are no-ops.
     await Promise.all(ids.map((id: string, i: number) =>
-      db.update(legends).set({ position: i }).where(eq(legends.id, id))
+      db.update(legends).set({ position: i })
+        .where(and(eq(legends.id, id), eq(legends.pageId, pageId)))
     ));
-    broadcast(req.userId!, 'legends:reordered', { pageId: String(req.params.pageId), ids });
+    broadcast(req.userId!, 'legends:reordered', { pageId, ids });
     res.json({ ok: true });
   } catch (err) {
     console.error('Reorder legends error:', err);
