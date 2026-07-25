@@ -577,4 +577,147 @@ router.get('/legal', (req, res) => {
   res.type('html').send(layout(lang === 'fr' ? 'Mentions légales' : lang.startsWith('zh') ? '法律声明' : 'Legal Notice', legal[lang], lang));
 });
 
+// ── Account & data deletion (required by Google Play) ──
+
+const deleteAccount: Record<Lang, string> = {
+  en: `
+    <h1>Delete your account &amp; data</h1>
+    <p class="subtitle">Dian Dian (点点) — published by OVERRIDE</p>
+    <h2>1. Delete your entire account</h2>
+    <p>You can permanently delete your account and all associated data directly in the app:</p>
+    <ul>
+      <li>Open <strong>Settings</strong> (the gear icon at the top-right of the home screen).</li>
+      <li>Tap <strong>Delete account</strong>.</li>
+      <li>Confirm by typing your email address.</li>
+    </ul>
+    <p>Deletion is immediate and permanent. No further action is required.</p>
+    <h2>2. Delete only part of your data</h2>
+    <p>You do not have to delete your whole account to remove data:</p>
+    <ul>
+      <li>Delete any single tracker, day cell or legend at any time from within the app.</li>
+      <li>Or email us at <a href="mailto:diandian@overridedev.com">diandian@overridedev.com</a> and we will handle your request.</li>
+    </ul>
+    <h2>3. What is deleted</h2>
+    <p>Deleting your account <strong>immediately and permanently</strong> removes:</p>
+    <ul>
+      <li>Your account and email address</li>
+      <li>All of your trackers, day cells, colors, legends and comments</li>
+      <li>Your subscription records stored on our servers</li>
+    </ul>
+    <p>The deletion cascades across our entire database — no personal data is kept.</p>
+    <h2>4. What may be retained</h2>
+    <ul>
+      <li>We keep <strong>no personal data</strong> once your account is deleted.</li>
+      <li>Minimal server logs (IP address, timestamps) kept for security may persist briefly before being rotated out.</li>
+      <li>Payment and transaction records held by Apple or Google are governed by their own policies and are outside our control.</li>
+    </ul>
+    <h2>5. Need help?</h2>
+    <p>If you cannot access the app, contact <a href="mailto:diandian@overridedev.com">diandian@overridedev.com</a> and we will delete your account for you.</p>`,
+  fr: `
+    <h1>Supprimer votre compte et vos données</h1>
+    <p class="subtitle">Dian Dian (点点) — édité par OVERRIDE</p>
+    <h2>1. Supprimer entièrement votre compte</h2>
+    <p>Vous pouvez supprimer définitivement votre compte et toutes les données associées directement dans l'application :</p>
+    <ul>
+      <li>Ouvrez les <strong>Réglages</strong> (icône engrenage, en haut à droite de l'écran d'accueil).</li>
+      <li>Touchez <strong>Supprimer le compte</strong>.</li>
+      <li>Confirmez en saisissant votre adresse e-mail.</li>
+    </ul>
+    <p>La suppression est immédiate et définitive. Aucune autre démarche n'est nécessaire.</p>
+    <h2>2. Supprimer seulement une partie de vos données</h2>
+    <p>Vous n'êtes pas obligé de supprimer tout votre compte pour effacer des données :</p>
+    <ul>
+      <li>Supprimez à tout moment un tracker, une journée ou une légende depuis l'application.</li>
+      <li>Ou écrivez-nous à <a href="mailto:diandian@overridedev.com">diandian@overridedev.com</a> et nous traiterons votre demande.</li>
+    </ul>
+    <h2>3. Ce qui est supprimé</h2>
+    <p>La suppression de votre compte efface <strong>immédiatement et définitivement</strong> :</p>
+    <ul>
+      <li>Votre compte et votre adresse e-mail</li>
+      <li>Tous vos trackers, cellules, couleurs, légendes et commentaires</li>
+      <li>Vos enregistrements d'abonnement stockés sur nos serveurs</li>
+    </ul>
+    <p>La suppression se propage à toute notre base de données — aucune donnée personnelle n'est conservée.</p>
+    <h2>4. Ce qui peut être conservé</h2>
+    <ul>
+      <li>Nous ne conservons <strong>aucune donnée personnelle</strong> une fois le compte supprimé.</li>
+      <li>Des journaux serveur minimaux (adresse IP, horodatages) conservés pour la sécurité peuvent subsister brièvement avant rotation.</li>
+      <li>Les enregistrements de paiement détenus par Apple ou Google relèvent de leurs propres politiques et échappent à notre contrôle.</li>
+    </ul>
+    <h2>5. Besoin d'aide ?</h2>
+    <p>Si vous ne pouvez pas accéder à l'application, contactez <a href="mailto:diandian@overridedev.com">diandian@overridedev.com</a> et nous supprimerons votre compte pour vous.</p>`,
+  'zh-CN': `
+    <h1>删除您的账户和数据</h1>
+    <p class="subtitle">点点 (Dian Dian) — 由 OVERRIDE 发布</p>
+    <h2>1. 删除整个账户</h2>
+    <p>您可以直接在应用中永久删除您的账户及所有相关数据：</p>
+    <ul>
+      <li>打开<strong>设置</strong>（主屏幕右上角的齿轮图标）。</li>
+      <li>点击<strong>删除账户</strong>。</li>
+      <li>输入您的电子邮箱以确认。</li>
+    </ul>
+    <p>删除是即时且永久的，无需其他操作。</p>
+    <h2>2. 仅删除部分数据</h2>
+    <p>您无需删除整个账户即可移除数据：</p>
+    <ul>
+      <li>随时在应用中删除任意单个追踪器、某一天或图例。</li>
+      <li>或发送邮件至 <a href="mailto:diandian@overridedev.com">diandian@overridedev.com</a>，我们将处理您的请求。</li>
+    </ul>
+    <h2>3. 删除的内容</h2>
+    <p>删除账户会<strong>即时且永久</strong>移除：</p>
+    <ul>
+      <li>您的账户和电子邮箱</li>
+      <li>您所有的追踪器、格子、颜色、图例和备注</li>
+      <li>存储在我们服务器上的订阅记录</li>
+    </ul>
+    <p>删除操作会级联至整个数据库——不保留任何个人数据。</p>
+    <h2>4. 可能保留的内容</h2>
+    <ul>
+      <li>账户删除后，我们<strong>不保留任何个人数据</strong>。</li>
+      <li>为安全目的保留的最小服务器日志（IP地址、时间戳）可能会在轮替前短暂保留。</li>
+      <li>由 Apple 或 Google 持有的付款和交易记录受其各自政策约束，不在我们的控制范围内。</li>
+    </ul>
+    <h2>5. 需要帮助？</h2>
+    <p>如果您无法访问应用，请联系 <a href="mailto:diandian@overridedev.com">diandian@overridedev.com</a>，我们将为您删除账户。</p>`,
+  'zh-TW': `
+    <h1>刪除您的帳戶和資料</h1>
+    <p class="subtitle">點點 (Dian Dian) — 由 OVERRIDE 發布</p>
+    <h2>1. 刪除整個帳戶</h2>
+    <p>您可以直接在應用程式中永久刪除您的帳戶及所有相關資料：</p>
+    <ul>
+      <li>開啟<strong>設定</strong>（主畫面右上角的齒輪圖示）。</li>
+      <li>點擊<strong>刪除帳戶</strong>。</li>
+      <li>輸入您的電子郵件以確認。</li>
+    </ul>
+    <p>刪除是即時且永久的，無需其他操作。</p>
+    <h2>2. 僅刪除部分資料</h2>
+    <p>您無需刪除整個帳戶即可移除資料：</p>
+    <ul>
+      <li>隨時在應用程式中刪除任意單個追蹤器、某一天或圖例。</li>
+      <li>或發送郵件至 <a href="mailto:diandian@overridedev.com">diandian@overridedev.com</a>，我們將處理您的請求。</li>
+    </ul>
+    <h2>3. 刪除的內容</h2>
+    <p>刪除帳戶會<strong>即時且永久</strong>移除：</p>
+    <ul>
+      <li>您的帳戶和電子郵件</li>
+      <li>您所有的追蹤器、格子、顏色、圖例和備註</li>
+      <li>儲存在我們伺服器上的訂閱紀錄</li>
+    </ul>
+    <p>刪除操作會級聯至整個資料庫——不保留任何個人資料。</p>
+    <h2>4. 可能保留的內容</h2>
+    <ul>
+      <li>帳戶刪除後，我們<strong>不保留任何個人資料</strong>。</li>
+      <li>為安全目的保留的最小伺服器日誌（IP位址、時間戳）可能會在輪替前短暫保留。</li>
+      <li>由 Apple 或 Google 持有的付款和交易紀錄受其各自政策約束，不在我們的控制範圍內。</li>
+    </ul>
+    <h2>5. 需要協助？</h2>
+    <p>如果您無法存取應用程式，請聯繫 <a href="mailto:diandian@overridedev.com">diandian@overridedev.com</a>，我們將為您刪除帳戶。</p>`,
+};
+
+router.get('/delete-account', (req, res) => {
+  const lang = detectLang(req);
+  const title = lang === 'fr' ? 'Suppression du compte' : lang.startsWith('zh') ? '删除账户' : 'Delete Account';
+  res.type('html').send(layout(title, deleteAccount[lang], lang));
+});
+
 export default router;
