@@ -10,6 +10,13 @@ services:
     # breaks nothing (playbook: security/vps-hardening.md).
     security_opt:
       - no-new-privileges:true
+    environment:
+      # Password auth in prod (dev keeps `trust` via the base file). Both vars
+      # are read by the entrypoint at initdb time only, so they matter for a
+      # FRESH cluster — e.g. restoring onto a new VPS, which must not come up
+      # trust-authenticated. The live cluster's pg_hba was migrated in place.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?must be set}
+      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
     # No published ports in prod — only the backend on the docker network
     # reaches postgres, via the `postgres` hostname.
     volumes:
@@ -30,6 +37,10 @@ services:
       # Fail-closed validation: missing var aborts `compose up` instead of
       # letting the backend boot with an empty secret.
       JWT_SECRET: ${JWT_SECRET:?must be set}
+      # Overrides the passwordless URL from the base file — prod postgres
+      # requires scram auth. Keep the password free of `$` (compose would
+      # need `$$`); it is generated as hex.
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?must be set}@postgres:5432/${POSTGRES_DB:-dian_dian}
 
   caddy:
     image: caddy:2-alpine
