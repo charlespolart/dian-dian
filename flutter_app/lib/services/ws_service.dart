@@ -72,7 +72,10 @@ class WsService {
       return;
     }
 
-    final uri = Uri.parse('$_baseWsUrl/ws?token=$token');
+    // First-message auth: the token is sent as the first frame instead of a
+    // ?token= query param, so it can never end up in proxy/access logs.
+    // The server replies with an `auth:ok` event once verified.
+    final uri = Uri.parse('$_baseWsUrl/ws');
 
     try {
       _channel = WebSocketChannel.connect(uri);
@@ -83,6 +86,16 @@ class WsService {
         onDone: _onDone,
         cancelOnError: false,
       );
+
+      final channel = _channel!;
+      channel.ready.then((_) {
+        if (identical(channel, _channel)) {
+          channel.sink.add(jsonEncode({'type': 'auth', 'token': token}));
+        }
+      }).catchError((Object e) {
+        // Connection failed before opening — onDone handles the reconnect.
+        debugPrint('WsService: connect failed: $e');
+      });
     } catch (e) {
       debugPrint('WsService: connect error: $e');
       _scheduleReconnect();
