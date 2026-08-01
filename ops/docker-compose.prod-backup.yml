@@ -1,0 +1,56 @@
+# ---------------------------------------------------------------------------
+# dian-dian — production backup overlay.
+#
+# Layered ON TOP of base + prod so postgres runs the pgbackrest-enabled image
+# with WAL archiving. It is part of the STANDARD prod stack (the CI deploy
+# includes all three -f files) — not opt-in — so a deploy never drops postgres
+# back to the vanilla image and breaks archiving.
+#
+#   docker compose \
+#     -f ops/docker-compose.yml \
+#     -f ops/docker-compose.prod.yml \
+#     -f ops/docker-compose.prod-backup.yml \
+#     up -d --build
+#
+# Requires PGBACKREST_* in /srv/dian-dian/.env — see ops/pgbackrest/README.md.
+# ---------------------------------------------------------------------------
+
+services:
+  postgres:
+    # Custom image — postgres:16-alpine + pgbackrest client, so archive_command
+    # can push WALs and scheduled backups run in-container. Built on the VPS.
+    image: dian-dian/postgres:16-pgbackrest
+    build:
+      context: ./pgbackrest
+      dockerfile: postgres.Dockerfile
+    environment:
+      PGBACKREST_S3_BUCKET: ${PGBACKREST_S3_BUCKET:?PGBACKREST_S3_BUCKET must be set}
+      PGBACKREST_S3_ENDPOINT: ${PGBACKREST_S3_ENDPOINT:?PGBACKREST_S3_ENDPOINT must be set}
+      PGBACKREST_S3_REGION: ${PGBACKREST_S3_REGION:?PGBACKREST_S3_REGION must be set}
+      PGBACKREST_S3_KEY: ${PGBACKREST_S3_KEY:?PGBACKREST_S3_KEY must be set}
+      PGBACKREST_S3_KEY_SECRET: ${PGBACKREST_S3_KEY_SECRET:?PGBACKREST_S3_KEY_SECRET must be set}
+      PGBACKREST_REPO_CIPHER_PASS: ${PGBACKREST_REPO_CIPHER_PASS:?PGBACKREST_REPO_CIPHER_PASS must be set}
+    # pgBackRest logs + lockfiles on the host so they survive a container
+    # replacement and can be inspected without exec'ing in.
+    volumes:
+      - /srv/dian-dian/pgbackrest/log:/var/log/pgbackrest
+      - /srv/dian-dian/pgbackrest/lib:/var/lib/pgbackrest
+    command:
+      - "postgres"
+      - "-c"
+      - "archive_mode=on"
+      - "-c"
+      - "archive_command=pgbackrest --stanza=dian-dian archive-push %p"
+      - "-c"
+      - "max_wal_senders=3"
+      - "-c"
+      - "wal_level=replica"
+      - "-c"
+      - "archive_timeout=60"
+
+# NOTE — no pgbackrest sidecar service. pgBackRest must read PGDATA directly,
+# so it runs inside the postgres container (which carries the client). A
+# sidecar would need SSH/TLS to postgres or a share of the data volume.
+# Scheduling comes from a host cron (/etc/cron.d/dian-dian-backup) calling
+# ops/scripts/backup.sh, which `docker compose exec`s into postgres — keeping
+# /var/run/docker.sock out of every container.
