@@ -78,6 +78,14 @@ jobs:
           rsync -az -e 'ssh -i ~/.ssh/id_deploy' \
             ops/docker-compose.yml \
             ops/docker-compose.prod.yml \
+            ops/docker-compose.prod-backup.yml \
+            "$VPS_USER@$VPS_HOST:/srv/dian-dian/ops/"
+
+          # pgBackRest build context (Dockerfile + conf template + entrypoint)
+          # and the backup/restore scripts the host cron calls. -a keeps the
+          # exec bits; no --delete so VPS-only files survive.
+          rsync -az -e 'ssh -i ~/.ssh/id_deploy' \
+            ops/pgbackrest ops/scripts \
             "$VPS_USER@$VPS_HOST:/srv/dian-dian/ops/"
 
           # Caddyfile via cat > to preserve the inode of the bind mount.
@@ -103,12 +111,19 @@ jobs:
           cd /srv/dian-dian
           echo "$IMAGE_TAG" > .deployed-tag
 
+          # The backup overlay is part of the STANDARD prod stack, not opt-in:
+          # leaving it out of any `up` would recreate postgres on the vanilla
+          # image and silently kill WAL archiving. All three files, always.
           COMPOSE="docker compose --env-file /srv/dian-dian/.env \
             -f ops/docker-compose.yml \
-            -f ops/docker-compose.prod.yml"
+            -f ops/docker-compose.prod.yml \
+            -f ops/docker-compose.prod-backup.yml"
 
           IMAGE_TAG="$IMAGE_TAG" $COMPOSE pull backend
-          IMAGE_TAG="$IMAGE_TAG" $COMPOSE up -d --wait postgres
+          # --build: postgres runs a locally-built image (base + pgbackrest
+          # client). Cached after the first deploy, rebuilt if the Dockerfile
+          # or conf template changes.
+          IMAGE_TAG="$IMAGE_TAG" $COMPOSE up -d --wait --build postgres
 
           # Migrate with 3× retry: pg_filenode.map races with concurrent DDL
           # can fail the first attempt right after postgres starts.
@@ -123,7 +138,7 @@ jobs:
             sleep 5
           done
 
-          IMAGE_TAG="$IMAGE_TAG" $COMPOSE up -d --wait
+          IMAGE_TAG="$IMAGE_TAG" $COMPOSE up -d --wait --build
 
           # Reload Caddy in place — the Caddyfile may have changed.
           $COMPOSE exec -T caddy caddy validate --config /etc/caddy/Caddyfile
