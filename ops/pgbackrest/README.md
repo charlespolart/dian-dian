@@ -46,12 +46,76 @@ ENV_FILE=/srv/dian-dian/.env /srv/dian-dian/ops/scripts/backup-init.sh
 Creates the stanza, runs the initial full backup, verifies archive-push. The
 host cron handles backups from there.
 
+### ⚠️ Order matters: stanza BEFORE archiving (hit in prod, 2026-08-03)
+
+Turning on `archive_mode` while the stanza does not yet exist in the repo puts
+Postgres in a **crash loop**, not a degraded state:
+
+```
+server process (PID NNN) exited with exit code 103   # pgbackrest: no archive.info
+terminating any other active server processes
+all server processes terminated; reinitializing      # every ~11s
+```
+
+pgBackRest's async archiver is a child of the postmaster; when it exits 103
+(stanza missing) Postgres reads that as a crashed backend and restarts the
+whole cluster. That is a catch-22 — `stanza-create` needs a stable primary,
+and the primary can't stabilise until the stanza exists.
+
+Breaking out (what worked): start postgres with archiving off, create the
+stanza, then re-enable archiving.
+
+```bash
+cd /srv/dian-dian
+printf 'services:\n  postgres:\n    command: ["postgres"]\n' > /tmp/no-archive.yml
+docker compose --env-file .env -f ops/docker-compose.yml -f ops/docker-compose.prod.yml \
+  -f ops/docker-compose.prod-backup.yml -f /tmp/no-archive.yml up -d --wait postgres
+
+docker exec dian-dian-postgres-1 pgbackrest --stanza=dian-dian stanza-create
+
+rm /tmp/no-archive.yml
+docker compose --env-file .env -f ops/docker-compose.yml -f ops/docker-compose.prod.yml \
+  -f ops/docker-compose.prod-backup.yml up -d --wait postgres
+```
+
+The same applies to any **fresh cluster** (new VPS, restore drill on empty
+storage) and to a repo that has been emptied — create the stanza first.
+
 ## Restore
 
-Drill (recommended, on a throwaway VPS/VM), or real disaster:
+Real disaster (DESTRUCTIVE — wipes live pgdata):
 
 ```bash
 ENV_FILE=/srv/dian-dian/.env /srv/dian-dian/ops/scripts/restore.sh latest
+```
+
+### Non-destructive drill (safe to run on the live VPS)
+
+Restores into a throwaway directory and boots a temporary postgres on it, so
+row counts can be compared against prod without touching live data. Validated
+2026-08-03.
+
+```bash
+rm -rf /srv/dian-dian/restore-drill && mkdir -p /srv/dian-dian/restore-drill
+chown 70:70 /srv/dian-dian/restore-drill
+
+docker run --rm --user postgres --env-file /srv/dian-dian/.env \
+  -v /srv/dian-dian/restore-drill:/restore \
+  dian-dian/postgres:16-pgbackrest \
+  pgbackrest --stanza=dian-dian --pg1-path=/restore restore
+
+# MUST mount at /restore and set PGDATA=/restore: the restore bakes
+# --pg1-path=/restore into restore_command in postgresql.auto.conf. Mounting
+# elsewhere makes archive-get fail ("unable to chdir to /restore") and recovery
+# aborts with "could not locate required checkpoint record".
+docker run -d --name restore-drill --user postgres --env-file /srv/dian-dian/.env \
+  -e PGDATA=/restore -v /srv/dian-dian/restore-drill:/restore \
+  dian-dian/postgres:16-pgbackrest
+
+docker exec restore-drill psql -U postgres -d dian_dian \
+  -tAc "SELECT 'users='||count(*) FROM users UNION ALL SELECT 'cells='||count(*) FROM cells;"
+
+docker rm -f restore-drill && rm -rf /srv/dian-dian/restore-drill
 ```
 
 Point-in-time (undo an accidental corruption at a known time):

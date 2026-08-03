@@ -26,7 +26,10 @@ if [[ ! -f "$ENV_FILE" ]]; then
 fi
 
 echo "==> Ensuring postgres is up on the pgbackrest image..."
-docker compose "${COMPOSE_FILES[@]}" --env-file "$ENV_FILE" up -d --build postgres
+# --wait blocks on the healthcheck. Without it, a container that was just
+# recreated is still in crash recovery when stanza-create connects, and
+# pgBackRest aborts with "unable to find primary cluster".
+docker compose "${COMPOSE_FILES[@]}" --env-file "$ENV_FILE" up -d --wait --build postgres
 
 echo "==> Creating stanza (idempotent)..."
 docker compose "${COMPOSE_FILES[@]}" --env-file "$ENV_FILE" exec -T postgres \
