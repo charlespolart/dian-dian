@@ -37,15 +37,15 @@ echo "==> Ensuring postgres is up on the pgbackrest image..."
 docker compose "${COMPOSE_FILES[@]}" "${ENV_FILES[@]}" up -d --wait --build postgres
 
 echo "==> Creating stanza (idempotent)..."
-docker compose "${COMPOSE_FILES[@]}" "${ENV_FILES[@]}" exec -T postgres \
+docker compose "${COMPOSE_FILES[@]}" "${ENV_FILES[@]}" exec -T --user postgres postgres \
   pgbackrest --stanza=dian-dian stanza-create
 
 echo "==> Running initial full backup..."
-docker compose "${COMPOSE_FILES[@]}" "${ENV_FILES[@]}" exec -T postgres \
+docker compose "${COMPOSE_FILES[@]}" "${ENV_FILES[@]}" exec -T --user postgres postgres \
   pgbackrest --stanza=dian-dian --type=full backup
 
 echo "==> Verifying archive + backup integrity..."
-docker compose "${COMPOSE_FILES[@]}" "${ENV_FILES[@]}" exec -T postgres \
+docker compose "${COMPOSE_FILES[@]}" "${ENV_FILES[@]}" exec -T --user postgres postgres \
   pgbackrest --stanza=dian-dian check
 
 echo "OK pgBackRest initialised. The host cron (/etc/cron.d/dian-dian-backup)"

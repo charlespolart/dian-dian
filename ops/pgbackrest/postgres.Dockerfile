@@ -9,7 +9,8 @@
 FROM postgres:16-alpine
 
 RUN apk add --no-cache pgbackrest \
-    && mkdir -p /etc/pgbackrest /var/log/pgbackrest /var/lib/pgbackrest \
+    && mkdir -p /etc/pgbackrest /var/log/pgbackrest \
+                /var/lib/pgbackrest/lock /var/lib/pgbackrest/spool \
     && chown -R postgres:postgres /etc/pgbackrest /var/log/pgbackrest /var/lib/pgbackrest
 
 COPY pgbackrest.conf /etc/pgbackrest/pgbackrest.conf.template

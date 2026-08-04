@@ -34,6 +34,15 @@ for var in "${required_vars[@]}"; do
   fi
 done
 
+# /var/lib/pgbackrest and /var/log/pgbackrest are bind mounts from the host, so
+# the image's mkdir/chown is masked at runtime — a fresh VPS gets root-owned
+# dirs and archive_command (uid 70) fails with "Permission denied". Recreate
+# and chown here, while we still are root.
+if [[ "$(id -u)" == "0" ]]; then
+  mkdir -p /var/lib/pgbackrest/lock /var/lib/pgbackrest/spool /var/log/pgbackrest
+  chown -R postgres:postgres /var/lib/pgbackrest /var/log/pgbackrest
+fi
+
 cp "$TEMPLATE" "$CONF"
 for var in "${required_vars[@]}"; do
   # `|` delimiter because S3 secrets may contain `/`.

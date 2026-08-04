@@ -42,14 +42,14 @@ if [[ ! -f "$ENV_FILE" ]]; then
 fi
 
 echo "==> pgbackrest --type=$TYPE backup (stanza=dian-dian)"
-docker compose "${COMPOSE_FILES[@]}" "${ENV_FILES[@]}" exec -T postgres \
+docker compose "${COMPOSE_FILES[@]}" "${ENV_FILES[@]}" exec -T --user postgres postgres \
   pgbackrest --stanza=dian-dian --type="$TYPE" backup
 
 # `check` asserts WAL archiving still reaches the repo. A backup that succeeds
 # while archive-push is silently broken is not point-in-time restorable, so we
 # verify every run.
 echo "==> pgbackrest check"
-docker compose "${COMPOSE_FILES[@]}" "${ENV_FILES[@]}" exec -T postgres \
+docker compose "${COMPOSE_FILES[@]}" "${ENV_FILES[@]}" exec -T --user postgres postgres \
   pgbackrest --stanza=dian-dian check
 
 echo "OK backup ($TYPE) $(date -Is)"
