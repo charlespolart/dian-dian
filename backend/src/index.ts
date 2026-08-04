@@ -6,7 +6,9 @@ import rateLimit from 'express-rate-limit';
 import { createServer } from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { sql } from 'drizzle-orm';
 import { env } from './lib/env.js';
+import { db } from './db/index.js';
 import { setupWebSocket } from './lib/ws.js';
 import authRoutes from './routes/auth.js';
 import pagesRoutes from './routes/pages.js';
@@ -78,8 +80,23 @@ app.use('/api/cells', cellsRoutes);
 app.use('/api/legends', legendsRoutes);
 app.use('/api/purchase', purchaseRoutes);
 
-// Health check
+// Liveness — deliberately cheap and DB-free. This is what the container
+// healthcheck polls: if it depended on Postgres, every DB blip would mark the
+// backend unhealthy and stall `compose up --wait` during a deploy.
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
+
+// Readiness — actually proves the DB is reachable. /api/health returning 200
+// says nothing about Postgres, so a green healthcheck can hide a dead DB
+// (seen during the pgBackRest rollout). Use this one for monitoring.
+app.get('/api/ready', async (_req, res) => {
+  try {
+    await db.execute(sql`SELECT 1`);
+    res.json({ ok: true, db: 'up' });
+  } catch (err) {
+    console.error('Readiness check failed:', err);
+    res.status(503).json({ ok: false, db: 'down' });
+  }
+});
 
 // Contact form
 import { sendEmail } from './lib/email.js';

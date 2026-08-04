@@ -14,6 +14,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
 OPS_DIR="$(dirname "$SCRIPT_DIR")"
 ENV_FILE="${ENV_FILE:-/srv/dian-dian/.env}"
+# pgBackRest secrets live OUTSIDE .env: .env is injected whole into the
+# backend container via env_file, so keeping the repo passphrase and R2 keys
+# there would hand the backup repo to any backend RCE.
+PGB_ENV_FILE="${PGB_ENV_FILE:-/srv/dian-dian/.env.pgbackrest}"
+ENV_FILES=(--env-file "$ENV_FILE" --env-file "$PGB_ENV_FILE")
 COMPOSE_FILES=(
   -f "$OPS_DIR/docker-compose.yml"
   -f "$OPS_DIR/docker-compose.prod.yml"
@@ -29,18 +34,18 @@ echo "==> Ensuring postgres is up on the pgbackrest image..."
 # --wait blocks on the healthcheck. Without it, a container that was just
 # recreated is still in crash recovery when stanza-create connects, and
 # pgBackRest aborts with "unable to find primary cluster".
-docker compose "${COMPOSE_FILES[@]}" --env-file "$ENV_FILE" up -d --wait --build postgres
+docker compose "${COMPOSE_FILES[@]}" "${ENV_FILES[@]}" up -d --wait --build postgres
 
 echo "==> Creating stanza (idempotent)..."
-docker compose "${COMPOSE_FILES[@]}" --env-file "$ENV_FILE" exec -T postgres \
+docker compose "${COMPOSE_FILES[@]}" "${ENV_FILES[@]}" exec -T postgres \
   pgbackrest --stanza=dian-dian stanza-create
 
 echo "==> Running initial full backup..."
-docker compose "${COMPOSE_FILES[@]}" --env-file "$ENV_FILE" exec -T postgres \
+docker compose "${COMPOSE_FILES[@]}" "${ENV_FILES[@]}" exec -T postgres \
   pgbackrest --stanza=dian-dian --type=full backup
 
 echo "==> Verifying archive + backup integrity..."
-docker compose "${COMPOSE_FILES[@]}" --env-file "$ENV_FILE" exec -T postgres \
+docker compose "${COMPOSE_FILES[@]}" "${ENV_FILES[@]}" exec -T postgres \
   pgbackrest --stanza=dian-dian check
 
 echo "OK pgBackRest initialised. The host cron (/etc/cron.d/dian-dian-backup)"

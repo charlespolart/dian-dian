@@ -21,6 +21,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
 OPS_DIR="$(dirname "$SCRIPT_DIR")"
 ENV_FILE="${ENV_FILE:-/srv/dian-dian/.env}"
+# pgBackRest secrets live OUTSIDE .env: .env is injected whole into the
+# backend container via env_file, so keeping the repo passphrase and R2 keys
+# there would hand the backup repo to any backend RCE.
+PGB_ENV_FILE="${PGB_ENV_FILE:-/srv/dian-dian/.env.pgbackrest}"
+ENV_FILES=(--env-file "$ENV_FILE" --env-file "$PGB_ENV_FILE")
 COMPOSE_FILES=(
   -f "$OPS_DIR/docker-compose.yml"
   -f "$OPS_DIR/docker-compose.prod.yml"
@@ -43,7 +48,7 @@ if [[ "$confirm" != "YES-I-KNOW" ]]; then
 fi
 
 echo "==> Stopping postgres container..."
-docker compose "${COMPOSE_FILES[@]}" --env-file "$ENV_FILE" stop postgres
+docker compose "${COMPOSE_FILES[@]}" "${ENV_FILES[@]}" stop postgres
 
 echo "==> Wiping /srv/dian-dian/postgres (data directory)..."
 sudo rm -rf /srv/dian-dian/postgres/*
@@ -55,12 +60,12 @@ sudo rm -rf /srv/dian-dian/postgres/*
 # unqualified run would write them as root and postgres would refuse to start).
 echo "==> Running pgbackrest restore (mode=$mode)..."
 if [[ "$mode" == "latest" ]]; then
-  docker compose "${COMPOSE_FILES[@]}" --env-file "$ENV_FILE" \
+  docker compose "${COMPOSE_FILES[@]}" "${ENV_FILES[@]}" \
     run --rm --user postgres postgres \
     pgbackrest --stanza=dian-dian restore
 elif [[ "$mode" == "pitr" ]]; then
   target="${2:?pitr mode requires a timestamp argument}"
-  docker compose "${COMPOSE_FILES[@]}" --env-file "$ENV_FILE" \
+  docker compose "${COMPOSE_FILES[@]}" "${ENV_FILES[@]}" \
     run --rm --user postgres postgres \
     pgbackrest --stanza=dian-dian --type=time --target="$target" \
     --target-action=promote restore
@@ -70,7 +75,7 @@ else
 fi
 
 echo "==> Starting postgres container..."
-docker compose "${COMPOSE_FILES[@]}" --env-file "$ENV_FILE" start postgres
+docker compose "${COMPOSE_FILES[@]}" "${ENV_FILES[@]}" start postgres
 
 echo "OK Restore complete. Verify:"
 echo "   docker compose ${COMPOSE_FILES[*]} --env-file $ENV_FILE exec -T postgres psql -U postgres -d dian_dian -c 'SELECT count(*) FROM users'"

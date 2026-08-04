@@ -20,6 +20,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
 OPS_DIR="$(dirname "$SCRIPT_DIR")"
 ENV_FILE="${ENV_FILE:-/srv/dian-dian/.env}"
+# The pgBackRest secrets live OUTSIDE .env on purpose: .env is injected whole
+# into the backend container via env_file, so keeping the repo passphrase and
+# R2 keys there would hand the backup repo to any backend RCE.
+PGB_ENV_FILE="${PGB_ENV_FILE:-/srv/dian-dian/.env.pgbackrest}"
+ENV_FILES=(--env-file "$ENV_FILE" --env-file "$PGB_ENV_FILE")
 COMPOSE_FILES=(
   -f "$OPS_DIR/docker-compose.yml"
   -f "$OPS_DIR/docker-compose.prod.yml"
@@ -37,14 +42,14 @@ if [[ ! -f "$ENV_FILE" ]]; then
 fi
 
 echo "==> pgbackrest --type=$TYPE backup (stanza=dian-dian)"
-docker compose "${COMPOSE_FILES[@]}" --env-file "$ENV_FILE" exec -T postgres \
+docker compose "${COMPOSE_FILES[@]}" "${ENV_FILES[@]}" exec -T postgres \
   pgbackrest --stanza=dian-dian --type="$TYPE" backup
 
 # `check` asserts WAL archiving still reaches the repo. A backup that succeeds
 # while archive-push is silently broken is not point-in-time restorable, so we
 # verify every run.
 echo "==> pgbackrest check"
-docker compose "${COMPOSE_FILES[@]}" --env-file "$ENV_FILE" exec -T postgres \
+docker compose "${COMPOSE_FILES[@]}" "${ENV_FILES[@]}" exec -T postgres \
   pgbackrest --stanza=dian-dian check
 
 echo "OK backup ($TYPE) $(date -Is)"

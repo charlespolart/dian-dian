@@ -114,7 +114,11 @@ jobs:
           # The backup overlay is part of the STANDARD prod stack, not opt-in:
           # leaving it out of any `up` would recreate postgres on the vanilla
           # image and silently kill WAL archiving. All three files, always.
+          # Two env files: .env (injected into the backend via env_file) and
+          # .env.pgbackrest (root 0600, NOT injected anywhere) — so a backend
+          # RCE cannot read the backup repo passphrase or the R2 keys.
           COMPOSE="docker compose --env-file /srv/dian-dian/.env \
+            --env-file /srv/dian-dian/.env.pgbackrest \
             -f ops/docker-compose.yml \
             -f ops/docker-compose.prod.yml \
             -f ops/docker-compose.prod-backup.yml"

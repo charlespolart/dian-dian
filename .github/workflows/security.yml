@@ -1,0 +1,42 @@
+name: Security
+
+# Secret scanning on every push/PR. A committed secret is leaked even after a
+# `git rm` — the history keeps it — so the point is to catch it before it ever
+# lands (playbook: security/app-security.md, "Secrets côté code").
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history: a secret committed earlier and removed later is still
+          # exposed, and a shallow clone would not see it.
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      # `npm ci` (not `install`) — frozen lockfile, so CI builds exactly the
+      # dependency tree that was reviewed.
+      - run: npm ci
+        working-directory: backend
+      - run: npm run build
+        working-directory: backend
+      - run: npm audit --audit-level=high
+        working-directory: backend
+        continue-on-error: true
