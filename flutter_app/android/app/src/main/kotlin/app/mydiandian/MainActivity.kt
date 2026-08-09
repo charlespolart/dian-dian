@@ -1,4 +1,4 @@
-package app.mydiandian.dian_dian
+package app.mydiandian
 
 import io.flutter.embedding.android.FlutterActivity
 

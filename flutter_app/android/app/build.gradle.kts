@@ -20,7 +20,7 @@ val keystoreProperties = Properties().apply {
 val hasReleaseKeystore = keystorePropertiesFile.exists()
 
 android {
-    namespace = "app.mydiandian.dian_dian"
+    namespace = "app.mydiandian"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -35,7 +35,7 @@ android {
 
     defaultConfig {
         // Permanent Play Store identity — never change this.
-        applicationId = "app.mydiandian.dian_dian"
+        applicationId = "app.mydiandian"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
