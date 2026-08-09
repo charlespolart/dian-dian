@@ -19,6 +19,14 @@ const String _googleGLogoSvg = '''
 </svg>
 ''';
 
+/// Google **Web** OAuth client id — required by `google_sign_in` on Android as
+/// `serverClientId` (the Android client id will NOT work here). It is also what
+/// becomes the `aud` of the id_token, so it must stay listed in the backend's
+/// `GOOGLE_CLIENT_IDS`. Public value, safe in the binary — the Web client
+/// *secret* is the part that stays server-side.
+const String _googleWebClientId =
+    '1095494651933-rrqbtudlcpuemcu40gaf3l1j61s7rokt.apps.googleusercontent.com';
+
 /// "Sign in with Apple" + "Sign in with Google" stacked buttons.
 /// Renders only the buttons that make sense on the current platform.
 class OAuthButtons extends StatefulWidget {
@@ -81,9 +89,14 @@ class _OAuthButtonsState extends State<OAuthButtons> {
     setState(() => _busy = true);
     try {
       final signIn = GoogleSignIn.instance;
-      // iOS picks up the client id from Info.plist (`GIDClientID`); Android
-      // uses the package name + SHA-1 registered with the Cloud project.
-      await signIn.initialize();
+      // iOS picks up the client id from Info.plist (`GIDClientID`). Android
+      // authenticates via package name + SHA-1, but google_sign_in 7.x still
+      // requires the Web client id to mint an id_token — without it the plugin
+      // throws "serverClientId must be provided on Android". Left unset on iOS
+      // so the working flow there is untouched.
+      await signIn.initialize(
+        serverClientId: Platform.isAndroid ? _googleWebClientId : null,
+      );
       final account = await signIn.authenticate();
       final idToken = account.authentication.idToken;
       if (idToken == null) throw Exception('Google did not return an ID token');
