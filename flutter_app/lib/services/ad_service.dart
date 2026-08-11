@@ -25,7 +25,7 @@ class AdService {
     if (Platform.isIOS) {
       return 'ca-app-pub-7932342939488027/9720432799';
     }
-    return 'ca-app-pub-3940256099942544/6300978111'; // Android test banner
+    return 'ca-app-pub-7932342939488027/4125366232';
   }
 
   Future<void> init() async {
