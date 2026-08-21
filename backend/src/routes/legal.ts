@@ -131,7 +131,7 @@ function layout(title: string, content: string, lang: Lang): string {
 const privacy: Record<Lang, string> = {
   en: `
     <h1>Privacy Policy</h1>
-    <p class="subtitle">Last updated: April 14, 2026</p>
+    <p class="subtitle">Last updated: August 21, 2026</p>
     <h2>1. Introduction</h2>
     <p>Dian Dian is published by OVERRIDE, SASU with a capital of 1 euro, registered under SIREN 953 122 868. This Privacy Policy explains how we collect, use, and protect your personal information.</p>
     <h2>2. Data We Collect</h2>
@@ -150,7 +150,7 @@ const privacy: Record<Lang, string> = {
     <h2>4. Third-Party Services</h2>
     <ul>
       <li><strong>Google AdMob:</strong> the free version of the app displays banner ads via Google AdMob. AdMob may collect device identifiers and usage data according to <a href="https://policies.google.com/privacy" target="_blank">Google's Privacy Policy</a>. Premium users are not shown ads.</li>
-      <li><strong>Apple In-App Purchases:</strong> subscriptions and purchases are processed by Apple. We do not have access to your payment information. See <a href="https://www.apple.com/legal/privacy/" target="_blank">Apple's Privacy Policy</a>.</li>
+      <li><strong>In-App Purchases (Apple &amp; Google):</strong> subscriptions and purchases are processed by Apple (App Store) or Google (Google Play), depending on your device. We do not have access to your payment information. See <a href="https://www.apple.com/legal/privacy/" target="_blank">Apple's Privacy Policy</a> and <a href="https://policies.google.com/privacy" target="_blank">Google's Privacy Policy</a>.</li>
     </ul>
     <p>We do <strong>not</strong> use any other third-party analytics or tracking scripts. No personal data is shared with or sold to third parties.</p>
     <h2>5. Cookies</h2>
@@ -167,7 +167,7 @@ const privacy: Record<Lang, string> = {
     <p>Questions? <a href="mailto:diandian@overridedev.com">diandian@overridedev.com</a></p>`,
   fr: `
     <h1>Politique de confidentialité</h1>
-    <p class="subtitle">Dernière mise à jour : 14 avril 2026</p>
+    <p class="subtitle">Dernière mise à jour : 21 août 2026</p>
     <h2>1. Introduction</h2>
     <p>Dian Dian est édité par OVERRIDE, SASU au capital de 1 euro, immatriculée sous le SIREN 953 122 868. Cette politique explique comment nous collectons, utilisons et protégeons vos données personnelles.</p>
     <h2>2. Données collectées</h2>
@@ -186,7 +186,7 @@ const privacy: Record<Lang, string> = {
     <h2>4. Services tiers</h2>
     <ul>
       <li><strong>Google AdMob :</strong> la version gratuite de l'application affiche des bannières publicitaires via Google AdMob. AdMob peut collecter des identifiants d'appareil et des données d'utilisation conformément à la <a href="https://policies.google.com/privacy" target="_blank">Politique de confidentialité de Google</a>. Les utilisateurs Premium ne voient pas de publicités.</li>
-      <li><strong>Achats intégrés Apple :</strong> les abonnements et achats sont traités par Apple. Nous n'avons pas accès à vos informations de paiement. Voir la <a href="https://www.apple.com/legal/privacy/" target="_blank">Politique de confidentialité d'Apple</a>.</li>
+      <li><strong>Achats intégrés (Apple et Google) :</strong> les abonnements et achats sont traités par Apple (App Store) ou Google (Google Play), selon votre appareil. Nous n'avons pas accès à vos informations de paiement. Voir la <a href="https://www.apple.com/legal/privacy/" target="_blank">Politique de confidentialité d'Apple</a> et la <a href="https://policies.google.com/privacy" target="_blank">Politique de confidentialité de Google</a>.</li>
     </ul>
     <p>Nous n'utilisons <strong>aucun</strong> autre outil d'analyse ou script de suivi. Aucune donnée personnelle n'est partagée ou vendue à des tiers.</p>
     <h2>5. Cookies</h2>
@@ -203,7 +203,7 @@ const privacy: Record<Lang, string> = {
     <p>Questions ? <a href="mailto:diandian@overridedev.com">diandian@overridedev.com</a></p>`,
   'zh-CN': `
     <h1>隐私政策</h1>
-    <p class="subtitle">最后更新：2026年4月14日</p>
+    <p class="subtitle">最后更新：2026年8月21日</p>
     <h2>1. 简介</h2>
     <p>点点由 OVERRIDE 公司（SASU，注册资本1欧元，SIREN 953 122 868）发布。本隐私政策说明我们如何收集、使用和保护您的个人信息。</p>
     <h2>2. 收集的数据</h2>
@@ -222,7 +222,7 @@ const privacy: Record<Lang, string> = {
     <h2>4. 第三方服务</h2>
     <ul>
       <li><strong>Google AdMob：</strong>免费版应用通过 Google AdMob 显示横幅广告。AdMob 可能根据 <a href="https://policies.google.com/privacy" target="_blank">Google 隐私政策</a>收集设备标识符和使用数据。高级用户不会看到广告。</li>
-      <li><strong>Apple 应用内购买：</strong>订阅和购买由 Apple 处理。我们无法访问您的支付信息。请参阅 <a href="https://www.apple.com/legal/privacy/" target="_blank">Apple 隐私政策</a>。</li>
+      <li><strong>应用内购买（Apple 与 Google）：</strong>订阅和购买由 Apple（App Store）或 Google（Google Play）处理，取决于您的设备。我们无法访问您的支付信息。请参阅 <a href="https://www.apple.com/legal/privacy/" target="_blank">Apple 隐私政策</a>和 <a href="https://policies.google.com/privacy" target="_blank">Google 隐私政策</a>。</li>
     </ul>
     <p>我们<strong>不使用</strong>任何其他第三方分析工具或追踪脚本。不会与第三方共享或出售个人数据。</p>
     <h2>5. Cookie</h2>
@@ -239,7 +239,7 @@ const privacy: Record<Lang, string> = {
     <p>有问题？<a href="mailto:diandian@overridedev.com">diandian@overridedev.com</a></p>`,
   'zh-TW': `
     <h1>隱私權政策</h1>
-    <p class="subtitle">最後更新：2026年4月14日</p>
+    <p class="subtitle">最後更新：2026年8月21日</p>
     <h2>1. 簡介</h2>
     <p>點點由 OVERRIDE 公司（SASU，註冊資本1歐元，SIREN 953 122 868）發布。本隱私權政策說明我們如何收集、使用和保護您的個人資訊。</p>
     <h2>2. 收集的資料</h2>
@@ -258,7 +258,7 @@ const privacy: Record<Lang, string> = {
     <h2>4. 第三方服務</h2>
     <ul>
       <li><strong>Google AdMob：</strong>免費版應用程式透過 Google AdMob 顯示橫幅廣告。AdMob 可能根據 <a href="https://policies.google.com/privacy" target="_blank">Google 隱私權政策</a>收集裝置識別碼和使用資料。進階使用者不會看到廣告。</li>
-      <li><strong>Apple 應用程式內購買：</strong>訂閱和購買由 Apple 處理。我們無法存取您的付款資訊。請參閱 <a href="https://www.apple.com/legal/privacy/" target="_blank">Apple 隱私權政策</a>。</li>
+      <li><strong>應用程式內購買（Apple 與 Google）：</strong>訂閱和購買由 Apple（App Store）或 Google（Google Play）處理，取決於您的裝置。我們無法存取您的付款資訊。請參閱 <a href="https://www.apple.com/legal/privacy/" target="_blank">Apple 隱私權政策</a>和 <a href="https://policies.google.com/privacy" target="_blank">Google 隱私權政策</a>。</li>
     </ul>
     <p>我們<strong>不使用</strong>任何其他第三方分析工具或追蹤指令碼。不會與第三方分享或出售個人資料。</p>
     <h2>5. Cookie</h2>
