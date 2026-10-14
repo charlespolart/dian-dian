@@ -4,8 +4,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../models/cell_model.dart';
 import '../models/page_model.dart';
+import '../providers/cells_provider.dart';
 import '../providers/language_provider.dart';
 import '../providers/pages_provider.dart';
 import '../providers/premium_provider.dart';
@@ -64,7 +64,9 @@ class _GlobalStatsContentState extends State<_GlobalStatsContent> {
   static const _spinnerDelay = Duration(milliseconds: 250);
 
   final _api = ApiService();
-  final Map<String, List<CellModel>> _cellsPerPage = {};
+  /// Filled dates per page for the selected range. Only dates are needed:
+  /// counts and streaks derive from them.
+  final Map<String, List<DateTime>> _daysPerPage = {};
   bool _initialLoading = true;
   bool _refreshing = false;
   bool _allTime = false;
@@ -73,7 +75,7 @@ class _GlobalStatsContentState extends State<_GlobalStatsContent> {
   @override
   void initState() {
     super.initState();
-    _fetchAllCells(initial: true);
+    _load(initial: true);
   }
 
   @override
@@ -82,14 +84,32 @@ class _GlobalStatsContentState extends State<_GlobalStatsContent> {
     super.dispose();
   }
 
-  /// Fetches cells for every page. The initial load shows a full spinner
-  /// (no data yet); subsequent fetches keep the old data visible. The
-  /// overlay spinner only appears if the fetch takes longer than
-  /// [_spinnerDelay] — instant loads don't flash the spinner at all.
-  Future<void> _fetchAllCells({bool initial = false}) async {
+  /// "This year" comes straight from the store (zero requests — the page
+  /// list already holds that year). "All time" is one request returning
+  /// every filled date of every page.
+  Future<void> _load({bool initial = false}) async {
     final fetchAllTime = _allTime;
-    final query = fetchAllTime ? '?all=true' : '?year=${widget.year}';
-    final results = <String, List<CellModel>>{};
+
+    if (!fetchAllTime) {
+      final cellsProv = context.read<CellsProvider>();
+      final results = <String, List<DateTime>>{};
+      for (final page in widget.pages) {
+        final cells = cellsProv.cellsFor(page.id, widget.year);
+        results[page.id] = [
+          if (cells != null)
+            for (final c in cells.values) DateTime(c.year, c.month, c.day),
+        ];
+      }
+      _spinnerTimer?.cancel();
+      setState(() {
+        _daysPerPage
+          ..clear()
+          ..addAll(results);
+        _initialLoading = false;
+        _refreshing = false;
+      });
+      return;
+    }
 
     _spinnerTimer?.cancel();
     if (!initial) {
@@ -98,24 +118,31 @@ class _GlobalStatsContentState extends State<_GlobalStatsContent> {
       });
     }
 
-    for (final page in widget.pages) {
-      try {
-        final response = await _api.apiFetch('/api/cells/${page.id}$query');
-        if (response.statusCode == 200) {
-          final list = jsonDecode(response.body) as List<dynamic>;
-          results[page.id] = list
-              .map((j) => CellModel.fromJson(j as Map<String, dynamic>))
-              .toList();
+    final results = <String, List<DateTime>>{};
+    try {
+      final response = await _api.apiFetch('/api/stats/days');
+      if (response.statusCode == 200) {
+        final byPage = jsonDecode(response.body) as Map<String, dynamic>;
+        for (final page in widget.pages) {
+          final rows = byPage[page.id] as List<dynamic>? ?? const [];
+          final days = <DateTime>[];
+          for (final r in rows) {
+            try {
+              final t = r as List<dynamic>;
+              days.add(DateTime(t[0] as int, t[1] as int, t[2] as int));
+            } catch (_) {}
+          }
+          results[page.id] = days;
         }
-      } catch (_) {}
-    }
+      }
+    } catch (_) {}
 
     _spinnerTimer?.cancel();
     if (!mounted) return;
     // Race guard: a faster newer toggle might have already replaced our scope.
     if (fetchAllTime != _allTime) return;
     setState(() {
-      _cellsPerPage
+      _daysPerPage
         ..clear()
         ..addAll(results);
       _initialLoading = false;
@@ -126,7 +153,23 @@ class _GlobalStatsContentState extends State<_GlobalStatsContent> {
   void _setAllTime(bool value) {
     if (value == _allTime) return;
     setState(() => _allTime = value);
-    _fetchAllCells();
+    _load();
+  }
+
+  /// Longest run of consecutive dates (dates are deduplicated first).
+  static int _bestStreak(List<DateTime> days) {
+    if (days.isEmpty) return 0;
+    final sorted = days.toSet().toList()..sort();
+    int best = 1, current = 1;
+    for (int i = 1; i < sorted.length; i++) {
+      if (sorted[i].difference(sorted[i - 1]).inDays == 1) {
+        current++;
+        if (current > best) best = current;
+      } else {
+        current = 1;
+      }
+    }
+    return best;
   }
 
   @override
@@ -179,42 +222,24 @@ class _GlobalStatsContentState extends State<_GlobalStatsContent> {
     int bestStreak = 0;
 
     for (final page in widget.pages) {
-      final cells = _cellsPerPage[page.id] ?? [];
-      totalCells += cells.length;
+      final days = _daysPerPage[page.id] ?? const [];
+      totalCells += days.length;
 
-      if (cells.length > mostActiveCells) {
-        mostActiveCells = cells.length;
+      if (days.length > mostActiveCells) {
+        mostActiveCells = days.length;
         mostActiveName = page.title;
       }
 
-      // Best streak for this page (uses each cell's own year so it works
-      // across both "this year" and "all time" modes — and lets streaks span
-      // year boundaries naturally).
-      if (cells.isNotEmpty) {
-        final days = <DateTime>{};
-        for (final c in cells) {
-          try {
-            days.add(DateTime(c.year, c.month, c.day));
-          } catch (_) {}
-        }
-        final sorted = days.toList()..sort();
-        int current = 1;
-        for (int i = 1; i < sorted.length; i++) {
-          if (sorted[i].difference(sorted[i - 1]).inDays == 1) {
-            current++;
-            if (current > bestStreak) bestStreak = current;
-          } else {
-            current = 1;
-          }
-        }
-        if (sorted.length == 1 && bestStreak == 0) bestStreak = 1;
-      }
+      // Best streak per page; dates carry their own year so streaks span
+      // year boundaries naturally in "all time" mode.
+      final streak = _bestStreak(days);
+      if (streak > bestStreak) bestStreak = streak;
     }
 
     // Per-tracker breakdown
     final trackerStats = widget.pages.map((page) {
-      final cells = _cellsPerPage[page.id] ?? [];
-      return _TrackerStat(name: page.title, count: cells.length);
+      final days = _daysPerPage[page.id] ?? const [];
+      return _TrackerStat(name: page.title, count: days.length);
     }).toList()
       ..sort((a, b) => b.count.compareTo(a.count));
 

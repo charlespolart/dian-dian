@@ -5,14 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 
-import '../models/cell_model.dart';
 import '../models/legend_model.dart';
 import '../models/page_model.dart';
+import '../models/year_cells.dart';
 import '../providers/cells_provider.dart';
 import '../providers/language_provider.dart';
 import '../providers/legends_provider.dart';
 import '../providers/pages_provider.dart';
 import '../providers/premium_provider.dart';
+import '../services/sync_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_dialog.dart';
 import '../widgets/confirm_dialog.dart';
@@ -50,32 +51,19 @@ class _PageListScreenState extends State<PageListScreen> {
   void initState() {
     super.initState();
     _selectedYear = widget.selectedYear;
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final pagesProv = context.read<PagesProvider>();
-      await pagesProv.fetchPages();
+    // Everything the cards need (pages, legends, this year's cells) comes
+    // from the store; this is a no-op when the year is already loaded.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _fetchPreviews(pagesProv.pages);
+      context.read<SyncService>().ensureYear(_selectedYear);
     });
-  }
-
-  /// Fetches preview cells for the active year + legends (year-agnostic).
-  void _fetchPreviews(List<PageModel> pages) {
-    final cellsProv = context.read<CellsProvider>();
-    final legendsProv = context.read<LegendsProvider>();
-    for (final page in pages) {
-      cellsProv.fetchPreviewCells(page.id, _selectedYear);
-      legendsProv.fetchPreviewLegends(page.id);
-    }
   }
 
   void _changeYear(int delta) {
     setState(() => _selectedYear += delta);
     widget.onYearChanged(_selectedYear);
-    // Re-fetch cell previews for the new year (legends are year-agnostic).
-    final cellsProv = context.read<CellsProvider>();
-    for (final page in context.read<PagesProvider>().pages) {
-      cellsProv.fetchPreviewCells(page.id, _selectedYear);
-    }
+    // Instant when the year is cached; one bootstrap request otherwise.
+    context.read<SyncService>().ensureYear(_selectedYear);
   }
 
   List<PageModel> _sortedPages(List<PageModel> pages) {
@@ -124,10 +112,10 @@ class _PageListScreenState extends State<PageListScreen> {
       return;
     }
 
-    final cellsProv = context.read<CellsProvider>();
-    final legendsProv = context.read<LegendsProvider>();
-    cellsProv.setContext(pageId: page.id, year: _selectedYear);
-    legendsProv.setPageId(page.id);
+    // Synchronous: the tracker paints from the store immediately.
+    context.read<CellsProvider>().setContext(pageId: page.id, year: _selectedYear);
+    context.read<LegendsProvider>().setPageId(page.id);
+    context.read<SyncService>().ensureYear(_selectedYear);
 
     widget.onSelectPage(page.id, _selectedYear);
   }
@@ -291,9 +279,9 @@ class _PageListScreenState extends State<PageListScreen> {
                               itemBuilder: (_, index) {
                                 final page = sortedPages[index];
                                 final previewCells =
-                                    cellsProv.getPreviewCells(page.id, _selectedYear);
+                                    cellsProv.cellsFor(page.id, _selectedYear);
                                 final previewLegends =
-                                    legendsProv.getPreviewLegends(page.id);
+                                    legendsProv.legendsFor(page.id);
                                 return DragTarget<int>(
                                   onWillAcceptWithDetails: (d) => d.data != index,
                                   onAcceptWithDetails: (d) =>
@@ -427,7 +415,7 @@ class _PageListScreenState extends State<PageListScreen> {
 class _PageCard extends StatelessWidget {
   final PageModel page;
   final int year;
-  final List<CellModel> cells;
+  final YearCells? cells;
   final List<LegendModel> legends;
   final VoidCallback onTap;
   final VoidCallback onDelete;
@@ -580,11 +568,20 @@ class _PageCard extends StatelessWidget {
 
 /// Paints a full 12-column × 31-row preview grid matching the tracker layout.
 /// Days that don't exist for a given month are left blank.
+///
+/// Takes the immutable [YearCells] straight from the store: its identity
+/// changes exactly when its content does, so `shouldRepaint` is both cheap
+/// and exact (previously every provider notification repainted every card).
 class _MiniGridPainter extends CustomPainter {
-  final Map<String, Color> colorMap;
+  final YearCells? cells;
   final int year;
 
-  _MiniGridPainter(this.colorMap, this.year);
+  _MiniGridPainter(this.cells, this.year);
+
+  static Color _hexToColor(String hex) {
+    final h = hex.replaceFirst('#', '');
+    return Color(int.parse('FF$h', radix: 16));
+  }
 
   static int _daysInMonth(int month, int year) {
     if (month == 2) {
@@ -618,9 +615,8 @@ class _MiniGridPainter extends CustomPainter {
         final day = d + 1;
         if (day > maxDays) continue;
         final cy = pad + stepY * d + stepY / 2;
-        final key = '$month,$day';
-        final cellColor = colorMap[key];
-        final paint = cellColor != null ? (Paint()..color = cellColor) : emptyPaint;
+        final cell = cells?.get(month, day);
+        final paint = cell != null ? (Paint()..color = _hexToColor(cell.color)) : emptyPaint;
         canvas.drawCircle(Offset(cx, cy), dotRadius, paint);
       }
     }
@@ -628,30 +624,21 @@ class _MiniGridPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_MiniGridPainter old) =>
-      old.colorMap != colorMap || old.year != year;
+      !identical(old.cells, cells) || old.year != year;
 }
 
 class _MiniGrid extends StatelessWidget {
-  final List<CellModel> cells;
+  final YearCells? cells;
   final int year;
 
   const _MiniGrid({required this.cells, required this.year});
 
   @override
   Widget build(BuildContext context) {
-    final colorMap = <String, Color>{};
-    for (final c in cells) {
-      colorMap['${c.month},${c.day}'] = _hexToColor(c.color);
-    }
     return CustomPaint(
-      painter: _MiniGridPainter(colorMap, year),
+      painter: _MiniGridPainter(cells, year),
       child: const SizedBox.expand(),
     );
-  }
-
-  static Color _hexToColor(String hex) {
-    final h = hex.replaceFirst('#', '');
-    return Color(int.parse('FF$h', radix: 16));
   }
 }
 

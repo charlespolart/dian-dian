@@ -24,7 +24,10 @@ import 'package:flutter/services.dart';
 import 'widgets/undo_delete_bar.dart';
 
 import 'services/ad_service.dart';
+import 'services/api_service.dart';
 import 'services/purchase_service.dart';
+import 'services/sync_service.dart';
+import 'services/ws_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -52,6 +55,19 @@ class DianDianApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => LegendsProvider()),
         ChangeNotifierProvider(create: (_) => PremiumProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        // Owns loading (bootstrap, disk snapshot, resume/reconnect resync);
+        // the three data providers above only hold state.
+        Provider<SyncService>(
+          create: (ctx) => SyncService(
+            api: ApiService(),
+            pages: ctx.read<PagesProvider>(),
+            cells: ctx.read<CellsProvider>(),
+            legends: ctx.read<LegendsProvider>(),
+            ws: WsService(),
+          ),
+          dispose: (_, sync) => sync.dispose(),
+          lazy: false,
+        ),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProv, _) => MaterialApp(
@@ -96,7 +112,9 @@ class _AppShellState extends State<AppShell> {
   AppScreen _screen = AppScreen.login;
   String? _activePageId;
   int _selectedYear = DateTime.now().year;
-  bool _restoreAttempted = false;
+  // One session start per authentication: hydrate + bootstrap + land on
+  // the right screen. Reset on logout.
+  bool _sessionStarted = false;
   // Keeps the splash screen up while we decide whether to land on the
   // page list or jump straight back into the user's last tracker.
   bool _restoreInProgress = true;
@@ -108,38 +126,59 @@ class _AppShellState extends State<AppShell> {
     auth.addListener(_onAuthChange);
   }
 
-  /// Reopens the last tracker the user was viewing, if it still exists.
-  /// Runs once per app launch after the first successful auth.
-  Future<void> _restoreLastTracker() async {
-    if (_restoreAttempted) return;
-    _restoreAttempted = true;
-
+  /// Runs once per authenticated session. Hydrates the store from the disk
+  /// snapshot (instant first paint), kicks the network bootstrap, then lands
+  /// on onboarding, the last open tracker, or the page list.
+  Future<void> _startSession(AuthProvider auth) async {
     final prefs = await SharedPreferences.getInstance();
-    final pageId = prefs.getString(_lastTrackerIdKey);
-    if (pageId == null || !mounted) return;
-    final year = prefs.getInt(_lastTrackerYearKey) ?? DateTime.now().year;
+    final lastId = prefs.getString(_lastTrackerIdKey);
+    final currentYear = DateTime.now().year;
+    final year = lastId != null
+        ? (prefs.getInt(_lastTrackerYearKey) ?? currentYear)
+        : currentYear;
+    if (!mounted) return;
 
-    // Make sure pages are loaded so we can verify the tracker still exists.
-    final pagesProv = context.read<PagesProvider>();
-    if (pagesProv.pages.isEmpty) {
-      await pagesProv.fetchPages();
+    final sync = context.read<SyncService>();
+    final hydrated = await sync.start(userId: auth.userId!, year: year);
+    if (!mounted) return;
+
+    if (await OnboardingScreen.shouldShow()) {
       if (!mounted) return;
-    }
-    final exists = pagesProv.pages.any((p) => p.id == pageId);
-    if (!exists) {
-      await prefs.remove(_lastTrackerIdKey);
-      await prefs.remove(_lastTrackerYearKey);
+      setState(() {
+        _screen = AppScreen.onboarding;
+        _selectedYear = year;
+        _restoreInProgress = false;
+      });
       return;
     }
 
-    // Wire providers as if the user had tapped the tracker in the page list.
-    context.read<CellsProvider>().setContext(pageId: pageId, year: year);
-    context.read<LegendsProvider>().setPageId(pageId);
+    // First launch on this device: nothing on disk, wait once for the network.
+    if (!hydrated) await sync.ensureYear(year);
     if (!mounted) return;
+
+    final pagesProv = context.read<PagesProvider>();
+    if (lastId != null && pagesProv.pages.any((p) => p.id == lastId)) {
+      // Wire providers as if the user had tapped the tracker in the page list.
+      context.read<CellsProvider>().setContext(pageId: lastId, year: year);
+      context.read<LegendsProvider>().setPageId(lastId);
+      setState(() {
+        _screen = AppScreen.tracker;
+        _activePageId = lastId;
+        _selectedYear = year;
+        _restoreInProgress = false;
+      });
+      return;
+    }
+
+    if (lastId != null) {
+      await prefs.remove(_lastTrackerIdKey);
+      await prefs.remove(_lastTrackerYearKey);
+      if (!mounted) return;
+    }
     setState(() {
-      _screen = AppScreen.tracker;
-      _activePageId = pageId;
+      _screen = AppScreen.pageList;
       _selectedYear = year;
+      _restoreInProgress = false;
     });
   }
 
@@ -190,32 +229,19 @@ class _AppShellState extends State<AppShell> {
       }
     }
 
-    // Show onboarding after first login
-    if (auth.isAuthenticated && _screen != AppScreen.onboarding &&
-        _screen != AppScreen.pageList && _screen != AppScreen.tracker &&
-        _screen != AppScreen.settings) {
-      final shouldShow = await OnboardingScreen.shouldShow();
-      if (!mounted) return;
-      if (shouldShow) {
-        setState(() {
-          _screen = AppScreen.onboarding;
-          _restoreInProgress = false;
-        });
-        return;
-      }
-      // No onboarding due → try to reopen the last tracker the user had open.
-      await _restoreLastTracker();
-      if (mounted && _restoreInProgress) {
-        setState(() => _restoreInProgress = false);
-      }
+    if (auth.isAuthenticated && auth.userId != null && !_sessionStarted) {
+      _sessionStarted = true;
+      await _startSession(auth);
     }
     if (!mounted) return;
     if (!auth.isAuthenticated && _screen != AppScreen.login &&
         _screen != AppScreen.register && _screen != AppScreen.forgotPassword) {
       // Cancel any pending page deletion on logout
       context.read<PagesProvider>().cancelPendingDelete();
+      // Forget the cached store + disk snapshot: the next user must not see it.
+      context.read<SyncService>().clear();
       _clearLastTracker();
-      _restoreAttempted = false;
+      _sessionStarted = false;
       setState(() {
         _screen = AppScreen.login;
         _activePageId = null;
@@ -223,6 +249,7 @@ class _AppShellState extends State<AppShell> {
       });
     } else if (!auth.isAuthenticated) {
       // Already on an auth screen — just drop the splash.
+      _sessionStarted = false;
       if (_restoreInProgress) setState(() => _restoreInProgress = false);
     }
   }

@@ -10,6 +10,7 @@ import '../providers/language_provider.dart';
 import '../providers/legends_provider.dart';
 import '../providers/pages_provider.dart';
 import '../providers/premium_provider.dart';
+import '../services/sync_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/cell_editor_dialog.dart';
 import '../widgets/export_image_builder.dart';
@@ -72,7 +73,10 @@ class _TrackerScreenState extends State<TrackerScreen> {
   void _changeYear(int delta) {
     final newYear = _year + delta;
     setState(() => _year = newYear);
+    // Synchronous pointer move; the grid paints from the store at once when
+    // the year is cached, and one bootstrap fills it otherwise.
     context.read<CellsProvider>().setYear(newYear);
+    context.read<SyncService>().ensureYear(newYear);
     widget.onYearChanged?.call(newYear);
   }
 
@@ -171,9 +175,9 @@ class _TrackerScreenState extends State<TrackerScreen> {
     // Watch pages so title updates are reflected
     context.watch<PagesProvider>();
 
-    // Stats calculation
-    final filledDays = cellsProv.cells.length;
-    final streak = _calculateStreak(cellsProv);
+    // Stats are memoized in the provider (recomputed only when cells change).
+    final filledDays = cellsProv.filledDays;
+    final streak = cellsProv.currentStreak;
     final daysInYear = _isLeapYear(_year) ? 366 : 365;
     final yearPercent =
         daysInYear > 0 ? (filledDays / daysInYear * 100).round() : 0;
@@ -901,40 +905,6 @@ class _TrackerScreenState extends State<TrackerScreen> {
         ],
       ),
     );
-  }
-
-  int _calculateStreak(CellsProvider cellsProv) {
-    // Calculate current streak ending today (or the most recent filled day)
-    final now = DateTime.now();
-    int streak = 0;
-    DateTime check = DateTime(now.year, now.month, now.day);
-
-    // Only calculate streak for the page's year
-    if (check.year != _year) {
-      check = DateTime(_year, 12, 31);
-    }
-
-    while (check.year == _year) {
-      final cell = cellsProv.getCell(check.month, check.day);
-      if (cell != null) {
-        streak++;
-        check = check.subtract(const Duration(days: 1));
-      } else {
-        // If today has no cell, try starting from yesterday
-        if (streak == 0) {
-          check = check.subtract(const Duration(days: 1));
-          final prevCell = cellsProv.getCell(check.month, check.day);
-          if (prevCell != null) {
-            streak++;
-            check = check.subtract(const Duration(days: 1));
-            continue;
-          }
-        }
-        break;
-      }
-    }
-
-    return streak;
   }
 
   bool _isLeapYear(int year) {
