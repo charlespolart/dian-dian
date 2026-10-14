@@ -8,8 +8,12 @@
  *      SMOKE_BASE=https://diandian.overridedev.com npx tsx scripts/smoke.ts
  */
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 const BASE = process.env.SMOKE_BASE ?? 'http://localhost:3001';
+// The version this checkout would run; only compared against the server when
+// the server IS this checkout (local dev, CI) — not when SMOKE_BASE points at prod.
+const localVersion = (JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string }).version;
 const email = `smoke-${Date.now()}@example.com`;
 const password = 'smoke-password-123';
 let access = '';
@@ -34,8 +38,15 @@ async function call(method: string, path: string, body?: unknown, auth = true): 
 }
 
 async function main() {
+  // --- health reports the running version (deploy-prod.sh waits on it) ----
+  let r = await call('GET', '/api/health', undefined, false);
+  assert.equal(r.status, 200);
+  assert.equal(r.json.ok, true);
+  assert.equal(typeof r.json.version, 'string', 'health reports a version');
+  if (!process.env.SMOKE_BASE) assert.equal(r.json.version, localVersion, 'health version matches package.json');
+
   // --- register -----------------------------------------------------------
-  let r = await call('POST', '/api/auth/register', { email, password }, false);
+  r = await call('POST', '/api/auth/register', { email, password }, false);
   assert.equal(r.status, 201, `register: ${JSON.stringify(r.json)}`);
   access = r.json.accessToken; refresh = r.json.refreshToken;
   const userId: string = r.json.userId;

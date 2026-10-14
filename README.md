@@ -146,35 +146,62 @@ Listed in `backend/.env.example`. Required:
 
 ## Deployment
 
-Single VPS running Docker Compose. Backend image is built by GitHub Actions and pushed to GHCR; the VPS only pulls. Deploys are **manual** — `git push` doesn't trigger anything.
+Single VPS running Docker Compose (`/srv/dian-dian`). The backend is released
+in versions, like the app, and **nothing deploys automatically**: GitHub only
+tests and builds; production changes only through a script you run, which asks
+twice.
 
-### Trigger a deploy (from your laptop)
+### Versions
+
+| | Backend | Mobile app |
+|---|---|---|
+| Source of truth | `backend/package.json` | `flutter_app/pubspec.yaml` |
+| Changelog | `backend/CHANGELOG.md` | store release notes |
+| Git tag | `backend-vX.Y.Z` | — |
+| Delivered by | `make deploy` | App Store / Play submission |
+
+The two move independently; the only rule between them is compatibility: the
+backend keeps working for every installed app, and an app version states the
+backend version it needs in the changelog.
+
+### Release, deploy, roll back
 
 ```bash
-make deploy            # latest HEAD → ./ops/scripts/deploy.sh
-# or with a specific SHA to roll back:
-./ops/scripts/deploy.sh abc1234
+make release BUMP=minor   # on a clean, pushed master: bumps backend/package.json,
+                          # dates CHANGELOG "Unreleased", tags backend-vX.Y.Z, pushes
+make deploy               # latest released tag → production (SSH), asks twice
+make rollback             # one version back, asks twice
 ```
 
-This calls `gh workflow run deploy.yml`. The workflow:
-1. Builds `backend/Dockerfile --target runtime` and pushes `ghcr.io/charlespolart/dian-dian-backend:<sha>` + `:latest`.
-2. Rsyncs compose files + Caddyfile to `/srv/dian-dian/` on the VPS (Caddyfile via `cat >` to preserve the bind-mount inode).
-3. `docker compose pull backend`, `up -d --wait postgres`, then runs migrations with 3× retry, then `up -d --wait` everything.
-4. Validates + reloads Caddy.
+1. `make release` (ops/scripts/release.sh) refuses to run unless master is
+   clean and identical to origin, the changelog has notes under
+   `## [Unreleased]` and the typecheck passes. It then commits
+   "Release backend-vX.Y.Z", tags and pushes atomically.
+2. The tag push runs the **Release (backend)** workflow: checks the tag
+   against `backend/package.json` and master, `npm ci`, typecheck, build,
+   migrations on a throwaway Postgres, the smoke suite against the built
+   server, then the image `ghcr.io/charlespolart/dian-dian-backend:backend-vX.Y.Z`
+   and a GitHub Release with the changelog section. It never touches the VPS.
+3. `make deploy` (ops/scripts/deploy-prod.sh) takes the newest tag, refuses it
+   unless its workflow is green and the GitHub Release exists, shows
+   "production: vA → vB", asks for `y` then for the version typed back. Over
+   SSH it syncs `ops/` as of the tag (compose files, Caddyfile by `cat >` to
+   keep the bind-mount inode, pgBackRest context, host scripts), pins
+   `IMAGE_TAG` in `/srv/dian-dian/.env` (the previous one goes to
+   `PREVIOUS_IMAGE_TAG`), pulls, brings postgres up, runs the migrations with
+   3 attempts, brings the stack up, validates and reloads Caddy, appends to
+   `deploy.log`, then waits for `/api/health` to report the new version.
+4. `make rollback` (ops/scripts/rollback-prod.sh) goes back to
+   `PREVIOUS_IMAGE_TAG` — one step, never two in a row — with the same
+   confirmations and health check. Migrations are forward-only: a version must
+   never drop or rename what the previous one needs.
+
+Needs the GitHub CLI logged in and SSH as root to the VPS
+(`DIAN_DIAN_PROD_HOST`, default `root@45.76.44.34`).
 
 ### First-time VPS setup
 
 See [`ops/VPS_MIGRATION_RUNBOOK.md`](ops/VPS_MIGRATION_RUNBOOK.md) — covers GHCR PAT, `/srv/dian-dian/` layout, postgres bind-mount UID, secrets in `.env`.
-
-### Rollback
-
-```bash
-./ops/scripts/deploy.sh <previous-short-sha>
-```
-
-The image must still exist on GHCR. Available tags: <https://github.com/charlespolart/dian-dian/pkgs/container/dian-dian-backend>.
-
-Drizzle migrations are forward-only — if the rollback target contains a destructive DDL (`DROP COLUMN`…), restoring the DB from a `pg_dump` is required in addition.
 
 ## License
 

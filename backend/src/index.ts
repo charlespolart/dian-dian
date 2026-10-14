@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import { createServer } from 'http';
 import path from 'path';
+import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { sql, lt } from 'drizzle-orm';
 import { refreshTokens, passwordResetTokens } from './db/schema.js';
@@ -22,6 +23,11 @@ import bootstrapRoutes from './routes/bootstrap.js';
 import statsRoutes from './routes/stats.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// The running version, read from package.json (next to dist/ in the image,
+// next to src/ in dev). ops/scripts/deploy-prod.sh waits for /api/health to
+// report the version it just installed.
+const VERSION = (JSON.parse(readFileSync(path.join(__dirname, '../package.json'), 'utf8')) as { version: string }).version;
 
 const app = express();
 const server = createServer(app);
@@ -103,7 +109,7 @@ app.use('/api/stats', statsRoutes);
 // Liveness — deliberately cheap and DB-free. This is what the container
 // healthcheck polls: if it depended on Postgres, every DB blip would mark the
 // backend unhealthy and stall `compose up --wait` during a deploy.
-app.get('/api/health', (_req, res) => res.json({ ok: true }));
+app.get('/api/health', (_req, res) => res.json({ ok: true, version: VERSION }));
 
 // Expired refresh / reset tokens are dead weight: they only ever get deleted
 // on an explicit logout, so the tables grow forever and every refresh scans
@@ -126,7 +132,7 @@ setInterval(purgeExpiredTokens, 60 * 60 * 1000).unref();
 app.get('/api/ready', async (_req, res) => {
   try {
     await db.execute(sql`SELECT 1`);
-    res.json({ ok: true, db: 'up' });
+    res.json({ ok: true, db: 'up', version: VERSION });
   } catch (err) {
     console.error('Readiness check failed:', err);
     res.status(503).json({ ok: false, db: 'down' });

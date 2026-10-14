@@ -1,0 +1,174 @@
+name: Release (backend)
+
+# Runs when a backend version tag is pushed, which is what
+# ops/scripts/release.sh does. It refuses a tag that does not match
+# backend/package.json or does not sit on master, typechecks, builds, runs
+# the smoke suite against the built server and a throwaway Postgres, builds
+# the image tagged with the version and publishes the GitHub Release with that
+# version's section of backend/CHANGELOG.md.
+#
+# NOTHING IS DEPLOYED FROM HERE. Production changes only through
+# ops/scripts/deploy-prod.sh, by hand.
+on:
+  push:
+    tags:
+      - 'backend-v*'
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: dian_dian_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    # What the server needs to boot and what the smoke suite needs, nothing
+    # else: the disposable database above and placeholders for the settings
+    # validated at import time (no email is ever sent by the suite).
+    env:
+      DATABASE_URL: postgres://postgres:password@localhost:5432/dian_dian_test
+      JWT_SECRET: release-checks-secret-0123456789abcdef0123456789
+      RESEND_API_KEY: re_release_checks_placeholder
+      PORT: 3001
+      NODE_ENV: test
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The whole history, to tell whether the tag sits on master.
+          fetch-depth: 0
+
+      - name: Tag matches backend/package.json, sits on master, has its release notes
+        run: |
+          version="$(node -p "require('./package.json').version")"
+
+          if [ "backend-v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match the version in backend/package.json ($version)."
+            exit 1
+          fi
+
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
+            echo "::error::Tag $GITHUB_REF_NAME is not on master."
+            exit 1
+          fi
+
+          if ! grep -q "^## \[$version\]" CHANGELOG.md; then
+            echo "::error::backend/CHANGELOG.md has no section for $version."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          # The version the image runs on (see backend/Dockerfile).
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      # Frozen lockfile: CI builds exactly the dependency tree that was reviewed.
+      - run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build
+
+      - name: Migrate the throwaway database
+        run: npx drizzle-kit migrate
+
+      - name: Smoke suite against the built server
+        run: |
+          node dist/index.js > server.log 2>&1 &
+          server=$!
+
+          for _ in $(seq 1 30); do
+            if curl -fsS http://localhost:3001/api/ready >/dev/null 2>&1; then
+              break
+            fi
+            sleep 1
+          done
+
+          if ! npx tsx scripts/smoke.ts; then
+            echo "::group::server.log"
+            cat server.log
+            echo "::endgroup::"
+            kill "$server" || true
+            exit 1
+          fi
+
+          kill "$server" || true
+
+  image:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Image name
+        id: meta
+        # GHCR requires lowercase repo names.
+        run: |
+          owner_lc="${OWNER,,}"
+          echo "image_name=ghcr.io/${owner_lc}/dian-dian-backend" >> "$GITHUB_OUTPUT"
+        env:
+          OWNER: ${{ github.repository_owner }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          target: runtime
+          push: true
+          # The version and nothing else: no `latest` — production pins a tag.
+          tags: ${{ steps.meta.outputs.image_name }}:${{ github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  publish:
+    needs: image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: GitHub Release with the version's changelog section
+        run: |
+          version="${GITHUB_REF_NAME#backend-v}"
+
+          awk -v heading="## [$version]" '
+            /^## \[/ { inside = (index($0, heading) == 1); next }
+            inside
+          ' backend/CHANGELOG.md > release-notes.md
+
+          gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME" --notes-file release-notes.md
+        env:
+          GH_TOKEN: ${{ github.token }}

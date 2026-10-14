@@ -1,4 +1,10 @@
-.PHONY: app back db db-down ipa aab deploy help
+.PHONY: app back db db-down ipa aab release deploy rollback help
+
+# Backend releases: `make release BUMP=patch|minor|major|X.Y.Z` cuts and tags
+# a version (GitHub then tests it and builds the image), `make deploy`
+# installs the latest released version on production, `make rollback` goes
+# one version back. Nothing deploys without one of these two scripts.
+BUMP ?= patch
 
 COMPOSE_DEV := docker compose -f ops/docker-compose.yml -f ops/docker-compose.dev.yml
 
@@ -21,8 +27,14 @@ aab:     ## Build Android Play Store bundle (needs android/key.properties)
 	cd flutter_app && flutter build appbundle --release \
 	  && open build/app/outputs/bundle/release
 
-deploy:  ## Trigger a production deploy via GH Actions (HEAD short SHA)
-	./ops/scripts/deploy.sh
+release: ## Cut a backend release: make release BUMP=patch|minor|major|X.Y.Z
+	./ops/scripts/release.sh $(BUMP)
+
+deploy:  ## Install the latest released backend version on production (asks twice)
+	./ops/scripts/deploy-prod.sh
+
+rollback: ## Put production back on the previous backend version (asks twice)
+	./ops/scripts/rollback-prod.sh
 
 help:    ## List commands
 	@grep -E '^[a-z-]+:.*?##' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}; {printf "  \033[36m%-8s\033[0m %s\n", $$1, $$2}'
