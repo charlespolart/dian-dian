@@ -265,12 +265,12 @@ async function createTracker(
     });
   }
 
-  const cellRows: { pageId: string; month: number; day: number; color: string }[] = [];
+  const cellRows: { pageId: string; year: number; month: number; day: number; color: string }[] = [];
   for (let m = 1; m <= 12; m++) {
     const maxDay = daysInMonth(m, year);
     for (let d = 1; d <= maxDay; d++) {
       const color = cellFn(m, d, year);
-      if (color) cellRows.push({ pageId: page.id, month: m, day: d, color });
+      if (color) cellRows.push({ pageId: page.id, year, month: m, day: d, color });
     }
   }
 

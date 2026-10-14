@@ -8,7 +8,7 @@ import '../services/api_service.dart';
 import '../services/ws_service.dart';
 
 class PagesProvider extends ChangeNotifier {
-  final ApiService _api = ApiService();
+  final ApiService _api;
   final WsService _ws = WsService();
   RemoveListener? _removeWsListener;
 
@@ -19,7 +19,7 @@ class PagesProvider extends ChangeNotifier {
   List<PageModel> get pages => _pages;
   PageModel? get pendingDeletePage => _pendingDeletePage;
 
-  PagesProvider() {
+  PagesProvider({ApiService? api}) : _api = api ?? ApiService() {
     _removeWsListener = _ws.addListener(_onWsMessage);
   }
 

@@ -56,6 +56,21 @@ app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 
+// Dev-only request log: one line per API call with status, duration and
+// response size — the quickest way to see how many round-trips a screen
+// costs. Never enabled in production (log volume + no PII policy).
+if (process.env.NODE_ENV !== 'production') {
+  app.use('/api', (req, res, next) => {
+    const started = process.hrtime.bigint();
+    res.on('finish', () => {
+      const ms = Number(process.hrtime.bigint() - started) / 1e6;
+      const size = res.getHeader('content-length') ?? '-';
+      console.log(`${req.method} ${req.originalUrl} → ${res.statusCode} ${ms.toFixed(1)}ms ${size}B`);
+    });
+    next();
+  });
+}
+
 // Rate limiting. IP-keyed (trust proxy is set → real client IP via Caddy's
 // X-Forwarded-For). Login/register brute-force, plus password-reset and OAuth
 // which either send email (spam/cost) or run JWKS verification (cost).

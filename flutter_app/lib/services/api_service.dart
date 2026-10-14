@@ -27,8 +27,8 @@ class ApiService {
   static final ApiService _instance = ApiService.custom();
   factory ApiService() => _instance;
 
-  /// Non-singleton constructor for tests (inject a `MockClient` + in-memory tokens).
-  @visibleForTesting
+  /// Non-singleton constructor: the injection seam for tests (a `MockClient`
+  /// + in-memory tokens) and for the end-to-end harness.
   ApiService.custom({http.Client? client, TokenStore? tokens})
       : _client = client ?? http.Client(),
         _tokens = tokens ?? StorageService();

@@ -18,7 +18,7 @@ import '../services/ws_service.dart';
 /// for data we already have.
 class CellsProvider extends ChangeNotifier {
   final ApiService _api;
-  final AudioService _audio = AudioService();
+  final AudioService _audio;
   final WsService _ws = WsService();
   RemoveListener? _removeWsListener;
 
@@ -27,7 +27,9 @@ class CellsProvider extends ChangeNotifier {
   String? _currentPageId;
   int _currentYear = DateTime.now().year;
 
-  CellsProvider({ApiService? api}) : _api = api ?? ApiService() {
+  CellsProvider({ApiService? api, AudioService? audio})
+      : _api = api ?? ApiService(),
+        _audio = audio ?? AudioService() {
     _removeWsListener = _ws.addListener(_onWsMessage);
   }
 
