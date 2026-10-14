@@ -25,11 +25,27 @@ async function hasActiveSubscription(userId: string): Promise<boolean> {
   return true;
 }
 
+type ProfileUser = {
+  id: string; email: string; vip: boolean; theme: string;
+  language: string | null; cursorId: string; cursorEnabled: boolean;
+};
+
+/** The user fields the app needs at startup (settings, vip, premium). */
+async function profileOf(user: ProfileUser) {
+  return {
+    userId: user.id,
+    email: user.email,
+    vip: user.vip,
+    premium: await hasActiveSubscription(user.id),
+    theme: user.theme,
+    language: user.language,
+    cursorId: user.cursorId,
+    cursorEnabled: user.cursorEnabled,
+  };
+}
+
 /** Issues access + refresh tokens, sets the cookie, and returns the response body. */
-async function issueSession(
-  res: Response,
-  user: { id: string; vip: boolean; theme: string; language: string | null; cursorId: string; cursorEnabled: boolean },
-) {
+async function issueSession(res: Response, user: ProfileUser) {
   const accessToken = await signAccessToken(user.id);
   const refreshToken = generateRefreshToken();
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -45,12 +61,7 @@ async function issueSession(
     maxAge: 7 * 24 * 60 * 60 * 1000,
     path: '/api/auth',
   });
-  const premium = await hasActiveSubscription(user.id);
-  return {
-    accessToken, refreshToken, userId: user.id, vip: user.vip, premium,
-    theme: user.theme, language: user.language,
-    cursorId: user.cursorId, cursorEnabled: user.cursorEnabled,
-  };
+  return { accessToken, refreshToken, ...(await profileOf(user)) };
 }
 
 const registerSchema = z.object({
@@ -306,6 +317,15 @@ router.post('/refresh', async (req, res) => {
       return;
     }
 
+    // The profile rides along with the new token pair so the app can skip
+    // the /me round-trip on cold start. A token whose user vanished (account
+    // deleted) is as good as invalid.
+    const [user] = await db.select().from(users).where(eq(users.id, stored.userId)).limit(1);
+    if (!user) {
+      res.status(401).json({ error: 'Invalid or expired refresh token' });
+      return;
+    }
+
     // Rotation: delete old, issue new
     await db.delete(refreshTokens).where(eq(refreshTokens.id, stored.id));
 
@@ -327,7 +347,7 @@ router.post('/refresh', async (req, res) => {
       path: '/api/auth',
     });
 
-    res.json({ accessToken, refreshToken: newRefreshToken });
+    res.json({ accessToken, refreshToken: newRefreshToken, ...(await profileOf(user)) });
   } catch (err) {
     console.error('Refresh error:', err);
     res.status(500).json({ error: 'Server error' });
