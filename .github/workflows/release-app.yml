@@ -1,9 +1,10 @@
 name: Release (app)
 
 # Runs when an app version tag is pushed, which is what ./release-app.sh
-# does. It refuses a tag that does not match flutter_app/pubspec.yaml or does
-# not sit on master, runs the analyzer and the tests, and publishes the
-# GitHub Release with that version's section of flutter_app/CHANGELOG.md.
+# does. It refuses a tag that does not match flutter_app/pubspec.yaml, does
+# not sit on master or has no store notes, runs the analyzer and the tests,
+# and publishes the GitHub Release with that version's section of
+# flutter_app/CHANGELOG.md and a link to the store notes.
 #
 # The store builds are made by hand from the tag (make prod-ios,
 # make prod-android): signing stays on the developer's machine. Nothing is
@@ -55,6 +56,24 @@ jobs:
             exit 1
           fi
 
+          if [ ! -f "docs/changelogs/$version.md" ]; then
+            echo "::error::flutter_app/docs/changelogs/$version.md (store notes) is missing."
+            exit 1
+          fi
+
+          for locale in en-US fr-FR zh-Hans zh-Hant; do
+            block="$(awk -v h="## $locale" '/^## / { inside = ($0 == h); next } inside' "docs/changelogs/$version.md")"
+            if ! grep -q '^- ' <<<"$block"; then
+              echo "::error::flutter_app/docs/changelogs/$version.md has no bullets under '## $locale'."
+              exit 1
+            fi
+            length="$(printf '%s' "$block" | sed '/^[[:space:]]*$/d' | wc -m | tr -d ' ')"
+            if [ "$length" -gt 500 ]; then
+              echo "::error::flutter_app/docs/changelogs/$version.md: the $locale block is $length characters (Play Console limit: 500)."
+              exit 1
+            fi
+          done
+
       - uses: subosito/flutter-action@v2
         with:
           # The version the app is built with (flutter --version on the dev machine).
@@ -86,6 +105,9 @@ jobs:
             /^## \[/ { inside = (index($0, heading) == 1); next }
             inside
           ' flutter_app/CHANGELOG.md > release-notes.md
+
+          printf '\nStore notes (4 locales): [flutter_app/docs/changelogs/%s.md](https://github.com/%s/blob/%s/flutter_app/docs/changelogs/%s.md)\n' \
+            "$version" "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME" "$version" >> release-notes.md
 
           gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME" --notes-file release-notes.md
         env:

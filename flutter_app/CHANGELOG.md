@@ -1,9 +1,14 @@
 # Changelog — app
 
-Notable changes to the mobile app, newest first. Versions are cut by
-`./release-app.sh` and tagged `app-vX.Y.Z`; the build number is the commit
-count of the tagged commit (same on iOS and Android). The backend is
-versioned separately (`backend/CHANGELOG.md`).
+Technical log of the mobile app, in English, newest first, in the
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format: what landed on
+`master` goes under "Unreleased" as it lands, and `./release-app.sh` dates the
+section when it cuts `app-vX.Y.Z`. The notes shown to users on the stores live
+in `docs/changelogs/X.Y.Z.md` (four locales, see README "Changelogs"). The
+backend is versioned separately (`backend/CHANGELOG.md`).
+
+Each version states the backend it needs. The build number is the commit
+count of the tagged commit (same on iOS and Android).
 
 ## [Unreleased]
 

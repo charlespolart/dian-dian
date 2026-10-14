@@ -208,6 +208,45 @@ backend version it needs in the changelog.
 Needs the GitHub CLI logged in and SSH as root to the VPS
 (`DIAN_DIAN_PROD_HOST`, default `root@45.76.44.34`).
 
+### Changelogs
+
+Two logs accompany every version, both committed with it:
+
+| | Backend | App |
+|---|---|---|
+| Technical, English, Keep a Changelog | `backend/CHANGELOG.md` | `flutter_app/CHANGELOG.md` |
+| What users read | — (GitHub Release) | `flutter_app/docs/changelogs/X.Y.Z.md` (store notes) |
+
+The technical log is filled as work lands, under `## [Unreleased]`; the
+release script dates that section. Each app version starts with the backend
+it needs (`Requires backend ≥ 1.1.0.`).
+
+The store notes are what gets pasted, as-is, in App Store Connect and the Play
+Console. One file per version, always the same shape, to the letter:
+
+```markdown
+# What's new — 1.3.0 (2026-10-14)
+
+## en-US
+- What the user sees or can do, one bullet per point.
+- Fixed: …
+
+## fr-FR
+- Les mêmes puces, en vouvoyant.
+
+## zh-Hans
+- …
+
+## zh-Hant
+- …
+```
+
+Rules: title with the version and the release date; the four store locales
+in that order, same bullets in every language; 500 characters at most per
+block (the Play Console limit; App Store Connect allows 4000). `./release-app.sh`
+and the Release (app) workflow refuse a version whose file is missing, has an
+empty locale, or exceeds the limit.
+
 ### App: release, then store builds
 
 ```bash
@@ -218,8 +257,8 @@ make prod-ios            # .ipa for App Store Connect (Transporter / Xcode)
 make prod-android        # .aab for the Play Console (needs flutter_app/android/key.properties)
 ```
 
-`./release-app.sh` runs `flutter analyze` and `flutter test` before writing
-anything; the tag push runs the **Release (app)** workflow (same checks in CI
+`./release-app.sh` checks the store notes of the version (see "Changelogs")
+and runs `flutter analyze` and `flutter test` before writing anything; the tag push runs the **Release (app)** workflow (same checks in CI
 + GitHub Release). Store builds refuse to run unless the working tree is
 clean, HEAD is the `app-vX.Y.Z` tag of the pubspec version, and the
 production API answers. The build number is never typed: it is the commit

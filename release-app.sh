@@ -14,8 +14,9 @@
 #
 # Every check runs before anything is written: master checked out, clean and
 # identical to origin/master, a version not lower than the current one and
-# not tagged yet, release notes under "Unreleased", analyzer and tests
-# passing.
+# not tagged yet, release notes under "Unreleased", the store notes of the
+# version in flutter_app/docs/changelogs/ (four locales, 500 characters
+# each at most), analyzer and tests passing.
 #
 # The backend has its own version and script (./release-backend.sh); this one
 # never touches it.
@@ -105,6 +106,20 @@ grep -qx '## \[Unreleased\]' "$changelog" || fail "$changelog has no \"## [Unrel
 notes="$(unreleased_notes)"
 
 grep -q '^- ' <<<"$notes" || fail "nothing under \"Unreleased\" in $changelog: a release needs its notes"
+
+# What the stores show, one file per version with a block per locale
+# (README, "Changelogs"). Pasted as-is, so each block must fit the Play
+# Console limit of 500 characters.
+store_notes="flutter_app/docs/changelogs/$next.md"
+
+[ -f "$store_notes" ] || fail "$store_notes is missing: write the store notes of this version first (see README, \"Changelogs\")"
+
+for locale in en-US fr-FR zh-Hans zh-Hant; do
+  block="$(awk -v h="## $locale" '/^## / { inside = ($0 == h); next } inside' "$store_notes")"
+  grep -q '^- ' <<<"$block" || fail "$store_notes has no bullets under \"## $locale\""
+  length="$(printf '%s' "$block" | sed '/^[[:space:]]*$/d' | wc -m | tr -d ' ')"
+  [ "$length" -le 500 ] || fail "$store_notes: the $locale block is $length characters, the Play Console takes 500 at most"
+done
 
 echo "Analyzer and tests…"
 (cd flutter_app && flutter analyze && flutter test)
