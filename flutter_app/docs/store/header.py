@@ -80,16 +80,16 @@ def render(W, H, lang, out):
 
     # Safe area: what survives both crops (21:9 header, 3:2 search results),
     # plus a little breathing room.
-    safe_x0 = int((W - H * 3 / 2) / 2) + int(90 * s)
+    safe_x0 = int((W - H * 3 / 2) / 2) + int(70 * s)
     safe_x1 = W - safe_x0
-    safe_y0 = int((H - W * 9 / 21) / 2) + int(90 * s)
+    safe_y0 = int((H - W * 9 / 21) / 2) + int(50 * s)
     safe_y1 = H - safe_y0
 
     # cards on the right, filling the safe height
     rng = random.Random(7)
     ch = safe_y1 - safe_y0
-    cw = int(ch * 0.29)
-    gap = int(70 * s)
+    cw = int(ch * 0.36)
+    gap = int(60 * s)
     names = list(PALETTES)[:3]
     total = len(names) * cw + (len(names) - 1) * gap
     cx0 = safe_x1 - total
@@ -100,7 +100,7 @@ def render(W, H, lang, out):
     # 点点, DIAN DIAN, tagline — every element centred on the same vertical
     # axis, the stack centred in the free space left of the cards.
     k = 0.92
-    f_cjk = ImageFont.truetype(FONT_CJK, int(640 * s * k))
+    f_cjk = ImageFont.truetype(FONT_CJK, int(470 * s * k))
     f_lat = ImageFont.truetype(FONT_PIXEL, int(170 * s * k))
     tag_text, tag_font = TAGLINES[lang]
     f_tag = ImageFont.truetype(tag_font, int((110 if tag_font == FONT_CJK else 90) * s * k))
@@ -110,10 +110,10 @@ def render(W, H, lang, out):
     lat_w, lat_h = lat_box[2] - lat_box[0], lat_box[3] - lat_box[1]
     tag_box = f_tag.getbbox(tag_text)
     tag_w, tag_h = tag_box[2] - tag_box[0], tag_box[3] - tag_box[1]
-    icon_size = int(400 * s * k)
-    g1, g2, g3 = int(110 * s * k), int(110 * s * k), int(70 * s * k)
+    icon_size = int(600 * s * k)
+    g1, g2, g3 = int(120 * s * k), int(90 * s * k), int(60 * s * k)
     block_h = icon_size + g1 + cjk_h + g2 + lat_h + g3 + tag_h
-    area_left, area_right = safe_x0, cx0 - int(160 * s)
+    area_left, area_right = safe_x0, cx0 - int(120 * s)
     axis = (area_left + area_right) // 2
     y = (H - block_h) // 2
 
