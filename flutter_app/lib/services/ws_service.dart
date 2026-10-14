@@ -28,6 +28,14 @@ class WsService {
   StreamSubscription? _subscription;
   Timer? _reconnectTimer;
   bool _intentionalDisconnect = false;
+  // True once this session has been authenticated on the socket at least
+  // once; the next `auth:ok` is then a RE-connect (events may have been
+  // missed in between) and fires [onReconnected].
+  bool _hadSessionConnect = false;
+
+  /// Fired after the socket re-authenticates following a drop. The sync layer
+  /// uses it to re-fetch state that WS events could not deliver meanwhile.
+  VoidCallback? onReconnected;
 
   final List<WsListener> _listeners = [];
 
@@ -42,11 +50,23 @@ class WsService {
 
   void connect() {
     _intentionalDisconnect = false;
+    _hadSessionConnect = false;
+    _connectInternal();
+  }
+
+  /// Connects only if no socket is open — safe to call on every app resume
+  /// and after every token refresh.
+  void ensureConnected() {
+    if (_channel != null) return;
+    _intentionalDisconnect = false;
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
     _connectInternal();
   }
 
   void disconnect() {
     _intentionalDisconnect = true;
+    _hadSessionConnect = false;
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
     _subscription?.cancel();
@@ -66,6 +86,7 @@ class WsService {
   // ---------------------------------------------------------------------------
 
   void _connectInternal() {
+    if (_channel != null) return; // never stack a second socket on the first
     final token = ApiService().accessToken;
     if (token == null) {
       debugPrint('WsService: no access token, skipping connect');
@@ -109,6 +130,10 @@ class WsService {
         event: json['event'] as String,
         data: json['data'],
       );
+      if (message.event == 'auth:ok') {
+        if (_hadSessionConnect) onReconnected?.call();
+        _hadSessionConnect = true;
+      }
       for (final listener in List<WsListener>.of(_listeners)) {
         listener(message);
       }
