@@ -81,7 +81,7 @@ dian-dian/
 ├── deploy-prod.sh                  # Install the latest release on the VPS (asks twice)
 ├── rollback-prod.sh                # One version back (asks twice)
 ├── .github/workflows/release.yml   # On tag: checks, tests, image, GitHub Release — never deploys
-├── Makefile                        # `make app/back/db/ipa/aab`
+├── Makefile                        # `make run/back/db/test/prod-ios/prod-android/version`
 └── MULTIYEAR_REFACTOR_PLAN.md      # Plan for the year-agnostic tracker refactor
 ```
 
@@ -98,7 +98,9 @@ dian-dian/
 ```bash
 make db        # Start Postgres in Docker (port 127.0.0.1:5433) — or any local Postgres on 5433
 make back      # Run backend with tsx watch on http://localhost:3001
-make app       # Run Flutter (prompts device if multiple)
+make run       # Run Flutter (prompts device if multiple)
+make test      # Flutter analyze + tests, backend typecheck
+make version   # App version (build number) and backend version
 make help      # List all targets
 ```
 
@@ -161,7 +163,7 @@ twice.
 | Source of truth | `backend/package.json` | `flutter_app/pubspec.yaml` |
 | Changelog | `backend/CHANGELOG.md` | store release notes |
 | Git tag | `backend-vX.Y.Z` | — |
-| Delivered by | `./deploy-prod.sh` | App Store / Play submission |
+| Delivered by | `./deploy-prod.sh` | `make prod-ios` / `make prod-android`, then store submission |
 
 The two move independently; the only rule between them is compatibility: the
 backend keeps working for every installed app, and an app version states the
@@ -201,6 +203,18 @@ backend version it needs in the changelog.
 
 Needs the GitHub CLI logged in and SSH as root to the VPS
 (`DIAN_DIAN_PROD_HOST`, default `root@45.76.44.34`).
+
+### Store builds (app)
+
+```bash
+make prod-ios        # .ipa for App Store Connect (Transporter / Xcode)
+make prod-android    # .aab for the Play Console (needs flutter_app/android/key.properties)
+```
+
+Both refuse to build from a modified working tree (a store build must
+identify a commit) and check that the production API answers first. The
+version and build number come from `flutter_app/pubspec.yaml`; bump them
+before building (`make version` shows them).
 
 ### First-time VPS setup
 
