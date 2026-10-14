@@ -7,8 +7,8 @@ placement.").
 
 Apple crops it per placement — 21:9 for the header (about 350 px off the top
 and bottom) and 3:2 for search results (about 410 px off each side) — so the
-composition stays inside the central 4425x2247 safe area, and a crop preview
-of each placement is written next to every asset for checking.
+composition stays inside the central 4425x2247 safe area. Check the result
+with the Preview button in App Store Connect.
 
 Run (needs Pillow):
     python3 flutter_app/docs/store/header.py "/path/to/output/dir"
@@ -132,18 +132,6 @@ def render(W, H, lang, out):
     d.text((axis - tag_w // 2 - tag_box[0], y - tag_box[1]), tag_text, font=f_tag, fill=MUTED)
 
     img.save(out, 'PNG', optimize=True)
-    # Quarter-size previews of what each placement shows (Apple crops the
-    # universal asset), written to a `previews/` subfolder so the output
-    # folder itself only holds the files to upload.
-    import os
-    previews = os.path.join(os.path.dirname(out), 'previews')
-    os.makedirs(previews, exist_ok=True)
-    base = os.path.join(previews, os.path.basename(out).replace('.png', ''))
-    img.resize((W // 4, H // 4), Image.LANCZOS).save(f'{base}-preview.png', 'PNG')
-    hh = int(W * 9 / 21); y0 = (H - hh) // 2
-    img.crop((0, y0, W, y0 + hh)).resize((W // 4, hh // 4), Image.LANCZOS).save(f'{base}-preview-header-21x9.png', 'PNG')
-    ww = int(H * 3 / 2); x0 = (W - ww) // 2
-    img.crop((x0, 0, x0 + ww, H)).resize((ww // 4, H // 4), Image.LANCZOS).save(f'{base}-preview-search-3x2.png', 'PNG')
     print(out, img.size)
 
 for lang in TAGLINES:
