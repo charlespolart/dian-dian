@@ -132,8 +132,13 @@ def render(W, H, lang, out):
     d.text((axis - tag_w // 2 - tag_box[0], y - tag_box[1]), tag_text, font=f_tag, fill=MUTED)
 
     img.save(out, 'PNG', optimize=True)
-    # Previews of what each placement shows (Apple crops the universal asset).
-    base = out.replace('.png', '')
+    # Quarter-size previews of what each placement shows (Apple crops the
+    # universal asset), written to a `previews/` subfolder so the output
+    # folder itself only holds the files to upload.
+    import os
+    previews = os.path.join(os.path.dirname(out), 'previews')
+    os.makedirs(previews, exist_ok=True)
+    base = os.path.join(previews, os.path.basename(out).replace('.png', ''))
     img.resize((W // 4, H // 4), Image.LANCZOS).save(f'{base}-preview.png', 'PNG')
     hh = int(W * 9 / 21); y0 = (H - hh) // 2
     img.crop((0, y0, W, y0 + hh)).resize((W // 4, hh // 4), Image.LANCZOS).save(f'{base}-preview-header-21x9.png', 'PNG')
