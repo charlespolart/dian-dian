@@ -1,0 +1,15 @@
+# gitleaks config for the Security workflow (.github/workflows/security.yml).
+# Default rules, plus an allowlist for files whose "secrets" are checksums:
+# CocoaPods writes a SHA-1 per pod under SPEC CHECKSUMS in Podfile.lock, which
+# the generic-api-key rule flags (e.g. "AppAuth: 1c1a8afa…").
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Lockfiles: dependency checksums, not credentials"
+paths = [
+  '''flutter_app/ios/Podfile\.lock$''',
+  '''flutter_app/pubspec\.lock$''',
+  '''backend/package-lock\.json$''',
+]
