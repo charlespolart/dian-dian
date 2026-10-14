@@ -2,7 +2,7 @@
 # Cuts a release of the backend:
 #
 #   ./ops/scripts/release.sh patch | minor | major | X.Y.Z
-#   make release BUMP=minor
+#   make release minor
 #
 # It bumps the version in backend/package.json (and the lockfile, through
 # `npm version`), dates the "Unreleased" section of backend/CHANGELOG.md,

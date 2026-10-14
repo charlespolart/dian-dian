@@ -167,7 +167,7 @@ backend version it needs in the changelog.
 ### Release, deploy, roll back
 
 ```bash
-make release BUMP=minor   # on a clean, pushed master: bumps backend/package.json,
+make release minor        # on a clean, pushed master: bumps backend/package.json,
                           # dates CHANGELOG "Unreleased", tags backend-vX.Y.Z, pushes
 make deploy               # latest released tag → production (SSH), asks twice
 make rollback             # one version back, asks twice
