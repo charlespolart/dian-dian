@@ -1,22 +1,57 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import 'storage_service.dart';
+import 'token_store.dart';
+
+/// What a refresh attempt concluded about the stored session.
+///
+/// Only [invalid] means the session is gone. [offline] covers everything
+/// transient (no network, timeout, 5xx): the refresh token is kept and the
+/// next request tries again.
+enum RefreshOutcome { ok, invalid, offline }
+
+class RestoreResult {
+  final RefreshOutcome outcome;
+
+  /// The user profile returned by `/api/auth/refresh` when [outcome] is [RefreshOutcome.ok].
+  final Map<String, dynamic>? profile;
+
+  const RestoreResult(this.outcome, this.profile);
+}
 
 class ApiService {
-  static final ApiService _instance = ApiService._internal();
+  static final ApiService _instance = ApiService.custom();
   factory ApiService() => _instance;
-  ApiService._internal();
 
-  final StorageService _storage = StorageService();
+  /// Non-singleton constructor for tests (inject a `MockClient` + in-memory tokens).
+  @visibleForTesting
+  ApiService.custom({http.Client? client, TokenStore? tokens})
+      : _client = client ?? http.Client(),
+        _tokens = tokens ?? StorageService();
+
+  /// One client for the whole app. The top-level `http.get()` helpers create
+  /// and close a client per call, which costs a TCP + TLS handshake on every
+  /// request; a shared client keeps connections alive and reuses them.
+  final http.Client _client;
+  final TokenStore _tokens;
+
+  static const _timeout = Duration(seconds: 20);
 
   String? _accessToken;
+  Map<String, dynamic>? _lastProfile;
+  Future<RefreshOutcome>? _refreshInFlight;
 
-  /// Called when both access and refresh tokens are expired.
+  /// Called when both access and refresh tokens are definitively invalid.
   /// The caller should navigate the user to the login screen.
   VoidCallback? onAuthExpired;
+
+  /// Called after every successful token refresh with the user profile the
+  /// server attached to it (lets an offline-started session fill in later).
+  void Function(Map<String, dynamic> profile)? onTokensRefreshed;
 
   static String get baseUrl =>
       kDebugMode ? 'http://localhost:3001' : 'https://diandian.overridedev.com';
@@ -27,25 +62,33 @@ class ApiService {
   // Core fetch
   // ---------------------------------------------------------------------------
 
-  /// Generic HTTP helper. Automatically attaches the access token and retries
-  /// once after a transparent token refresh when the server returns 401.
+  /// Generic HTTP helper. Attaches the access token and, on a 401, refreshes
+  /// once (shared across concurrent callers) before retrying.
   Future<http.Response> apiFetch(
     String path, {
     String method = 'GET',
     Map<String, dynamic>? body,
     Map<String, String>? headers,
   }) async {
+    final usedToken = _accessToken;
     final response = await _send(path, method: method, body: body, headers: headers);
+    if (response.statusCode != 401) return response;
 
-    if (response.statusCode == 401) {
-      final refreshed = await _refreshTokens();
-      if (refreshed) {
-        return _send(path, method: method, body: body, headers: headers);
-      }
-      _handleAuthExpired();
+    // Another request already rotated the token while this one was in
+    // flight: the current token is fresh, just retry with it.
+    if (usedToken != _accessToken) {
+      return _send(path, method: method, body: body, headers: headers);
     }
 
-    return response;
+    switch (await _refreshTokens()) {
+      case RefreshOutcome.ok:
+        return _send(path, method: method, body: body, headers: headers);
+      case RefreshOutcome.invalid:
+        _handleAuthExpired();
+        return response;
+      case RefreshOutcome.offline:
+        return response;
+    }
   }
 
   Future<http.Response> _send(
@@ -53,7 +96,7 @@ class ApiService {
     required String method,
     Map<String, dynamic>? body,
     Map<String, String>? headers,
-  }) async {
+  }) {
     final uri = Uri.parse('$baseUrl$path');
 
     final mergedHeaders = <String, String>{
@@ -64,55 +107,78 @@ class ApiService {
 
     final encodedBody = body != null ? jsonEncode(body) : null;
 
+    final Future<http.Response> future;
     switch (method.toUpperCase()) {
       case 'GET':
-        return http.get(uri, headers: mergedHeaders);
+        future = _client.get(uri, headers: mergedHeaders);
       case 'POST':
-        return http.post(uri, headers: mergedHeaders, body: encodedBody);
+        future = _client.post(uri, headers: mergedHeaders, body: encodedBody);
       case 'PUT':
-        return http.put(uri, headers: mergedHeaders, body: encodedBody);
+        future = _client.put(uri, headers: mergedHeaders, body: encodedBody);
       case 'PATCH':
-        return http.patch(uri, headers: mergedHeaders, body: encodedBody);
+        future = _client.patch(uri, headers: mergedHeaders, body: encodedBody);
       case 'DELETE':
-        return http.delete(uri, headers: mergedHeaders, body: encodedBody);
+        future = _client.delete(uri, headers: mergedHeaders, body: encodedBody);
       default:
         throw ArgumentError('Unsupported HTTP method: $method');
     }
+    return future.timeout(_timeout);
   }
 
   // ---------------------------------------------------------------------------
   // Token refresh
   // ---------------------------------------------------------------------------
 
-  Future<bool> _refreshTokens() async {
-    final refreshToken = await _storage.getRefreshToken();
-    if (refreshToken == null) return false;
+  /// Single-flight: concurrent 401s share one refresh. Without this, N
+  /// parallel requests hitting an expired access token each rotated the
+  /// refresh token; only the first succeeded and the rest logged the user out.
+  Future<RefreshOutcome> _refreshTokens() {
+    return _refreshInFlight ??= _doRefresh().whenComplete(() => _refreshInFlight = null);
+  }
+
+  Future<RefreshOutcome> _doRefresh() async {
+    final refreshToken = await _tokens.getRefreshToken();
+    if (refreshToken == null) return RefreshOutcome.invalid;
 
     try {
-      final uri = Uri.parse('$baseUrl/api/auth/refresh');
-      final response = await http.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'refreshToken': refreshToken}),
-      );
+      final response = await _client
+          .post(
+            Uri.parse('$baseUrl/api/auth/refresh'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'refreshToken': refreshToken}),
+          )
+          .timeout(_timeout);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
-        _accessToken = data['accessToken'] as String;
-        final newRefresh = data['refreshToken'] as String;
-        await _storage.setRefreshToken(newRefresh);
-        return true;
+        await _storeSession(data);
+        _lastProfile = data;
+        onTokensRefreshed?.call(data);
+        return RefreshOutcome.ok;
       }
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        return RefreshOutcome.invalid;
+      }
+      // 5xx / 429 / anything else: the server is unhappy, not the session.
+      return RefreshOutcome.offline;
     } catch (e) {
-      debugPrint('Token refresh failed: $e');
+      debugPrint('Token refresh failed (transient): $e');
+      return RefreshOutcome.offline;
     }
+  }
 
-    return false;
+  Future<void> _storeSession(Map<String, dynamic> data) async {
+    _accessToken = data['accessToken'] as String;
+    await _tokens.setRefreshToken(data['refreshToken'] as String);
+    final userId = data['userId'];
+    if (userId is String) await _tokens.setUserId(userId);
   }
 
   void _handleAuthExpired() {
     _accessToken = null;
-    _storage.deleteRefreshToken();
+    _lastProfile = null;
+    _tokens.deleteRefreshToken();
+    _tokens.deleteUserId();
     onAuthExpired?.call();
   }
 
@@ -120,41 +186,37 @@ class ApiService {
   // Auth endpoints
   // ---------------------------------------------------------------------------
 
-  /// Returns a map with `accessToken`, `refreshToken`, and `userId`.
-  Future<Map<String, dynamic>> login(String email, String password) async {
-    final uri = Uri.parse('$baseUrl/api/auth/login');
-    final response = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email, 'password': password}),
-    );
-
-    if (response.statusCode != 200) {
+  Future<Map<String, dynamic>> _authPost(String path, Map<String, dynamic> body, {Set<int> ok = const {200}}) async {
+    final response = await _client
+        .post(
+          Uri.parse('$baseUrl$path'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(body),
+        )
+        .timeout(_timeout);
+    if (!ok.contains(response.statusCode)) {
       throw ApiException(response.statusCode, _errorMessage(response));
     }
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
 
-    final data = jsonDecode(response.body) as Map<String, dynamic>;
-    _accessToken = data['accessToken'] as String;
-    await _storage.setRefreshToken(data['refreshToken'] as String);
+  /// Returns the session payload (`accessToken`, `refreshToken`, `userId`, profile).
+  Future<Map<String, dynamic>> login(String email, String password) async {
+    final data = await _authPost('/api/auth/login', {'email': email, 'password': password});
+    await _storeSession(data);
+    _lastProfile = data;
     return data;
   }
 
-  /// Returns a map with `accessToken`, `refreshToken`, and `userId`.
+  /// Returns the session payload (`accessToken`, `refreshToken`, `userId`, profile).
   Future<Map<String, dynamic>> register(String email, String password) async {
-    final uri = Uri.parse('$baseUrl/api/auth/register');
-    final response = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email, 'password': password}),
+    final data = await _authPost(
+      '/api/auth/register',
+      {'email': email, 'password': password},
+      ok: const {200, 201},
     );
-
-    if (response.statusCode != 201 && response.statusCode != 200) {
-      throw ApiException(response.statusCode, _errorMessage(response));
-    }
-
-    final data = jsonDecode(response.body) as Map<String, dynamic>;
-    _accessToken = data['accessToken'] as String;
-    await _storage.setRefreshToken(data['refreshToken'] as String);
+    await _storeSession(data);
+    _lastProfile = data;
     return data;
   }
 
@@ -163,45 +225,33 @@ class ApiService {
       await apiFetch('/api/auth/logout', method: 'POST');
     } finally {
       _accessToken = null;
-      await _storage.deleteRefreshToken();
+      _lastProfile = null;
+      await _tokens.deleteRefreshToken();
+      await _tokens.deleteUserId();
     }
   }
 
   /// Attempts to restore a previous session by refreshing the token pair.
-  /// Returns `true` if the session was restored successfully.
-  Future<bool> tryRestoreSession() async {
-    return _refreshTokens();
+  Future<RestoreResult> tryRestoreSession() async {
+    final outcome = await _refreshTokens();
+    return RestoreResult(outcome, outcome == RefreshOutcome.ok ? _lastProfile : null);
   }
 
   Future<void> forgotPassword(String email) async {
-    final uri = Uri.parse('$baseUrl/api/auth/forgot-password');
-    final response = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email}),
-    );
-
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, _errorMessage(response));
-    }
+    await _authPost('/api/auth/forgot-password', {'email': email});
   }
 
   Future<Map<String, dynamic>> oauthSignIn({
     required String provider,
     required String identityToken,
   }) async {
-    final uri = Uri.parse('$baseUrl/api/auth/oauth');
-    final response = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'provider': provider, 'identityToken': identityToken}),
+    final data = await _authPost(
+      '/api/auth/oauth',
+      {'provider': provider, 'identityToken': identityToken},
+      ok: const {200, 201},
     );
-    if (response.statusCode != 200 && response.statusCode != 201) {
-      throw ApiException(response.statusCode, _errorMessage(response));
-    }
-    final data = jsonDecode(response.body) as Map<String, dynamic>;
-    _accessToken = data['accessToken'] as String;
-    await _storage.setRefreshToken(data['refreshToken'] as String);
+    await _storeSession(data);
+    _lastProfile = data;
     return data;
   }
 
@@ -210,16 +260,7 @@ class ApiService {
     required String code,
     required String password,
   }) async {
-    final uri = Uri.parse('$baseUrl/api/auth/reset-password');
-    final response = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email, 'code': code, 'password': password}),
-    );
-
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, _errorMessage(response));
-    }
+    await _authPost('/api/auth/reset-password', {'email': email, 'code': code, 'password': password});
   }
 
   // ---------------------------------------------------------------------------
