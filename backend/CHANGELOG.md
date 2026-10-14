@@ -10,6 +10,8 @@ working against the new backend.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-14
+
 ### Added
 - `GET /api/bootstrap?year=` — pages + legends + compact cells of one year in a single round-trip.
 - `GET /api/stats/days` — every filled date per page, for all-time stats.
