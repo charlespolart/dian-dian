@@ -3,116 +3,186 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import '../models/cell_model.dart';
+import '../models/year_cells.dart';
 import '../services/api_service.dart';
 import '../services/audio_service.dart';
 import '../services/ws_service.dart';
 
+/// Holds every year of cells the app has loaded, for every page, as
+/// immutable [YearCells] keyed by `'$pageId:$year'`.
+///
+/// Loading is NOT this class's job: `SyncService` fetches a whole year for
+/// all pages in one request and pushes it in through [applyBootstrap]. The
+/// "current" page/year is only a pointer into the store, so opening a
+/// tracker or switching years is synchronous and never shows an empty grid
+/// for data we already have.
 class CellsProvider extends ChangeNotifier {
-  final ApiService _api = ApiService();
+  final ApiService _api;
   final AudioService _audio = AudioService();
   final WsService _ws = WsService();
   RemoveListener? _removeWsListener;
 
+  final Map<String, YearCells> _store = {};
+  final Set<int> _loadedYears = {};
   String? _currentPageId;
   int _currentYear = DateTime.now().year;
-  List<CellModel> _cells = [];
 
-  /// Preview cache keyed by `'$pageId:$year'`. Used by the page list cards.
-  final Map<String, List<CellModel>> _previewCache = {};
-
-  String? get currentPageId => _currentPageId;
-  int get currentYear => _currentYear;
-  List<CellModel> get cells => _cells;
-
-  CellsProvider() {
+  CellsProvider({ApiService? api}) : _api = api ?? ApiService() {
     _removeWsListener = _ws.addListener(_onWsMessage);
   }
 
+  static String _key(String pageId, int year) => '$pageId:$year';
+
   // ---------------------------------------------------------------------------
-  // Active page+year
+  // Read
   // ---------------------------------------------------------------------------
 
-  /// Sets the active page and year, then loads its cells.
-  Future<void> setContext({required String? pageId, required int year}) async {
-    _currentPageId = pageId;
-    _currentYear = year;
-    _cells = [];
-    notifyListeners();
+  String? get currentPageId => _currentPageId;
+  int get currentYear => _currentYear;
 
-    if (pageId != null) {
-      await _fetchCells();
-    }
+  /// Cells of a (page, year), or `null` when that year was never loaded for
+  /// this page. Identity changes exactly when the data changes.
+  YearCells? cellsFor(String pageId, int year) => _store[_key(pageId, year)];
+
+  YearCells? get current {
+    final pageId = _currentPageId;
+    return pageId == null ? null : _store[_key(pageId, _currentYear)];
   }
 
-  /// Convenience: change only the year while keeping the same page.
-  Future<void> setYear(int year) async {
-    if (year == _currentYear) return;
-    _currentYear = year;
-    _cells = [];
-    notifyListeners();
-    if (_currentPageId != null) {
-      await _fetchCells();
-    }
-  }
+  /// Flat list view of [current] — used by dialogs and the PNG export.
+  List<CellModel> get cells => current?.values.toList(growable: false) ?? const [];
 
-  // ---------------------------------------------------------------------------
-  // Preview cache (per-page, per-year)
-  // ---------------------------------------------------------------------------
+  /// True once a bootstrap for [year] has been applied (every page's cells
+  /// for that year are known, possibly empty).
+  bool isYearLoaded(int year) => _loadedYears.contains(year);
 
-  String _previewKey(String pageId, int year) => '$pageId:$year';
-
-  List<CellModel> getPreviewCells(String pageId, int year) =>
-      _previewCache[_previewKey(pageId, year)] ?? [];
-
-  Future<void> fetchPreviewCells(String pageId, int year) async {
-    try {
-      final response = await _api.apiFetch('/api/cells/$pageId?year=$year');
-      if (response.statusCode == 200) {
-        final list = jsonDecode(response.body) as List<dynamic>;
-        _previewCache[_previewKey(pageId, year)] = list
-            .map((json) => CellModel.fromJson(json as Map<String, dynamic>))
-            .toList();
-        notifyListeners();
-      }
-    } catch (e) {
-      debugPrint('CellsProvider: fetchPreviewCells failed: $e');
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Cell read / write
-  // ---------------------------------------------------------------------------
-
-  /// Returns the color for the given month/day on the active year, or `null`.
+  CellModel? getCell(int month, int day) => current?.get(month, day);
   String? getCellColor(int month, int day) => getCell(month, day)?.color;
 
-  /// Returns the full [CellModel] for the given month/day on the active year.
-  CellModel? getCell(int month, int day) {
-    try {
-      return _cells.firstWhere((c) => c.month == month && c.day == day);
-    } catch (_) {
-      return null;
-    }
+  // ---------------------------------------------------------------------------
+  // Active page + year (synchronous — no fetch)
+  // ---------------------------------------------------------------------------
+
+  void setContext({required String? pageId, required int year}) {
+    _currentPageId = pageId;
+    _currentYear = year;
+    notifyListeners();
   }
 
-  /// Sets (or updates) a cell with optimistic update. Reverts on failure.
+  void setYear(int year) {
+    if (year == _currentYear) return;
+    _currentYear = year;
+    notifyListeners();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Bulk load (SyncService)
+  // ---------------------------------------------------------------------------
+
+  /// Replaces every entry of [year] with the bootstrap payload
+  /// `{ pageId: [[month, day, color, comment?], ...] }`.
+  void applyBootstrap(int year, Map<String, dynamic> cellsByPage) {
+    _store.removeWhere((_, yc) => yc.year == year);
+    cellsByPage.forEach((pageId, rows) {
+      _store[_key(pageId, year)] = YearCells.fromCompact(pageId, year, rows as List<dynamic>);
+    });
+    _loadedYears.add(year);
+    notifyListeners();
+  }
+
+  void clear() {
+    _store.clear();
+    _loadedYears.clear();
+    _currentPageId = null;
+    _currentYear = DateTime.now().year;
+    _statsValid = false;
+    notifyListeners();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Stats (memoized on the current YearCells instance + calendar day)
+  // ---------------------------------------------------------------------------
+
+  YearCells? _statsSource;
+  bool _statsValid = false;
+  int _statsDay = 0;
+  int _filledDays = 0;
+  int _streak = 0;
+
+  int get filledDays {
+    _ensureStats();
+    return _filledDays;
+  }
+
+  /// Consecutive filled days ending today (or yesterday when today is still
+  /// empty), scoped to the current year.
+  int get currentStreak {
+    _ensureStats();
+    return _streak;
+  }
+
+  void _ensureStats() {
+    final c = current;
+    final now = DateTime.now();
+    final dayStamp = now.year * 10000 + now.month * 100 + now.day;
+    if (_statsValid && identical(c, _statsSource) && dayStamp == _statsDay) return;
+    _statsSource = c;
+    _statsDay = dayStamp;
+    _statsValid = true;
+    _filledDays = c?.length ?? 0;
+    _streak = _computeStreak(c, now);
+  }
+
+  static int _computeStreak(YearCells? c, DateTime now) {
+    if (c == null || c.isEmpty) return 0;
+    final year = c.year;
+    var check = DateTime(now.year, now.month, now.day);
+    if (check.year != year) check = DateTime(year, 12, 31);
+    // Today may simply not be filled yet — a streak that ended yesterday still counts.
+    if (c.get(check.month, check.day) == null) {
+      check = DateTime(check.year, check.month, check.day - 1);
+    }
+    var streak = 0;
+    while (check.year == year && c.get(check.month, check.day) != null) {
+      streak++;
+      // Day arithmetic (not Duration) so DST changes can't skip a date.
+      check = DateTime(check.year, check.month, check.day - 1);
+    }
+    return streak;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Mutations (optimistic, revert on failure)
+  // ---------------------------------------------------------------------------
+
+  YearCells _entry(String pageId, int year) =>
+      _store[_key(pageId, year)] ?? YearCells.empty(pageId, year);
+
+  void _put(YearCells yc) => _store[_key(yc.pageId, yc.year)] = yc;
+
+  void _revert(String pageId, int year, int month, int day, CellModel? previous) {
+    final entry = _entry(pageId, year);
+    _put(previous != null ? entry.upsert(previous) : entry.remove(month, day));
+  }
+
   Future<void> setCell(int month, int day, String color, {String? comment}) async {
     final pageId = _currentPageId;
     if (pageId == null) return;
 
     final year = _currentYear;
     final previous = getCell(month, day);
+    // Server semantics: an absent comment clears it. Mirror that locally so
+    // the optimistic cell never shows a comment the server is about to drop.
     final optimistic = CellModel(
       pageId: pageId,
       year: year,
       month: month,
       day: day,
       color: color,
-      comment: comment ?? previous?.comment,
+      comment: comment,
       updatedAt: DateTime.now().toIso8601String(),
     );
-
-    _upsertCell(optimistic);
+    _put(_entry(pageId, year).upsert(optimistic));
     notifyListeners();
     _audio.playTap();
 
@@ -128,27 +198,19 @@ class CellsProvider extends ChangeNotifier {
           'comment': ?comment,
         },
       );
-
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final json = jsonDecode(response.body) as Map<String, dynamic>;
-        final confirmed = CellModel.fromJson(json);
-        // Race guard: only apply if the active context still matches.
-        if (confirmed.pageId == _currentPageId && confirmed.year == _currentYear) {
-          _upsertCell(confirmed);
-          notifyListeners();
-        }
+        final confirmed = CellModel.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+        _put(_entry(confirmed.pageId, confirmed.year).upsert(confirmed));
       } else {
-        _revertCell(previous, month, day);
-        notifyListeners();
+        _revert(pageId, year, month, day, previous);
       }
     } catch (e) {
       debugPrint('CellsProvider: setCell failed: $e');
-      _revertCell(previous, month, day);
-      notifyListeners();
+      _revert(pageId, year, month, day, previous);
     }
+    notifyListeners();
   }
 
-  /// Deletes a cell with optimistic update. Reverts on failure.
   Future<void> deleteCell(int month, int day) async {
     final pageId = _currentPageId;
     if (pageId == null) return;
@@ -157,7 +219,7 @@ class CellsProvider extends ChangeNotifier {
     final previous = getCell(month, day);
     if (previous == null) return;
 
-    _cells.removeWhere((c) => c.month == month && c.day == day);
+    _put(_entry(pageId, year).remove(month, day));
     notifyListeners();
     _audio.playErase();
 
@@ -167,33 +229,25 @@ class CellsProvider extends ChangeNotifier {
         method: 'DELETE',
         body: {'year': year, 'month': month, 'day': day},
       );
-
       if (response.statusCode != 200 && response.statusCode != 204) {
-        _cells.add(previous);
+        _put(_entry(pageId, year).upsert(previous));
         notifyListeners();
       }
     } catch (e) {
       debugPrint('CellsProvider: deleteCell failed: $e');
-      _cells.add(previous);
+      _put(_entry(pageId, year).upsert(previous));
       notifyListeners();
     }
   }
 
-  /// Recolor: rename a color across **all years** of the active page.
-  /// Server applies it globally per tracker, so we invalidate every cached
-  /// year of this page and update the visible cells optimistically.
+  /// Recolor: rename colors across **all years** of the active page. The
+  /// server applies it tracker-wide, so every cached year is updated locally
+  /// too — no refetch.
   Future<void> recolorCells(Map<String, String> colorMap) async {
     final pageId = _currentPageId;
     if (pageId == null) return;
 
-    for (final cell in List<CellModel>.of(_cells)) {
-      final newColor = colorMap[cell.color];
-      if (newColor != null) {
-        final i = _cells.indexOf(cell);
-        if (i != -1) _cells[i] = cell.copyWith(color: newColor);
-      }
-    }
-    _previewCache.removeWhere((key, _) => key.startsWith('$pageId:'));
+    _recolorPage(pageId, colorMap);
     notifyListeners();
 
     try {
@@ -207,31 +261,29 @@ class CellsProvider extends ChangeNotifier {
     }
   }
 
+  void _recolorPage(String pageId, Map<String, String> colorMap) {
+    for (final key in _store.keys.toList(growable: false)) {
+      final yc = _store[key]!;
+      if (yc.pageId == pageId) _store[key] = yc.recolor(colorMap);
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // WebSocket
   // ---------------------------------------------------------------------------
 
+  @visibleForTesting
+  void debugHandleWs(WsMessage message) => _onWsMessage(message);
+
   void _onWsMessage(WsMessage message) {
     switch (message.event) {
       case 'cell:updated':
-        final json = message.data as Map<String, dynamic>;
-        final cell = CellModel.fromJson(json);
-        // Update preview cache regardless of which year is active.
-        final cached = _previewCache[_previewKey(cell.pageId, cell.year)];
-        if (cached != null) {
-          final i = cached.indexWhere(
-              (c) => c.month == cell.month && c.day == cell.day);
-          if (i != -1) {
-            cached[i] = cell;
-          } else {
-            cached.add(cell);
-          }
-        }
-        if (cell.pageId == _currentPageId && cell.year == _currentYear) {
-          _upsertCell(cell);
-        }
+        final cell = CellModel.fromJson(message.data as Map<String, dynamic>);
+        // Years we never loaded are fetched whole when needed; a lone cell
+        // would only masquerade as a loaded year.
+        if (!_loadedYears.contains(cell.year)) return;
+        _put(_entry(cell.pageId, cell.year).upsert(cell));
         notifyListeners();
-        break;
 
       case 'cell:deleted':
         final json = message.data as Map<String, dynamic>;
@@ -239,83 +291,28 @@ class CellsProvider extends ChangeNotifier {
         final year = (json['year'] as int?) ?? _currentYear;
         final month = json['month'] as int?;
         final day = json['day'] as int?;
-        if (pageId == null || month == null || day == null) break;
-        _previewCache[_previewKey(pageId, year)]
-            ?.removeWhere((c) => c.month == month && c.day == day);
-        if (pageId == _currentPageId && year == _currentYear) {
-          _cells.removeWhere((c) => c.month == month && c.day == day);
-        }
+        if (pageId == null || month == null || day == null) return;
+        final existing = cellsFor(pageId, year);
+        if (existing == null) return;
+        _put(existing.remove(month, day));
         notifyListeners();
-        break;
 
       case 'cells:reset':
         final json = message.data as Map<String, dynamic>;
         final pageId = (json['pageId'] ?? json['page_id']) as String?;
         final year = (json['year'] as int?) ?? _currentYear;
-        if (pageId == null) break;
-        _previewCache[_previewKey(pageId, year)] = [];
-        if (pageId == _currentPageId && year == _currentYear) {
-          _cells = [];
-        }
+        if (pageId == null) return;
+        if (!_loadedYears.contains(year) && cellsFor(pageId, year) == null) return;
+        _put(YearCells.empty(pageId, year));
         notifyListeners();
-        break;
 
       case 'cells:recolored':
         final json = message.data as Map<String, dynamic>;
         final pageId = (json['pageId'] ?? json['page_id']) as String?;
-        if (pageId == null) break;
-        // Recolor is cross-year — flush previews for that page; refetch on demand.
-        _previewCache.removeWhere((key, _) => key.startsWith('$pageId:'));
-        if (pageId == _currentPageId) {
-          // Reload current view to reflect the new colors.
-          _fetchCells();
-        } else {
-          notifyListeners();
-        }
-        break;
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Internal
-  // ---------------------------------------------------------------------------
-
-  Future<void> _fetchCells() async {
-    final pageId = _currentPageId;
-    final year = _currentYear;
-    if (pageId == null) return;
-    try {
-      final response = await _api.apiFetch('/api/cells/$pageId?year=$year');
-      if (response.statusCode == 200) {
-        // Race guard: discard if context changed while we were fetching.
-        if (_currentPageId != pageId || _currentYear != year) return;
-        final list = jsonDecode(response.body) as List<dynamic>;
-        _cells = list
-            .map((json) => CellModel.fromJson(json as Map<String, dynamic>))
-            .toList();
+        final raw = json['colorMap'] as Map<String, dynamic>?;
+        if (pageId == null || raw == null) return;
+        _recolorPage(pageId, raw.map((k, v) => MapEntry(k, v as String)));
         notifyListeners();
-      }
-    } catch (e) {
-      debugPrint('CellsProvider: fetchCells failed: $e');
-    }
-  }
-
-  void _upsertCell(CellModel cell) {
-    final index = _cells.indexWhere(
-      (c) => c.month == cell.month && c.day == cell.day,
-    );
-    if (index != -1) {
-      _cells[index] = cell;
-    } else {
-      _cells.add(cell);
-    }
-  }
-
-  void _revertCell(CellModel? previous, int month, int day) {
-    if (previous != null) {
-      _upsertCell(previous);
-    } else {
-      _cells.removeWhere((c) => c.month == month && c.day == day);
     }
   }
 
