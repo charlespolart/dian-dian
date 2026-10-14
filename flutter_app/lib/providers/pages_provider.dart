@@ -27,19 +27,20 @@ class PagesProvider extends ChangeNotifier {
   // Public API
   // ---------------------------------------------------------------------------
 
-  Future<void> fetchPages() async {
-    try {
-      final response = await _api.apiFetch('/api/pages');
-      if (response.statusCode == 200) {
-        final list = jsonDecode(response.body) as List<dynamic>;
-        _pages = list
-            .map((json) => PageModel.fromJson(_parsePalette(json as Map<String, dynamic>)))
-            .toList();
-        notifyListeners();
-      }
-    } catch (e) {
-      debugPrint('PagesProvider: fetchPages failed: $e');
-    }
+  /// Replaces the page list with the bootstrap payload (pushed by `SyncService`).
+  void applyBootstrap(List<dynamic> list) {
+    _pages = list
+        .map((json) => PageModel.fromJson(_parsePalette(json as Map<String, dynamic>)))
+        .toList();
+    notifyListeners();
+  }
+
+  void clear() {
+    _deleteTimer?.cancel();
+    _deleteTimer = null;
+    _pendingDeletePage = null;
+    _pages = [];
+    notifyListeners();
   }
 
   /// Creates a new page on the server and returns the created [PageModel],
@@ -91,27 +92,42 @@ class PagesProvider extends ChangeNotifier {
   }
 
   Future<void> reorderPages(List<String> ids) async {
-    // Optimistic: reorder local list and update positions
-    final reordered = <PageModel>[];
-    for (int i = 0; i < ids.length; i++) {
-      try {
-        final page = _pages.firstWhere((p) => p.id == ids[i]);
-        reordered.add(page.copyWith(position: i));
-      } catch (_) {}
-    }
-    // Keep pages not in ids list unchanged
-    final otherPages = _pages.where((p) => !ids.contains(p.id)).toList();
-    _pages = [...reordered, ...otherPages];
+    final previous = _pages;
+    _applyOrder(ids);
     notifyListeners();
 
-    // Update positions on server
-    for (int i = 0; i < ids.length; i++) {
-      _api.apiFetch(
-        '/api/pages/${ids[i]}',
-        method: 'PATCH',
-        body: {'position': i},
+    // One request + one transaction server-side (was a PATCH per page).
+    try {
+      final response = await _api.apiFetch(
+        '/api/pages/reorder',
+        method: 'PUT',
+        body: {'ids': ids},
       );
+      if (response.statusCode != 200) {
+        _pages = previous;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('PagesProvider: reorderPages failed: $e');
+      _pages = previous;
+      notifyListeners();
     }
+  }
+
+  /// Reorders locally by [ids]; pages absent from [ids] keep their relative
+  /// order at the end.
+  void _applyOrder(List<String> ids) {
+    final byId = {for (final p in _pages) p.id: p};
+    final seen = ids.toSet();
+    final ordered = <PageModel>[];
+    for (final id in ids) {
+      final page = byId[id];
+      if (page != null) ordered.add(page.copyWith(position: ordered.length));
+    }
+    for (final p in _pages) {
+      if (!seen.contains(p.id)) ordered.add(p.copyWith(position: ordered.length));
+    }
+    _pages = ordered;
   }
 
   /// Soft-delete a page: remove locally, start timer, delete on server after delay.
@@ -211,6 +227,14 @@ class PagesProvider extends ChangeNotifier {
         final json = message.data as Map<String, dynamic>;
         final id = json['id'] as String;
         _pages.removeWhere((p) => p.id == id);
+        notifyListeners();
+        break;
+
+      case 'pages:reordered':
+        final json = message.data as Map<String, dynamic>;
+        final ids = (json['ids'] as List<dynamic>?)?.cast<String>();
+        if (ids == null) break;
+        _applyOrder(ids);
         notifyListeners();
         break;
     }

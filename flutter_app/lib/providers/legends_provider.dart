@@ -6,70 +6,140 @@ import '../models/legend_model.dart';
 import '../services/api_service.dart';
 import '../services/ws_service.dart';
 
+/// Legends of every page, keyed by page id. Lists are copy-on-write
+/// (unmodifiable), so a list instance changes exactly when its content does.
+///
+/// Loading happens through [applyBootstrap] (pushed by `SyncService`); the
+/// current page is only a pointer, so [setPageId] is synchronous.
 class LegendsProvider extends ChangeNotifier {
-  final ApiService _api = ApiService();
+  final ApiService _api;
   final WsService _ws = WsService();
   RemoveListener? _removeWsListener;
 
+  final Map<String, List<LegendModel>> _byPage = {};
   String? _currentPageId;
-  List<LegendModel> _legends = [];
-  final Map<String, List<LegendModel>> _previewCache = {};
 
-  String? get currentPageId => _currentPageId;
-  List<LegendModel> get legends => _legends;
-
-  LegendsProvider() {
+  LegendsProvider({ApiService? api}) : _api = api ?? ApiService() {
     _removeWsListener = _ws.addListener(_onWsMessage);
   }
 
   // ---------------------------------------------------------------------------
-  // Public API
+  // Read
   // ---------------------------------------------------------------------------
 
-  Future<void> setPageId(String? id) async {
+  String? get currentPageId => _currentPageId;
+
+  List<LegendModel> get legends {
+    final pageId = _currentPageId;
+    return pageId == null ? const [] : legendsFor(pageId);
+  }
+
+  List<LegendModel> legendsFor(String pageId) => _byPage[pageId] ?? const [];
+
+  // ---------------------------------------------------------------------------
+  // Active page / bulk load
+  // ---------------------------------------------------------------------------
+
+  void setPageId(String? id) {
     _currentPageId = id;
-    _legends = [];
     notifyListeners();
-
-    if (id != null) {
-      await _fetchLegends();
-    }
   }
 
-  /// Returns cached preview legends for a page (used by PageListScreen cards).
-  List<LegendModel> getPreviewLegends(String pageId) => _previewCache[pageId] ?? [];
-
-  /// Fetches legends for preview without changing the active page.
-  Future<void> fetchPreviewLegends(String pageId) async {
-    try {
-      final response = await _api.apiFetch('/api/legends/$pageId');
-      if (response.statusCode == 200) {
-        final list = jsonDecode(response.body) as List<dynamic>;
-        _previewCache[pageId] = list
-            .map((json) => LegendModel.fromJson(json as Map<String, dynamic>))
-            .toList();
-        notifyListeners();
-      }
-    } catch (e) {
-      debugPrint('LegendsProvider: fetchPreviewLegends failed: $e');
-    }
+  /// Replaces everything with the bootstrap payload `{ pageId: [legend, ...] }`.
+  void applyBootstrap(Map<String, dynamic> byPage) {
+    _byPage.clear();
+    byPage.forEach((pageId, list) {
+      _set(
+        pageId,
+        (list as List<dynamic>)
+            .map((j) => LegendModel.fromJson(j as Map<String, dynamic>))
+            .toList(),
+      );
+    });
+    notifyListeners();
   }
+
+  void clear() {
+    _byPage.clear();
+    _currentPageId = null;
+    notifyListeners();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Internal copy-on-write helpers
+  // ---------------------------------------------------------------------------
+
+  void _set(String pageId, List<LegendModel> list) =>
+      _byPage[pageId] = List.unmodifiable(list);
+
+  String? _pageOf(String legendId) {
+    for (final e in _byPage.entries) {
+      if (e.value.any((l) => l.id == legendId)) return e.key;
+    }
+    return null;
+  }
+
+  bool _add(LegendModel legend) {
+    final list = legendsFor(legend.pageId);
+    if (list.any((l) => l.id == legend.id)) return false;
+    _set(legend.pageId, [...list, legend]);
+    return true;
+  }
+
+  bool _replace(LegendModel legend) {
+    final list = legendsFor(legend.pageId);
+    final i = list.indexWhere((l) => l.id == legend.id);
+    if (i == -1) return false;
+    final copy = [...list];
+    copy[i] = legend;
+    _set(legend.pageId, copy);
+    return true;
+  }
+
+  bool _remove(String pageId, String id) {
+    final list = legendsFor(pageId);
+    if (!list.any((l) => l.id == id)) return false;
+    _set(pageId, list.where((l) => l.id != id).toList());
+    return true;
+  }
+
+  /// Orders by [ids]; legends absent from [ids] keep their relative order at
+  /// the end rather than vanishing.
+  void _reorder(String pageId, List<String> ids) {
+    final list = legendsFor(pageId);
+    final byId = {for (final l in list) l.id: l};
+    final seen = ids.toSet();
+    _set(pageId, [
+      for (final id in ids)
+        if (byId.containsKey(id)) byId[id]!,
+      ...list.where((l) => !seen.contains(l.id)),
+    ]);
+  }
+
+  void _recolor(String pageId, Map<String, String> colorMap) {
+    final list = legendsFor(pageId);
+    _set(pageId, [
+      for (final l in list)
+        colorMap.containsKey(l.color) ? l.copyWith(color: colorMap[l.color]) : l,
+    ]);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Mutations
+  // ---------------------------------------------------------------------------
 
   Future<void> createLegend(String color, String label) async {
-    if (_currentPageId == null) return;
+    final pageId = _currentPageId;
+    if (pageId == null) return;
 
     try {
       final response = await _api.apiFetch(
-        '/api/legends/$_currentPageId',
+        '/api/legends/$pageId',
         method: 'POST',
-        body: {'color': color, 'label': label, 'position': _legends.length},
+        body: {'color': color, 'label': label, 'position': legendsFor(pageId).length},
       );
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final json = jsonDecode(response.body) as Map<String, dynamic>;
-        final legend = LegendModel.fromJson(json);
-        if (!_legends.any((l) => l.id == legend.id)) {
-          _legends.add(legend);
-        }
+        _add(LegendModel.fromJson(jsonDecode(response.body) as Map<String, dynamic>));
         notifyListeners();
       }
     } catch (e) {
@@ -82,19 +152,10 @@ class LegendsProvider extends ChangeNotifier {
       final body = <String, dynamic>{};
       if (label != null) body['label'] = label;
       if (color != null) body['color'] = color;
-      final response = await _api.apiFetch(
-        '/api/legends/$id',
-        method: 'PATCH',
-        body: body,
-      );
+      final response = await _api.apiFetch('/api/legends/$id', method: 'PATCH', body: body);
       if (response.statusCode == 200) {
-        final json = jsonDecode(response.body) as Map<String, dynamic>;
-        final updated = LegendModel.fromJson(json);
-        final index = _legends.indexWhere((l) => l.id == id);
-        if (index != -1) {
-          _legends[index] = updated;
-          notifyListeners();
-        }
+        _replace(LegendModel.fromJson(jsonDecode(response.body) as Map<String, dynamic>));
+        notifyListeners();
       }
     } catch (e) {
       debugPrint('LegendsProvider: updateLegend failed: $e');
@@ -102,15 +163,13 @@ class LegendsProvider extends ChangeNotifier {
   }
 
   Future<void> deleteLegend(String id) async {
-    if (_currentPageId == null) return;
+    final pageId = _pageOf(id) ?? _currentPageId;
+    if (pageId == null) return;
 
     try {
-      final response = await _api.apiFetch(
-        '/api/legends/$id',
-        method: 'DELETE',
-      );
+      final response = await _api.apiFetch('/api/legends/$id', method: 'DELETE');
       if (response.statusCode == 200 || response.statusCode == 204) {
-        _legends.removeWhere((l) => l.id == id);
+        _remove(pageId, id);
         notifyListeners();
       }
     } catch (e) {
@@ -119,130 +178,70 @@ class LegendsProvider extends ChangeNotifier {
   }
 
   Future<void> reorderLegends(List<String> ids) async {
-    if (_currentPageId == null) return;
+    final pageId = _currentPageId;
+    if (pageId == null) return;
 
-    // Optimistic reorder
-    final reordered = <LegendModel>[];
-    for (final id in ids) {
-      try {
-        final legend = _legends.firstWhere((l) => l.id == id);
-        reordered.add(legend);
-      } catch (_) {
-        // Legend not found locally, skip
-      }
-    }
-    final previousLegends = List<LegendModel>.of(_legends);
-    _legends = reordered;
+    final previous = legendsFor(pageId);
+    _reorder(pageId, ids);
     notifyListeners();
 
     try {
       final response = await _api.apiFetch(
-        '/api/legends/$_currentPageId/reorder',
+        '/api/legends/$pageId/reorder',
         method: 'PUT',
         body: {'ids': ids},
       );
       if (response.statusCode != 200) {
-        // Revert on failure
-        _legends = previousLegends;
+        _set(pageId, previous);
         notifyListeners();
       }
     } catch (e) {
       debugPrint('LegendsProvider: reorderLegends failed: $e');
-      _legends = previousLegends;
+      _set(pageId, previous);
       notifyListeners();
     }
   }
 
   // ---------------------------------------------------------------------------
-  // WebSocket
+  // WebSocket — events apply to ANY page so card previews stay fresh too
   // ---------------------------------------------------------------------------
+
+  @visibleForTesting
+  void debugHandleWs(WsMessage message) => _onWsMessage(message);
 
   void _onWsMessage(WsMessage message) {
     switch (message.event) {
       case 'legend:created':
-        final json = message.data as Map<String, dynamic>;
-        final legend = LegendModel.fromJson(json);
-        if (legend.pageId == _currentPageId &&
-            !_legends.any((l) => l.id == legend.id)) {
-          _legends.add(legend);
+        if (_add(LegendModel.fromJson(message.data as Map<String, dynamic>))) {
           notifyListeners();
         }
-        break;
 
       case 'legend:updated':
-        final json = message.data as Map<String, dynamic>;
-        final updated = LegendModel.fromJson(json);
-        if (updated.pageId == _currentPageId) {
-          final index = _legends.indexWhere((l) => l.id == updated.id);
-          if (index != -1) {
-            _legends[index] = updated;
-            notifyListeners();
-          }
+        if (_replace(LegendModel.fromJson(message.data as Map<String, dynamic>))) {
+          notifyListeners();
         }
-        break;
 
       case 'legend:deleted':
         final json = message.data as Map<String, dynamic>;
         final id = json['id'] as String;
-        final pageId = (json['pageId'] ?? json['page_id']) as String?;
-        if (pageId == _currentPageId) {
-          _legends.removeWhere((l) => l.id == id);
-          notifyListeners();
-        }
-        break;
+        final pageId = (json['pageId'] ?? json['page_id']) as String? ?? _pageOf(id);
+        if (pageId != null && _remove(pageId, id)) notifyListeners();
 
       case 'legends:reordered':
         final json = message.data as Map<String, dynamic>;
         final pageId = (json['pageId'] ?? json['page_id']) as String?;
-        if (pageId == _currentPageId) {
-          final list = json['legends'] as List<dynamic>?;
-          if (list != null) {
-            _legends = list
-                .map((l) => LegendModel.fromJson(l as Map<String, dynamic>))
-                .toList();
-            notifyListeners();
-          }
-        }
-        break;
+        final ids = (json['ids'] as List<dynamic>?)?.cast<String>();
+        if (pageId == null || ids == null) return;
+        _reorder(pageId, ids);
+        notifyListeners();
 
       case 'legends:recolored':
         final json = message.data as Map<String, dynamic>;
         final pageId = (json['pageId'] ?? json['page_id']) as String?;
-        if (pageId == _currentPageId) {
-          final list = json['legends'] as List<dynamic>?;
-          if (list != null) {
-            for (final legendJson in list) {
-              final updated =
-                  LegendModel.fromJson(legendJson as Map<String, dynamic>);
-              final index = _legends.indexWhere((l) => l.id == updated.id);
-              if (index != -1) {
-                _legends[index] = updated;
-              }
-            }
-            notifyListeners();
-          }
-        }
-        break;
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Internal
-  // ---------------------------------------------------------------------------
-
-  Future<void> _fetchLegends() async {
-    try {
-      final response =
-          await _api.apiFetch('/api/legends/$_currentPageId');
-      if (response.statusCode == 200) {
-        final list = jsonDecode(response.body) as List<dynamic>;
-        _legends = list
-            .map((json) => LegendModel.fromJson(json as Map<String, dynamic>))
-            .toList();
+        final raw = json['colorMap'] as Map<String, dynamic>?;
+        if (pageId == null || raw == null) return;
+        _recolor(pageId, raw.map((k, v) => MapEntry(k, v as String)));
         notifyListeners();
-      }
-    } catch (e) {
-      debugPrint('LegendsProvider: fetchLegends failed: $e');
     }
   }
 
