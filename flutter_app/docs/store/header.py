@@ -85,19 +85,28 @@ def render(W, H, lang, out):
     for i, name in enumerate(names):
         draw_card(img, cx0 + i * (cw + gap), margin, cw, ch, name, PALETTES[name], rng, s)
 
-    # brand stack on the left: icon, 点点, DIAN DIAN, tagline
-    left = int(300 * s)
+    # brand lockup on the left: [cat icon] 点点 on one line, then DIAN DIAN and
+    # the tagline aligned under the icon; the block is centred in the free
+    # space between the left edge and the cards.
     k = 0.8 if wide else 1.0
-    icon_size = int(430 * s * k)
     f_cjk = ImageFont.truetype(FONT_CJK, int(640 * s * k))
     f_lat = ImageFont.truetype(FONT_PIXEL, int(170 * s * k))
     tag_text, tag_font = TAGLINES[lang]
     f_tag = ImageFont.truetype(tag_font, int((110 if tag_font == FONT_CJK else 90) * s * k))
-    cjk_h = f_cjk.getbbox('点点')[3]
-    lat_h = f_lat.getbbox('DIAN DIAN')[3]
-    tag_h = f_tag.getbbox(tag_text)[3]
-    g1, g2, g3 = int(70 * s * k), int(90 * s * k), int(70 * s * k)
-    block_h = icon_size + g1 + cjk_h + g2 + lat_h + g3 + tag_h
+    cjk_box = f_cjk.getbbox('点点')
+    cjk_w, cjk_h = cjk_box[2] - cjk_box[0], cjk_box[3] - cjk_box[1]
+    lat_box = f_lat.getbbox('DIAN DIAN')
+    lat_w, lat_h = lat_box[2] - lat_box[0], lat_box[3] - lat_box[1]
+    tag_box = f_tag.getbbox(tag_text)
+    tag_w, tag_h = tag_box[2] - tag_box[0], tag_box[3] - tag_box[1]
+    icon_size = int(cjk_h * 1.05)
+    gap_icon = int(90 * s * k)
+    g2, g3 = int(110 * s * k), int(70 * s * k)
+    row1_w = icon_size + gap_icon + cjk_w
+    block_w = max(row1_w, lat_w, tag_w)
+    block_h = icon_size + g2 + lat_h + g3 + tag_h
+    area_left, area_right = int(200 * s), cx0 - int(200 * s)
+    left = area_left + (area_right - area_left - block_w) // 2
     y = (H - block_h) // 2
 
     icon = Image.open(ICON).convert('RGBA').resize((icon_size, icon_size), Image.LANCZOS)
@@ -106,12 +115,14 @@ def render(W, H, lang, out):
     bw = max(2, int(10 * s))
     d.rounded_rectangle([left - bw, y - bw, left + icon_size + bw, y + icon_size + bw], radius=int(icon_size * 0.26), fill='#FFFFFF', outline=CARD_BORDER, width=max(2, int(4 * s)))
     img.paste(icon, (left, y), mask)
-    y += icon_size + g1
-    d.text((left - int(20 * s * k), y - f_cjk.getbbox('点点')[1]), '点点', font=f_cjk, fill=TITLE)
-    y += cjk_h + g2
-    d.text((left, y - f_lat.getbbox('DIAN DIAN')[1]), 'DIAN DIAN', font=f_lat, fill=TITLE)
+    # 点点 vertically centred on the icon
+    tx = left + icon_size + gap_icon - cjk_box[0]
+    ty = y + (icon_size - cjk_h) // 2 - cjk_box[1]
+    d.text((tx, ty), '点点', font=f_cjk, fill=TITLE)
+    y += icon_size + g2
+    d.text((left - lat_box[0], y - lat_box[1]), 'DIAN DIAN', font=f_lat, fill=TITLE)
     y += lat_h + g3
-    d.text((left + int(4 * s), y - f_tag.getbbox(tag_text)[1]), tag_text, font=f_tag, fill=MUTED)
+    d.text((left - tag_box[0] + int(4 * s), y - tag_box[1]), tag_text, font=f_tag, fill=MUTED)
 
     img.save(out, 'PNG', optimize=True)
     img.resize((W // 4, H // 4), Image.LANCZOS).save(out.replace('.png', '-preview.png'), 'PNG')
