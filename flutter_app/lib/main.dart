@@ -115,6 +115,9 @@ class _AppShellState extends State<AppShell> {
   // One session start per authentication: hydrate + bootstrap + land on
   // the right screen. Reset on logout.
   bool _sessionStarted = false;
+  // Session restored from storage but not yet confirmed by the network.
+  // When it flips back to confirmed, the store is revalidated.
+  bool _wasOffline = false;
   // Keeps the splash screen up while we decide whether to land on the
   // page list or jump straight back into the user's last tracker.
   bool _restoreInProgress = true;
@@ -130,6 +133,15 @@ class _AppShellState extends State<AppShell> {
   /// snapshot (instant first paint), kicks the network bootstrap, then lands
   /// on onboarding, the last open tracker, or the page list.
   Future<void> _startSession(AuthProvider auth) async {
+    try {
+      await _startSessionInner(auth);
+    } finally {
+      // Whatever happened, never leave the splash up forever.
+      if (mounted && _restoreInProgress) setState(() => _restoreInProgress = false);
+    }
+  }
+
+  Future<void> _startSessionInner(AuthProvider auth) async {
     final prefs = await SharedPreferences.getInstance();
     final lastId = prefs.getString(_lastTrackerIdKey);
     final currentYear = DateTime.now().year;
@@ -231,26 +243,36 @@ class _AppShellState extends State<AppShell> {
 
     if (auth.isAuthenticated && auth.userId != null && !_sessionStarted) {
       _sessionStarted = true;
+      _wasOffline = auth.isOffline;
       await _startSession(auth);
     }
     if (!mounted) return;
-    if (!auth.isAuthenticated && _screen != AppScreen.login &&
-        _screen != AppScreen.register && _screen != AppScreen.forgotPassword) {
-      // Cancel any pending page deletion on logout
+
+    // Network confirmation after a pending/offline start: the snapshot may
+    // be stale, re-fetch now (deduped with any bootstrap already in flight).
+    final cameBackOnline = _wasOffline && auth.isAuthenticated && !auth.isOffline;
+    _wasOffline = auth.isAuthenticated && auth.isOffline;
+    if (cameBackOnline && _sessionStarted) {
+      context.read<SyncService>().revalidate();
+    }
+
+    if (!auth.isAuthenticated && _sessionStarted) {
+      // Every authenticated → unauthenticated transition forgets the store and
+      // the disk snapshot: the next user must never see this one's data.
+      _sessionStarted = false;
       context.read<PagesProvider>().cancelPendingDelete();
-      // Forget the cached store + disk snapshot: the next user must not see it.
       context.read<SyncService>().clear();
       _clearLastTracker();
-      _sessionStarted = false;
+    }
+    if (!auth.isAuthenticated && _screen != AppScreen.login &&
+        _screen != AppScreen.register && _screen != AppScreen.forgotPassword) {
       setState(() {
         _screen = AppScreen.login;
         _activePageId = null;
-        _restoreInProgress = false;
+        _selectedYear = DateTime.now().year;
+        // Next login holds the splash until its own session start lands.
+        _restoreInProgress = true;
       });
-    } else if (!auth.isAuthenticated) {
-      // Already on an auth screen — just drop the splash.
-      _sessionStarted = false;
-      if (_restoreInProgress) setState(() => _restoreInProgress = false);
     }
   }
 

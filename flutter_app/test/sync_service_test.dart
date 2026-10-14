@@ -232,6 +232,48 @@ void main() {
     expect((data['cells'] as Map)['a'], containsAll([[6, 6, '#333333', 'c']]));
   });
 
+  test('an identical body is still applied when the store changed locally since the last apply', () async {
+    final sync = build();
+    await sync.ensureYear(2026);
+    // A local change the server never received (e.g. a failed recolor).
+    cells.debugHandleWs(const WsMessage(event: 'cells:recolored', data: {
+      'pageId': 'a', 'colorMap': {'#AAAAAA': '#999999'},
+    }));
+    expect(cells.cellsFor('a', 2026)!.get(1, 1)!.color, '#999999');
+    await sync.revalidate(); // server body is byte-identical to the first one
+    expect(cells.cellsFor('a', 2026)!.get(1, 1)!.color, '#AAAAAA', reason: 'store healed from the server');
+  });
+
+  test('a local mutation during an in-flight bootstrap discards that body and refetches once', () async {
+    var mutateDuringFetch = false;
+    final sync = build(body: (y) {
+      if (mutateDuringFetch) {
+        mutateDuringFetch = false;
+        // Simulates a tap that landed while the request was in flight.
+        cells.debugHandleWs(const WsMessage(event: 'cell:updated', data: {
+          'pageId': 'a', 'year': 2026, 'month': 3, 'day': 3, 'color': '#CCCCCC', 'updatedAt': '',
+        }));
+      }
+      return bootstrapBody(y);
+    });
+    await sync.ensureYear(2026);
+    expect(bootstrapCalls, 1);
+    mutateDuringFetch = true;
+    await sync.revalidate();
+    expect(bootstrapCalls, 3, reason: 'stale body discarded, one retry');
+    expect(cells.cellsFor('a', 2026)!.get(3, 3), isNull, reason: 'the retry carries server truth');
+  });
+
+  test('ensureYear refetches a loaded year when a page has no entry for it', () async {
+    final sync = build();
+    await sync.ensureYear(2026);
+    pages.debugHandleWs(WsMessage(event: 'page:created', data: {
+      'id': 'b', 'userId': 'u1', 'title': 'B', 'position': 1, 'palette': null, 'createdAt': '', 'year': 2026,
+    }));
+    await sync.ensureYear(2026);
+    expect(bootstrapCalls, 2);
+  });
+
   test('clear wipes providers and snapshot', () async {
     final sync = build();
     await sync.start(userId: 'u1', year: 2026);

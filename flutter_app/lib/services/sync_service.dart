@@ -39,6 +39,9 @@ class SyncService with WidgetsBindingObserver {
   int _generation = 0;
   final Map<int, Future<void>> _inflight = {};
   final Map<int, String> _lastBody = {};
+  // Store epoch at the time each year's body was last applied. A byte-identical
+  // body may be skipped only if nothing touched the store since then.
+  final Map<int, int> _lastAppliedEpoch = {};
 
   SyncService({
     required ApiService api,
@@ -78,13 +81,21 @@ class SyncService with WidgetsBindingObserver {
     return hydrated;
   }
 
-  /// Makes [year] the active year and loads it if the store does not have it.
+  /// Makes [year] the active year and loads it unless every page already has
+  /// its entry for that year (a page discovered through another year's
+  /// bootstrap has none yet).
   Future<void> ensureYear(int year) {
     _started = true;
     _activeYear = year;
-    if (_cells.isYearLoaded(year)) return Future.value();
+    if (_yearComplete(year)) return Future.value();
     return _bootstrap(year);
   }
+
+  bool _yearComplete(int year) =>
+      _cells.isYearLoaded(year) &&
+      _pages.pages.every((p) => _cells.cellsFor(p.id, year) != null);
+
+  int get _epoch => _pages.mutationEpoch + _cells.mutationEpoch + _legends.mutationEpoch;
 
   /// Re-fetches the active year unconditionally (silent when unchanged).
   Future<void> revalidate() {
@@ -114,6 +125,7 @@ class SyncService with WidgetsBindingObserver {
     _started = false;
     _inflight.clear();
     _lastBody.clear();
+    _lastAppliedEpoch.clear();
     _pages.clear();
     _legends.clear();
     _cells.clear();
@@ -161,16 +173,26 @@ class SyncService with WidgetsBindingObserver {
     return future;
   }
 
-  Future<void> _fetch(int year) async {
+  Future<void> _fetch(int year, {bool retried = false}) async {
     final generation = _generation;
+    final epochBefore = _epoch;
     try {
       final res = await _api.apiFetch('/api/bootstrap?year=$year');
       if (generation != _generation) return; // cleared while in flight
       if (res.statusCode != 200) return; // keep whatever we have
-      if (_lastBody[year] == res.body) return; // byte-identical → nothing to do
+      if (_epoch != epochBefore) {
+        // Something was edited while this body was in flight: it may predate
+        // that edit. Drop it and ask once more rather than erase a fresh tap.
+        if (!retried) await _fetch(year, retried: true);
+        return;
+      }
+      if (_lastBody[year] == res.body && _lastAppliedEpoch[year] == _epoch) {
+        return; // byte-identical and the store is untouched since → nothing to do
+      }
       final data = jsonDecode(res.body) as Map<String, dynamic>;
       _apply(data, applyCells: true);
       _lastBody[year] = res.body;
+      _lastAppliedEpoch[year] = _epoch;
       await persistSnapshot();
     } catch (e) {
       debugPrint('SyncService: bootstrap($year) failed: $e');

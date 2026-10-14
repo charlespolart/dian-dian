@@ -48,7 +48,9 @@ router.get('/', async (req, res) => {
         .from(legends)
         .innerJoin(pages, eq(pages.id, legends.pageId))
         .where(eq(pages.userId, userId))
-        .orderBy(asc(legends.position)),
+        // Deterministic order: the client skips bodies that are byte-identical
+        // to the previous one, which only works if row order is stable.
+        .orderBy(asc(legends.pageId), asc(legends.position), asc(legends.id)),
       db.select({
         pageId: cells.pageId,
         month: cells.month,
@@ -58,7 +60,8 @@ router.get('/', async (req, res) => {
       })
         .from(cells)
         .innerJoin(pages, eq(pages.id, cells.pageId))
-        .where(and(eq(pages.userId, userId), eq(cells.year, year))),
+        .where(and(eq(pages.userId, userId), eq(cells.year, year)))
+        .orderBy(asc(cells.pageId), asc(cells.month), asc(cells.day)),
     ]);
 
     const legendsByPage: Record<string, typeof legendRows> = {};

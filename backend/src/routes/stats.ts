@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { db } from '../db/index.js';
 import { pages, cells } from '../db/schema.js';
 import { requireAuth } from '../middleware/auth.js';
-import { eq } from 'drizzle-orm';
+import { eq, asc } from 'drizzle-orm';
 
 const router = Router();
 router.use(requireAuth);
@@ -23,7 +23,8 @@ router.get('/days', async (req, res) => {
     })
       .from(cells)
       .innerJoin(pages, eq(pages.id, cells.pageId))
-      .where(eq(pages.userId, req.userId!));
+      .where(eq(pages.userId, req.userId!))
+      .orderBy(asc(cells.pageId), asc(cells.year), asc(cells.month), asc(cells.day));
 
     const byPage: Record<string, [number, number, number][]> = {};
     for (const r of rows) (byPage[r.pageId] ??= []).push([r.year, r.month, r.day]);

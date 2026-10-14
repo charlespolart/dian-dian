@@ -79,6 +79,21 @@ class AuthProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
+    // Instant path: a session stored on this device paints the app from the
+    // disk snapshot right away (0 round-trips). The refresh below then
+    // confirms it (profile, tokens) or revokes it (invalid → login screen).
+    final storedUserId = await _storage.getUserId();
+    if (storedUserId != null) {
+      _userId = storedUserId;
+      _email = await _storage.getEmail();
+      final prefs = await SharedPreferences.getInstance();
+      _isVip = prefs.getBool(_vipKey) ?? false;
+      _isAuthenticated = true;
+      _isOffline = true; // "not confirmed by the network yet"
+      _isLoading = false;
+      notifyListeners();
+    }
+
     try {
       final result = await _api.tryRestoreSession();
       switch (result.outcome) {
@@ -92,25 +107,17 @@ class AuthProvider extends ChangeNotifier {
 
         case RefreshOutcome.invalid:
           _isAuthenticated = false;
+          _isOffline = false;
+          _userId = null;
 
         case RefreshOutcome.offline:
-          // A stored session exists but the network does not: keep the user
-          // in, show cached data, recover on the first successful request.
-          final userId = await _storage.getUserId();
-          if (userId != null) {
-            _userId = userId;
-            _email = await _storage.getEmail();
-            final prefs = await SharedPreferences.getInstance();
-            _isVip = prefs.getBool(_vipKey) ?? false;
-            _isAuthenticated = true;
-            _isOffline = true;
-          } else {
-            _isAuthenticated = false;
-          }
+          // No network: stay on the stored session (if any) with cached data;
+          // the first successful request will refresh and confirm it.
+          if (storedUserId == null) _isAuthenticated = false;
       }
     } catch (e) {
       debugPrint('AuthProvider: restore session failed: $e');
-      _isAuthenticated = false;
+      if (storedUserId == null) _isAuthenticated = false;
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -161,6 +168,8 @@ class AuthProvider extends ChangeNotifier {
   void _onAuthExpired() {
     _ws.disconnect();
     _userId = null;
+    _email = null;
+    _serverSettings = null;
     _isOffline = false;
     _isAuthenticated = false;
     notifyListeners();

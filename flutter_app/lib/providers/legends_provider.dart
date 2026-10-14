@@ -18,6 +18,10 @@ class LegendsProvider extends ChangeNotifier {
 
   final Map<String, List<LegendModel>> _byPage = {};
   String? _currentPageId;
+  int _mutationEpoch = 0;
+
+  /// Incremented by every change that did NOT come from a bootstrap apply.
+  int get mutationEpoch => _mutationEpoch;
 
   LegendsProvider({ApiService? api}) : _api = api ?? ApiService() {
     _removeWsListener = _ws.addListener(_onWsMessage);
@@ -49,11 +53,9 @@ class LegendsProvider extends ChangeNotifier {
   void applyBootstrap(Map<String, dynamic> byPage) {
     _byPage.clear();
     byPage.forEach((pageId, list) {
-      _set(
-        pageId,
-        (list as List<dynamic>)
-            .map((j) => LegendModel.fromJson(j as Map<String, dynamic>))
-            .toList(),
+      // Direct write: a bootstrap apply must not bump the mutation epoch.
+      _byPage[pageId] = List.unmodifiable(
+        (list as List<dynamic>).map((j) => LegendModel.fromJson(j as Map<String, dynamic>)),
       );
     });
     notifyListeners();
@@ -69,8 +71,10 @@ class LegendsProvider extends ChangeNotifier {
   // Internal copy-on-write helpers
   // ---------------------------------------------------------------------------
 
-  void _set(String pageId, List<LegendModel> list) =>
-      _byPage[pageId] = List.unmodifiable(list);
+  void _set(String pageId, List<LegendModel> list) {
+    _byPage[pageId] = List.unmodifiable(list);
+    _mutationEpoch++;
+  }
 
   String? _pageOf(String legendId) {
     for (final e in _byPage.entries) {

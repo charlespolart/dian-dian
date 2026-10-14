@@ -26,6 +26,13 @@ class CellsProvider extends ChangeNotifier {
   final Set<int> _loadedYears = {};
   String? _currentPageId;
   int _currentYear = DateTime.now().year;
+  int _mutationEpoch = 0;
+
+  /// Incremented by every store change that did NOT come from a bootstrap
+  /// apply (optimistic edits, reverts, WS events). `SyncService` uses it to
+  /// decide whether a server body may be skipped or must be (re)applied.
+  int get mutationEpoch => _mutationEpoch;
+  void _touch() => _mutationEpoch++;
 
   CellsProvider({ApiService? api, AudioService? audio})
       : _api = api ?? ApiService(),
@@ -160,7 +167,10 @@ class CellsProvider extends ChangeNotifier {
   YearCells _entry(String pageId, int year) =>
       _store[_key(pageId, year)] ?? YearCells.empty(pageId, year);
 
-  void _put(YearCells yc) => _store[_key(yc.pageId, yc.year)] = yc;
+  void _put(YearCells yc) {
+    _store[_key(yc.pageId, yc.year)] = yc;
+    _touch();
+  }
 
   void _revert(String pageId, int year, int month, int day, CellModel? previous) {
     final entry = _entry(pageId, year);
@@ -249,18 +259,30 @@ class CellsProvider extends ChangeNotifier {
     final pageId = _currentPageId;
     if (pageId == null) return;
 
+    final previous = {
+      for (final e in _store.entries)
+        if (e.value.pageId == pageId) e.key: e.value,
+    };
     _recolorPage(pageId, colorMap);
     notifyListeners();
 
     try {
-      await _api.apiFetch(
+      final response = await _api.apiFetch(
         '/api/cells/$pageId/recolor',
         method: 'PATCH',
         body: {'colorMap': colorMap},
       );
+      if (response.statusCode != 200) _restore(previous);
     } catch (e) {
       debugPrint('CellsProvider: recolorCells failed: $e');
+      _restore(previous);
     }
+  }
+
+  void _restore(Map<String, YearCells> entries) {
+    _store.addAll(entries);
+    _touch();
+    notifyListeners();
   }
 
   void _recolorPage(String pageId, Map<String, String> colorMap) {
@@ -268,6 +290,7 @@ class CellsProvider extends ChangeNotifier {
       final yc = _store[key]!;
       if (yc.pageId == pageId) _store[key] = yc.recolor(colorMap);
     }
+    _touch();
   }
 
   // ---------------------------------------------------------------------------

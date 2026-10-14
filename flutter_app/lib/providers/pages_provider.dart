@@ -15,9 +15,16 @@ class PagesProvider extends ChangeNotifier {
   List<PageModel> _pages = [];
   PageModel? _pendingDeletePage;
   Timer? _deleteTimer;
+  int _mutationEpoch = 0;
 
   List<PageModel> get pages => _pages;
   PageModel? get pendingDeletePage => _pendingDeletePage;
+
+  /// Incremented by every change that did NOT come from a bootstrap apply
+  /// (optimistic edits, reverts, WS events). `SyncService` uses it to know
+  /// whether a server body may be skipped or must be (re)applied.
+  int get mutationEpoch => _mutationEpoch;
+  void _touch() => _mutationEpoch++;
 
   PagesProvider({ApiService? api}) : _api = api ?? ApiService() {
     _removeWsListener = _ws.addListener(_onWsMessage);
@@ -60,6 +67,7 @@ class PagesProvider extends ChangeNotifier {
         final page = PageModel.fromJson(_parsePalette(json));
         if (!_pages.any((p) => p.id == page.id)) {
           _pages.add(page);
+          _touch();
         }
         notifyListeners();
         return page;
@@ -83,6 +91,7 @@ class PagesProvider extends ChangeNotifier {
         final index = _pages.indexWhere((p) => p.id == id);
         if (index != -1) {
           _pages[index] = updated;
+          _touch();
           notifyListeners();
         }
       }
@@ -94,6 +103,7 @@ class PagesProvider extends ChangeNotifier {
   Future<void> reorderPages(List<String> ids) async {
     final previous = _pages;
     _applyOrder(ids);
+    _touch();
     notifyListeners();
 
     // One request + one transaction server-side (was a PATCH per page).
@@ -105,11 +115,13 @@ class PagesProvider extends ChangeNotifier {
       );
       if (response.statusCode != 200) {
         _pages = previous;
+        _touch();
         notifyListeners();
       }
     } catch (e) {
       debugPrint('PagesProvider: reorderPages failed: $e');
       _pages = previous;
+      _touch();
       notifyListeners();
     }
   }
@@ -137,6 +149,7 @@ class PagesProvider extends ChangeNotifier {
 
     _pendingDeletePage = page;
     _pages.removeWhere((p) => p.id == page.id);
+    _touch();
     notifyListeners();
 
     _deleteTimer = Timer(delay, () {
@@ -151,9 +164,7 @@ class PagesProvider extends ChangeNotifier {
     final page = _pendingDeletePage;
     if (page != null) {
       _pendingDeletePage = null;
-      if (!_pages.any((p) => p.id == page.id)) {
-        _pages.add(page);
-      }
+      _reinsert(page, _pages.length);
       notifyListeners();
     }
   }
@@ -165,9 +176,7 @@ class PagesProvider extends ChangeNotifier {
     final page = _pendingDeletePage;
     if (page != null) {
       _pendingDeletePage = null;
-      if (!_pages.any((p) => p.id == page.id)) {
-        _pages.add(page);
-      }
+      _reinsert(page, _pages.length);
       notifyListeners();
     }
   }
@@ -178,29 +187,54 @@ class PagesProvider extends ChangeNotifier {
     final page = _pendingDeletePage;
     if (page != null) {
       _pendingDeletePage = null;
-      deletePage(page.id);
+      // Already removed locally by softDeletePage; put it back if the server says no.
+      _deleteOnServer(page.id, restore: page, restoreIndex: _pages.length);
       notifyListeners();
     }
   }
 
+  /// Hard delete: removes locally at once, restores the page if the server
+  /// rejects the request (a 404 means it is already gone — keep it gone).
   Future<void> deletePage(String id) async {
+    final index = _pages.indexWhere((p) => p.id == id);
+    final page = index == -1 ? null : _pages[index];
+    if (page != null) {
+      _pages.removeAt(index);
+      _touch();
+      notifyListeners();
+    }
+    await _deleteOnServer(id, restore: page, restoreIndex: index);
+  }
+
+  Future<void> _deleteOnServer(String id, {PageModel? restore, int restoreIndex = -1}) async {
     try {
-      final response = await _api.apiFetch(
-        '/api/pages/$id',
-        method: 'DELETE',
-      );
-      if (response.statusCode == 200 || response.statusCode == 204) {
-        _pages.removeWhere((p) => p.id == id);
+      final response = await _api.apiFetch('/api/pages/$id', method: 'DELETE');
+      final gone = response.statusCode == 200 || response.statusCode == 204 || response.statusCode == 404;
+      if (!gone && restore != null) {
+        _reinsert(restore, restoreIndex);
         notifyListeners();
       }
     } catch (e) {
       debugPrint('PagesProvider: deletePage failed: $e');
+      if (restore != null) {
+        _reinsert(restore, restoreIndex);
+        notifyListeners();
+      }
     }
+  }
+
+  void _reinsert(PageModel page, int index) {
+    if (_pages.any((p) => p.id == page.id)) return;
+    _pages.insert(index.clamp(0, _pages.length), page);
+    _touch();
   }
 
   // ---------------------------------------------------------------------------
   // WebSocket
   // ---------------------------------------------------------------------------
+
+  @visibleForTesting
+  void debugHandleWs(WsMessage message) => _onWsMessage(message);
 
   void _onWsMessage(WsMessage message) {
     switch (message.event) {
@@ -209,6 +243,7 @@ class PagesProvider extends ChangeNotifier {
         final page = PageModel.fromJson(_parsePalette(json));
         if (!_pages.any((p) => p.id == page.id)) {
           _pages.add(page);
+          _touch();
           notifyListeners();
         }
         break;
@@ -219,6 +254,7 @@ class PagesProvider extends ChangeNotifier {
         final index = _pages.indexWhere((p) => p.id == updated.id);
         if (index != -1) {
           _pages[index] = updated;
+          _touch();
           notifyListeners();
         }
         break;
@@ -226,7 +262,9 @@ class PagesProvider extends ChangeNotifier {
       case 'page:deleted':
         final json = message.data as Map<String, dynamic>;
         final id = json['id'] as String;
+        final before = _pages.length;
         _pages.removeWhere((p) => p.id == id);
+        if (_pages.length != before) _touch();
         notifyListeners();
         break;
 
@@ -235,6 +273,7 @@ class PagesProvider extends ChangeNotifier {
         final ids = (json['ids'] as List<dynamic>?)?.cast<String>();
         if (ids == null) break;
         _applyOrder(ids);
+        _touch();
         notifyListeners();
         break;
     }

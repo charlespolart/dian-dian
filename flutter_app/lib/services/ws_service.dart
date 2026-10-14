@@ -49,6 +49,7 @@ class WsService {
   // ---------------------------------------------------------------------------
 
   void connect() {
+    if (_channel != null) return; // already up (e.g. ensureConnected after a refresh)
     _intentionalDisconnect = false;
     _hadSessionConnect = false;
     _connectInternal();

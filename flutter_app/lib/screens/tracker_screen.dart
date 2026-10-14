@@ -172,8 +172,16 @@ class _TrackerScreenState extends State<TrackerScreen> {
     final lang = context.watch<LanguageProvider>();
     final cellsProv = context.watch<CellsProvider>();
     final legends = context.watch<LegendsProvider>().legends;
-    // Watch pages so title updates are reflected
-    context.watch<PagesProvider>();
+    // Watch pages so title updates are reflected — and leave if this tracker
+    // vanished (deleted on another device, or a bootstrap pruning a stale
+    // snapshot) instead of crashing on a missing page.
+    final pagesProv = context.watch<PagesProvider>();
+    if (!pagesProv.pages.any((p) => p.id == widget.pageId)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) widget.onBack();
+      });
+      return const SizedBox.shrink();
+    }
 
     // Stats are memoized in the provider (recomputed only when cells change).
     final filledDays = cellsProv.filledDays;

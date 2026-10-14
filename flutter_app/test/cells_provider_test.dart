@@ -1,7 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 
 import 'package:dian_dian/providers/cells_provider.dart';
+import 'package:dian_dian/services/api_service.dart';
+import 'package:dian_dian/services/audio_service.dart';
 import 'package:dian_dian/services/ws_service.dart';
+
+import 'helpers.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -154,6 +160,43 @@ void main() {
     }));
     expect(identical(p.cellsFor('a', 2026), a), isFalse);
     expect(identical(p.cellsFor('b', 2026), b), isTrue);
+  });
+
+  test('mutationEpoch increments on local/WS changes, not on applyBootstrap', () {
+    final p = loaded();
+    final e0 = p.mutationEpoch;
+    p.applyBootstrap(2025, {'a': <dynamic>[]});
+    expect(p.mutationEpoch, e0);
+    p.debugHandleWs(const WsMessage(event: 'cell:updated', data: {
+      'pageId': 'a', 'year': 2026, 'month': 3, 'day': 3, 'color': '#CCCCCC', 'updatedAt': '',
+    }));
+    expect(p.mutationEpoch, e0 + 1);
+    p.debugHandleWs(const WsMessage(event: 'cells:recolored', data: {
+      'pageId': 'a', 'colorMap': {'#CCCCCC': '#DDDDDD'},
+    }));
+    expect(p.mutationEpoch, e0 + 2);
+  });
+
+  test('recolorCells reverts every cached year when the server rejects it', () async {
+    final client = MockClient((req) async => http.Response('{"error":"nope"}', 500));
+    final api = ApiService.custom(client: client, tokens: FakeTokens());
+    final p = CellsProvider(api: api, audio: AudioService.silent());
+    p.applyBootstrap(2026, {'a': [[1, 1, '#AAAAAA']]});
+    p.applyBootstrap(2025, {'a': [[2, 2, '#AAAAAA']]});
+    p.setContext(pageId: 'a', year: 2026);
+    await p.recolorCells({'#AAAAAA': '#111111'});
+    expect(p.cellsFor('a', 2026)!.get(1, 1)!.color, '#AAAAAA');
+    expect(p.cellsFor('a', 2025)!.get(2, 2)!.color, '#AAAAAA');
+  });
+
+  test('recolorCells keeps the new colors when the server accepts', () async {
+    final client = MockClient((req) async => http.Response('{"ok":true}', 200));
+    final api = ApiService.custom(client: client, tokens: FakeTokens());
+    final p = CellsProvider(api: api, audio: AudioService.silent());
+    p.applyBootstrap(2026, {'a': [[1, 1, '#AAAAAA']]});
+    p.setContext(pageId: 'a', year: 2026);
+    await p.recolorCells({'#AAAAAA': '#111111'});
+    expect(p.cellsFor('a', 2026)!.get(1, 1)!.color, '#111111');
   });
 
   test('clear forgets everything', () {
