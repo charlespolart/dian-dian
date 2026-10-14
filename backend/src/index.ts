@@ -18,6 +18,8 @@ import legendsRoutes from './routes/legends.js';
 import legalRoutes from './routes/legal.js';
 import landingRoutes from './routes/landing.js';
 import purchaseRoutes from './routes/purchase.js';
+import bootstrapRoutes from './routes/bootstrap.js';
+import statsRoutes from './routes/stats.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -80,6 +82,8 @@ app.use('/api/pages', pagesRoutes);
 app.use('/api/cells', cellsRoutes);
 app.use('/api/legends', legendsRoutes);
 app.use('/api/purchase', purchaseRoutes);
+app.use('/api/bootstrap', bootstrapRoutes);
+app.use('/api/stats', statsRoutes);
 
 // Liveness — deliberately cheap and DB-free. This is what the container
 // healthcheck polls: if it depended on Postgres, every DB blip would mark the
