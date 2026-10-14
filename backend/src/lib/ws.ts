@@ -8,10 +8,30 @@ const clients = new Map<string, Set<WebSocket>>();
 // How long a connection may sit unauthenticated before we drop it.
 const AUTH_TIMEOUT_MS = 10_000;
 
+// Mobile sockets die silently (backgrounding, network switch) without a
+// close frame, leaving zombies in `clients` that we keep broadcasting to.
+// Ping every HEARTBEAT_MS; a socket that did not pong since the last tick
+// is terminated. dart:io answers pings at the protocol level, no client code.
+const HEARTBEAT_MS = 30_000;
+const alive = new WeakSet<WebSocket>();
+
 export function setupWebSocket(server: Server) {
   const wss = new WebSocketServer({ server, path: '/ws' });
 
+  const heartbeat = setInterval(() => {
+    for (const ws of wss.clients) {
+      if (!alive.has(ws)) { ws.terminate(); continue; }
+      alive.delete(ws);
+      ws.ping();
+    }
+  }, HEARTBEAT_MS);
+  heartbeat.unref();
+  wss.on('close', () => clearInterval(heartbeat));
+
   wss.on('connection', async (ws, req) => {
+    alive.add(ws);
+    ws.on('pong', () => alive.add(ws));
+
     const url = new URL(req.url || '', `http://${req.headers.host}`);
     const legacyToken = url.searchParams.get('token');
 

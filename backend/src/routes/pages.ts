@@ -47,6 +47,31 @@ router.post('/', validate(createPageSchema), async (req, res) => {
   }
 });
 
+const reorderPagesSchema = z.object({
+  ids: z.array(z.string().uuid()).max(500),
+});
+
+// Reorder pages in one request + one transaction. The pre-1.3.0 client sent
+// a PATCH per page (still supported below).
+router.put('/reorder', validate(reorderPagesSchema), async (req, res) => {
+  try {
+    const { ids } = req.body as { ids: string[] };
+    await db.transaction(async (tx) => {
+      for (let i = 0; i < ids.length; i++) {
+        // Scoped to the caller's pages so foreign ids are no-ops.
+        await tx.update(pages)
+          .set({ position: i })
+          .where(and(eq(pages.id, ids[i]), eq(pages.userId, req.userId!)));
+      }
+    });
+    broadcast(req.userId!, 'pages:reordered', { ids });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Reorder pages error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 const paletteSchema = z.array(
   z.array(z.string().regex(/^#[0-9A-Fa-f]{6}$/)).length(6)
 ).min(1).max(7);
