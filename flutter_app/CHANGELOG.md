@@ -7,6 +7,8 @@ versioned separately (`backend/CHANGELOG.md`).
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-14
+
 Requires backend ≥ 1.1.0.
 
 ### Changed
