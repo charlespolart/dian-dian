@@ -1,0 +1,122 @@
+"""App Store product-page header (the "Header and search results" asset).
+
+Renders the brand banner in the app style (dotted cream background, pixel
+fonts, tracker cards) at the two sizes App Store Connect accepts for the
+header, 5244x2950 and 3840x1646, with one tagline per store locale.
+
+Run (needs Pillow):
+    python3 flutter_app/docs/store/header.py "/path/to/output/dir"
+"""
+import random, sys
+from PIL import Image, ImageDraw, ImageFont
+
+ROOT = '/Users/charlespolart/Documents/Coding/dian-dian/flutter_app/assets'
+OUT = sys.argv[1]
+FONT_PIXEL = f'{ROOT}/fonts/Silkscreen-Bold.ttf'
+FONT_PIXEL_R = f'{ROOT}/fonts/Silkscreen-Regular.ttf'
+FONT_CJK = f'{ROOT}/fonts/DotGothic16-Regular.ttf'
+ICON = f'{ROOT}/images/icon.png'
+
+BG, DOT_BG = '#F4EFD0', '#D4D4E2'
+CARD, CARD_BORDER, SCREEN, SCREEN_BORDER = '#FBF8EA', '#D8D1B5', '#FFFDF5', '#E3DCC3'
+TITLE, MUTED, EMPTY = '#7E7EB8', '#9A957F', '#E6E2D2'
+PALETTES = {
+    'MOOD':     ['#FFEC99', '#FFD43B', '#8CE99A', '#74C0FC', '#E599F7'],
+    'READING':  ['#FFC9C9', '#FFA8A8', '#FF8787', '#FA5252'],
+    'SLEEP':    ['#1864AB', '#1C7ED6', '#4DABF7', '#A5D8FF', '#D0EBFF'],
+    'EXERCISE': ['#51CF66', '#339AF0', '#FF922B', '#CC5DE8', '#20C997'],
+}
+DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+TAGLINES = {
+    'en': ('ONE DOT A DAY', FONT_PIXEL_R),
+    'fr': ('UN POINT PAR JOUR', FONT_PIXEL_R),
+    'zh-Hans': ('一天一个点', FONT_CJK),
+    'zh-Hant': ('一天一點', FONT_CJK),
+}
+
+def draw_card(img, x, y, w, h, title, palette, rng, s):
+    d = ImageDraw.Draw(img)
+    d.rounded_rectangle([x, y, x + w, y + h], radius=int(30 * s), fill=CARD, outline=CARD_BORDER, width=max(2, int(4 * s)))
+    f = ImageFont.truetype(FONT_PIXEL, int(50 * s))
+    tw = d.textlength(title, font=f)
+    d.text((x + (w - tw) / 2, y + int(72 * s)), title, font=f, fill='#5C5C80')
+    ld = int(28 * s); gap = int(16 * s)
+    total = len(palette) * ld + (len(palette) - 1) * gap
+    lx = x + (w - total) / 2; ly = y + int(160 * s)
+    for c in palette:
+        d.ellipse([lx, ly, lx + ld, ly + ld], fill=c); lx += ld + gap
+    pad = int(42 * s)
+    sx, sy = x + pad, y + int(230 * s)
+    sw, sh = w - 2 * pad, h - int(230 * s) - pad
+    d.rounded_rectangle([sx, sy, sx + sw, sy + sh], radius=int(20 * s), fill=SCREEN, outline=SCREEN_BORDER, width=max(2, int(3 * s)))
+    cols, rows = 12, 31
+    inner = int(24 * s)
+    stepx = (sw - 2 * inner) / cols; stepy = (sh - 2 * inner) / rows
+    rad = min(stepx, stepy) * 0.40
+    for m in range(cols):
+        for day in range(rows):
+            if day >= DAYS[m]:
+                continue
+            cx = sx + inner + stepx * m + stepx / 2
+            cy = sy + inner + stepy * day + stepy / 2
+            filled = m < 9 or (m == 9 and day < 14)
+            color = rng.choice(palette) if (filled and rng.random() > 0.08) else EMPTY
+            d.ellipse([cx - rad, cy - rad, cx + rad, cy + rad], fill=color)
+
+def render(W, H, lang, out):
+    s = W / 5244
+    wide = W / H > 2.0
+    img = Image.new('RGB', (W, H), BG)
+    d = ImageDraw.Draw(img)
+    step = int(118 * s); r = max(3, int(7 * s))
+    for yy in range(step, H, step):
+        for xx in range(step, W, step):
+            d.ellipse([xx - r, yy - r, xx + r, yy + r], fill=DOT_BG)
+
+    # cards on the right, nearly full height
+    rng = random.Random(7)
+    margin = int(220 * s)
+    ch = H - 2 * margin
+    cw = int(ch * 0.29)
+    gap = int(70 * s)
+    names = list(PALETTES) if wide else list(PALETTES)[:3]
+    total = len(names) * cw + (len(names) - 1) * gap
+    cx0 = W - int(260 * s) - total
+    for i, name in enumerate(names):
+        draw_card(img, cx0 + i * (cw + gap), margin, cw, ch, name, PALETTES[name], rng, s)
+
+    # brand stack on the left: icon, 点点, DIAN DIAN, tagline
+    left = int(300 * s)
+    k = 0.8 if wide else 1.0
+    icon_size = int(430 * s * k)
+    f_cjk = ImageFont.truetype(FONT_CJK, int(640 * s * k))
+    f_lat = ImageFont.truetype(FONT_PIXEL, int(170 * s * k))
+    tag_text, tag_font = TAGLINES[lang]
+    f_tag = ImageFont.truetype(tag_font, int((110 if tag_font == FONT_CJK else 90) * s * k))
+    cjk_h = f_cjk.getbbox('点点')[3]
+    lat_h = f_lat.getbbox('DIAN DIAN')[3]
+    tag_h = f_tag.getbbox(tag_text)[3]
+    g1, g2, g3 = int(70 * s * k), int(90 * s * k), int(70 * s * k)
+    block_h = icon_size + g1 + cjk_h + g2 + lat_h + g3 + tag_h
+    y = (H - block_h) // 2
+
+    icon = Image.open(ICON).convert('RGBA').resize((icon_size, icon_size), Image.LANCZOS)
+    mask = Image.new('L', (icon_size, icon_size), 0)
+    ImageDraw.Draw(mask).rounded_rectangle([0, 0, icon_size, icon_size], radius=int(icon_size * 0.24), fill=255)
+    bw = max(2, int(10 * s))
+    d.rounded_rectangle([left - bw, y - bw, left + icon_size + bw, y + icon_size + bw], radius=int(icon_size * 0.26), fill='#FFFFFF', outline=CARD_BORDER, width=max(2, int(4 * s)))
+    img.paste(icon, (left, y), mask)
+    y += icon_size + g1
+    d.text((left - int(20 * s * k), y - f_cjk.getbbox('点点')[1]), '点点', font=f_cjk, fill=TITLE)
+    y += cjk_h + g2
+    d.text((left, y - f_lat.getbbox('DIAN DIAN')[1]), 'DIAN DIAN', font=f_lat, fill=TITLE)
+    y += lat_h + g3
+    d.text((left + int(4 * s), y - f_tag.getbbox(tag_text)[1]), tag_text, font=f_tag, fill=MUTED)
+
+    img.save(out, 'PNG', optimize=True)
+    img.resize((W // 4, H // 4), Image.LANCZOS).save(out.replace('.png', '-preview.png'), 'PNG')
+    print(out, img.size)
+
+for lang in TAGLINES:
+    render(5244, 2950, lang, f'{OUT}/header-{lang}-5244x2950.png')
+    render(3840, 1646, lang, f'{OUT}/header-{lang}-3840x1646.png')
