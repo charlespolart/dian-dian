@@ -227,6 +227,25 @@ flutter build apk --release   # pour test local uniquement
 
 ---
 
+## 8. Après la 1.3.0 — remarques Play Console (15/10/2026, build 1.2.0 (5))
+
+Deux « actions recommandées » affichées par la Play Console. Aucune n'est
+bloquante ; à traiter dans une release « toolchain Android » dédiée, à part
+des évolutions produit, testée sur appareil réel (achat, pub, Google Sign-In).
+
+### Affichage bord à bord (Android 15, SDK 35)
+- Flutter gère déjà le bord à bord ; `enableEdgeToEdge()` vise les apps natives. Nos écrans respectent les marges système (`MediaQuery.padding.top`, `SafeArea`).
+- Seul point à vérifier : la bannière AdMob est à `bottom: 0` sans marge basse (`lib/widgets/ad_banner.dart`, `page_list_screen.dart`). En navigation à 3 boutons (barre opaque ~48 px), le bas de la pub peut être recouvert ; en navigation gestuelle, aucun effet.
+- À faire : tester sur un Android 15 en mode 3 boutons ; si recouvert, ajouter `MediaQuery.viewPadding.bottom` sous la bannière (utilisateurs gratuits uniquement).
+
+### Optimisation R8 + AGP 9
+- Constat : `isMinifyEnabled` / `isShrinkResources` absents de `app/build.gradle.kts`, AGP 8.11.1, Gradle 8.14, Kotlin 2.2.20 (Flutter avertit déjà que ces versions seront bientôt abandonnées).
+- Gain : quelques Mo et un peu de mémoire (R8 n'optimise que la partie Java/Kotlin : embedding + plugins ; le Dart est déjà AOT). Pas perceptible pour l'utilisateur.
+- Risque : plugin cassé à l'exécution par une règle manquante (RevenueCat, AdMob, Google Sign-In livrent leurs règles consumer, à valider sur appareil).
+- À faire, dans l'ordre : AGP 9.x + Gradle 9.1 + Kotlin 2.3 → build vert → `isMinifyEnabled = true`, `isShrinkResources = true`, `proguard-rules.pro` → test appareil complet → release app (patch).
+
+---
+
 ## Annexe — commandes utiles
 
 ```bash
