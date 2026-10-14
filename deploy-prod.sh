@@ -39,6 +39,11 @@ fail() {
   exit 1
 }
 
+# The confirmations below read from the terminal: without one (a CI runner,
+# an editor's task runner, Claude Code's `!` prefix) `read` hits EOF and the
+# script would stop silently.
+[ -t 0 ] || fail "needs an interactive terminal: run it from a shell"
+
 command -v gh >/dev/null 2>&1 || fail "the GitHub CLI (gh) is missing: brew install gh"
 command -v rsync >/dev/null 2>&1 || fail "rsync is missing"
 

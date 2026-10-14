@@ -32,6 +32,11 @@ fail() {
   exit 1
 }
 
+# The confirmations below read from the terminal: without one (a CI runner,
+# an editor's task runner, Claude Code's `!` prefix) `read` hits EOF and the
+# script would stop silently.
+[ -t 0 ] || fail "needs an interactive terminal: run it from a shell"
+
 state="$(ssh "$host" "cat $stack/.env 2>/dev/null || true")"
 
 read_key() {
