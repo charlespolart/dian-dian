@@ -48,19 +48,25 @@ dian-dian/
 ├── backend/
 │   ├── src/
 │   │   ├── db/          # Drizzle schema + connection
-│   │   ├── lib/         # JWT, env, OAuth verifiers, WebSocket, email
+│   │   ├── lib/         # JWT, env, OAuth verifiers, WebSocket (heartbeat), email, dates
 │   │   ├── middleware/  # Auth, validation
-│   │   └── routes/      # auth, pages, cells, legends, purchase (RC webhook), legal
+│   │   └── routes/      # auth, bootstrap (one-shot app state), pages, cells, legends,
+│   │                    # stats (all-time days), purchase (RC webhook), legal
 │   ├── drizzle/         # Generated SQL migrations
+│   ├── scripts/         # seed-demo-local, smoke (end-to-end against a running backend)
 │   └── Dockerfile       # Multi-stage: builder / runtime / development
 ├── flutter_app/
 │   ├── lib/
-│   │   ├── models/      # PageModel, CellModel, LegendModel
-│   │   ├── providers/   # Auth, Pages, Cells, Legends, Language, Premium, Theme
+│   │   ├── models/      # PageModel, CellModel, LegendModel, YearCells (immutable store entry)
+│   │   ├── providers/   # Auth, Pages, Cells, Legends (state only), Language, Premium, Theme
 │   │   ├── screens/     # Login, Register, PageList, Tracker, Settings
-│   │   ├── services/    # API, WebSocket, Purchase (RC), StoreLinks, Storage
+│   │   ├── services/    # API (keep-alive client, single-flight refresh), Sync (bootstrap,
+│   │   │                # disk snapshot, resume/reconnect resync), WebSocket, Purchase (RC),
+│   │   │                # StoreLinks, Storage
 │   │   ├── theme/       # Colors, fonts, theme
 │   │   └── widgets/     # Grid, custom paywall, dialogs, shared components
+│   ├── test/            # Unit tests (hermetic, MockClient)
+│   └── integration/     # backend_e2e_test.dart — real data layer vs a running local backend
 │   ├── ios/             # Apple-specific config (Profile.xcconfig, Podfile…)
 │   ├── android/
 │   └── pubspec.yaml
@@ -87,11 +93,32 @@ dian-dian/
 ### Quick start
 
 ```bash
-make db        # Start Postgres in Docker (port 127.0.0.1:5433)
+make db        # Start Postgres in Docker (port 127.0.0.1:5433) — or any local Postgres on 5433
 make back      # Run backend with tsx watch on http://localhost:3001
 make app       # Run Flutter (prompts device if multiple)
 make help      # List all targets
 ```
+
+### Tests
+
+```bash
+cd flutter_app && flutter analyze && flutter test            # hermetic unit tests
+cd backend && npx tsx scripts/smoke.ts                        # backend end-to-end (needs `make back`)
+cd flutter_app && flutter test integration/backend_e2e_test.dart   # real client data layer vs local backend
+cd backend && npx tsx scripts/seed-demo-local.ts              # demo@diandian.app / password with 9 trackers
+```
+
+In development the backend logs one line per `/api` call (method, path,
+status, duration, size) — the quickest way to see what a screen costs.
+
+### Data loading (1.3.0+)
+
+The app makes **one** `GET /api/bootstrap?year=` per year (pages + legends +
+compact cells for every page) instead of a request per tracker. Providers
+hold immutable per-year stores; `SyncService` owns loading, keeps a disk
+snapshot for an instant first paint, and silently re-fetches on app resume
+and WebSocket reconnection. Opening a tracker or switching to a loaded year
+costs zero requests.
 
 First time on the backend:
 
