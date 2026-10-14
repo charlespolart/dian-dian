@@ -100,18 +100,18 @@ def render(W, H, lang, out):
     # 点点, DIAN DIAN, tagline — every element centred on the same vertical
     # axis, the stack centred in the free space left of the cards.
     k = 0.92
-    f_cjk = ImageFont.truetype(FONT_CJK, int(470 * s * k))
-    f_lat = ImageFont.truetype(FONT_PIXEL, int(170 * s * k))
+    f_cjk = ImageFont.truetype(FONT_CJK, int(520 * s * k))
+    f_lat = ImageFont.truetype(FONT_PIXEL, int(200 * s * k))
     tag_text, tag_font = TAGLINES[lang]
-    f_tag = ImageFont.truetype(tag_font, int((110 if tag_font == FONT_CJK else 90) * s * k))
+    f_tag = ImageFont.truetype(tag_font, int((130 if tag_font == FONT_CJK else 108) * s * k))
     cjk_box = f_cjk.getbbox('点点')
     cjk_w, cjk_h = cjk_box[2] - cjk_box[0], cjk_box[3] - cjk_box[1]
     lat_box = f_lat.getbbox('DIAN DIAN')
     lat_w, lat_h = lat_box[2] - lat_box[0], lat_box[3] - lat_box[1]
     tag_box = f_tag.getbbox(tag_text)
     tag_w, tag_h = tag_box[2] - tag_box[0], tag_box[3] - tag_box[1]
-    icon_size = int(600 * s * k)
-    g1, g2, g3 = int(120 * s * k), int(90 * s * k), int(60 * s * k)
+    icon_size = int(700 * s * k)
+    g1, g2, g3 = int(130 * s * k), int(100 * s * k), int(70 * s * k)
     block_h = icon_size + g1 + cjk_h + g2 + lat_h + g3 + tag_h
     area_left, area_right = safe_x0, cx0 - int(120 * s)
     axis = (area_left + area_right) // 2
