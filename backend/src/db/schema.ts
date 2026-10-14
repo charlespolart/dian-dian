@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, smallint, integer, boolean, timestamp, primaryKey } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, smallint, integer, boolean, timestamp, primaryKey, index } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -23,6 +23,7 @@ export const oauthAccounts = pgTable('oauth_accounts', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   primaryKey({ columns: [t.provider, t.subject] }),
+  index('oauth_accounts_user_id_idx').on(t.userId),
 ]);
 
 // Stores a hashed 6-digit OTP code for password reset (not a link token).
@@ -34,7 +35,9 @@ export const passwordResetTokens = pgTable('password_reset_tokens', {
   attempts: integer('attempts').notNull().default(0),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => [
+  index('password_reset_tokens_user_id_idx').on(t.userId),
+]);
 
 export const emailVerificationTokens = pgTable('email_verification_tokens', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -50,7 +53,10 @@ export const refreshTokens = pgTable('refresh_tokens', {
   tokenHash: text('token_hash').notNull(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => [
+  index('refresh_tokens_token_hash_idx').on(t.tokenHash),
+  index('refresh_tokens_expires_at_idx').on(t.expiresAt),
+]);
 
 export const subscriptions = pgTable('subscriptions', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -62,7 +68,9 @@ export const subscriptions = pgTable('subscriptions', {
   active: boolean('active').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => [
+  index('subscriptions_user_id_idx').on(t.userId),
+]);
 
 export const pages = pgTable('pages', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -75,7 +83,9 @@ export const pages = pgTable('pages', {
   position: integer('position').notNull().default(0),
   palette: text('palette'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => [
+  index('pages_user_id_idx').on(t.userId),
+]);
 
 export const cells = pgTable('cells', {
   pageId: uuid('page_id').notNull().references(() => pages.id, { onDelete: 'cascade' }),
@@ -96,4 +106,6 @@ export const legends = pgTable('legends', {
   label: text('label').notNull(),
   position: integer('position').notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => [
+  index('legends_page_id_idx').on(t.pageId),
+]);

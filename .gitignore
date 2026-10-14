@@ -2,3 +2,6 @@ node_modules/
 
 # macOS Finder metadata
 .DS_Store
+
+# superpowers SDD workspace (ledger, briefs)
+.superpowers/

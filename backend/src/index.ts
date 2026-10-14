@@ -6,7 +6,8 @@ import rateLimit from 'express-rate-limit';
 import { createServer } from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { sql } from 'drizzle-orm';
+import { sql, lt } from 'drizzle-orm';
+import { refreshTokens, passwordResetTokens } from './db/schema.js';
 import { env } from './lib/env.js';
 import { db } from './db/index.js';
 import { setupWebSocket } from './lib/ws.js';
@@ -84,6 +85,21 @@ app.use('/api/purchase', purchaseRoutes);
 // healthcheck polls: if it depended on Postgres, every DB blip would mark the
 // backend unhealthy and stall `compose up --wait` during a deploy.
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
+
+// Expired refresh / reset tokens are dead weight: they only ever get deleted
+// on an explicit logout, so the tables grow forever and every refresh scans
+// more rows. Sweep hourly (and once at boot).
+async function purgeExpiredTokens() {
+  const now = new Date();
+  try {
+    await db.delete(refreshTokens).where(lt(refreshTokens.expiresAt, now));
+    await db.delete(passwordResetTokens).where(lt(passwordResetTokens.expiresAt, now));
+  } catch (err) {
+    console.error('Token purge failed:', err);
+  }
+}
+purgeExpiredTokens();
+setInterval(purgeExpiredTokens, 60 * 60 * 1000).unref();
 
 // Readiness — actually proves the DB is reachable. /api/health returning 200
 // says nothing about Postgres, so a green healthcheck can hide a dead DB
