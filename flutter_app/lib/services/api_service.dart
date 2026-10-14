@@ -133,7 +133,12 @@ class ApiService {
   /// parallel requests hitting an expired access token each rotated the
   /// refresh token; only the first succeeded and the rest logged the user out.
   Future<RefreshOutcome> _refreshTokens() {
-    return _refreshInFlight ??= _doRefresh().whenComplete(() => _refreshInFlight = null);
+    // Block body on purpose: a `whenComplete` callback that *returns* a
+    // future makes the chain wait for it (an arrow returning the cleared
+    // slot would be fine here, but keep the shape obviously safe).
+    return _refreshInFlight ??= _doRefresh().whenComplete(() {
+      _refreshInFlight = null;
+    });
   }
 
   Future<RefreshOutcome> _doRefresh() async {
