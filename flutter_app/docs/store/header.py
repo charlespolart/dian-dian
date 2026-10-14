@@ -1,8 +1,14 @@
-"""App Store product-page header (the "Header and search results" asset).
+"""App Store "universal creative asset": one 16:9 PNG, 5244x2950, per store
+locale, used for BOTH the product page header and the search results
+placement (App Store Connect Help, "Creative assets specifications" and
+"Manage your App Store assets": "If you upload a universal creative asset,
+you can use it for both your product page header and search results
+placement.").
 
-Renders the brand banner in the app style (dotted cream background, pixel
-fonts, tracker cards) at the two sizes App Store Connect accepts for the
-header, 5244x2950 and 3840x1646, with one tagline per store locale.
+Apple crops it per placement — 21:9 for the header (about 350 px off the top
+and bottom) and 3:2 for search results (about 410 px off each side) — so the
+composition stays inside the central 4425x2247 safe area, and a crop preview
+of each placement is written next to every asset for checking.
 
 Run (needs Pillow):
     python3 flutter_app/docs/store/header.py "/path/to/output/dir"
@@ -65,7 +71,6 @@ def draw_card(img, x, y, w, h, title, palette, rng, s):
 
 def render(W, H, lang, out):
     s = W / 5244
-    wide = W / H > 2.0
     img = Image.new('RGB', (W, H), BG)
     d = ImageDraw.Draw(img)
     step = int(118 * s); r = max(3, int(7 * s))
@@ -73,22 +78,28 @@ def render(W, H, lang, out):
         for xx in range(step, W, step):
             d.ellipse([xx - r, yy - r, xx + r, yy + r], fill=DOT_BG)
 
-    # cards on the right, nearly full height
+    # Safe area: what survives both crops (21:9 header, 3:2 search results),
+    # plus a little breathing room.
+    safe_x0 = int((W - H * 3 / 2) / 2) + int(90 * s)
+    safe_x1 = W - safe_x0
+    safe_y0 = int((H - W * 9 / 21) / 2) + int(90 * s)
+    safe_y1 = H - safe_y0
+
+    # cards on the right, filling the safe height
     rng = random.Random(7)
-    margin = int(220 * s)
-    ch = H - 2 * margin
+    ch = safe_y1 - safe_y0
     cw = int(ch * 0.29)
     gap = int(70 * s)
-    names = list(PALETTES) if wide else list(PALETTES)[:3]
+    names = list(PALETTES)[:3]
     total = len(names) * cw + (len(names) - 1) * gap
-    cx0 = W - int(260 * s) - total
+    cx0 = safe_x1 - total
     for i, name in enumerate(names):
-        draw_card(img, cx0 + i * (cw + gap), margin, cw, ch, name, PALETTES[name], rng, s)
+        draw_card(img, cx0 + i * (cw + gap), safe_y0, cw, ch, name, PALETTES[name], rng, s)
 
-    # brand lockup on the left: [cat icon] 点点 on one line, then DIAN DIAN and
-    # the tagline aligned under the icon; the block is centred in the free
-    # space between the left edge and the cards.
-    k = 0.8 if wide else 1.0
+    # brand lockup on the left: a centred stack — cat icon on its own line,
+    # 点点, DIAN DIAN, tagline — every element centred on the same vertical
+    # axis, the stack centred in the free space left of the cards.
+    k = 0.92
     f_cjk = ImageFont.truetype(FONT_CJK, int(640 * s * k))
     f_lat = ImageFont.truetype(FONT_PIXEL, int(170 * s * k))
     tag_text, tag_font = TAGLINES[lang]
@@ -99,35 +110,36 @@ def render(W, H, lang, out):
     lat_w, lat_h = lat_box[2] - lat_box[0], lat_box[3] - lat_box[1]
     tag_box = f_tag.getbbox(tag_text)
     tag_w, tag_h = tag_box[2] - tag_box[0], tag_box[3] - tag_box[1]
-    icon_size = int(cjk_h * 1.05)
-    gap_icon = int(90 * s * k)
-    g2, g3 = int(110 * s * k), int(70 * s * k)
-    row1_w = icon_size + gap_icon + cjk_w
-    block_w = max(row1_w, lat_w, tag_w)
-    block_h = icon_size + g2 + lat_h + g3 + tag_h
-    area_left, area_right = int(200 * s), cx0 - int(200 * s)
-    left = area_left + (area_right - area_left - block_w) // 2
+    icon_size = int(400 * s * k)
+    g1, g2, g3 = int(110 * s * k), int(110 * s * k), int(70 * s * k)
+    block_h = icon_size + g1 + cjk_h + g2 + lat_h + g3 + tag_h
+    area_left, area_right = safe_x0, cx0 - int(160 * s)
+    axis = (area_left + area_right) // 2
     y = (H - block_h) // 2
 
     icon = Image.open(ICON).convert('RGBA').resize((icon_size, icon_size), Image.LANCZOS)
     mask = Image.new('L', (icon_size, icon_size), 0)
     ImageDraw.Draw(mask).rounded_rectangle([0, 0, icon_size, icon_size], radius=int(icon_size * 0.24), fill=255)
+    ix = axis - icon_size // 2
     bw = max(2, int(10 * s))
-    d.rounded_rectangle([left - bw, y - bw, left + icon_size + bw, y + icon_size + bw], radius=int(icon_size * 0.26), fill='#FFFFFF', outline=CARD_BORDER, width=max(2, int(4 * s)))
-    img.paste(icon, (left, y), mask)
-    # 点点 vertically centred on the icon
-    tx = left + icon_size + gap_icon - cjk_box[0]
-    ty = y + (icon_size - cjk_h) // 2 - cjk_box[1]
-    d.text((tx, ty), '点点', font=f_cjk, fill=TITLE)
-    y += icon_size + g2
-    d.text((left - lat_box[0], y - lat_box[1]), 'DIAN DIAN', font=f_lat, fill=TITLE)
+    d.rounded_rectangle([ix - bw, y - bw, ix + icon_size + bw, y + icon_size + bw], radius=int(icon_size * 0.26), fill='#FFFFFF', outline=CARD_BORDER, width=max(2, int(4 * s)))
+    img.paste(icon, (ix, y), mask)
+    y += icon_size + g1
+    d.text((axis - cjk_w // 2 - cjk_box[0], y - cjk_box[1]), '点点', font=f_cjk, fill=TITLE)
+    y += cjk_h + g2
+    d.text((axis - lat_w // 2 - lat_box[0], y - lat_box[1]), 'DIAN DIAN', font=f_lat, fill=TITLE)
     y += lat_h + g3
-    d.text((left - tag_box[0] + int(4 * s), y - tag_box[1]), tag_text, font=f_tag, fill=MUTED)
+    d.text((axis - tag_w // 2 - tag_box[0], y - tag_box[1]), tag_text, font=f_tag, fill=MUTED)
 
     img.save(out, 'PNG', optimize=True)
-    img.resize((W // 4, H // 4), Image.LANCZOS).save(out.replace('.png', '-preview.png'), 'PNG')
+    # Previews of what each placement shows (Apple crops the universal asset).
+    base = out.replace('.png', '')
+    img.resize((W // 4, H // 4), Image.LANCZOS).save(f'{base}-preview.png', 'PNG')
+    hh = int(W * 9 / 21); y0 = (H - hh) // 2
+    img.crop((0, y0, W, y0 + hh)).resize((W // 4, hh // 4), Image.LANCZOS).save(f'{base}-preview-header-21x9.png', 'PNG')
+    ww = int(H * 3 / 2); x0 = (W - ww) // 2
+    img.crop((x0, 0, x0 + ww, H)).resize((ww // 4, H // 4), Image.LANCZOS).save(f'{base}-preview-search-3x2.png', 'PNG')
     print(out, img.size)
 
 for lang in TAGLINES:
-    render(5244, 2950, lang, f'{OUT}/header-{lang}-5244x2950.png')
-    render(3840, 1646, lang, f'{OUT}/header-{lang}-3840x1646.png')
+    render(5244, 2950, lang, f'{OUT}/universal-{lang}-5244x2950.png')
