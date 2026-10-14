@@ -1,7 +1,7 @@
 # Changelog — backend
 
 Notable changes to the API, newest first. Versions are cut by
-`./release.sh` and tagged `backend-vX.Y.Z`; the mobile app has its
+`./release-backend.sh` and tagged `backend-vX.Y.Z`; the mobile app has its
 own version in `flutter_app/pubspec.yaml` and is released separately.
 
 Rules: a version never removes or renames what the previous one needs (the

@@ -77,10 +77,12 @@ dian-dian/
 │   ├── Caddyfile                   # Reverse proxy + cache headers
 │   ├── scripts/                    # VPS-side backup/restore helpers (synced at deploy)
 │   └── VPS_MIGRATION_RUNBOOK.md    # One-time legacy-to-/srv migration
-├── release.sh                      # Cut backend-vX.Y.Z (checks, tag, push)
-├── deploy-prod.sh                  # Install the latest release on the VPS (asks twice)
-├── rollback-prod.sh                # One version back (asks twice)
-├── .github/workflows/release.yml   # On tag: checks, tests, image, GitHub Release — never deploys
+├── release-backend.sh              # Cut backend-vX.Y.Z (checks, tag, push)
+├── release-app.sh                  # Cut app-vX.Y.Z (analyze + tests, tag, push)
+├── deploy-prod.sh                  # Install the latest backend release on the VPS (asks twice)
+├── rollback-prod.sh                # One backend version back (asks twice)
+├── .github/workflows/release.yml       # backend-v* tag: checks, smoke, image, GitHub Release — never deploys
+├── .github/workflows/release-app.yml   # app-v* tag: analyze, tests, GitHub Release
 ├── Makefile                        # `make run/back/db/test/prod-ios/prod-android/version`
 └── MULTIYEAR_REFACTOR_PLAN.md      # Plan for the year-agnostic tracker refactor
 ```
@@ -160,25 +162,27 @@ twice.
 
 | | Backend | Mobile app |
 |---|---|---|
-| Source of truth | `backend/package.json` | `flutter_app/pubspec.yaml` |
-| Changelog | `backend/CHANGELOG.md` | store release notes |
-| Git tag | `backend-vX.Y.Z` | — |
-| Delivered by | `./deploy-prod.sh` | `make prod-ios` / `make prod-android`, then store submission |
+| Source of truth | `backend/package.json` | `flutter_app/pubspec.yaml` (`version: X.Y.Z`, no build number) |
+| Build number | — | commit count (`git rev-list --count HEAD`), same on iOS and Android |
+| Changelog | `backend/CHANGELOG.md` | `flutter_app/CHANGELOG.md` |
+| Released by | `./release-backend.sh` → tag `backend-vX.Y.Z` | `./release-app.sh` → tag `app-vX.Y.Z` |
+| CI on the tag | tests + smoke, image, GitHub Release | analyze + tests, GitHub Release |
+| Delivered by | `./deploy-prod.sh` | `make prod-ios` / `make prod-android` from the tag, then store submission |
 
 The two move independently; the only rule between them is compatibility: the
 backend keeps working for every installed app, and an app version states the
 backend version it needs in the changelog.
 
-### Release, deploy, roll back
+### Backend: release, deploy, roll back
 
 ```bash
-./release.sh minor        # on a clean, pushed master: bumps backend/package.json,
-                          # dates CHANGELOG "Unreleased", tags backend-vX.Y.Z, pushes
-./deploy-prod.sh          # latest released tag → production (SSH), asks twice
-./rollback-prod.sh        # one version back, asks twice
+./release-backend.sh minor   # on a clean, pushed master: bumps backend/package.json,
+                             # dates CHANGELOG "Unreleased", tags backend-vX.Y.Z, pushes
+./deploy-prod.sh             # latest released tag → production (SSH), asks twice
+./rollback-prod.sh           # one version back, asks twice
 ```
 
-1. `./release.sh` refuses to run unless master is
+1. `./release-backend.sh` refuses to run unless master is
    clean and identical to origin, the changelog has notes under
    `## [Unreleased]` and the typecheck passes. It then commits
    "Release backend-vX.Y.Z", tags and pushes atomically.
@@ -204,17 +208,23 @@ backend version it needs in the changelog.
 Needs the GitHub CLI logged in and SSH as root to the VPS
 (`DIAN_DIAN_PROD_HOST`, default `root@45.76.44.34`).
 
-### Store builds (app)
+### App: release, then store builds
 
 ```bash
-make prod-ios        # .ipa for App Store Connect (Transporter / Xcode)
-make prod-android    # .aab for the Play Console (needs flutter_app/android/key.properties)
+./release-app.sh minor   # on a clean, pushed master: bumps flutter_app/pubspec.yaml,
+                         # dates flutter_app/CHANGELOG.md, tags app-vX.Y.Z, pushes
+git checkout app-vX.Y.Z  # (already there right after the release)
+make prod-ios            # .ipa for App Store Connect (Transporter / Xcode)
+make prod-android        # .aab for the Play Console (needs flutter_app/android/key.properties)
 ```
 
-Both refuse to build from a modified working tree (a store build must
-identify a commit) and check that the production API answers first. The
-version and build number come from `flutter_app/pubspec.yaml`; bump them
-before building (`make version` shows them).
+`./release-app.sh` runs `flutter analyze` and `flutter test` before writing
+anything; the tag push runs the **Release (app)** workflow (same checks in CI
++ GitHub Release). Store builds refuse to run unless the working tree is
+clean, HEAD is the `app-vX.Y.Z` tag of the pubspec version, and the
+production API answers. The build number is never typed: it is the commit
+count of HEAD, identical for iOS and Android, so a binary always identifies
+a commit (`make version` shows both).
 
 ### First-time VPS setup
 

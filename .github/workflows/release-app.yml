@@ -1,0 +1,92 @@
+name: Release (app)
+
+# Runs when an app version tag is pushed, which is what ./release-app.sh
+# does. It refuses a tag that does not match flutter_app/pubspec.yaml or does
+# not sit on master, runs the analyzer and the tests, and publishes the
+# GitHub Release with that version's section of flutter_app/CHANGELOG.md.
+#
+# The store builds are made by hand from the tag (make prod-ios,
+# make prod-android): signing stays on the developer's machine. Nothing is
+# uploaded to a store from here.
+on:
+  push:
+    tags:
+      - 'app-v*'
+
+concurrency:
+  group: release-app-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: flutter_app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The whole history, to tell whether the tag sits on master.
+          fetch-depth: 0
+
+      - name: Tag matches pubspec.yaml, sits on master, has its release notes
+        run: |
+          version="$(sed -nE 's/^version: ([0-9]+\.[0-9]+\.[0-9]+)$/\1/p' pubspec.yaml)"
+
+          if [ -z "$version" ]; then
+            echo "::error::flutter_app/pubspec.yaml has no 'version: X.Y.Z' line (the build number is computed, no +N)."
+            exit 1
+          fi
+
+          if [ "app-v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match the version in flutter_app/pubspec.yaml ($version)."
+            exit 1
+          fi
+
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
+            echo "::error::Tag $GITHUB_REF_NAME is not on master."
+            exit 1
+          fi
+
+          if ! grep -q "^## \[$version\]" CHANGELOG.md; then
+            echo "::error::flutter_app/CHANGELOG.md has no section for $version."
+            exit 1
+          fi
+
+      - uses: subosito/flutter-action@v2
+        with:
+          # The version the app is built with (flutter --version on the dev machine).
+          flutter-version: 3.47.5
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Analyzer
+        run: flutter analyze
+
+      - name: Tests
+        run: flutter test
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: GitHub Release with the version's changelog section
+        run: |
+          version="${GITHUB_REF_NAME#app-v}"
+
+          awk -v heading="## [$version]" '
+            /^## \[/ { inside = (index($0, heading) == 1); next }
+            inside
+          ' flutter_app/CHANGELOG.md > release-notes.md
+
+          gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME" --notes-file release-notes.md
+        env:
+          GH_TOKEN: ${{ github.token }}

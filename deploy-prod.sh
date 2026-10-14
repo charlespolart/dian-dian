@@ -3,7 +3,7 @@
 #
 #   ./deploy-prod.sh
 #
-# Production only ever runs versions cut by ./release.sh. The
+# Production only ever runs versions cut by ./release-backend.sh. The
 # script finds the newest tag backend-vX.Y.Z, refuses it unless its Release
 # workflow succeeded (typecheck + smoke green, image backend-vX.Y.Z pushed)
 # and production is not already on it, shows "vA → vB" and asks twice, the
@@ -53,7 +53,7 @@ git fetch -q --tags origin
 
 tag="$(git tag -l "${prefix}*" | sort -V | tail -1)"
 
-[ -n "$tag" ] || fail "no backend version tag yet: run ./release.sh first"
+[ -n "$tag" ] || fail "no backend version tag yet: run ./release-backend.sh first"
 
 # The tag's Release workflow is what typechecked, smoke-tested and built the image.
 conclusion="$(gh api "repos/$repo/actions/workflows/release.yml/runs?event=push&per_page=50" \

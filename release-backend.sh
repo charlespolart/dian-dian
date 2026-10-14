@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Cuts a release of the backend:
 #
-#   ./release.sh patch | minor | major | X.Y.Z
+#   ./release-backend.sh patch | minor | major | X.Y.Z
 #
 # It bumps the version in backend/package.json (and the lockfile, through
 # `npm version`), dates the "Unreleased" section of backend/CHANGELOG.md,
@@ -19,7 +19,7 @@
 # not tagged yet, release notes under "Unreleased", typecheck passing.
 #
 # The mobile app has its own version (flutter_app/pubspec.yaml) and its own
-# release path; this script never touches it.
+# release script (./release-app.sh); this one never touches it.
 set -euo pipefail
 
 cd "$(dirname "$0")"
@@ -62,7 +62,7 @@ higher() {
   return 1
 }
 
-[ $# -eq 1 ] || fail "usage: ./release.sh patch|minor|major|X.Y.Z"
+[ $# -eq 1 ] || fail "usage: ./release-backend.sh patch|minor|major|X.Y.Z"
 
 command -v gh >/dev/null 2>&1 || fail "the GitHub CLI (gh) is missing: brew install gh"
 command -v node >/dev/null 2>&1 || fail "node is missing"
