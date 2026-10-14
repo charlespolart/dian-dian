@@ -6,6 +6,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { broadcast } from '../lib/ws.js';
 import { eq, and } from 'drizzle-orm';
+import { daysInMonth } from '../lib/dates.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -50,9 +51,12 @@ router.get('/:pageId', async (req, res) => {
   }
 });
 
+// Months are 1-based (1 = January) everywhere: the app grid, the seed data
+// and the stats all use 1..12. The original schema said 0..11, which made
+// every December write fail validation with a 400.
 const upsertCellSchema = z.object({
   year: z.number().int().min(2000).max(2100).optional(),
-  month: z.number().int().min(0).max(11),
+  month: z.number().int().min(1).max(12),
   day: z.number().int().min(1).max(31),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Couleur hex invalide'),
   comment: z.string().max(200).nullable().optional(),
@@ -69,6 +73,12 @@ router.put('/:pageId', validate(upsertCellSchema), async (req, res) => {
       .limit(1);
     if (!page) { res.status(404).json({ error: 'Page not found' }); return; }
     const year = pickYear(req.body.year, page.year);
+    // Leap-aware day check needs the resolved year, so it lives here rather
+    // than in the zod schema.
+    if (day > daysInMonth(month, year)) {
+      res.status(400).json({ error: 'Invalid day for month' });
+      return;
+    }
 
     const [cell] = await db.insert(cells)
       .values({ pageId, year, month, day, color, comment: comment ?? null, updatedAt: new Date() })
@@ -88,7 +98,7 @@ router.put('/:pageId', validate(upsertCellSchema), async (req, res) => {
 
 const deleteCellSchema = z.object({
   year: z.number().int().min(2000).max(2100).optional(),
-  month: z.number().int().min(0).max(11),
+  month: z.number().int().min(1).max(12),
   day: z.number().int().min(1).max(31),
 });
 
@@ -136,11 +146,14 @@ router.patch('/:pageId/recolor', validate(recolorSchema), async (req, res) => {
     if (!page) { res.status(404).json({ error: 'Page not found' }); return; }
 
     const { colorMap } = req.body;
-    for (const [oldColor, newColor] of Object.entries(colorMap)) {
-      await db.update(cells)
-        .set({ color: newColor as string, updatedAt: new Date() })
-        .where(and(eq(cells.pageId, pageId), eq(cells.color, oldColor)));
-    }
+    // One transaction: a multi-color rename must not half-apply.
+    await db.transaction(async (tx) => {
+      for (const [oldColor, newColor] of Object.entries(colorMap)) {
+        await tx.update(cells)
+          .set({ color: newColor as string, updatedAt: new Date() })
+          .where(and(eq(cells.pageId, pageId), eq(cells.color, oldColor)));
+      }
+    });
 
     broadcast(req.userId!, 'cells:recolored', { pageId, colorMap });
     res.json({ ok: true });

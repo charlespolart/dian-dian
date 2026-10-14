@@ -108,11 +108,13 @@ router.patch('/:pageId/recolor', validate(recolorLegendSchema), async (req, res)
     if (!page) { res.status(404).json({ error: 'Page not found' }); return; }
 
     const { colorMap } = req.body;
-    for (const [oldColor, newColor] of Object.entries(colorMap)) {
-      await db.update(legends)
-        .set({ color: newColor as string })
-        .where(and(eq(legends.pageId, pageId), eq(legends.color, oldColor)));
-    }
+    await db.transaction(async (tx) => {
+      for (const [oldColor, newColor] of Object.entries(colorMap)) {
+        await tx.update(legends)
+          .set({ color: newColor as string })
+          .where(and(eq(legends.pageId, pageId), eq(legends.color, oldColor)));
+      }
+    });
 
     broadcast(req.userId!, 'legends:recolored', { pageId, colorMap });
     res.json({ ok: true });
