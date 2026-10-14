@@ -5,8 +5,12 @@ class AudioService {
   factory AudioService() => _instance;
   AudioService._internal();
 
-  final _tapPlayer = AudioPlayer();
-  final _erasePlayer = AudioPlayer();
+  // Lazy: creating an AudioPlayer touches the platform channel, which is
+  // unavailable in unit tests that construct providers.
+  AudioPlayer? _tap;
+  AudioPlayer? _erase;
+  AudioPlayer get _tapPlayer => _tap ??= AudioPlayer();
+  AudioPlayer get _erasePlayer => _erase ??= AudioPlayer();
 
   Future<void> playTap() async {
     await _tapPlayer.stop();

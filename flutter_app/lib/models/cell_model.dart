@@ -17,6 +17,29 @@ class CellModel {
     required this.updatedAt,
   });
 
+  /// Stable O(1) lookup key inside a year: months 1..12, days 1..31.
+  static int keyOf(int month, int day) => month * 32 + day;
+  int get key => keyOf(month, day);
+
+  /// Bootstrap tuple: `[month, day, color]` or `[month, day, color, comment]`.
+  factory CellModel.fromCompact(String pageId, int year, List<dynamic> row) {
+    return CellModel(
+      pageId: pageId,
+      year: year,
+      month: row[0] as int,
+      day: row[1] as int,
+      color: row[2] as String,
+      comment: row.length > 3 ? row[3] as String? : null,
+      updatedAt: '',
+    );
+  }
+
+  /// Inverse of [fromCompact]; an empty comment is dropped, not serialized.
+  List<dynamic> toCompact() {
+    final c = comment;
+    return c != null && c.isNotEmpty ? [month, day, color, c] : [month, day, color];
+  }
+
   factory CellModel.fromJson(Map<String, dynamic> json) {
     return CellModel(
       pageId: (json['pageId'] ?? json['page_id'] ?? '') as String,
