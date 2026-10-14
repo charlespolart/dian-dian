@@ -1,17 +1,4 @@
-.PHONY: app back db db-down ipa aab release deploy rollback help
-
-# Backend releases: `make release minor` (patch|minor|major|X.Y.Z, default
-# patch) cuts and tags a version (GitHub then tests it and builds the image),
-# `make deploy` installs the latest released version on production,
-# `make rollback` goes one version back. Nothing deploys without one of
-# these two scripts.
-#
-# The bump word after `release` is a make goal syntactically, so it is
-# declared as a no-op target to stop make looking for a rule named "minor".
-ifeq (release,$(firstword $(MAKECMDGOALS)))
-  BUMP := $(or $(word 2,$(MAKECMDGOALS)),patch)
-  $(eval $(BUMP):;@:)
-endif
+.PHONY: app back db db-down ipa aab help
 
 COMPOSE_DEV := docker compose -f ops/docker-compose.yml -f ops/docker-compose.dev.yml
 
@@ -33,15 +20,6 @@ ipa:     ## Build iOS App Store IPA
 aab:     ## Build Android Play Store bundle (needs android/key.properties)
 	cd flutter_app && flutter build appbundle --release \
 	  && open build/app/outputs/bundle/release
-
-release: ## Cut a backend release: make release patch|minor|major|X.Y.Z
-	./ops/scripts/release.sh $(BUMP)
-
-deploy:  ## Install the latest released backend version on production (asks twice)
-	./ops/scripts/deploy-prod.sh
-
-rollback: ## Put production back on the previous backend version (asks twice)
-	./ops/scripts/rollback-prod.sh
 
 help:    ## List commands
 	@grep -E '^[a-z-]+:.*?##' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}; {printf "  \033[36m%-8s\033[0m %s\n", $$1, $$2}'

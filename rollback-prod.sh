@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 # Puts production back on the backend version that ran before the last deploy:
 #
-#   ./ops/scripts/rollback-prod.sh
-#   make rollback
+#   ./rollback-prod.sh
 #
 # One step back, never two: the previous version is the one
-# ./ops/scripts/deploy-prod.sh recorded in /srv/dian-dian/.env, and a second
+# ./deploy-prod.sh recorded in /srv/dian-dian/.env, and a second
 # rollback in a row is refused until a version has been deployed again.
 #
 # A rollback reinstalls the code only; the database keeps the newer version's
@@ -18,7 +17,7 @@
 # root@45.76.44.34).
 set -euo pipefail
 
-cd "$(dirname "$0")/../.."
+cd "$(dirname "$0")"
 
 host="${DIAN_DIAN_PROD_HOST:-root@45.76.44.34}"
 stack="/srv/dian-dian"

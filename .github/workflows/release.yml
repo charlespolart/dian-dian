@@ -1,14 +1,14 @@
 name: Release (backend)
 
-# Runs when a backend version tag is pushed, which is what
-# ops/scripts/release.sh does. It refuses a tag that does not match
+# Runs when a backend version tag is pushed, which is what ./release.sh
+# does. It refuses a tag that does not match
 # backend/package.json or does not sit on master, typechecks, builds, runs
 # the smoke suite against the built server and a throwaway Postgres, builds
 # the image tagged with the version and publishes the GitHub Release with that
 # version's section of backend/CHANGELOG.md.
 #
 # NOTHING IS DEPLOYED FROM HERE. Production changes only through
-# ops/scripts/deploy-prod.sh, by hand.
+# ./deploy-prod.sh, by hand.
 on:
   push:
     tags:

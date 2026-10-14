@@ -163,7 +163,7 @@ cp -a "$caddy_cfg_src/." /srv/dian-dian/caddy/config/
 
 From your laptop:
 ```bash
-make deploy   # ops/scripts/deploy-prod.sh — latest released backend-vX.Y.Z tag
+./deploy-prod.sh   # latest released backend-vX.Y.Z tag
 gh run watch              # tail the run
 ```
 
@@ -238,7 +238,7 @@ This works as long as you haven't deleted `/root/dian-dian` or the named volumes
 
 For rolling back to a previous GHCR tag (after migration is stable):
 ```bash
-make rollback   # ops/scripts/rollback-prod.sh — back to PREVIOUS_IMAGE_TAG
+./rollback-prod.sh   # back to PREVIOUS_IMAGE_TAG
 ```
 The image for that SHA must still exist on GHCR. Browse old tags:
 https://github.com/charlespolart/dian-dian/pkgs/container/dian-dian-backend

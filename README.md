@@ -75,10 +75,13 @@ dian-dian/
 │   ├── docker-compose.dev.yml      # Local overlay (build target=development, ports)
 │   ├── docker-compose.prod.yml     # Prod overlay (GHCR image, /srv bind mounts)
 │   ├── Caddyfile                   # Reverse proxy + cache headers
-│   ├── scripts/deploy.sh           # `gh workflow run` wrapper
+│   ├── scripts/                    # VPS-side backup/restore helpers (synced at deploy)
 │   └── VPS_MIGRATION_RUNBOOK.md    # One-time legacy-to-/srv migration
-├── .github/workflows/deploy.yml    # Manual deploy (build GHCR + ssh pull)
-├── Makefile                        # `make app/back/db/ipa/deploy`
+├── release.sh                      # Cut backend-vX.Y.Z (checks, tag, push)
+├── deploy-prod.sh                  # Install the latest release on the VPS (asks twice)
+├── rollback-prod.sh                # One version back (asks twice)
+├── .github/workflows/release.yml   # On tag: checks, tests, image, GitHub Release — never deploys
+├── Makefile                        # `make app/back/db/ipa/aab`
 └── MULTIYEAR_REFACTOR_PLAN.md      # Plan for the year-agnostic tracker refactor
 ```
 
@@ -158,7 +161,7 @@ twice.
 | Source of truth | `backend/package.json` | `flutter_app/pubspec.yaml` |
 | Changelog | `backend/CHANGELOG.md` | store release notes |
 | Git tag | `backend-vX.Y.Z` | — |
-| Delivered by | `make deploy` | App Store / Play submission |
+| Delivered by | `./deploy-prod.sh` | App Store / Play submission |
 
 The two move independently; the only rule between them is compatibility: the
 backend keeps working for every installed app, and an app version states the
@@ -167,13 +170,13 @@ backend version it needs in the changelog.
 ### Release, deploy, roll back
 
 ```bash
-make release minor        # on a clean, pushed master: bumps backend/package.json,
+./release.sh minor        # on a clean, pushed master: bumps backend/package.json,
                           # dates CHANGELOG "Unreleased", tags backend-vX.Y.Z, pushes
-make deploy               # latest released tag → production (SSH), asks twice
-make rollback             # one version back, asks twice
+./deploy-prod.sh          # latest released tag → production (SSH), asks twice
+./rollback-prod.sh        # one version back, asks twice
 ```
 
-1. `make release` (ops/scripts/release.sh) refuses to run unless master is
+1. `./release.sh` refuses to run unless master is
    clean and identical to origin, the changelog has notes under
    `## [Unreleased]` and the typecheck passes. It then commits
    "Release backend-vX.Y.Z", tags and pushes atomically.
@@ -182,7 +185,7 @@ make rollback             # one version back, asks twice
    migrations on a throwaway Postgres, the smoke suite against the built
    server, then the image `ghcr.io/charlespolart/dian-dian-backend:backend-vX.Y.Z`
    and a GitHub Release with the changelog section. It never touches the VPS.
-3. `make deploy` (ops/scripts/deploy-prod.sh) takes the newest tag, refuses it
+3. `./deploy-prod.sh` takes the newest tag, refuses it
    unless its workflow is green and the GitHub Release exists, shows
    "production: vA → vB", asks for `y` then for the version typed back. Over
    SSH it syncs `ops/` as of the tag (compose files, Caddyfile by `cat >` to
@@ -191,7 +194,7 @@ make rollback             # one version back, asks twice
    `PREVIOUS_IMAGE_TAG`), pulls, brings postgres up, runs the migrations with
    3 attempts, brings the stack up, validates and reloads Caddy, appends to
    `deploy.log`, then waits for `/api/health` to report the new version.
-4. `make rollback` (ops/scripts/rollback-prod.sh) goes back to
+4. `./rollback-prod.sh` goes back to
    `PREVIOUS_IMAGE_TAG` — one step, never two in a row — with the same
    confirmations and health check. Migrations are forward-only: a version must
    never drop or rename what the previous one needs.

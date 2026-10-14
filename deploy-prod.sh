@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 # Installs the latest released backend version on production:
 #
-#   ./ops/scripts/deploy-prod.sh
-#   make deploy
+#   ./deploy-prod.sh
 #
-# Production only ever runs versions cut by ./ops/scripts/release.sh. The
+# Production only ever runs versions cut by ./release.sh. The
 # script finds the newest tag backend-vX.Y.Z, refuses it unless its Release
 # workflow succeeded (typecheck + smoke green, image backend-vX.Y.Z pushed)
 # and production is not already on it, shows "vA → vB" and asks twice, the
@@ -15,7 +14,7 @@
 #      build context, host scripts; the Caddyfile through `cat >` so the
 #      bind-mounted file keeps its inode),
 #   2. pins the tag in /srv/dian-dian/.env (IMAGE_TAG), keeping the one that
-#      was running in PREVIOUS_IMAGE_TAG for ./ops/scripts/rollback-prod.sh,
+#      was running in PREVIOUS_IMAGE_TAG for ./rollback-prod.sh,
 #   3. pulls the image, brings postgres up, runs the migrations (3 attempts),
 #      brings the whole stack up, validates + reloads Caddy,
 # and ends by checking that https://diandian.overridedev.com/api/health
@@ -25,7 +24,7 @@
 # (DIAN_DIAN_PROD_HOST, default root@45.76.44.34).
 set -euo pipefail
 
-cd "$(dirname "$0")/../.."
+cd "$(dirname "$0")"
 
 host="${DIAN_DIAN_PROD_HOST:-root@45.76.44.34}"
 stack="/srv/dian-dian"
@@ -49,7 +48,7 @@ git fetch -q --tags origin
 
 tag="$(git tag -l "${prefix}*" | sort -V | tail -1)"
 
-[ -n "$tag" ] || fail "no backend version tag yet: run ./ops/scripts/release.sh first"
+[ -n "$tag" ] || fail "no backend version tag yet: run ./release.sh first"
 
 # The tag's Release workflow is what typechecked, smoke-tested and built the image.
 conclusion="$(gh api "repos/$repo/actions/workflows/release.yml/runs?event=push&per_page=50" \
@@ -193,6 +192,6 @@ cat >&2 <<EOF
 Production did not report $version after 3 minutes ($health_url).
 Look at the containers on the VPS:
   ssh $host 'cd $stack && docker compose ps && docker compose logs --tail 50 backend'
-If the new version is broken, ./ops/scripts/rollback-prod.sh goes back to ${current:-the previous image}.
+If the new version is broken, ./rollback-prod.sh goes back to ${current:-the previous image}.
 EOF
 exit 1

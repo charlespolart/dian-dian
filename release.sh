@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # Cuts a release of the backend:
 #
-#   ./ops/scripts/release.sh patch | minor | major | X.Y.Z
-#   make release minor
+#   ./release.sh patch | minor | major | X.Y.Z
 #
 # It bumps the version in backend/package.json (and the lockfile, through
 # `npm version`), dates the "Unreleased" section of backend/CHANGELOG.md,
@@ -13,7 +12,7 @@
 # backend-vX.Y.Z and publishes the GitHub Release.
 #
 # NOTHING IS DEPLOYED BY THIS SCRIPT OR BY THE WORKFLOW: production changes
-# only through ./ops/scripts/deploy-prod.sh, by hand.
+# only through ./deploy-prod.sh, by hand.
 #
 # Every check runs before anything is written: master checked out, clean and
 # identical to origin/master, a version not lower than the current one and
@@ -23,7 +22,7 @@
 # release path; this script never touches it.
 set -euo pipefail
 
-cd "$(dirname "$0")/../.."
+cd "$(dirname "$0")"
 
 branch="master"
 version_file="backend/package.json"
@@ -58,7 +57,7 @@ higher() {
   return 1
 }
 
-[ $# -eq 1 ] || fail "usage: ./ops/scripts/release.sh patch|minor|major|X.Y.Z"
+[ $# -eq 1 ] || fail "usage: ./release.sh patch|minor|major|X.Y.Z"
 
 command -v gh >/dev/null 2>&1 || fail "the GitHub CLI (gh) is missing: brew install gh"
 command -v node >/dev/null 2>&1 || fail "node is missing"
@@ -149,4 +148,4 @@ repo="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
 
 echo
 echo "Released $tag. The Release workflow is running: https://github.com/$repo/actions"
-echo "When it is green, deploy with: make deploy"
+echo "When it is green, deploy with: ./deploy-prod.sh"
