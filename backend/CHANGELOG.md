@@ -10,6 +10,18 @@ working against the new backend.
 
 ## [Unreleased]
 
+### Added
+- `POST /api/pages` accepts `legends: [{color, label}]` (≤ 12, created in the same transaction, positions in array order) and `replaces: <pageId>` (an empty page of the account — no legend, no cell — deleted in that transaction, the new page taking its position; 404 if it is not the caller's, 409 if it is not empty, nothing written in both cases). The response and the `page:created` WebSocket event carry `legends` and `replaced`; `page:deleted` is sent for the replaced page.
+- `GET /api/bootstrap` returns `activated`: the account has at least one cell, on any page, any year.
+- `cells.created_at` (migration 0013, backfilled from `updated_at`), returned as `createdAt` by the cell routes.
+- `scripts/prod-activation.sql`: activation by weekly signup cohort (first cell within 24 h / 7 days, never).
+
+### Changed
+- No "My Tracker" page is created at signup (email or OAuth) any more: the app's first-tracker flow (1.4.0) creates the first page with its legends.
+
+### Compatibility
+- Apps ≤ 1.3.0 keep working (a new account shows an empty list with the + button). App 1.4.0 requires this version.
+
 ## [1.1.1] - 2026-10-15
 
 ### Added
