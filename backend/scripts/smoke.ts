@@ -149,6 +149,55 @@ async function main() {
     assert.ok(!plain.includes('referrer='), 'no referrer without a campaign');
   }
 
+  // --- first tracker (app 1.4.0): page + legends in one transaction ---------
+  {
+    r = await call('POST', '/api/pages', {
+      title: 'Humeur',
+      legends: [
+        { color: '#FFEC99', label: 'Génial' }, { color: '#FFD43B', label: 'Super' },
+        { color: '#8CE99A', label: 'Bien' }, { color: '#74C0FC', label: 'Bof' }, { color: '#E599F7', label: 'Mou' },
+      ],
+    });
+    assert.equal(r.status, 201, `create with legends: ${JSON.stringify(r.json)}`);
+    const mood: string = r.json.id;
+    assert.equal(r.json.position, 0, 'position defaults to 0 when omitted');
+    assert.deepEqual(
+      r.json.legends.map((l: Json) => [l.label, l.position]),
+      [['Génial', 0], ['Super', 1], ['Bien', 2], ['Bof', 3], ['Mou', 4]],
+      'legends created in order',
+    );
+    assert.equal(r.json.replaced, null, 'nothing replaced');
+    r = await call('GET', `/api/legends/${mood}`);
+    assert.equal(r.json.length, 5, 'legends persisted');
+
+    r = await call('POST', '/api/pages', { title: 'Empty', position: 7 });
+    assert.equal(r.status, 201);
+    const empty: string = r.json.id;
+    assert.deepEqual(r.json.legends, [], 'legends key always present');
+    r = await call('POST', '/api/pages', {
+      title: 'Sommeil', replaces: empty, legends: [{ color: '#1864AB', label: '8 h+' }],
+    });
+    assert.equal(r.status, 201, `replace: ${JSON.stringify(r.json)}`);
+    const sleep: string = r.json.id;
+    assert.equal(r.json.replaced, empty, 'reports the replaced page');
+    assert.equal(r.json.position, 7, 'takes the position of the replaced page');
+    r = await call('GET', '/api/pages');
+    const ids: string[] = r.json.map((p: Json) => p.id);
+    assert.ok(!ids.includes(empty) && ids.includes(sleep), 'replaced page is gone, new one is there');
+
+    const before = ids.length;
+    r = await call('POST', '/api/pages', { title: 'Nope', replaces: mood });
+    assert.equal(r.status, 409, 'a page with legends cannot be replaced');
+    r = await call('POST', '/api/pages', { title: 'Nope', replaces: '00000000-0000-4000-8000-000000000000' });
+    assert.equal(r.status, 404, 'an unknown page cannot be replaced');
+    r = await call('POST', '/api/pages', {
+      title: 'Nope', legends: Array.from({ length: 13 }, (_, i) => ({ color: '#000000', label: `L${i}` })),
+    });
+    assert.equal(r.status, 400, '13 legends rejected');
+    r = await call('GET', '/api/pages');
+    assert.equal(r.json.length, before, 'refused creations wrote nothing');
+  }
+
   // --- cleanup --------------------------------------------------------------
   r = await call('DELETE', '/api/auth/account');
   assert.equal(r.status, 200);
