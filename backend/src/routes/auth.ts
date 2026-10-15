@@ -10,20 +10,11 @@ import { requireAuth } from '../middleware/auth.js';
 import { sendPasswordResetEmail, sendAccountDeletedEmail } from '../lib/email.js';
 import { verifyAppleIdentityToken, verifyGoogleIdToken } from '../lib/oauth.js';
 import { env } from '../lib/env.js';
+import { hasActiveSubscription } from '../lib/premium.js';
 import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
 
 const router = Router();
-
-async function hasActiveSubscription(userId: string): Promise<boolean> {
-  const [sub] = await db.select()
-    .from(subscriptions)
-    .where(and(eq(subscriptions.userId, userId), eq(subscriptions.active, true)))
-    .limit(1);
-  if (!sub) return false;
-  if (sub.expiresAt && sub.expiresAt < new Date()) return false;
-  return true;
-}
 
 type ProfileUser = {
   id: string; email: string; vip: boolean; theme: string;

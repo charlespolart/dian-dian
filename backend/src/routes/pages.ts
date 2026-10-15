@@ -5,7 +5,8 @@ import { pages, cells, legends } from '../db/schema.js';
 import { requireAuth } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { broadcast } from '../lib/ws.js';
-import { eq, and, asc } from 'drizzle-orm';
+import { eq, and, asc, count, inArray } from 'drizzle-orm';
+import { isUnlimited, maxFreeTrackers } from '../lib/premium.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -51,6 +52,7 @@ router.post('/', validate(createPageSchema), async (req, res) => {
   try {
     const userId = req.userId!;
     const { title, position, year, legends: legendInputs, replaces } = req.body as CreatePageBody;
+    const unlimited = await isUnlimited(userId);
 
     const result = await db.transaction(async (tx) => {
       let replaced: string | null = null;
@@ -73,6 +75,15 @@ router.post('/', validate(createPageSchema), async (req, res) => {
         await tx.delete(pages).where(eq(pages.id, replaces));
         replaced = old.id;
         if (position === undefined) resolvedPosition = old.position;
+      }
+      // Free limit, enforced here too (the app gates the + button, but a
+      // stale premium flag or a modified client would get past it). Counted
+      // after the replace, which keeps the count unchanged.
+      if (!unlimited) {
+        const [{ n }] = await tx.select({ n: count() }).from(pages).where(eq(pages.userId, userId));
+        if (Number(n) >= maxFreeTrackers) {
+          return { status: 403 as const, error: `Free accounts are limited to ${maxFreeTrackers} trackers` };
+        }
       }
       const [page] = await tx.insert(pages)
         .values({ userId, title, position: resolvedPosition, ...(year !== undefined ? { year } : {}) })
@@ -105,6 +116,32 @@ router.post('/', validate(createPageSchema), async (req, res) => {
     res.status(201).json(body);
   } catch (err) {
     console.error('Create page error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Which trackers stay open on a free account over the limit: the user's
+// choice (≤ maxFreeTrackers), stored on the pages so every device agrees.
+// An empty list clears the choice (the app falls back to the most active).
+const keepSchema = z.object({
+  ids: z.array(z.string().uuid()).max(maxFreeTrackers),
+});
+
+router.put('/keep', validate(keepSchema), async (req, res) => {
+  try {
+    const userId = req.userId!;
+    const { ids } = req.body as { ids: string[] };
+    await db.transaction(async (tx) => {
+      await tx.update(pages).set({ keepFree: false }).where(eq(pages.userId, userId));
+      if (ids.length > 0) {
+        await tx.update(pages).set({ keepFree: true })
+          .where(and(eq(pages.userId, userId), inArray(pages.id, ids)));
+      }
+    });
+    broadcast(userId, 'pages:kept', { ids });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Keep pages error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });

@@ -1,0 +1,1 @@
+ALTER TABLE "pages" ADD COLUMN "keep_free" boolean DEFAULT false NOT NULL;

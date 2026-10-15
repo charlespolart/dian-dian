@@ -28,12 +28,14 @@ type CompactCell = [number, number, string] | [number, number, string, string];
 // Every page id is present as a key in `legends` and `cells` (possibly an
 // empty array) so the client can treat "key present" as "loaded".
 // `activated`: the account has at least one cell (any page, any year).
+// Each page carries `recentCells` (cells touched in the last 90 days) and
+// `lastCellAt`, plus its `keepFree` flag.
 router.get('/', async (req, res) => {
   try {
     const userId = req.userId!;
     const year = parseYear(req.query.year) ?? new Date().getFullYear();
 
-    const [pageRows, legendRows, cellRows, anyCell] = await Promise.all([
+    const [pageRows, legendRows, cellRows, anyCell, activityRows] = await Promise.all([
       db.select()
         .from(pages)
         .where(eq(pages.userId, userId))
@@ -71,7 +73,19 @@ router.get('/', async (req, res) => {
         .innerJoin(pages, eq(pages.id, cells.pageId))
         .where(eq(pages.userId, userId))
         .limit(1),
+      // Activity per page, all years: lets a free account over the limit
+      // keep its most active trackers by default (1.2.0).
+      db.select({
+        pageId: cells.pageId,
+        recent: sql<number>`count(*) filter (where ${cells.updatedAt} > now() - interval '90 days')`,
+        last: sql<Date | string | null>`max(${cells.updatedAt})`,
+      })
+        .from(cells)
+        .innerJoin(pages, eq(pages.id, cells.pageId))
+        .where(eq(pages.userId, userId))
+        .groupBy(cells.pageId),
     ]);
+    const activity = new Map(activityRows.map((a) => [a.pageId, a]));
 
     const legendsByPage: Record<string, typeof legendRows> = {};
     const cellsByPage: Record<string, CompactCell[]> = {};
@@ -90,7 +104,15 @@ router.get('/', async (req, res) => {
     res.json({
       year,
       activated: anyCell.length > 0,
-      pages: pageRows.map((p) => ({ ...p, palette: p.palette ? JSON.parse(p.palette) : null })),
+      pages: pageRows.map((p) => {
+        const a = activity.get(p.id);
+        return {
+          ...p,
+          palette: p.palette ? JSON.parse(p.palette) : null,
+          recentCells: Number(a?.recent ?? 0),
+          lastCellAt: a?.last ? new Date(a.last).toISOString() : null,
+        };
+      }),
       legends: legendsByPage,
       cells: cellsByPage,
     });

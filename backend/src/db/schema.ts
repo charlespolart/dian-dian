@@ -82,6 +82,10 @@ export const pages = pgTable('pages', {
   year: integer('year').notNull().default(new Date().getFullYear()),
   position: integer('position').notNull().default(0),
   palette: text('palette'),
+  // Free tier: the user's choice of which trackers stay open once the
+  // account is over the free limit (1.2.0). None chosen = the app keeps
+  // the most active ones.
+  keepFree: boolean('keep_free').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   index('pages_user_id_idx').on(t.userId),

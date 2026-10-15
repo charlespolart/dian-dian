@@ -17,7 +17,10 @@ working against the new backend.
 - `scripts/prod-activation.sql`: activation by weekly signup cohort (first cell within 24 h / 7 days, never).
 - `POST /api/events` `{ name }` (auth, 120 / 15 min per IP) and table `events` (migration 0014): the app reports each paywall gate it shows (`paywall.tracker_limit`, …) so the free limit's real pull can be read with `scripts/prod-events.sql`.
 
+- `PUT /api/pages/keep` `{ ids }` (≤ 3) and `pages.keep_free` (migration 0015): which trackers a free account keeps open once it is over the limit, chosen by the user and shared by every device; WebSocket `pages:kept`. The bootstrap also gives each page `recentCells` (cells touched in the last 90 days) and `lastCellAt`, so the app can default to the most active trackers.
+
 ### Changed
+- `POST /api/pages` refuses a 4th tracker for a free account (403), VIP and active subscriptions excepted; replacing an empty page still works at the limit. Apps ≤ 1.3.0 never send that request (they gate the + button).
 - No "My Tracker" page is created at signup (email or OAuth) any more: the app's first-tracker flow (1.4.0) creates the first page with its legends.
 
 ### Compatibility

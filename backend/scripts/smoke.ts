@@ -150,6 +150,7 @@ async function main() {
   }
 
   // --- first tracker (app 1.4.0): page + legends in one transaction ---------
+  // The account is free and already has 'First' and 'Second'.
   {
     r = await call('POST', '/api/pages', {
       title: 'Humeur',
@@ -170,32 +171,48 @@ async function main() {
     r = await call('GET', `/api/legends/${mood}`);
     assert.equal(r.json.length, 5, 'legends persisted');
 
-    r = await call('POST', '/api/pages', { title: 'Empty', position: 7 });
-    assert.equal(r.status, 201);
-    const empty: string = r.json.id;
-    assert.deepEqual(r.json.legends, [], 'legends key always present');
+    // --- free limit (backend 1.2.0): the server refuses a 4th tracker ------
+    r = await call('POST', '/api/pages', { title: 'Fourth' });
+    assert.equal(r.status, 403, `free limit: ${JSON.stringify(r.json)}`);
+
+    // Replacing an empty page keeps the count, so it is allowed at the limit.
     r = await call('POST', '/api/pages', {
-      title: 'Sommeil', replaces: empty, legends: [{ color: '#1864AB', label: '8 h+' }],
+      title: 'Sommeil', replaces: page2, legends: [{ color: '#1864AB', label: '8 h+' }],
     });
     assert.equal(r.status, 201, `replace: ${JSON.stringify(r.json)}`);
     const sleep: string = r.json.id;
-    assert.equal(r.json.replaced, empty, 'reports the replaced page');
-    assert.equal(r.json.position, 7, 'takes the position of the replaced page');
+    assert.equal(r.json.replaced, page2, 'reports the replaced page');
+    assert.equal(r.json.position, 0, 'takes the position of the replaced page');
     r = await call('GET', '/api/pages');
     const ids: string[] = r.json.map((p: Json) => p.id);
-    assert.ok(!ids.includes(empty) && ids.includes(sleep), 'replaced page is gone, new one is there');
+    assert.ok(!ids.includes(page2) && ids.includes(sleep), 'replaced page is gone, new one is there');
+    assert.equal(ids.length, 3, 'still 3 trackers');
 
-    const before = ids.length;
     r = await call('POST', '/api/pages', { title: 'Nope', replaces: mood });
     assert.equal(r.status, 409, 'a page with legends cannot be replaced');
     r = await call('POST', '/api/pages', { title: 'Nope', replaces: '00000000-0000-4000-8000-000000000000' });
     assert.equal(r.status, 404, 'an unknown page cannot be replaced');
     r = await call('POST', '/api/pages', {
-      title: 'Nope', legends: Array.from({ length: 13 }, (_, i) => ({ color: '#000000', label: `L${i}` })),
+      title: 'Nope', replaces: sleep, legends: Array.from({ length: 13 }, (_, i) => ({ color: '#000000', label: `L${i}` })),
     });
     assert.equal(r.status, 400, '13 legends rejected');
     r = await call('GET', '/api/pages');
-    assert.equal(r.json.length, before, 'refused creations wrote nothing');
+    assert.equal(r.json.length, 3, 'refused creations wrote nothing');
+
+    // --- which trackers stay open on a free account: the user's choice ------
+    r = await call('PUT', '/api/pages/keep', { ids: [mood, sleep] });
+    assert.equal(r.status, 200, `keep: ${JSON.stringify(r.json)}`);
+    r = await call('GET', '/api/bootstrap?year=2026');
+    const byId: Record<string, Json> = Object.fromEntries(r.json.pages.map((p: Json) => [p.id, p]));
+    assert.equal(byId[mood].keepFree, true, 'kept');
+    assert.equal(byId[sleep].keepFree, true, 'kept');
+    assert.equal(byId[pageId].keepFree, false, 'not kept');
+    assert.equal(byId[pageId].recentCells, 2, 'activity: cells touched in the last 90 days');
+    assert.equal(typeof byId[pageId].lastCellAt, 'string', 'activity: last cell date');
+    assert.equal(byId[mood].recentCells, 0, 'no cell → 0');
+    assert.equal(byId[mood].lastCellAt, null, 'no cell → null');
+    r = await call('PUT', '/api/pages/keep', { ids: [mood, sleep, pageId, '00000000-0000-4000-8000-000000000000'] });
+    assert.equal(r.status, 400, 'at most 3 kept');
   }
 
   // --- events (roadmap #2: count the paywall gates) ------------------------
