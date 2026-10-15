@@ -27,6 +27,8 @@ Requires backend ≥ 1.2.0.
 
 ### Fixed
 - Android: the system back button or gesture closed the app from the tracker and the settings (the app swaps screens without routes); it now goes back to the list, and from register / forgot-password to login.
+- Dialogs: the action buttons (Back, Cancel, OK, Delete, Send) are pinned under the content and never scroll away or get cut; a dialog grows with its content up to the screen before its body scrolls (the cell editor's legend list was capped at 200 px).
+- Legend editor: tapping a legend opens its own editor (label field + color picker) instead of editing the label inline; the drag handle and the delete cross have their own hit zones and never open the editor.
 
 ### Removed
 - The three explanatory onboarding cards and the `onboarding_done` device flag: the flow explains by doing.

@@ -30,8 +30,21 @@ class PremiumGateDialog extends StatelessWidget {
     final lang = context.read<LanguageProvider>();
 
     return AppDialog(
+      footer: Center(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => Navigator.of(context).pop(false),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Text(
+              lang.t('common.cancel'),
+              style: AppFonts.pixel(fontSize: 12, color: AppColors.textMuted),
+            ),
+          ),
+        ),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -94,15 +107,6 @@ class PremiumGateDialog extends StatelessWidget {
                 ),
               ),
             ],
-            const SizedBox(height: 8),
-
-            GestureDetector(
-              onTap: () => Navigator.of(context).pop(false),
-              child: Text(
-                lang.t('common.cancel'),
-                style: AppFonts.pixel(fontSize: 12, color: AppColors.textMuted),
-              ),
-            ),
           ],
         ),
       ),

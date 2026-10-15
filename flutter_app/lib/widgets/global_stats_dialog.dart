@@ -40,6 +40,19 @@ class GlobalStatsDialog extends StatelessWidget {
 
     return AppDialog(
       maxWidth: 420,
+      footer: Center(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => Navigator.of(context).pop(),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Text(
+              lang.t('settings.back'),
+              style: AppFonts.pixel(fontSize: 12, color: AppColors.accent),
+            ),
+          ),
+        ),
+      ),
       child: _GlobalStatsContent(lang: lang, pages: pages, year: year),
     );
   }
@@ -248,7 +261,7 @@ class _GlobalStatsContentState extends State<_GlobalStatsContent> {
     return Stack(
       children: [
         SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -328,14 +341,6 @@ class _GlobalStatsContentState extends State<_GlobalStatsContent> {
             );
           }),
 
-          const SizedBox(height: 16),
-          GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
-            child: Text(
-              lang.t('settings.back'),
-              style: AppFonts.pixel(fontSize: 12, color: AppColors.accent),
-            ),
-          ),
         ],
       ),
         ),

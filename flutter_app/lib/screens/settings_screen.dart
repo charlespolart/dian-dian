@@ -24,13 +24,11 @@ import '../widgets/contact_dialog.dart';
 class SettingsScreen extends StatelessWidget {
   final VoidCallback onBack;
 
-  const SettingsScreen({
-    super.key,
-    required this.onBack,
-  });
+  const SettingsScreen({super.key, required this.onBack});
 
-  static final Future<String> _versionFuture = PackageInfo.fromPlatform()
-      .then((info) => info.version);
+  static final Future<String> _versionFuture = PackageInfo.fromPlatform().then(
+    (info) => info.version,
+  );
   static const String _aboutUrl = 'https://diandian.overridedev.com/about';
   static const String _privacyUrl = 'https://diandian.overridedev.com/privacy';
   static const String _termsUrl = 'https://diandian.overridedev.com/terms';
@@ -64,10 +62,7 @@ class SettingsScreen extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            TopBar(
-              onBack: onBack,
-              title: lang.t('settings.title'),
-            ),
+            TopBar(onBack: onBack, title: lang.t('settings.title')),
 
             Expanded(
               child: Center(
@@ -76,133 +71,153 @@ class SettingsScreen extends StatelessWidget {
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 500),
                     child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 8),
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 8),
 
-                    // Language section
-                    _buildSectionTitle(lang.t('settings.language')),
-                    const SizedBox(height: 8),
-                    _buildLanguageSelector(context, lang),
+                        // Language section
+                        _buildSectionTitle(lang.t('settings.language')),
+                        const SizedBox(height: 8),
+                        _buildLanguageSelector(context, lang),
 
-                    const SizedBox(height: 24),
+                        const SizedBox(height: 24),
 
-                    // Premium section
-                    _buildSectionTitle(lang.t('settings.premium')),
-                    const SizedBox(height: 8),
-                    _buildPremiumTile(context, lang),
+                        // Premium section
+                        _buildSectionTitle(lang.t('settings.premium')),
+                        const SizedBox(height: 8),
+                        _buildPremiumTile(context, lang),
 
-                    const SizedBox(height: 24),
+                        const SizedBox(height: 24),
 
-                    // Theme section
-                    _buildSectionTitle(lang.t('settings.theme')),
-                    const SizedBox(height: 8),
-                    Builder(builder: (context) {
-                      final themeProv = context.watch<ThemeProvider>();
-                      return _buildLinkTile(
-                        label: appThemeNames[themeProv.currentTheme]!,
-                        onTap: () => showThemePickerDialog(context),
-                      );
-                    }),
+                        // Theme section
+                        _buildSectionTitle(lang.t('settings.theme')),
+                        const SizedBox(height: 8),
+                        Builder(
+                          builder: (context) {
+                            final themeProv = context.watch<ThemeProvider>();
+                            return _buildLinkTile(
+                              label: appThemeNames[themeProv.currentTheme]!,
+                              onTap: () => showThemePickerDialog(context),
+                            );
+                          },
+                        ),
 
-                    const SizedBox(height: 24),
+                        const SizedBox(height: 24),
 
-                    // Cursor section
-                    _buildSectionTitle(lang.t('settings.cursor')),
-                    const SizedBox(height: 8),
-                    Builder(builder: (context) {
-                      final premium = context.watch<PremiumProvider>();
-                      return _buildLinkTile(
-                        label: premium.cursorEnabled
-                            ? lang.t('settings.cursorAnimated')
-                            : lang.t('cursor.none'),
-                        onTap: () => showCursorPickerDialog(context),
-                      );
-                    }),
+                        // Cursor section
+                        _buildSectionTitle(lang.t('settings.cursor')),
+                        const SizedBox(height: 8),
+                        Builder(
+                          builder: (context) {
+                            final premium = context.watch<PremiumProvider>();
+                            return _buildLinkTile(
+                              label: premium.cursorEnabled
+                                  ? lang.t('settings.cursorAnimated')
+                                  : lang.t('cursor.none'),
+                              onTap: () => showCursorPickerDialog(context),
+                            );
+                          },
+                        ),
 
-                    const SizedBox(height: 24),
+                        const SizedBox(height: 24),
 
-                    // Links section
-                    _buildSectionTitle('Links'),
-                    const SizedBox(height: 8),
-                    _buildLinkTile(
-                      label: lang.t('settings.about'),
-                      onTap: () => _openLegal(context, _aboutUrl, lang.t('settings.about')),
+                        // Links section
+                        _buildSectionTitle('Links'),
+                        const SizedBox(height: 8),
+                        _buildLinkTile(
+                          label: lang.t('settings.about'),
+                          onTap: () => _openLegal(
+                            context,
+                            _aboutUrl,
+                            lang.t('settings.about'),
+                          ),
+                        ),
+                        _buildLinkTile(
+                          label: lang.t('settings.contact'),
+                          onTap: () {
+                            final auth = context.read<AuthProvider>();
+                            ContactDialog.show(
+                              context,
+                              email: auth.email,
+                              userId: auth.userId,
+                              version: _versionFuture,
+                            );
+                          },
+                        ),
+                        _buildLinkTile(
+                          label: lang.t('settings.privacy'),
+                          onTap: () => _openLegal(
+                            context,
+                            _privacyUrl,
+                            lang.t('settings.privacy'),
+                          ),
+                        ),
+                        _buildLinkTile(
+                          label: lang.t('settings.terms'),
+                          onTap: () => _openLegal(
+                            context,
+                            _termsUrl,
+                            lang.t('settings.terms'),
+                          ),
+                        ),
+                        _buildLinkTile(
+                          label: lang.t('settings.legal'),
+                          onTap: () => _openLegal(
+                            context,
+                            _legalUrl,
+                            lang.t('settings.legal'),
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // Version
+                        Center(
+                          child: FutureBuilder<String>(
+                            future: _versionFuture,
+                            builder: (context, snapshot) {
+                              final version = snapshot.data ?? '';
+                              return Text(
+                                '${lang.t('settings.version')} $version',
+                                style: AppFonts.dot(
+                                  fontSize: 12,
+                                  color: AppColors.textMuted,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        // Account section
+
+                        // Logout
+                        _buildActionButton(
+                          context: context,
+                          label: lang.t('settings.logout'),
+                          bgColor: AppColors.inputBg,
+                          borderColor: AppColors.inputBorder,
+                          textColor: AppColors.text,
+                          onTap: () => _handleLogout(context, lang),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Delete account
+                        _buildActionButton(
+                          context: context,
+                          label: lang.t('settings.deleteAccount'),
+                          bgColor: AppColors.btnReset,
+                          borderColor: AppColors.btnResetBorder,
+                          textColor: AppColors.btnResetText,
+                          onTap: () => _handleDeleteAccount(context, lang),
+                        ),
+
+                        const SizedBox(height: 40),
+                      ],
                     ),
-                    _buildLinkTile(
-                      label: lang.t('settings.contact'),
-                      onTap: () {
-                        final auth = context.read<AuthProvider>();
-                        ContactDialog.show(
-                          context,
-                          email: auth.email,
-                          userId: auth.userId,
-                          version: _versionFuture,
-                        );
-                      },
-                    ),
-                    _buildLinkTile(
-                      label: lang.t('settings.privacy'),
-                      onTap: () => _openLegal(context, _privacyUrl, lang.t('settings.privacy')),
-                    ),
-                    _buildLinkTile(
-                      label: lang.t('settings.terms'),
-                      onTap: () => _openLegal(context, _termsUrl, lang.t('settings.terms')),
-                    ),
-                    _buildLinkTile(
-                      label: lang.t('settings.legal'),
-                      onTap: () => _openLegal(context, _legalUrl, lang.t('settings.legal')),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Version
-                    Center(
-                      child: FutureBuilder<String>(
-                        future: _versionFuture,
-                        builder: (context, snapshot) {
-                          final version = snapshot.data ?? '';
-                          return Text(
-                            '${lang.t('settings.version')} $version',
-                            style: AppFonts.dot(
-                              fontSize: 12,
-                              color: AppColors.textMuted,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    // Account section
-
-                    // Logout
-                    _buildActionButton(
-                      context: context,
-                      label: lang.t('settings.logout'),
-                      bgColor: AppColors.inputBg,
-                      borderColor: AppColors.inputBorder,
-                      textColor: AppColors.text,
-                      onTap: () => _handleLogout(context, lang),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Delete account
-                    _buildActionButton(
-                      context: context,
-                      label: lang.t('settings.deleteAccount'),
-                      bgColor: AppColors.btnReset,
-                      borderColor: AppColors.btnResetBorder,
-                      textColor: AppColors.btnResetText,
-                      onTap: () => _handleDeleteAccount(context, lang),
-                    ),
-
-                    const SizedBox(height: 40),
-                  ],
+                  ),
                 ),
-              ),
-              ),
               ),
             ),
           ],
@@ -260,24 +275,19 @@ class SettingsScreen extends StatelessWidget {
 
     return _buildLinkTile(
       label: lang.t('premium.free'),
-      onTap: () => PremiumGateDialog.show(context, feature: lang.t('premium.upgrade')),
+      onTap: () =>
+          PremiumGateDialog.show(context, feature: lang.t('premium.upgrade')),
     );
   }
 
-  Widget _buildLanguageSelector(
-    BuildContext context,
-    LanguageProvider lang,
-  ) {
+  Widget _buildLanguageSelector(BuildContext context, LanguageProvider lang) {
     return _buildLinkTile(
       label: lang.t(languageNameKeys[lang.lang]!),
       onTap: () => showLanguagePickerDialog(context, lang),
     );
   }
 
-  Widget _buildLinkTile({
-    required String label,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildLinkTile({required String label, required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -410,14 +420,67 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
     final lang = widget.lang;
 
     return AppDialog(
+      footer: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.of(context).pop(false),
+            child: Text(
+              lang.t('common.cancel'),
+              style: AppFonts.pixel(fontSize: 12, color: AppColors.textMuted),
+            ),
+          ),
+          const SizedBox(width: 20),
+          GestureDetector(
+            onTap: _canConfirm ? () => Navigator.of(context).pop(true) : null,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: _canConfirm ? AppColors.btnReset : AppColors.dotEmpty,
+                border: Border.all(
+                  color: _canConfirm
+                      ? AppColors.btnResetBorder
+                      : AppColors.dotBorder,
+                ),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.delete_outline,
+                    size: 14,
+                    color: _canConfirm
+                        ? AppColors.btnResetText
+                        : AppColors.textMuted,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    lang.t('common.delete'),
+                    style: AppFonts.pixel(
+                      fontSize: 12,
+                      color: _canConfirm
+                          ? AppColors.btnResetText
+                          : AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               lang.t('settings.deleteAccount'),
-              style: AppFonts.pixel(fontSize: 16, color: AppColors.btnResetText),
+              style: AppFonts.pixel(
+                fontSize: 16,
+                color: AppColors.btnResetText,
+              ),
             ),
             const SizedBox(height: 12),
             Text(
@@ -437,76 +500,25 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
             TextField(
               controller: _controller,
               // The user retypes their email (or DELETE): no keyboard "help".
-              keyboardType: widget.email != null ? TextInputType.emailAddress : TextInputType.text,
+              keyboardType: widget.email != null
+                  ? TextInputType.emailAddress
+                  : TextInputType.text,
               autocorrect: false,
               enableSuggestions: false,
               style: AppFonts.dot(fontSize: 14, color: AppColors.inputText),
               textAlign: TextAlign.center,
               decoration: InputDecoration(
                 hintText: _confirmText,
-                hintStyle: AppFonts.dot(fontSize: 14, color: AppColors.textMuted),
+                hintStyle: AppFonts.dot(
+                  fontSize: 14,
+                  color: AppColors.textMuted,
+                ),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 10,
                 ),
                 isDense: true,
               ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                GestureDetector(
-                  onTap: () => Navigator.of(context).pop(false),
-                  child: Text(
-                    lang.t('common.cancel'),
-                    style: AppFonts.pixel(fontSize: 12, color: AppColors.textMuted),
-                  ),
-                ),
-                const SizedBox(width: 20),
-                GestureDetector(
-                  onTap: _canConfirm
-                      ? () => Navigator.of(context).pop(true)
-                      : null,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _canConfirm ? AppColors.btnReset : AppColors.dotEmpty,
-                      border: Border.all(
-                        color: _canConfirm
-                            ? AppColors.btnResetBorder
-                            : AppColors.dotBorder,
-                      ),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.delete_outline,
-                          size: 14,
-                          color: _canConfirm
-                              ? AppColors.btnResetText
-                              : AppColors.textMuted,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          lang.t('common.delete'),
-                          style: AppFonts.pixel(
-                            fontSize: 12,
-                            color: _canConfirm
-                                ? AppColors.btnResetText
-                                : AppColors.textMuted,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
             ),
           ],
         ),

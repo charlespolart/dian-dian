@@ -77,8 +77,21 @@ class StatsDetailDialog extends StatelessWidget {
 
     return AppDialog(
       maxWidth: 420,
+      footer: Center(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => Navigator.of(context).pop(),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Text(
+              lang.t('settings.back'),
+              style: AppFonts.pixel(fontSize: 12, color: AppColors.accent),
+            ),
+          ),
+        ),
+      ),
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -248,18 +261,6 @@ class StatsDetailDialog extends StatelessWidget {
                     ),
                   );
                 }),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Close
-            Center(
-              child: GestureDetector(
-                onTap: () => Navigator.of(context).pop(),
-                child: Text(
-                  lang.t('settings.back'),
-                  style: AppFonts.pixel(fontSize: 12, color: AppColors.accent),
-                ),
               ),
             ),
           ],
