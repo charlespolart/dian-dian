@@ -9,6 +9,7 @@ import '../providers/language_provider.dart';
 import '../providers/legends_provider.dart';
 import '../providers/pages_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/utf16_length_limit.dart';
 
 /// First-tracker flow (1.4.0), shown instead of the page list to any account
 /// the server reports with no cell at all (new or dormant).
@@ -88,8 +89,9 @@ class _FirstTrackerScreenState extends State<FirstTrackerScreen> {
   // Actions
   // ---------------------------------------------------------------------------
 
-  String _title(LanguageProvider lang) =>
-      _template!.customTitle ? _titleController.text.trim() : lang.t(_template!.titleKey);
+  String _title(LanguageProvider lang) => _template!.customTitle
+      ? _titleController.text.trim()
+      : lang.t(_template!.titleKey);
 
   void _choose(FirstTrackerTemplate t) {
     setState(() {
@@ -103,7 +105,8 @@ class _FirstTrackerScreenState extends State<FirstTrackerScreen> {
   }
 
   void _continueWithTitle() {
-    if (_titleController.text.trim().isEmpty) return;
+    final title = _titleController.text.trim();
+    if (title.isEmpty || title.length > 35) return;
     setState(() => _step = _Step.today);
   }
 
@@ -130,6 +133,34 @@ class _FirstTrackerScreenState extends State<FirstTrackerScreen> {
     });
   }
 
+  /// The page this flow would create, if it already exists: same title and
+  /// exactly the template's legends. Happens when a POST was committed but
+  /// its response never arrived (the WS echo brought the page), or when
+  /// another device ran the flow: adopt it rather than create a twin.
+  CreatedPage? _adoptable(
+    LanguageProvider lang,
+    PagesProvider pages,
+    LegendsProvider legends,
+  ) {
+    final title = _title(lang);
+    final drafts = _template!.legends(lang);
+    for (final page in pages.pages) {
+      if (page.title != title) continue;
+      final existing = legends.legendsFor(page.id);
+      if (existing.length != drafts.length) continue;
+      var same = true;
+      for (var i = 0; i < drafts.length; i++) {
+        if (existing[i].color != drafts[i].color ||
+            existing[i].label != drafts[i].label) {
+          same = false;
+          break;
+        }
+      }
+      if (same) return CreatedPage(page: page, legends: existing);
+    }
+    return null;
+  }
+
   /// Creates the page with its legends, once. Later calls return the cached
   /// result, so a retry after a failed cell never creates a second page.
   Future<CreatedPage?> _ensureCreated() async {
@@ -138,46 +169,53 @@ class _FirstTrackerScreenState extends State<FirstTrackerScreen> {
     final lang = context.read<LanguageProvider>();
     final pages = context.read<PagesProvider>();
     final legends = context.read<LegendsProvider>();
-    final created = await pages.createFirstTracker(
-      title: _title(lang),
-      legends: _template!.legends(lang),
-      replaces: replaceablePageId(pages.pages, legends.legendsFor),
-      fallbackWithoutReplaces: pages.pages.length < widget.maxTrackers,
-    );
+    final created =
+        _adoptable(lang, pages, legends) ??
+        await pages.createFirstTracker(
+          title: _title(lang),
+          legends: _template!.legends(lang),
+          replaces: replaceablePageId(pages.pages, legends.legendsFor),
+          fallbackWithoutReplaces: pages.pages.length < widget.maxTrackers,
+        );
     if (created == null || !mounted) return created;
     // Point the store at the new page, as the page list would have.
     legends.setLegends(created.page.id, created.legends);
     legends.setPageId(created.page.id);
-    context.read<CellsProvider>().setContext(pageId: created.page.id, year: widget.now().year);
+    context.read<CellsProvider>().setContext(
+      pageId: created.page.id,
+      year: widget.now().year,
+    );
     _created = created;
     return created;
   }
 
   Future<void> _pickColor(String color) => _run(() async {
-        final created = await _ensureCreated();
-        if (created == null || !mounted) return false;
-        final today = widget.now();
-        final cells = context.read<CellsProvider>();
-        cells.setContext(pageId: created.page.id, year: today.year);
-        await cells.setCell(today.month, today.day, color);
-        // setCell reverts silently when the server refuses: ask the store.
-        if (cells.getCell(today.month, today.day)?.color != color) return false;
-        _todayColor = color;
-        await FirstTrackerScreen.markDone(widget.userId);
-        return true;
-      });
+    final created = await _ensureCreated();
+    if (created == null || !mounted) return false;
+    final today = widget.now();
+    final cells = context.read<CellsProvider>();
+    cells.setContext(pageId: created.page.id, year: today.year);
+    await cells.setCell(today.month, today.day, color);
+    // setCell reverts silently when the server refuses: ask the store.
+    if (cells.getCell(today.month, today.day)?.color != color) return false;
+    _todayColor = color;
+    await FirstTrackerScreen.markDone(widget.userId);
+    return true;
+  });
 
   Future<void> _notToday() => _run(() async {
-        final created = await _ensureCreated();
-        if (created == null) return false;
-        await FirstTrackerScreen.markDone(widget.userId);
-        if (mounted) widget.onOpenTracker(created.page.id, widget.now().year);
-        return true;
-      });
+    final created = await _ensureCreated();
+    if (created == null) return false;
+    await FirstTrackerScreen.markDone(widget.userId);
+    if (mounted) widget.onOpenTracker(created.page.id, widget.now().year);
+    return true;
+  });
 
   void _open() {
     final created = _created;
-    if (created != null) widget.onOpenTracker(created.page.id, widget.now().year);
+    if (created != null) {
+      widget.onOpenTracker(created.page.id, widget.now().year);
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -196,7 +234,10 @@ class _FirstTrackerScreenState extends State<FirstTrackerScreen> {
               alignment: Alignment.centerRight,
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: _ShellButton(label: lang.t('firstTracker.later'), onTap: _later),
+                child: _ShellButton(
+                  label: lang.t('firstTracker.later'),
+                  onTap: _later,
+                ),
               ),
             ),
             Expanded(
@@ -205,7 +246,9 @@ class _FirstTrackerScreenState extends State<FirstTrackerScreen> {
                 child: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 420),
-                    child: _step == _Step.choose ? _buildChoose(lang) : _buildToday(lang),
+                    child: _step == _Step.choose
+                        ? _buildChoose(lang)
+                        : _buildToday(lang),
                   ),
                 ),
               ),
@@ -256,12 +299,16 @@ class _FirstTrackerScreenState extends State<FirstTrackerScreen> {
           TextField(
             controller: _titleController,
             autofocus: true,
-            maxLength: 35,
+            // Server limit, counted the server's way (UTF-16 units).
+            inputFormatters: const [Utf16LengthLimit(35)],
             style: AppFonts.dot(fontSize: 14, color: AppColors.inputText),
             decoration: InputDecoration(
               hintText: lang.t('firstTracker.titleField'),
               counterText: '',
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
               isDense: true,
             ),
             onSubmitted: (_) => _continueWithTitle(),
@@ -300,7 +347,9 @@ class _FirstTrackerScreenState extends State<FirstTrackerScreen> {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 16),
-        Center(child: _BigDot(color: _todayColor, busy: _busy)),
+        Center(
+          child: _BigDot(color: _todayColor, busy: _busy),
+        ),
         const SizedBox(height: 20),
         for (final l in legends)
           _LegendButton(
@@ -330,14 +379,22 @@ class _FirstTrackerScreenState extends State<FirstTrackerScreen> {
         ],
         const SizedBox(height: 16),
         if (_todayColor != null)
-          _PrimaryButton(label: lang.t('firstTracker.open'), enabled: !_busy, onTap: _open)
+          _PrimaryButton(
+            label: lang.t('firstTracker.open'),
+            enabled: !_busy,
+            onTap: _open,
+          )
         else
-          GestureDetector(
-            onTap: _busy ? null : _notToday,
-            child: Text(
-              lang.t('firstTracker.notToday'),
-              style: AppFonts.pixel(fontSize: 12, color: AppColors.textMuted),
-              textAlign: TextAlign.center,
+          Semantics(
+            button: true,
+            enabled: !_busy,
+            child: GestureDetector(
+              onTap: _busy ? null : _notToday,
+              child: Text(
+                lang.t('firstTracker.notToday'),
+                style: AppFonts.pixel(fontSize: 12, color: AppColors.textMuted),
+                textAlign: TextAlign.center,
+              ),
             ),
           ),
       ],
@@ -345,7 +402,8 @@ class _FirstTrackerScreenState extends State<FirstTrackerScreen> {
   }
 }
 
-Color _hex(String hex) => Color(int.parse('FF${hex.replaceFirst('#', '')}', radix: 16));
+Color _hex(String hex) =>
+    Color(int.parse('FF${hex.replaceFirst('#', '')}', radix: 16));
 
 /// The shell card used by both screens.
 class _Card extends StatelessWidget {
@@ -378,16 +436,22 @@ class _ShellButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: AppColors.shell,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: AppColors.shellBorder),
+    return Semantics(
+      button: true,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.shell,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: AppColors.shellBorder),
+          ),
+          child: Text(
+            label,
+            style: AppFonts.pixel(fontSize: 12, color: AppColors.accent),
+          ),
         ),
-        child: Text(label, style: AppFonts.pixel(fontSize: 12, color: AppColors.accent)),
       ),
     );
   }
@@ -398,23 +462,34 @@ class _PrimaryButton extends StatelessWidget {
   final String label;
   final bool enabled;
   final VoidCallback onTap;
-  const _PrimaryButton({required this.label, required this.enabled, required this.onTap});
+  const _PrimaryButton({
+    required this.label,
+    required this.enabled,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Opacity(
-      opacity: enabled ? 1 : 0.5,
-      child: GestureDetector(
-        onTap: enabled ? onTap : null,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: AppColors.btnAdd,
-            border: Border.all(color: AppColors.btnAddBorder),
-            borderRadius: BorderRadius.circular(6),
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      child: Opacity(
+        opacity: enabled ? 1 : 0.5,
+        child: GestureDetector(
+          onTap: enabled ? onTap : null,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.btnAdd,
+              border: Border.all(color: AppColors.btnAddBorder),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              label,
+              style: AppFonts.pixel(fontSize: 12, color: AppColors.btnAddText),
+            ),
           ),
-          child: Text(label, style: AppFonts.pixel(fontSize: 12, color: AppColors.btnAddText)),
         ),
       ),
     );
@@ -441,51 +516,59 @@ class _Tile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: AppColors.inputBg,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: selected ? AppColors.accent : AppColors.inputBorder,
-            width: selected ? 1.5 : 1,
+    return Semantics(
+      button: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.inputBg,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: selected ? AppColors.accent : AppColors.inputBorder,
+              width: selected ? 1.5 : 1,
+            ),
           ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              label,
-              style: AppFonts.pixel(fontSize: 11, color: AppColors.title),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (final c in colors)
-                  Container(
-                    width: 12,
-                    height: 12,
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: placeholder ? AppColors.dotEmpty : _hex(c),
-                      border: placeholder ? Border.all(color: AppColors.dotBorder, width: 0.5) : null,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                label,
+                style: AppFonts.pixel(fontSize: 11, color: AppColors.title),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  for (final c in colors)
+                    Container(
+                      width: 12,
+                      height: 12,
+                      margin: const EdgeInsets.symmetric(horizontal: 2),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: placeholder ? AppColors.dotEmpty : _hex(c),
+                        border: placeholder
+                            ? Border.all(color: AppColors.dotBorder, width: 0.5)
+                            : null,
+                      ),
                     ),
-                  ),
+                ],
+              ),
+              if (placeholder) ...[
+                const SizedBox(height: 6),
+                Text(
+                  plusLabel,
+                  style: AppFonts.dot(fontSize: 11, color: AppColors.accent),
+                ),
               ],
-            ),
-            if (placeholder) ...[
-              const SizedBox(height: 6),
-              Text(plusLabel, style: AppFonts.dot(fontSize: 11, color: AppColors.accent)),
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -529,7 +612,10 @@ class _BigDot extends StatelessWidget {
             SizedBox(
               width: 22,
               height: 22,
-              child: CircularProgressIndicator(strokeWidth: 1.5, color: AppColors.accent),
+              child: CircularProgressIndicator(
+                strokeWidth: 1.5,
+                color: AppColors.accent,
+              ),
             ),
         ],
       ),
@@ -557,28 +643,42 @@ class _LegendButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: GestureDetector(
-        onTap: enabled ? onTap : null,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: selected ? AppColors.accent.withValues(alpha: 0.12) : AppColors.inputBg,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: selected ? AppColors.accent : AppColors.inputBorder,
-              width: selected ? 1.5 : 1,
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 16,
-                height: 16,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: _hex(color)),
+      child: Semantics(
+        button: true,
+        enabled: enabled,
+        child: GestureDetector(
+          onTap: enabled ? onTap : null,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: selected
+                  ? AppColors.accent.withValues(alpha: 0.12)
+                  : AppColors.inputBg,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: selected ? AppColors.accent : AppColors.inputBorder,
+                width: selected ? 1.5 : 1,
               ),
-              const SizedBox(width: 10),
-              Expanded(child: Text(label, style: AppFonts.dot(fontSize: 14, color: AppColors.text))),
-            ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 16,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _hex(color),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: AppFonts.dot(fontSize: 14, color: AppColors.text),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

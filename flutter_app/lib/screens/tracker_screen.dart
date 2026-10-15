@@ -80,10 +80,16 @@ class _TrackerScreenState extends State<TrackerScreen> {
     widget.onYearChanged?.call(newYear);
   }
 
-  /// "Today": the cell editor on today's date, from any year.
-  void _openToday() {
+  /// "Today": the cell editor on today's date, from any year. When the
+  /// current year is not in the store yet, its bootstrap is awaited first so
+  /// the editor shows today's real cell, not an empty one.
+  Future<void> _openToday() async {
     final today = DateTime.now();
-    if (_year != today.year) _changeYear(today.year - _year);
+    if (_year != today.year) {
+      _changeYear(today.year - _year);
+      await context.read<SyncService>().ensureYear(today.year);
+      if (!mounted) return;
+    }
     CellEditorDialog.show(context, month: today.month, day: today.day, year: today.year);
   }
 

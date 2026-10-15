@@ -162,7 +162,10 @@ class _AppShellState extends State<AppShell> {
     if (!hydrated || sync.snapshotActivated != true) await sync.ensureYear(year);
     if (!mounted) return;
 
-    final userId = auth.userId!;
+    // The wait above can span a logout (refresh refused): then there is no
+    // session to land, and build() already shows the login screen.
+    final userId = auth.userId;
+    if (userId == null || !auth.isAuthenticated) return;
     final doneOnThisDevice = await FirstTrackerScreen.isDone(userId);
     if (!mounted) return;
     final pagesProv = context.read<PagesProvider>();

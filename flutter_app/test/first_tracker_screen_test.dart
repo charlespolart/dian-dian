@@ -14,6 +14,7 @@ import 'package:dian_dian/providers/pages_provider.dart';
 import 'package:dian_dian/screens/first_tracker_screen.dart';
 import 'package:dian_dian/services/api_service.dart';
 import 'package:dian_dian/services/audio_service.dart';
+import 'package:dian_dian/services/ws_service.dart';
 
 import 'helpers.dart';
 
@@ -28,6 +29,8 @@ http.Response _json(String body, int status) =>
 class Harness {
   final List<http.Request> requests = [];
   int pageStatus = 201;
+  /// The POST reaches the server but the client sees a network error (timeout after commit).
+  bool throwOnPost = false;
   /// 409 on any POST carrying `replaces` (the page is no longer empty).
   bool refuseReplace = false;
   int Function() cellStatus = () => 200;
@@ -47,6 +50,7 @@ class Harness {
     final client = MockClient((req) async {
       requests.add(req);
       if (req.method == 'POST' && req.url.path == '/api/pages') {
+        if (throwOnPost) throw http.ClientException('connection closed before the response');
         if (pageStatus != 201) return _json('{"error":"x"}', pageStatus);
         final body = jsonDecode(req.body) as Map<String, dynamic>;
         if (refuseReplace && body.containsKey('replaces')) return _json('{"error":"Page is not empty"}', 409);
@@ -293,5 +297,67 @@ void main() {
     expect(find.text("Can't reach the server, try again"), findsOneWidget);
     expect(find.text('Open my tracker'), findsNothing);
     expect(find.text('Later'), findsOneWidget);
+  });
+
+  testWidgets('a page committed server-side but lost in transit is adopted on Retry, never duplicated', (tester) async {
+    final h = Harness(now: () => oct15)..throwOnPost = true;
+    await tester.pumpWidget(h.widget);
+    await tester.tap(find.text('Mood'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Great'));
+    await tester.pumpAndSettle();
+    expect(find.text("Can't reach the server, try again"), findsOneWidget);
+    expect(h.posts.length, 1);
+
+    // The server had committed: its WebSocket echo brings the page with its legends.
+    const labels = ['Great', 'Good', 'Okay', 'Meh', 'Low'];
+    const colors = ['#FFEC99', '#FFD43B', '#8CE99A', '#74C0FC', '#E599F7'];
+    final echo = {
+      ...pageJson('n', title: 'Mood'),
+      'legends': [for (var i = 0; i < 5; i++) legendJson('l$i', 'n', colors[i], i, label: labels[i])],
+      'replaced': null,
+    };
+    h.pages.debugHandleWs(WsMessage(event: 'page:created', data: echo));
+    h.legends.debugHandleWs(WsMessage(event: 'page:created', data: echo));
+    await tester.pump();
+
+    h.throwOnPost = false;
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+    expect(h.posts.length, 1, reason: 'the existing identical page is adopted, not re-created');
+    expect(h.puts.single.url.path, '/api/cells/n');
+    expect(h.pages.pages.length, 1);
+    expect(find.text('Open my tracker'), findsOneWidget);
+  });
+
+  testWidgets('a custom title is capped at 35 UTF-16 units, like the server', (tester) async {
+    final h = Harness(now: () => oct15);
+    await tester.pumpWidget(h.widget);
+    await tester.tap(find.text('Other…'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '😀' * 18); // 36 units: refused as a whole
+    await tester.pump();
+    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, '');
+    await tester.enterText(find.byType(TextField), '😀' * 17); // 34 units: fine
+    await tester.pump();
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    expect(find.text('And today?'), findsOneWidget);
+  });
+
+  testWidgets('tappable controls are announced as buttons', (tester) async {
+    final handle = tester.ensureSemantics();
+    final h = Harness(now: () => oct15);
+    await tester.pumpWidget(h.widget);
+    expect(tester.getSemantics(find.text('Later')), isSemantics(isButton: true, hasTapAction: true, label: 'Later'));
+    expect(tester.getSemantics(find.text('Mood')), isSemantics(isButton: true, hasTapAction: true, label: 'Mood'));
+    await tester.tap(find.text('Mood'));
+    await tester.pumpAndSettle();
+    expect(tester.getSemantics(find.text('Great')), isSemantics(isButton: true, hasTapAction: true, label: 'Great'));
+    expect(tester.getSemantics(find.text('Not today')), isSemantics(isButton: true, hasTapAction: true, label: 'Not today'));
+    await tester.tap(find.text('Great'));
+    await tester.pumpAndSettle();
+    expect(tester.getSemantics(find.text('Open my tracker')), isSemantics(isButton: true, hasTapAction: true, label: 'Open my tracker'));
+    handle.dispose();
   });
 }

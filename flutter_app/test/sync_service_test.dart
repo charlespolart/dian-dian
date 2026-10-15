@@ -304,7 +304,8 @@ void main() {
   });
 
   test('activated stays unknown when the body or the snapshot lacks it (backend < 1.2.0, app ≤ 1.3.0)', () async {
-    final first = build();
+    // No cell either: a cell on disk would prove activation (see the next tests).
+    final first = build(body: (y) => {...bootstrapBody(y), 'cells': {'a': <dynamic>[]}});
     await first.start(userId: 'u1', year: 2026);
     await first.ensureYear(2026); // awaits the bootstrap start() kicked off
     expect(first.activated, isNull);
@@ -322,6 +323,30 @@ void main() {
     expect(sync.activated, isTrue);
     await sync.clear();
     expect(sync.activated, isNull);
+    expect(sync.snapshotActivated, isNull);
+  });
+
+  test('a snapshot without activated but with cells (app 1.3.0) hydrates as activated', () async {
+    final first = build(); // bootstrapBody has one cell and no activated field
+    await first.start(userId: 'u1', year: 2026);
+    await first.ensureYear(2026);
+    final saved = snapshots.data!;
+
+    final sync = build();
+    snapshots.data = saved;
+    await sync.start(userId: 'u1', year: 2026);
+    expect(sync.snapshotActivated, isTrue, reason: 'a cell on disk proves the account is activated');
+  });
+
+  test('a snapshot without activated and without cells stays unknown', () async {
+    final first = build(body: (y) => {...bootstrapBody(y), 'cells': {'a': <dynamic>[]}});
+    await first.start(userId: 'u1', year: 2026);
+    await first.ensureYear(2026);
+    final saved = snapshots.data!;
+
+    final sync = build();
+    snapshots.data = saved;
+    await sync.start(userId: 'u1', year: 2026);
     expect(sync.snapshotActivated, isNull);
   });
 }

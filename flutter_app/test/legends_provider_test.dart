@@ -112,4 +112,16 @@ void main() {
     p.debugHandleWs(const WsMessage(event: 'page:deleted', data: {'id': 'a'}));
     expect(p.legendsFor('a'), isEmpty);
   });
+
+  test('legend:created echoes of legends already set by page:created do not duplicate them', () {
+    final p = loaded();
+    p.debugHandleWs(WsMessage(event: 'page:created', data: {
+      'id': 'c', 'userId': 'u1', 'title': 'Humeur', 'position': 2, 'palette': null, 'createdAt': '',
+      'legends': [legend('l5', 'c', '#FFEC99', 0), legend('l6', 'c', '#FFD43B', 1)],
+      'replaced': null,
+    }));
+    p.debugHandleWs(WsMessage(event: 'legend:created', data: legend('l5', 'c', '#FFEC99', 0)));
+    p.debugHandleWs(WsMessage(event: 'legend:created', data: legend('l6', 'c', '#FFD43B', 1)));
+    expect(p.legendsFor('c').map((l) => l.id), ['l5', 'l6']);
+  });
 }

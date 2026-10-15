@@ -23,6 +23,7 @@ import '../widgets/global_stats_dialog.dart';
 import '../widgets/swipe_nav.dart';
 import '../widgets/premium_gate_dialog.dart';
 import '../widgets/marquee_text.dart';
+import '../widgets/utf16_length_limit.dart';
 
 class PageListScreen extends StatefulWidget {
   final void Function(String id, int year) onSelectPage;
@@ -702,7 +703,8 @@ class _CreateTrackerDialogState extends State<_CreateTrackerDialog> {
             TextField(
               controller: _controller,
               autofocus: true,
-              maxLength: 35,
+              // Server limit, counted the server's way (UTF-16 units, not characters).
+              inputFormatters: const [Utf16LengthLimit(35)],
               enabled: !_busy,
               style: AppFonts.dot(fontSize: 14, color: AppColors.inputText),
               decoration: InputDecoration(

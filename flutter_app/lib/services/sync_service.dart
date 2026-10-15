@@ -236,12 +236,24 @@ class SyncService with WidgetsBindingObserver {
       if (snap['v'] != _snapshotVersion || snap['userId'] != userId) return false;
       final data = snap['data'] as Map<String, dynamic>;
       _apply(data, applyCells: data['year'] == year);
-      _snapshotActivated = data['activated'] as bool?;
+      _snapshotActivated = data['activated'] as bool? ?? _activatedFromCells(data);
       return (data['pages'] as List<dynamic>).isNotEmpty;
     } catch (e) {
       debugPrint('SyncService: snapshot hydrate failed: $e');
       return false;
     }
+  }
+
+  /// A snapshot written by app ≤ 1.3.0 has no `activated` flag, but a cell
+  /// on disk is proof enough: the account is activated and may land without
+  /// waiting for the network. No cell proves nothing (other years exist).
+  static bool? _activatedFromCells(Map<String, dynamic> data) {
+    final cells = data['cells'] as Map<String, dynamic>?;
+    if (cells == null) return null;
+    for (final rows in cells.values) {
+      if ((rows as List<dynamic>).isNotEmpty) return true;
+    }
+    return null;
   }
 
   Map<String, dynamic> _serialize(int year) {
