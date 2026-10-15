@@ -22,6 +22,10 @@ class FirstTrackerScreen extends StatefulWidget {
   final VoidCallback onLater;
   final void Function(String pageId, int year) onOpenTracker;
 
+  /// Free-tier limit (999 for premium): when the account is at it, the flow
+  /// may only replace an empty page, never add one that would be locked.
+  final int maxTrackers;
+
   /// Clock, injectable in tests. Read at tap time, so a flow left open past
   /// midnight still writes the right day.
   final DateTime Function() now;
@@ -31,6 +35,7 @@ class FirstTrackerScreen extends StatefulWidget {
     required this.userId,
     required this.onLater,
     required this.onOpenTracker,
+    required this.maxTrackers,
     this.now = DateTime.now,
   });
 
@@ -137,6 +142,7 @@ class _FirstTrackerScreenState extends State<FirstTrackerScreen> {
       title: _title(lang),
       legends: _template!.legends(lang),
       replaces: replaceablePageId(pages.pages, legends.legendsFor),
+      fallbackWithoutReplaces: pages.pages.length < widget.maxTrackers,
     );
     if (created == null || !mounted) return created;
     // Point the store at the new page, as the page list would have.

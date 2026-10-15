@@ -117,4 +117,19 @@ void main() {
     expect(await p.createFirstTracker(title: 'X', legends: const []), isNull);
     expect(p.pages.map((x) => x.id), ['a']);
   });
+
+  test('createFirstTracker does not fall back without replaces when the caller forbids it (free limit)', () async {
+    var calls = 0;
+    final client = MockClient((req) async {
+      calls++;
+      return http.Response('{"error":"Page is not empty"}', 409);
+    });
+    final p = withClient(client, [pageJson('a'), pageJson('b', position: 1), pageJson('c', position: 2)]);
+    final created = await p.createFirstTracker(
+      title: 'X', legends: const [], replaces: 'a', fallbackWithoutReplaces: false,
+    );
+    expect(created, isNull);
+    expect(calls, 1, reason: 'no second request');
+    expect(p.pages.map((x) => x.id), ['a', 'b', 'c']);
+  });
 }

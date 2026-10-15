@@ -387,6 +387,7 @@ class _AppShellState extends State<AppShell> {
         return FirstTrackerScreen(
           key: const ValueKey('firstTracker'),
           userId: context.read<AuthProvider>().userId!,
+          maxTrackers: context.read<PremiumProvider>().maxTrackers,
           onLater: () => _navigate(AppScreen.pageList),
           onOpenTracker: (pageId, year) {
             // The created tracker becomes the last-opened one (saved by

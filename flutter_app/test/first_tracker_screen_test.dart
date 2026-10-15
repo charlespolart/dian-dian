@@ -28,6 +28,8 @@ http.Response _json(String body, int status) =>
 class Harness {
   final List<http.Request> requests = [];
   int pageStatus = 201;
+  /// 409 on any POST carrying `replaces` (the page is no longer empty).
+  bool refuseReplace = false;
   int Function() cellStatus = () => 200;
   late final PagesProvider pages;
   late final LegendsProvider legends;
@@ -40,12 +42,14 @@ class Harness {
     void Function(String pageId, int year)? onOpen,
     List<Map<String, dynamic>> pageRows = const [],
     Map<String, dynamic> legendRows = const {},
+    int maxTrackers = 3,
   }) {
     final client = MockClient((req) async {
       requests.add(req);
       if (req.method == 'POST' && req.url.path == '/api/pages') {
         if (pageStatus != 201) return _json('{"error":"x"}', pageStatus);
         final body = jsonDecode(req.body) as Map<String, dynamic>;
+        if (refuseReplace && body.containsKey('replaces')) return _json('{"error":"Page is not empty"}', 409);
         final sent = body['legends'] as List<dynamic>;
         return _json(jsonEncode({
           ...pageJson('n', title: body['title'] as String),
@@ -79,6 +83,7 @@ class Harness {
       child: MaterialApp(
         home: FirstTrackerScreen(
           userId: 'u1',
+          maxTrackers: maxTrackers,
           now: now,
           onLater: onLater ?? () {},
           onOpenTracker: onOpen ?? (_, _) {},
@@ -264,5 +269,29 @@ void main() {
     expect((await SharedPreferences.getInstance()).getBool('first_tracker_done_u1'), isTrue);
     expect(await FirstTrackerScreen.isDone('u1'), isTrue);
     expect(await FirstTrackerScreen.isDone('u2'), isFalse);
+  });
+
+  testWidgets('at the free limit, a refused replace shows the error instead of creating a locked 4th tracker', (tester) async {
+    final h = Harness(
+      now: () => oct15,
+      pageRows: [pageJson('old', title: 'My Tracker'), pageJson('p2', position: 1), pageJson('p3', position: 2)],
+      legendRows: {
+        'old': <dynamic>[],
+        'p2': [legendJson('l2', 'p2', '#111111', 0)],
+        'p3': [legendJson('l3', 'p3', '#222222', 0)],
+      },
+      maxTrackers: 3,
+    )..refuseReplace = true;
+    await tester.pumpWidget(h.widget);
+    await tester.tap(find.text('Habits'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+    expect(h.posts.length, 1, reason: 'no fallback POST without replaces');
+    expect((jsonDecode(h.posts.single.body) as Map)['replaces'], 'old');
+    expect(h.pages.pages.length, 3, reason: 'nothing created');
+    expect(find.text("Can't reach the server, try again"), findsOneWidget);
+    expect(find.text('Open my tracker'), findsNothing);
+    expect(find.text('Later'), findsOneWidget);
   });
 }

@@ -94,11 +94,15 @@ class PagesProvider extends ChangeNotifier {
   /// ≥ 1.2.0). With [replaces], an empty page of the user is deleted in that
   /// transaction and the new page takes its slot; if the server refuses it
   /// (404 gone, 409 not empty any more) the page is created without
-  /// replacing anything. Returns `null` on failure: nothing was created.
+  /// replacing anything — unless [fallbackWithoutReplaces] is false (the
+  /// caller is at the free limit and a plain creation would be a locked
+  /// tracker), in which case the refusal is a failure. Returns `null` on
+  /// failure: nothing was created.
   Future<CreatedPage?> createFirstTracker({
     required String title,
     required List<LegendDraft> legends,
     String? replaces,
+    bool fallbackWithoutReplaces = true,
   }) async {
     final body = <String, dynamic>{
       'title': title,
@@ -107,7 +111,9 @@ class PagesProvider extends ChangeNotifier {
     };
     try {
       var response = await _api.apiFetch('/api/pages', method: 'POST', body: body);
-      if (replaces != null && (response.statusCode == 404 || response.statusCode == 409)) {
+      if (replaces != null &&
+          fallbackWithoutReplaces &&
+          (response.statusCode == 404 || response.statusCode == 409)) {
         body.remove('replaces');
         body['position'] = _pages.length;
         response = await _api.apiFetch('/api/pages', method: 'POST', body: body);
