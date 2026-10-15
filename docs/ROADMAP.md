@@ -51,19 +51,29 @@ s'affiche (une route `POST /api/events` minimale + un appel dans
 `PremiumGateDialog`). Donne la vraie valeur de la limite comme levier de
 conversion avant d'y toucher.
 
-### 3. Engagement (récompenses · notifications · avatars · widgets · comm)
+### 3. Communication — Pinterest en cours (décidé le 2026-10-15)
+Plan éditorial : `marketing/pinterest/PLAN.md`. Épingles générées
+(`marketing/pinterest/pins.py`, 6 thèmes × en / fr / zh-Hant, 1000 × 1500,
+copies dans `pins.csv`). La landing reporte `utm_source` / `utm_campaign`
+sur les boutons stores (referrer Play ; App Store dès que
+`APPLE_CAMPAIGN_PT` est renseigné sur le VPS). Reste : créer le compte
+Business et les tableaux, publier le lot 1, mesurer à 8 semaines ; puis
+export PNG épinglable dans l'app (1.3.x). Ensuite : vidéo courte
+(TikTok / Reels / Shorts) avec des outils IA pour éviter le montage.
+
+### 4. Engagement (récompenses · notifications · avatars · widgets)
 Brainstorm du 2026-10-14, en pause, approche proposée non encore validée :
 série d'engagement serveur + pixels + succès, notifications locales,
 avatars de chat, widgets. À reprendre par un spec (`docs/superpowers/specs/`)
 une fois le point 1 livré. Détail des décisions et idées dans la note de
 reprise (mémoire de session) ; à recopier ici au moment du spec.
 
-### 4. Grille du tracker en CustomPainter (phase 2 perf)
+### 5. Grille du tracker en CustomPainter (phase 2 perf)
 Un seul paint au lieu de ~2000 widgets par tap. Gain réel sur les
 appareils lents, risque visuel : à faire isolément, avec comparaison
 pixel-à-pixel.
 
-### 5. Toolchain Android
+### 6. Toolchain Android
 Remarques Play Console : bannière AdMob sous la navigation 3 boutons à
 vérifier, puis AGP 9 / Gradle 9.1 / Kotlin 2.3 + R8 dans une release
 dédiée testée sur appareil. Détail : `ANDROID_RELEASE_PLAN.md` §8.
