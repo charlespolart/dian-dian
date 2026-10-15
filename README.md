@@ -181,7 +181,7 @@ backend version it needs in the changelog.
                              # dates CHANGELOG "Unreleased", tags backend-vX.Y.Z, pushes
 ./deploy-prod.sh             # latest released tag → production (SSH), asks twice
 ./rollback-prod.sh           # one version back, asks twice
-./set-prod-env.sh KEY=VALUE  # change one env var in /srv/dian-dian/.env, restart the backend only
+./set-prod-env.sh [--yes] KEY=VALUE  # change one env var in /srv/dian-dian/.env, restart the backend only
 ```
 
 1. `./release-backend.sh` refuses to run unless master is

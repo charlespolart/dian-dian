@@ -4,6 +4,7 @@
 # migration, no downtime beyond the container restart (a few seconds).
 #
 #   ./set-prod-env.sh APPLE_CAMPAIGN_PT=128687410
+#   ./set-prod-env.sh --yes APPLE_CAMPAIGN_PT=128687410   # no prompt (e.g. from `!` in Claude Code)
 #
 # What it does on the VPS (/srv/dian-dian):
 #   1. copies .env to .env.bak-<timestamp>,
@@ -20,16 +21,22 @@ stack="/srv/dian-dian"
 
 fail() { echo "set-prod-env: $*" >&2; exit 1; }
 
-[ $# -eq 1 ] || fail "usage: $0 KEY=VALUE"
+yes=0
+if [ "${1:-}" = "--yes" ]; then yes=1; shift; fi
+[ $# -eq 1 ] || fail "usage: $0 [--yes] KEY=VALUE"
 [[ "$1" =~ ^([A-Z][A-Z0-9_]*)=(.*)$ ]] || fail "expected KEY=VALUE with an upper-case KEY, got '$1'"
 key="${BASH_REMATCH[1]}"
 value="${BASH_REMATCH[2]}"
 [[ "$value" =~ ^[A-Za-z0-9_./:@+=,-]*$ ]] || fail "value has characters this script does not quote; set it by hand"
-[ -t 0 ] || fail "needs an interactive terminal: run it from a shell"
 
 echo "production ($host): $key=$value"
-read -r -p "Proceed? [y/N] " answer
-[ "$answer" = "y" ] || { echo "aborted"; exit 1; }
+if [ "$yes" = 1 ]; then
+  echo "(--yes: no confirmation)"
+else
+  [ -t 0 ] || fail "needs an interactive terminal: run it from a shell, or pass --yes"
+  read -r -p "Proceed? [y/N] " answer
+  [ "$answer" = "y" ] || { echo "aborted"; exit 1; }
+fi
 
 ssh "$host" bash -s -- "$stack" "$key" "$value" <<'REMOTE'
 set -euo pipefail
