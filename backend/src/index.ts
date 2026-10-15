@@ -156,7 +156,7 @@ app.post('/api/contact', contactLimiter, async (req, res) => {
   const safeMessage = escapeHtml(message.trim()).replace(/\n/g, '<br/>');
   try {
     await sendEmail({
-      to: 'diandian@overridedev.com',
+      to: 'contact@diandian.overridedev.com',
       fromName: 'Dian Dian Contact',
       replyTo: email.trim(),
       subject: `[Dian Dian] Message from ${safeName}`,

@@ -13,6 +13,9 @@ working against the new backend.
 ### Added
 - Landing: visitors arriving with `utm_source` / `utm_campaign` get store buttons carrying the campaign (Play `referrer`, App Store `pt`/`ct` when `APPLE_CAMPAIGN_PT` is set) — attribution for Pinterest and other channels.
 
+### Changed
+- Contact address is now `contact@diandian.overridedev.com` on every legal page (privacy, terms, contact, delete-account, all locales) and for the contact form; the old `diandian@overridedev.com` keeps being routed for a while. Transactional mail still goes out from `diandian@overridedev.com` until the subdomain is verified in Resend.
+
 ## [1.1.0] - 2026-10-14
 
 ### Added
