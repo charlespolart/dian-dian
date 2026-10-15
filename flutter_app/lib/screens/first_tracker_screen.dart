@@ -240,15 +240,22 @@ class _FirstTrackerScreenState extends State<FirstTrackerScreen> {
                 ),
               ),
             ),
+            // Centered when it fits, scrollable when it does not (keyboard
+            // open on "Other…", Larger Text).
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                child: Center(
+              child: LayoutBuilder(
+                builder: (context, constraints) => SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 420),
-                    child: _step == _Step.choose
-                        ? _buildChoose(lang)
-                        : _buildToday(lang),
+                    constraints: BoxConstraints(minHeight: constraints.maxHeight - 24),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 420),
+                        child: _step == _Step.choose
+                            ? _buildChoose(lang)
+                            : _buildToday(lang),
+                      ),
+                    ),
                   ),
                 ),
               ),
