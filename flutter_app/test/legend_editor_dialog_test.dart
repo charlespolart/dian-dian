@@ -182,7 +182,7 @@ void main() {
     await open(tester);
     double opacityOf(String label) =>
         tester.widget<Opacity>(find.ancestor(of: find.text(label), matching: find.byType(Opacity)).first).opacity;
-    final handle = tester.getCenter(find.byIcon(Icons.drag_handle).at(3)); // "Meh"
+    final handle = tester.getCenter(find.byIcon(Icons.drag_handle).at(1)); // "Good"
     final gesture = await tester.startGesture(handle);
     await tester.pump(const Duration(milliseconds: 50));
     await gesture.moveBy(const Offset(0, 30));
@@ -191,7 +191,7 @@ void main() {
     await tester.pump();
     await gesture.up();
     await tester.pumpAndSettle();
-    expect(find.text('Meh'), findsOneWidget);
-    expect(opacityOf('Meh'), 1.0, reason: 'the ghost style must go away when the drag ends');
+    expect(find.text('Good'), findsOneWidget);
+    expect(opacityOf('Good'), 1.0, reason: 'the ghost style must go away when the drag ends');
   });
 }
