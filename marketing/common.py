@@ -282,9 +282,9 @@ def draw_tracker_screen(img, x, y, h, palette, labels, rng, s=1.0, fill_until=(9
                         year=2026, words=None, sidebar_w=150):
     """The app's tracker screen as one card, like the real thing: a solid
     shell, a dashed frame, one background for the sidebar and the grid, a
-    dashed divider. Sidebar: chevron, "< year >", legend with labels, the
-    dashed EDIT button, stats at the bottom. Returns the card width."""
-    words = words or {'legend': 'LEGEND', 'stats': 'STATS', 'days': 'days', 'streak': 'streak', 'year': 'year', 'edit': 'EDIT'}
+    dashed divider. Sidebar: "< year >", legend with labels,
+    stats at the bottom. Returns the card width."""
+    words = words or {'legend': 'LEGEND', 'stats': 'STATS', 'days': 'days', 'streak': 'streak', 'year': 'year'}
     m = tracker_screen_metrics(h, s, sidebar_w)
     w, shell, pad, inner, cell, lab_w, sb = m['w'], m['shell'], m['pad'], m['inner'], m['cell'], m['lab_w'], m['sidebar_w']
     d = ImageDraw.Draw(img)
@@ -295,17 +295,16 @@ def draw_tracker_screen(img, x, y, h, palette, labels, rng, s=1.0, fill_until=(9
     dashed_rounded_rect(d, (fx0, fy0, fx1, fy1), int(10 * s), int(5 * s), int(3 * s), CARD_BORDER, max(1, int(1.5 * s)))
     # vertical dashed divider
     dx = fx0 + pad + sb + int(7 * s)
-    yy = fy0 + pad
-    while yy < fy1 - pad:
-        d.line([dx, yy, dx, min(yy + int(4 * s), fy1 - pad)], fill=CARD_BORDER, width=max(1, int(1.5 * s))); yy += int(7 * s)
+    yy = fy0
+    while yy < fy1:
+        d.line([dx, yy, dx, min(yy + int(4 * s), fy1)], fill=CARD_BORDER, width=max(1, int(1.5 * s))); yy += int(7 * s)
     # grid
     gx = dx + int(7 * s) + inner
     gy = fy0 + pad + inner
     filled, streak = draw_grid(img, gx, gy, cell, lab_w, m['label_font'], palette, rng, fill_until, mode)
     # sidebar
     cx = fx0 + pad + sb / 2
-    ty = fy0 + pad + int(4 * s)
-    ty += text_centered(d, cx, ty, '<', ImageFont.truetype(FONT_PIXEL_R, int(12 * s)), MUTED) + int(18 * s)
+    ty = fy0 + pad + int(10 * s)
     yf = ImageFont.truetype(FONT_CJK, int(17 * s))
     ty += text_centered(d, cx, ty, f'<  {year}  >', yf, SUBTITLE) + int(14 * s)
     ty += section_header(d, cx, ty, words['legend'], sb, s)
@@ -319,15 +318,6 @@ def draw_tracker_screen(img, x, y, h, palette, labels, rng, s=1.0, fill_until=(9
         box = lf.getbbox(lab)
         d.text((lx + dot + int(8 * s) - box[0], ty + (dot - (box[3] - box[1])) / 2 + int(2 * s) - box[1]), lab, font=lf, fill=TEXT)
         ty += dot + int(14 * s)
-    # dashed EDIT button
-    ef = font_for(words['edit'], int(11 * s))
-    eb = ef.getbbox(words['edit'])
-    bw_, bh_ = eb[2] - eb[0] + int(34 * s), eb[3] - eb[1] + int(18 * s)
-    bx0, by0 = cx - bw_ / 2, ty + int(8 * s)
-    dashed_rounded_rect(d, (bx0, by0, bx0 + bw_, by0 + bh_), int(4 * s), int(3 * s), int(2 * s), INPUT_BORDER, 1)
-    px = bx0 + int(10 * s); py = by0 + bh_ / 2
-    d.line([px, py + int(4 * s), px + int(8 * s), py - int(4 * s)], fill=ACCENT, width=max(1, int(2 * s)))  # pencil
-    d.text((px + int(14 * s) - eb[0], by0 + (bh_ - (eb[3] - eb[1])) / 2 - eb[1]), words['edit'], font=ef, fill=ACCENT)
     # stats at the bottom
     pct = round(100 * filled / 365)
     stats = [(str(filled), words['days']), (str(streak), words['streak']), (f'{pct}%', words['year'])]

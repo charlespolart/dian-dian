@@ -119,9 +119,9 @@ THEMES = [
 
 TAGLINE = {'en': 'ONE DOT A DAY', 'fr': 'UN POINT PAR JOUR', 'zh-Hant': '一天一點'}
 WORDS = {
-    'en': {'legend': 'LEGEND', 'stats': 'STATS', 'days': 'days', 'streak': 'streak', 'year': 'year', 'edit': 'EDIT'},
-    'fr': {'legend': 'LÉGENDE', 'stats': 'STATS', 'days': 'jours', 'streak': 'série', 'year': 'année', 'edit': 'ÉDITER'},
-    'zh-Hant': {'legend': '圖例', 'stats': '統計', 'days': '天', 'streak': '連續', 'year': '年度', 'edit': '編輯'},
+    'en': {'legend': 'LEGEND', 'stats': 'STATS', 'days': 'days', 'streak': 'streak', 'year': 'year'},
+    'fr': {'legend': 'LÉGENDE', 'stats': 'STATS', 'days': 'jours', 'streak': 'série', 'year': 'année'},
+    'zh-Hant': {'legend': '圖例', 'stats': '統計', 'days': '天', 'streak': '連續', 'year': '年度'},
 }
 FREE = {'en': 'FREE ON IOS & ANDROID', 'fr': 'GRATUIT SUR IOS ET ANDROID', 'zh-Hant': 'iOS / Android 免費下載'}
 ALT = {
