@@ -120,7 +120,7 @@ class _TrackerScreenState extends State<TrackerScreen> {
     final premium = context.read<PremiumProvider>();
     if (!premium.isPremium) {
       final lang = context.read<LanguageProvider>();
-      PremiumGateDialog.show(context, feature: lang.t('premium.feature.stats'));
+      PremiumGateDialog.show(context, feature: lang.t('premium.feature.stats'), event: 'stats');
       return;
     }
     final cellsProv = context.read<CellsProvider>();
@@ -144,7 +144,7 @@ class _TrackerScreenState extends State<TrackerScreen> {
     final premium = context.read<PremiumProvider>();
     if (!premium.isPremium) {
       final lang = context.read<LanguageProvider>();
-      await PremiumGateDialog.show(context, feature: lang.t('premium.feature.export'));
+      await PremiumGateDialog.show(context, feature: lang.t('premium.feature.export'), event: 'export');
       return;
     }
 
@@ -273,13 +273,25 @@ class _TrackerScreenState extends State<TrackerScreen> {
                     onTapOutside: (_) => _saveTitle(),
                   )
                 : GestureDetector(
+                    behavior: HitTestBehavior.opaque,
                     onTap: () => setState(() => _editingTitle = true),
-                    child: MarqueeText(
-                      text: _page.title,
-                      style: AppFonts.pixel(
-                        fontSize: 16,
-                        color: AppColors.title,
-                      ),
+                    // Pencil: the title is renamed by tapping it, which
+                    // nothing showed before.
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: MarqueeText(
+                            text: _page.title,
+                            style: AppFonts.pixel(
+                              fontSize: 16,
+                              color: AppColors.title,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Icon(Icons.edit, size: 12, color: AppColors.accent),
+                      ],
                     ),
                   ),
           ),
@@ -547,13 +559,21 @@ class _TrackerScreenState extends State<TrackerScreen> {
                                       }
                                     }
 
-                                    return Text(
-                                      _page.title,
-                                      style: AppFonts.pixel(fontSize: fontSize, color: AppColors.title).copyWith(letterSpacing: 2),
-                                      textAlign: TextAlign.center,
-                                      softWrap: true,
-                                      maxLines: maxLines,
-                                      overflow: TextOverflow.ellipsis,
+                                    return Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          _page.title,
+                                          style: AppFonts.pixel(fontSize: fontSize, color: AppColors.title).copyWith(letterSpacing: 2),
+                                          textAlign: TextAlign.center,
+                                          softWrap: true,
+                                          maxLines: maxLines,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 6),
+                                        // Pencil: the title is renamed by tapping it.
+                                        Icon(Icons.edit, size: 14, color: AppColors.accent),
+                                      ],
                                     );
                                   },
                                 ),

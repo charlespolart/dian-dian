@@ -48,7 +48,7 @@ class _ThemePickerDialog extends StatelessWidget {
                   onTap: () {
                     if (isLocked) {
                       Navigator.of(context).pop();
-                      PremiumGateDialog.show(context, feature: lang.t('premium.feature.themes'));
+                      PremiumGateDialog.show(context, feature: lang.t('premium.feature.themes'), event: 'themes');
                       return;
                     }
                     themeProv.setTheme(type);

@@ -95,6 +95,7 @@ class _PageListScreenState extends State<PageListScreen> {
         await PremiumGateDialog.show(
           context,
           feature: lang.t('premium.trackerLimit'),
+          event: 'tracker_limit',
         );
         return;
       }
@@ -117,7 +118,7 @@ class _PageListScreenState extends State<PageListScreen> {
     final pages = context.read<PagesProvider>().pages;
     if (premium.lockedTrackerIds(pages).contains(page.id)) {
       final lang = context.read<LanguageProvider>();
-      PremiumGateDialog.show(context, feature: lang.t('premium.trackerLimit'));
+      PremiumGateDialog.show(context, feature: lang.t('premium.trackerLimit'), event: 'locked_tracker');
       return;
     }
 
@@ -222,6 +223,7 @@ class _PageListScreenState extends State<PageListScreen> {
                         onTap: () => PremiumGateDialog.show(
                           context,
                           feature: lang.t('premium.upgrade'),
+                          event: 'list_upgrade',
                         ),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(

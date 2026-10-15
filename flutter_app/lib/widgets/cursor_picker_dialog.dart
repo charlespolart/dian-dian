@@ -36,7 +36,7 @@ Future<void> showCursorPickerDialog(BuildContext context) {
   final premium = context.read<PremiumProvider>();
   if (!premium.isPremium) {
     final lang = context.read<LanguageProvider>();
-    PremiumGateDialog.show(context, feature: lang.t('premium.feature.cursor'));
+    PremiumGateDialog.show(context, feature: lang.t('premium.feature.cursor'), event: 'cursor');
     return Future.value();
   }
   return showDialog(

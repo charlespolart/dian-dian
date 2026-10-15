@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/language_provider.dart';
 import '../providers/premium_provider.dart';
+import '../services/events_service.dart';
 import '../services/store_links.dart';
 import '../theme/app_theme.dart';
 import 'app_dialog.dart';
@@ -17,7 +20,10 @@ class PremiumGateDialog extends StatelessWidget {
   const PremiumGateDialog({super.key, required this.feature});
 
   /// Shows the dialog. Returns true if the user is now premium.
-  static Future<bool> show(BuildContext context, {required String feature}) async {
+  /// [event] names the gate for the server-side counter (`paywall.<event>`,
+  /// roadmap #2): which premium walls people actually hit.
+  static Future<bool> show(BuildContext context, {required String feature, String? event}) async {
+    if (event != null) unawaited(EventsService().track('paywall.$event'));
     final result = await showDialog<bool>(
       context: context,
       builder: (_) => PremiumGateDialog(feature: feature),

@@ -69,6 +69,9 @@ class PurchaseService {
   Future<void> logOut() async {
     if (!_initialized) return;
     try {
+      // Before any logIn the SDK user is anonymous and logOut is refused
+      // (error 22): nothing to do, and no warning in the logs.
+      if (await Purchases.isAnonymous) return;
       final info = await Purchases.logOut();
       _onCustomerInfoUpdate(info);
     } catch (e) {

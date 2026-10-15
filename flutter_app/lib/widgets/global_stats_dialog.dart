@@ -24,7 +24,7 @@ class GlobalStatsDialog extends StatelessWidget {
     final premium = context.read<PremiumProvider>();
     if (!premium.isPremium) {
       final lang = context.read<LanguageProvider>();
-      await PremiumGateDialog.show(context, feature: lang.t('premium.feature.stats'));
+      await PremiumGateDialog.show(context, feature: lang.t('premium.feature.stats'), event: 'global_stats');
       return;
     }
     return showDialog(

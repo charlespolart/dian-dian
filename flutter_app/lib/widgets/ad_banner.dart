@@ -85,7 +85,7 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
             right: 6,
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onTap: () => PremiumGateDialog.show(context, feature: lang.t('premium.feature.noAds')),
+              onTap: () => PremiumGateDialog.show(context, feature: lang.t('premium.feature.noAds'), event: 'no_ads'),
               child: Padding(
                 padding: const EdgeInsets.all(4),
                 child: Container(

@@ -152,6 +152,21 @@ class _CustomPaywallDialogState extends State<CustomPaywallDialog> {
     final lang = context.read<LanguageProvider>();
 
     return AppDialog(
+      // Pinned above the scrolling content, never scrolls away.
+      header: Align(
+        alignment: Alignment.topRight,
+        child: Semantics(
+          button: true,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => Navigator.of(context).pop(false),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+              child: Icon(Icons.close, size: 16, color: AppColors.textMuted),
+            ),
+          ),
+        ),
+      ),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 380),
         child: _loading
@@ -206,7 +221,7 @@ class _CustomPaywallDialogState extends State<CustomPaywallDialog> {
     return Stack(
       children: [
         SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -279,20 +294,6 @@ class _CustomPaywallDialogState extends State<CustomPaywallDialog> {
                 textAlign: TextAlign.center,
               ),
             ],
-          ),
-        ),
-
-        // Close X
-        Positioned(
-          top: 8,
-          right: 8,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => Navigator.of(context).pop(false),
-            child: Padding(
-              padding: const EdgeInsets.all(6),
-              child: Icon(Icons.close, size: 16, color: AppColors.textMuted),
-            ),
           ),
         ),
 

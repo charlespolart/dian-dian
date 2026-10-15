@@ -276,7 +276,7 @@ class SettingsScreen extends StatelessWidget {
     return _buildLinkTile(
       label: lang.t('premium.free'),
       onTap: () =>
-          PremiumGateDialog.show(context, feature: lang.t('premium.upgrade')),
+          PremiumGateDialog.show(context, feature: lang.t('premium.upgrade'), event: 'settings_upgrade'),
     );
   }
 
