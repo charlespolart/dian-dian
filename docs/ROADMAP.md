@@ -55,11 +55,13 @@ conversion avant d'y toucher.
 Plan éditorial : `marketing/pinterest/PLAN.md`. Épingles générées
 (`marketing/pinterest/pins.py`, 6 thèmes × en / fr / zh-Hant, 1000 × 1500,
 copies dans `pins.csv`). La landing reporte `utm_source` / `utm_campaign`
-sur les boutons stores (referrer Play ; App Store dès que
-`APPLE_CAMPAIGN_PT` est renseigné sur le VPS). Reste : créer le compte
-Business et les tableaux, publier le lot 1, mesurer à 8 semaines ; puis
-export PNG épinglable dans l'app (1.3.x). Ensuite : vidéo courte
-(TikTok / Reels / Shorts) avec des outils IA pour éviter le montage.
+sur les boutons stores (referrer Play ; App Store via `pt`/`ct`, en prod
+depuis le 2026-10-15 avec backend 1.1.1). Compte Business, 6 tableaux et
+lot 1 (6 en + 3 fr + 2 zh-Hant) publiés le 2026-10-15. Reste : lire
+Pinterest Analytics et App Store Connect → Sources vers le 29 octobre, lot 2
+(nouveaux thèmes) ensuite, mesurer à 8 semaines ; puis export PNG
+épinglable dans l'app (1.3.x). Ensuite : vidéo courte (TikTok / Reels /
+Shorts) avec des outils IA pour éviter le montage.
 
 ### 4. Engagement (récompenses · notifications · avatars · widgets)
 Brainstorm du 2026-10-14, en pause, approche proposée non encore validée :
