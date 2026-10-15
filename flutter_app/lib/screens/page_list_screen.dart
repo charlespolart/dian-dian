@@ -24,6 +24,7 @@ import '../widgets/swipe_nav.dart';
 import '../widgets/premium_gate_dialog.dart';
 import '../widgets/marquee_text.dart';
 import '../widgets/utf16_length_limit.dart';
+import '../widgets/drag_feedback.dart';
 
 class PageListScreen extends StatefulWidget {
   final void Function(String id, int year) onSelectPage;
@@ -72,7 +73,11 @@ class _PageListScreenState extends State<PageListScreen> {
       ..sort((a, b) => a.position.compareTo(b.position));
   }
 
-  void _onReorderPages(List<PageModel> sortedPages, int fromIndex, int toIndex) {
+  void _onReorderPages(
+    List<PageModel> sortedPages,
+    int fromIndex,
+    int toIndex,
+  ) {
     final ids = sortedPages.map((p) => p.id).toList();
     final movedId = ids.removeAt(fromIndex);
     ids.insert(toIndex, movedId);
@@ -87,7 +92,10 @@ class _PageListScreenState extends State<PageListScreen> {
       final totalPages = context.read<PagesProvider>().pages.length;
       if (totalPages >= PremiumProvider.maxFreeTrackers) {
         final lang = context.read<LanguageProvider>();
-        await PremiumGateDialog.show(context, feature: lang.t('premium.trackerLimit'));
+        await PremiumGateDialog.show(
+          context,
+          feature: lang.t('premium.trackerLimit'),
+        );
         return;
       }
     }
@@ -114,7 +122,10 @@ class _PageListScreenState extends State<PageListScreen> {
     }
 
     // Synchronous: the tracker paints from the store immediately.
-    context.read<CellsProvider>().setContext(pageId: page.id, year: _selectedYear);
+    context.read<CellsProvider>().setContext(
+      pageId: page.id,
+      year: _selectedYear,
+    );
     context.read<LegendsProvider>().setPageId(page.id);
     context.read<SyncService>().ensureYear(_selectedYear);
 
@@ -148,230 +159,288 @@ class _PageListScreenState extends State<PageListScreen> {
       body: Stack(
         children: [
           Column(
-        children: [
-
-          // Header banner (covers safe area top)
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.shell,
-              border: Border(
-                bottom: BorderSide(color: AppColors.shellBorder, width: 0.5),
-              ),
-            ),
-            padding: EdgeInsets.fromLTRB(
-              20,
-              MediaQuery.of(context).padding.top + 2,
-              8,
-              2,
-            ),
-            child: Row(
-                children: [
-                  // Logo
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Text(
-                        '\u70B9\u70B9',
-                        style: AppFonts.pixel(
-                          fontSize: 24,
-                          color: AppColors.title,
-                        ),
-                      ),
-                      Text(
-                        'Dian Dian',
-                        style: AppFonts.pixel(
-                          fontSize: 11,
-                          color: AppColors.subtitle,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Year navigation centered (swipe + tap)
-                  Expanded(
-                    child: SwipeNav(
-                      arrowSize: 18,
-                      arrowColor: AppColors.accent,
-                      onPrev: () => _changeYear(-1),
-                      onNext: () => _changeYear(1),
-                      center: Text(
-                        '$_selectedYear',
-                        style: AppFonts.pixel(fontSize: 20, color: AppColors.title),
-                      ),
+            children: [
+              // Header banner (covers safe area top)
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.shell,
+                  border: Border(
+                    bottom: BorderSide(
+                      color: AppColors.shellBorder,
+                      width: 0.5,
                     ),
                   ),
-                  // Premium button (free users only)
-                  if (!context.watch<PremiumProvider>().isPremium)
+                ),
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  MediaQuery.of(context).padding.top + 2,
+                  8,
+                  2,
+                ),
+                child: Row(
+                  children: [
+                    // Logo
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          '\u70B9\u70B9',
+                          style: AppFonts.pixel(
+                            fontSize: 24,
+                            color: AppColors.title,
+                          ),
+                        ),
+                        Text(
+                          'Dian Dian',
+                          style: AppFonts.pixel(
+                            fontSize: 11,
+                            color: AppColors.subtitle,
+                          ),
+                        ),
+                      ],
+                    ),
+                    // Year navigation centered (swipe + tap)
+                    Expanded(
+                      child: SwipeNav(
+                        arrowSize: 18,
+                        arrowColor: AppColors.accent,
+                        onPrev: () => _changeYear(-1),
+                        onNext: () => _changeYear(1),
+                        center: Text(
+                          '$_selectedYear',
+                          style: AppFonts.pixel(
+                            fontSize: 20,
+                            color: AppColors.title,
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Premium button (free users only)
+                    if (!context.watch<PremiumProvider>().isPremium)
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => PremiumGateDialog.show(
+                          context,
+                          feature: lang.t('premium.upgrade'),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 14,
+                          ),
+                          child: Icon(
+                            Icons.star_rounded,
+                            size: 24,
+                            color: AppColors.accent,
+                          ),
+                        ),
+                      ),
+                    // Global stats button
                     GestureDetector(
                       behavior: HitTestBehavior.opaque,
-                      onTap: () => PremiumGateDialog.show(context, feature: lang.t('premium.upgrade')),
+                      onTap: () =>
+                          GlobalStatsDialog.show(context, year: _selectedYear),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
-                        child: Icon(Icons.star_rounded, size: 24, color: AppColors.accent),
-                      ),
-                    ),
-                  // Global stats button
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => GlobalStatsDialog.show(context, year: _selectedYear),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                      child: Icon(Icons.bar_chart, size: 24, color: AppColors.accent),
-                    ),
-                  ),
-                  // Settings button
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: widget.onOpenSettings,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                      child: SvgPicture.asset(
-                        'assets/icons/settings_heart.svg',
-                        width: 24,
-                        height: 24,
-                        colorFilter: ColorFilter.mode(
-                          AppColors.accent,
-                          BlendMode.srcIn,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 14,
+                        ),
+                        child: Icon(
+                          Icons.bar_chart,
+                          size: 24,
+                          color: AppColors.accent,
                         ),
                       ),
                     ),
-                  ),
-                ],
+                    // Settings button
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: widget.onOpenSettings,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 14,
+                        ),
+                        child: SvgPicture.asset(
+                          'assets/icons/settings_heart.svg',
+                          width: 24,
+                          height: 24,
+                          colorFilter: ColorFilter.mode(
+                            AppColors.accent,
+                            BlendMode.srcIn,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
 
-            // Page grid
-            Expanded(
-              child: sortedPages.isEmpty
-                  ? Center(
-                      child: Text(
-                        lang.t('tracker.noTrackers'),
-                        style: AppFonts.dot(
-                          fontSize: 14,
-                          color: AppColors.textMuted,
+              // Page grid
+              Expanded(
+                child: sortedPages.isEmpty
+                    ? Center(
+                        child: Text(
+                          lang.t('tracker.noTrackers'),
+                          style: AppFonts.dot(
+                            fontSize: 14,
+                            color: AppColors.textMuted,
+                          ),
                         ),
-                      ),
-                    )
-                  : Consumer2<CellsProvider, LegendsProvider>(
-                      builder: (context, cellsProv, legendsProv, _) {
-                        final lockedIds = context
-                            .read<PremiumProvider>()
-                            .lockedTrackerIds(sortedPages);
-                        return LayoutBuilder(
-                          builder: (context, constraints) {
-                            // Responsive: fit 2 cards on phone, more on tablet
-                            final maxExtent =
-                                constraints.maxWidth < 600 ? 180.0 : 200.0;
-                            return GridView.builder(
-                              padding: EdgeInsets.only(
-                                left: 8,
-                                right: 8,
-                                top: 8,
-                                bottom: _bannerVisible ? 90 : 80,
-                              ),
-                              gridDelegate:
-                                  SliverGridDelegateWithMaxCrossAxisExtent(
-                                maxCrossAxisExtent: maxExtent,
-                                mainAxisSpacing: 12,
-                                crossAxisSpacing: 12,
-                                // Grid is 12 wide × 31 tall → ratio ~0.45 with title space
-                                childAspectRatio: 0.45,
-                              ),
-                              itemCount: sortedPages.length,
-                              itemBuilder: (_, index) {
-                                final page = sortedPages[index];
-                                final previewCells =
-                                    cellsProv.cellsFor(page.id, _selectedYear);
-                                final previewLegends =
-                                    legendsProv.legendsFor(page.id);
-                                return DragTarget<int>(
-                                  onWillAcceptWithDetails: (d) => d.data != index,
-                                  onAcceptWithDetails: (d) =>
-                                      _onReorderPages(sortedPages, d.data, index),
-                                  builder: (context, candidateData, _) {
-                                    final isOver = candidateData.isNotEmpty;
-                                    return Stack(
-                                      clipBehavior: Clip.none,
-                                      children: [
-                                        _PageCard(
-                                          page: page,
-                                          year: _selectedYear,
-                                          cells: previewCells,
-                                          legends: previewLegends,
-                                          onTap: () => _openTracker(page),
-                                          onDelete: () => _deletePage(page),
-                                          isDragGhost: _draggingIndex == index,
-                                          isLocked: lockedIds.contains(page.id),
-                                          dragHandle: Draggable<int>(
-                                            data: index,
-                                            onDragStarted: () =>
-                                                setState(() => _draggingIndex = index),
-                                            onDragEnd: (_) =>
-                                                setState(() => _draggingIndex = null),
-                                            feedback: Material(
-                                              color: Colors.transparent,
-                                              child: Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                                decoration: BoxDecoration(
-                                                  color: AppColors.shell,
-                                                  borderRadius: BorderRadius.circular(6),
-                                                  border: Border.all(color: AppColors.accent),
+                      )
+                    : Consumer2<CellsProvider, LegendsProvider>(
+                        builder: (context, cellsProv, legendsProv, _) {
+                          final lockedIds = context
+                              .read<PremiumProvider>()
+                              .lockedTrackerIds(sortedPages);
+                          return LayoutBuilder(
+                            builder: (context, constraints) {
+                              // Responsive: fit 2 cards on phone, more on tablet
+                              final maxExtent = constraints.maxWidth < 600
+                                  ? 180.0
+                                  : 200.0;
+                              return GridView.builder(
+                                padding: EdgeInsets.only(
+                                  left: 8,
+                                  right: 8,
+                                  top: 8,
+                                  bottom: _bannerVisible ? 90 : 80,
+                                ),
+                                gridDelegate:
+                                    SliverGridDelegateWithMaxCrossAxisExtent(
+                                      maxCrossAxisExtent: maxExtent,
+                                      mainAxisSpacing: 12,
+                                      crossAxisSpacing: 12,
+                                      // Grid is 12 wide × 31 tall → ratio ~0.45 with title space
+                                      childAspectRatio: 0.45,
+                                    ),
+                                itemCount: sortedPages.length,
+                                itemBuilder: (_, index) {
+                                  final page = sortedPages[index];
+                                  final previewCells = cellsProv.cellsFor(
+                                    page.id,
+                                    _selectedYear,
+                                  );
+                                  final previewLegends = legendsProv.legendsFor(
+                                    page.id,
+                                  );
+                                  // The static handle, also drawn on the drag copy.
+                                  final handleGlyph = Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 10,
+                                    ),
+                                    color: Colors.transparent,
+                                    child: Text(
+                                      '≡',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        height: 1,
+                                        color: AppColors.textMuted,
+                                      ),
+                                    ),
+                                  );
+                                  return LayoutBuilder(
+                                    builder: (context, cell) => DragTarget<int>(
+                                      onWillAcceptWithDetails: (d) =>
+                                          d.data != index,
+                                      onAcceptWithDetails: (d) =>
+                                          _onReorderPages(
+                                            sortedPages,
+                                            d.data,
+                                            index,
+                                          ),
+                                      builder: (context, candidateData, _) {
+                                        final isOver = candidateData.isNotEmpty;
+                                        return Stack(
+                                          clipBehavior: Clip.none,
+                                          children: [
+                                            _PageCard(
+                                              page: page,
+                                              year: _selectedYear,
+                                              cells: previewCells,
+                                              legends: previewLegends,
+                                              onTap: () => _openTracker(page),
+                                              onDelete: () => _deletePage(page),
+                                              isDragGhost:
+                                                  _draggingIndex == index,
+                                              isLocked: lockedIds.contains(
+                                                page.id,
+                                              ),
+                                              dragHandle: Draggable<int>(
+                                                data: index,
+                                                onDragStarted: () => setState(
+                                                  () => _draggingIndex = index,
                                                 ),
-                                                child: Text(
-                                                  '≡',
-                                                  style: TextStyle(
-                                                    fontSize: 14,
-                                                    height: 1,
-                                                    color: AppColors.accent,
+                                                onDragEnd: (_) => setState(
+                                                  () => _draggingIndex = null,
+                                                ),
+                                                // A copy of the card follows the finger.
+                                                feedback: DragFeedback(
+                                                  width: cell.maxWidth,
+                                                  height: cell.maxHeight,
+                                                  radius: 10,
+                                                  child: _PageCard(
+                                                    page: page,
+                                                    year: _selectedYear,
+                                                    cells: previewCells,
+                                                    legends: previewLegends,
+                                                    onTap: () {},
+                                                    onDelete: () {},
+                                                    isLocked: lockedIds
+                                                        .contains(page.id),
+                                                    dragHandle: handleGlyph,
+                                                  ),
+                                                ),
+                                                childWhenDragging:
+                                                    const SizedBox(
+                                                      width: 28,
+                                                      height: 28,
+                                                    ),
+                                                child: handleGlyph,
+                                              ),
+                                            ),
+                                            // Drop highlight overlay
+                                            if (isOver)
+                                              Positioned.fill(
+                                                child: Container(
+                                                  decoration: BoxDecoration(
+                                                    color: AppColors.accent
+                                                        .withValues(
+                                                          alpha: 0.12,
+                                                        ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          10,
+                                                        ),
+                                                    border: Border.all(
+                                                      color: AppColors.accent
+                                                          .withValues(
+                                                            alpha: 0.5,
+                                                          ),
+                                                      width: 2,
+                                                    ),
                                                   ),
                                                 ),
                                               ),
-                                            ),
-                                            childWhenDragging: const SizedBox(width: 28, height: 28),
-                                            child: Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                              color: Colors.transparent,
-                                              child: Text(
-                                                '≡',
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  height: 1,
-                                                  color: AppColors.textMuted,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        // Drop highlight overlay
-                                        if (isOver)
-                                          Positioned.fill(
-                                            child: Container(
-                                              decoration: BoxDecoration(
-                                                color: AppColors.accent.withValues(alpha: 0.12),
-                                                borderRadius: BorderRadius.circular(10),
-                                                border: Border.all(
-                                                  color: AppColors.accent.withValues(alpha: 0.5),
-                                                  width: 2,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                      ],
-                                    );
-                                  },
-                                );
-                              },
-                            );
-                          },
-                        );
-                      },
-                    ),
-            ),
-            // Download app banner (web only)
-            DownloadAppBanner(
-              onDismissed: () => setState(() => _bannerVisible = false),
-            ),
-          ],
-        ),
+                                          ],
+                                        );
+                                      },
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          );
+                        },
+                      ),
+              ),
+              // Download app banner (web only)
+              DownloadAppBanner(
+                onDismissed: () => setState(() => _bannerVisible = false),
+              ),
+            ],
+          ),
           // Ad banner pinned to bottom (mobile free users only)
           const Positioned(
             left: 0,
@@ -385,7 +454,9 @@ class _PageListScreenState extends State<PageListScreen> {
             right: 16,
             bottom: _bannerVisible
                 ? 56
-                : (!kIsWeb && !context.read<PremiumProvider>().isPremium ? 66 : 16),
+                : (!kIsWeb && !context.read<PremiumProvider>().isPremium
+                      ? 66
+                      : 16),
             child: GestureDetector(
               onTap: _createPage,
               child: Container(
@@ -443,121 +514,127 @@ class _PageCard extends StatelessWidget {
       opacity: cardOpacity,
       child: GestureDetector(
         onTap: isDragGhost ? null : onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.shell,
-          border: Border.all(color: AppColors.shellBorder),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Stack(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const SizedBox(height: 14),
-                // Title
-                MarqueeText(
-                  text: page.title,
-                  style: AppFonts.pixel(fontSize: 11, color: AppColors.text),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.shell,
+            border: Border.all(color: AppColors.shellBorder),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 14),
+                    // Title
+                    MarqueeText(
+                      text: page.title,
+                      style: AppFonts.pixel(
+                        fontSize: 11,
+                        color: AppColors.text,
+                      ),
+                    ),
+                    // Legend dots (transparent placeholder if none)
+                    const SizedBox(height: 3),
+                    legends.isNotEmpty
+                        ? Wrap(
+                            alignment: WrapAlignment.center,
+                            spacing: 4,
+                            runSpacing: 2,
+                            children: legends.map((l) {
+                              return Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: _hexToColor(l.color),
+                                ),
+                              );
+                            }).toList(),
+                          )
+                        : Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.transparent,
+                            ),
+                          ),
+                    const SizedBox(height: 6),
+                    // Full grid preview
+                    Expanded(
+                      child: Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: AppColors.screen,
+                          border: Border.all(color: AppColors.screenBorder),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: _MiniGrid(cells: cells, year: year),
+                      ),
+                    ),
+                  ],
                 ),
-            // Legend dots (transparent placeholder if none)
-            const SizedBox(height: 3),
-            legends.isNotEmpty
-                ? Wrap(
-                    alignment: WrapAlignment.center,
-                    spacing: 4,
-                    runSpacing: 2,
-                    children: legends.map((l) {
-                      return Container(
-                        width: 8,
-                        height: 8,
+              ),
+              // Lock badge (free tier — tracker beyond the first 3 by createdAt)
+              if (isLocked)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: _hexToColor(l.color),
+                          color: AppColors.shell.withValues(alpha: 0.85),
+                          border: Border.all(
+                            color: AppColors.accent,
+                            width: 1.5,
+                          ),
                         ),
-                      );
-                    }).toList(),
-                  )
-                : Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.transparent,
+                        child: Icon(
+                          Icons.lock_outline,
+                          size: 18,
+                          color: AppColors.accent,
+                        ),
+                      ),
                     ),
                   ),
-            const SizedBox(height: 6),
-            // Full grid preview
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: AppColors.screen,
-                  border: Border.all(color: AppColors.screenBorder),
-                  borderRadius: BorderRadius.circular(6),
                 ),
-                child: _MiniGrid(cells: cells, year: year),
-              ),
-            ),
-              ],
-            ),
+              // Drag handle top-left
+              if (dragHandle != null)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {}, // absorb taps so they don't open the tracker
+                    child: dragHandle!,
+                  ),
+                ),
+              // Delete button top-right
+              if (!isDragGhost)
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: onDelete,
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Icon(
+                        Icons.close,
+                        size: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
-          // Lock badge (free tier — tracker beyond the first 3 by createdAt)
-          if (isLocked)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.shell.withValues(alpha: 0.85),
-                      border: Border.all(color: AppColors.accent, width: 1.5),
-                    ),
-                    child: Icon(
-                      Icons.lock_outline,
-                      size: 18,
-                      color: AppColors.accent,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          // Drag handle top-left
-          if (dragHandle != null)
-            Positioned(
-              top: 0,
-              left: 0,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () {}, // absorb taps so they don't open the tracker
-                child: dragHandle!,
-              ),
-            ),
-          // Delete button top-right
-          if (!isDragGhost)
-            Positioned(
-              top: 0,
-              right: 0,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: onDelete,
-                child: Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Icon(
-                    Icons.close,
-                    size: 12,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-              ),
-            ),
-        ],
         ),
       ),
-    ),
     );
   }
 
@@ -617,7 +694,9 @@ class _MiniGridPainter extends CustomPainter {
         if (day > maxDays) continue;
         final cy = pad + stepY * d + stepY / 2;
         final cell = cells?.get(month, day);
-        final paint = cell != null ? (Paint()..color = _hexToColor(cell.color)) : emptyPaint;
+        final paint = cell != null
+            ? (Paint()..color = _hexToColor(cell.color))
+            : emptyPaint;
         canvas.drawCircle(Offset(cx, cy), dotRadius, paint);
       }
     }
@@ -711,7 +790,8 @@ class _CreateTrackerDialogState extends State<_CreateTrackerDialog> {
                 hintText: lang.t('tracker.titleHint'),
                 counterText: '',
                 contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 10,
+                  horizontal: 12,
+                  vertical: 10,
                 ),
                 isDense: true,
               ),
@@ -735,7 +815,10 @@ class _CreateTrackerDialogState extends State<_CreateTrackerDialog> {
                 GestureDetector(
                   onTap: _create,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.btnAdd,
                       border: Border.all(color: AppColors.btnAddBorder),
@@ -752,7 +835,10 @@ class _CreateTrackerDialogState extends State<_CreateTrackerDialog> {
                           )
                         : Text(
                             lang.t('common.create'),
-                            style: AppFonts.pixel(fontSize: 12, color: AppColors.btnAddText),
+                            style: AppFonts.pixel(
+                              fontSize: 12,
+                              color: AppColors.btnAddText,
+                            ),
                           ),
                   ),
                 ),

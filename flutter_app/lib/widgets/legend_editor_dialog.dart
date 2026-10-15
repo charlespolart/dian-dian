@@ -8,6 +8,7 @@ import '../theme/app_theme.dart';
 import 'app_dialog.dart';
 import 'marquee_text.dart';
 import 'confirm_dialog.dart';
+import 'drag_feedback.dart';
 import 'utf16_length_limit.dart';
 
 /// Dialog for managing legends: list, add, delete, reorder.
@@ -938,12 +939,10 @@ class _DraggableLegendTile extends StatelessWidget {
                 data: index,
                 onDragStarted: onDragStarted,
                 onDragEnd: (_) => onDragEnd(),
-                feedback: Material(
-                  color: Colors.transparent,
-                  child: SizedBox(
-                    width: width,
-                    child: _buildContent(context, static: true),
-                  ),
+                feedback: DragFeedback(
+                  width: width ?? 300,
+                  radius: 6,
+                  child: _buildContent(context, static: true),
                 ),
                 childWhenDragging: handleBox,
                 child: handleBox,
