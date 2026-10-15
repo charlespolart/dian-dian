@@ -365,8 +365,8 @@ class _LegendEditorDialogState extends State<LegendEditorDialog> {
       onTap: () => _onPaletteColorTap(hex, pos),
       onLongPress: onLongPress,
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 2),
-        padding: const EdgeInsets.all(2),
+        margin: const EdgeInsets.symmetric(horizontal: 1),
+        padding: const EdgeInsets.all(1.5),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: AppColors.shell,
@@ -376,8 +376,8 @@ class _LegendEditorDialogState extends State<LegendEditorDialog> {
           ),
         ),
         child: Container(
-          width: 26,
-          height: 26,
+          width: 28,
+          height: 28,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: _parseHex(hex),
@@ -801,9 +801,10 @@ class _HuePainter extends CustomPainter {
 }
 
 /// A single legend tile that supports drag-to-reorder and inline label editing.
-/// One legend row: drag handle (long press to reorder), dot, label, delete.
-/// Tapping the row opens the legend's editor (label + color); the label is
-/// no longer edited inline.
+/// One legend row: drag handle, dot, label, delete. Dragging the handle
+/// reorders at once; a long press anywhere on the row does too. Tapping the
+/// dot + label opens the legend's editor (label + color); the label is no
+/// longer edited inline.
 class _DraggableLegendTile extends StatelessWidget {
   final int index;
   final dynamic legend;
@@ -827,11 +828,22 @@ class _DraggableLegendTile extends StatelessWidget {
     required this.onDelete,
   });
 
-  /// Three hit zones: the handle (long press = reorder, a tap does
-  /// nothing), the dot + label (tap = open the editor), the cross (delete).
-  /// Each zone carries its own padding, so a tap near the handle or the
-  /// cross never opens the editor.
-  Widget _buildContent({bool ghost = false}) {
+  Widget _feedback(BuildContext context) => Material(
+        color: Colors.transparent,
+        child: SizedBox(
+          width: MediaQuery.of(context).size.width * 0.7,
+          child: _buildContent(context, inFlight: true),
+        ),
+      );
+
+  /// Three hit zones: the handle (drag at once), the dot + label (tap =
+  /// open the editor), the cross (delete). Each zone carries its own
+  /// padding, so a touch near the handle or the cross never opens the editor.
+  Widget _buildContent(BuildContext context, {bool ghost = false, bool inFlight = false}) {
+    final handle = Padding(
+      padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+      child: Icon(Icons.drag_handle, size: 18, color: AppColors.textMuted),
+    );
     return Container(
       margin: const EdgeInsets.only(bottom: 4),
       decoration: BoxDecoration(
@@ -843,10 +855,19 @@ class _DraggableLegendTile extends StatelessWidget {
         opacity: ghost ? 0.3 : 1.0,
         child: Row(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 10, 6, 10),
-              child: Icon(Icons.drag_handle, size: 16, color: AppColors.textMuted),
-            ),
+            // The handle drags without waiting for a long press (not in the
+            // drag feedback itself, nor in the ghost).
+            if (inFlight || ghost)
+              handle
+            else
+              Draggable<int>(
+                data: index,
+                axis: Axis.vertical,
+                onDragStarted: onDragStarted,
+                onDragEnd: (_) => onDragEnd(),
+                feedback: _feedback(context),
+                child: handle,
+              ),
             Expanded(
               child: Semantics(
                 button: true,
@@ -885,7 +906,7 @@ class _DraggableLegendTile extends StatelessWidget {
                   behavior: HitTestBehavior.opaque,
                   onTap: onDelete,
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(8, 10, 10, 10),
+                    padding: const EdgeInsets.fromLTRB(6, 10, 10, 10),
                     child: Icon(
                       Icons.close,
                       size: 16,
@@ -920,15 +941,10 @@ class _DraggableLegendTile extends StatelessWidget {
               data: index,
               onDragStarted: onDragStarted,
               onDragEnd: (_) => onDragEnd(),
-              feedback: Material(
-                color: Colors.transparent,
-                child: SizedBox(
-                  width: MediaQuery.of(context).size.width * 0.7,
-                  child: _buildContent(),
-                ),
-              ),
-              childWhenDragging: _buildContent(ghost: true),
-              child: _buildContent(),
+              feedback: _feedback(context),
+              childWhenDragging: _buildContent(context, ghost: true),
+              // Ghost while the handle drag is in flight too.
+              child: _buildContent(context, ghost: isDragging),
             ),
           ],
         );

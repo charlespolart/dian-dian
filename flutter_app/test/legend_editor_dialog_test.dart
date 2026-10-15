@@ -151,4 +151,30 @@ void main() {
     expect(find.byKey(const Key('legend.editLabel')), findsNothing, reason: 'cross: delete, not edit');
     expect(find.text('Delete'), findsWidgets, reason: 'the delete confirmation is up');
   });
+
+  testWidgets('a long press anywhere on the item (label, dot, padding) starts the drag', (tester) async {
+    await open(tester);
+    final label = tester.getCenter(find.text('Great'));
+    final gesture = await tester.startGesture(label);
+    await tester.pump(const Duration(milliseconds: 700));
+    await gesture.moveBy(const Offset(0, 60));
+    await tester.pump();
+    expect(find.text('Great'), findsNWidgets(2), reason: 'ghost row + drag feedback');
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('legend.editLabel')), findsNothing, reason: 'a drag is not a tap');
+  });
+
+  testWidgets('dragging the handle reorders at once, no long press needed', (tester) async {
+    await open(tester);
+    final handle = tester.getCenter(find.byIcon(Icons.drag_handle).first);
+    final gesture = await tester.startGesture(handle);
+    await tester.pump(const Duration(milliseconds: 50));
+    await gesture.moveBy(const Offset(0, 40));
+    await tester.pump();
+    expect(find.text('Great'), findsNWidgets(2), reason: 'ghost row + drag feedback');
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('legend.editLabel')), findsNothing);
+  });
 }
