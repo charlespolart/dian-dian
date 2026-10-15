@@ -21,6 +21,7 @@ ICON = os.path.join(ASSETS, 'images', 'icon.png')
 BG, DOT_BG = '#F4EFD0', '#D4D4E2'
 CARD, CARD_BORDER, SCREEN, SCREEN_BORDER = '#FBF8EA', '#D8D1B5', '#FFFDF5', '#E3DCC3'
 TITLE, SUBTITLE, MUTED, EMPTY, TEXT = '#7E7EB8', '#9C9CC6', '#9A957F', '#E6E2D2', '#5C5C80'
+DOT_BORDER, ACCENT, INPUT_BORDER = '#D9D3BF', '#8A8AC0', '#C9C3AE'
 
 PALETTES = {
     'MOOD':     ['#FFEC99', '#FFD43B', '#8CE99A', '#74C0FC', '#E599F7'],
@@ -229,73 +230,115 @@ def draw_grid(img, gx, gy, cell, lab_w, lf, palette, rng, fill_until=(9, 14), mo
                 run += 1
             elif in_range:
                 run = 0
-            d.ellipse([cx - rad, cy - rad, cx + rad, cy + rad], fill=color or EMPTY)
+            if color:
+                d.ellipse([cx - rad, cy - rad, cx + rad, cy + rad], fill=color)
+            else:
+                d.ellipse([cx - rad, cy - rad, cx + rad, cy + rad], fill=EMPTY, outline=DOT_BORDER, width=1)
     streak = run
     return filled_days, streak
 
 
 def tracker_screen_metrics(h, s=1.0, sidebar_w=150):
-    """Geometry of the app-like tracker screen: sidebar + divider + grid in
-    one card, grid cell derived from the height (square cells)."""
-    pad = int(26 * s)
-    inner = int(16 * s)
-    screen_h = h - 2 * pad
+    """Geometry of the app's tracker screen: one dashed "book" frame holding
+    the sidebar and the grid on the same background; grid cell derived from
+    the height (square cells)."""
+    shell = int(8 * s)          # outer shell padding (solid border → dashed frame)
+    pad = int(18 * s)           # inside the dashed frame
+    inner = int(14 * s)
+    screen_h = h - 2 * shell - 2 * pad
     cell = (screen_h - 2 * inner) / 32
     label_font = ImageFont.truetype(FONT_PIXEL, max(8, int(cell * 0.58)))
     lab_w = max(cell, label_font.getbbox('30')[2] + int(8 * s))
     grid_w = lab_w + 12 * cell
-    screen_w = grid_w + 2 * inner
     sb = int(sidebar_w * s)
-    w = int(pad + sb + int(12 * s) + screen_w + pad)
-    return dict(w=w, pad=pad, inner=inner, cell=cell, lab_w=lab_w, label_font=label_font, sidebar_w=sb, screen_w=screen_w)
+    w = int(2 * shell + 2 * pad + sb + int(14 * s) + grid_w + 2 * inner)
+    return dict(w=w, shell=shell, pad=pad, inner=inner, cell=cell, lab_w=lab_w, label_font=label_font, sidebar_w=sb, grid_w=grid_w)
+
+
+def dashed_rounded_rect(d, box, radius, dash, gap, color, width=1):
+    """Dashed rounded rectangle (PIL has no dash support): dashes along the
+    four edges, and short arcs around the corners."""
+    import math
+    x0, y0, x1, y1 = box
+    r = radius
+    def hline(y, xa, xb):
+        x = xa
+        while x < xb:
+            d.line([x, y, min(x + dash, xb), y], fill=color, width=width); x += dash + gap
+    def vline(x, ya, yb):
+        y = ya
+        while y < yb:
+            d.line([x, y, x, min(y + dash, yb)], fill=color, width=width); y += dash + gap
+    hline(y0, x0 + r, x1 - r); hline(y1, x0 + r, x1 - r)
+    vline(x0, y0 + r, y1 - r); vline(x1, y0 + r, y1 - r)
+    step = math.degrees((dash + gap) / max(r, 1)); ds = math.degrees(dash / max(r, 1))
+    for (cx, cy, a0) in [(x0 + r, y0 + r, 180), (x1 - r, y0 + r, 270), (x1 - r, y1 - r, 0), (x0 + r, y1 - r, 90)]:
+        a = a0
+        while a < a0 + 90:
+            d.arc([cx - r, cy - r, cx + r, cy + r], a, min(a + ds, a0 + 90), fill=color, width=width); a += step
 
 
 def draw_tracker_screen(img, x, y, h, palette, labels, rng, s=1.0, fill_until=(9, 14), mode='runs',
                         year=2026, words=None, sidebar_w=150):
-    """The app's tracker screen as one card: left sidebar (year, legend with
-    labels, stats computed from the fill) and the grid. `labels` is the list
-    of legend labels (one per palette colour); `words` the localized words
-    {'legend', 'stats', 'days', 'streak', 'year'}. Returns the card width."""
-    words = words or {'legend': 'LEGEND', 'stats': 'STATS', 'days': 'days', 'streak': 'streak', 'year': 'year'}
+    """The app's tracker screen as one card, like the real thing: a solid
+    shell, a dashed frame, one background for the sidebar and the grid, a
+    dashed divider. Sidebar: chevron, "< year >", legend with labels, the
+    dashed EDIT button, stats at the bottom. Returns the card width."""
+    words = words or {'legend': 'LEGEND', 'stats': 'STATS', 'days': 'days', 'streak': 'streak', 'year': 'year', 'edit': 'EDIT'}
     m = tracker_screen_metrics(h, s, sidebar_w)
-    w, pad, inner, cell, lab_w, sb = m['w'], m['pad'], m['inner'], m['cell'], m['lab_w'], m['sidebar_w']
+    w, shell, pad, inner, cell, lab_w, sb = m['w'], m['shell'], m['pad'], m['inner'], m['cell'], m['lab_w'], m['sidebar_w']
     d = ImageDraw.Draw(img)
-    d.rounded_rectangle([x, y, x + w, y + h], radius=int(30 * s), fill=CARD, outline=CARD_BORDER, width=max(2, int(4 * s)))
-    # grid on the right (drawn first so the stats know the numbers)
-    sx = x + pad + sb + int(12 * s)
-    sy = y + pad
-    filled, streak = draw_screen(img, sx, sy, m['screen_w'], h - 2 * pad, inner, cell, lab_w, m['label_font'],
-                                 palette, rng, fill_until, mode, s)
-    # dashed divider
-    dx = x + pad + sb + int(6 * s)
-    yy = y + pad
-    while yy < y + h - pad:
-        d.line([dx, yy, dx, min(yy + int(6 * s), y + h - pad)], fill=SCREEN_BORDER, width=max(1, int(2 * s)))
-        yy += int(10 * s)
+    # shell + dashed frame, one background for everything inside
+    d.rounded_rectangle([x, y, x + w, y + h], radius=int(14 * s), fill=CARD, outline=CARD_BORDER, width=max(1, int(2 * s)))
+    fx0, fy0, fx1, fy1 = x + shell, y + shell, x + w - shell, y + h - shell
+    d.rounded_rectangle([fx0, fy0, fx1, fy1], radius=int(10 * s), fill=SCREEN)
+    dashed_rounded_rect(d, (fx0, fy0, fx1, fy1), int(10 * s), int(5 * s), int(3 * s), CARD_BORDER, max(1, int(1.5 * s)))
+    # vertical dashed divider
+    dx = fx0 + pad + sb + int(7 * s)
+    yy = fy0 + pad
+    while yy < fy1 - pad:
+        d.line([dx, yy, dx, min(yy + int(4 * s), fy1 - pad)], fill=CARD_BORDER, width=max(1, int(1.5 * s))); yy += int(7 * s)
+    # grid
+    gx = dx + int(7 * s) + inner
+    gy = fy0 + pad + inner
+    filled, streak = draw_grid(img, gx, gy, cell, lab_w, m['label_font'], palette, rng, fill_until, mode)
     # sidebar
-    cx = x + pad + sb / 2
-    ty = y + pad + int(10 * s)
-    ty += text_centered(d, cx, ty, f'~ {year} ~', ImageFont.truetype(FONT_PIXEL_R, int(16 * s)), SUBTITLE) + int(22 * s)
+    cx = fx0 + pad + sb / 2
+    ty = fy0 + pad + int(4 * s)
+    ty += text_centered(d, cx, ty, '<', ImageFont.truetype(FONT_PIXEL_R, int(12 * s)), MUTED) + int(18 * s)
+    yf = ImageFont.truetype(FONT_CJK, int(17 * s))
+    ty += text_centered(d, cx, ty, f'<  {year}  >', yf, SUBTITLE) + int(14 * s)
     ty += section_header(d, cx, ty, words['legend'], sb, s)
-    lf = font_for(''.join(labels), int(15 * s), pixel_bold=False)
-    dot = int(14 * s)
-    lx = x + pad + int(8 * s)
+    lf = font_for(''.join(labels), int(14 * s), pixel_bold=False)
+    if all(ord(ch) < 0x2E80 for ch in ''.join(labels)):
+        lf = ImageFont.truetype(FONT_CJK, int(14 * s))   # the app uses the dot font for labels
+    dot = int(16 * s)
+    lx = fx0 + pad + int(6 * s)
     for col, lab in zip(palette, labels):
         d.ellipse([lx, ty + int(2 * s), lx + dot, ty + int(2 * s) + dot], fill=col)
         box = lf.getbbox(lab)
         d.text((lx + dot + int(8 * s) - box[0], ty + (dot - (box[3] - box[1])) / 2 + int(2 * s) - box[1]), lab, font=lf, fill=TEXT)
-        ty += dot + int(12 * s)
-    # stats at the bottom of the sidebar
+        ty += dot + int(14 * s)
+    # dashed EDIT button
+    ef = font_for(words['edit'], int(11 * s))
+    eb = ef.getbbox(words['edit'])
+    bw_, bh_ = eb[2] - eb[0] + int(34 * s), eb[3] - eb[1] + int(18 * s)
+    bx0, by0 = cx - bw_ / 2, ty + int(8 * s)
+    dashed_rounded_rect(d, (bx0, by0, bx0 + bw_, by0 + bh_), int(4 * s), int(3 * s), int(2 * s), INPUT_BORDER, 1)
+    px = bx0 + int(10 * s); py = by0 + bh_ / 2
+    d.line([px, py + int(4 * s), px + int(8 * s), py - int(4 * s)], fill=ACCENT, width=max(1, int(2 * s)))  # pencil
+    d.text((px + int(14 * s) - eb[0], by0 + (bh_ - (eb[3] - eb[1])) / 2 - eb[1]), words['edit'], font=ef, fill=ACCENT)
+    # stats at the bottom
     pct = round(100 * filled / 365)
     stats = [(str(filled), words['days']), (str(streak), words['streak']), (f'{pct}%', words['year'])]
-    vf = ImageFont.truetype(FONT_PIXEL, int(22 * s))
-    sf = font_for(''.join(wd for _, wd in stats), int(13 * s), pixel_bold=False)
-    block = len(stats) * (vf.getbbox('0')[3] + int(4 * s) + sf.getbbox('x')[3] + int(14 * s))
-    by = y + h - pad - block - int(6 * s)
+    vf = ImageFont.truetype(FONT_PIXEL, int(20 * s))
+    sf = ImageFont.truetype(FONT_CJK, int(13 * s)) if all(ord(ch) < 0x2E80 for ch in ''.join(wd for _, wd in stats)) else font_for(''.join(wd for _, wd in stats), int(13 * s), pixel_bold=False)
+    block = len(stats) * ((vf.getbbox('0')[3] - vf.getbbox('0')[1]) + int(4 * s) + (sf.getbbox('x')[3] - sf.getbbox('x')[1]) + int(12 * s))
+    by = fy1 - pad - block - int(26 * s)
     by += section_header(d, cx, by, words['stats'], sb, s)
     for val, lab in stats:
         by += text_centered(d, cx, by, val, vf, TITLE) + int(4 * s)
-        by += text_centered(d, cx, by, lab, sf, MUTED) + int(14 * s)
+        by += text_centered(d, cx, by, lab, sf, MUTED) + int(12 * s)
     return w
 
 
