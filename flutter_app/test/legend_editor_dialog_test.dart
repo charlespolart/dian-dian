@@ -140,4 +140,15 @@ void main() {
     expect(h.patches, isEmpty);
     expect(find.text('Great'), findsOneWidget, reason: 'label kept');
   });
+
+  testWidgets('the handle and the cross do not open the editor', (tester) async {
+    await open(tester);
+    await tester.tap(find.byIcon(Icons.drag_handle).first);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('legend.editLabel')), findsNothing, reason: 'handle: nothing');
+    await tester.tap(find.byIcon(Icons.close).first);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('legend.editLabel')), findsNothing, reason: 'cross: delete, not edit');
+    expect(find.text('Delete'), findsWidgets, reason: 'the delete confirmation is up');
+  });
 }

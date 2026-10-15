@@ -46,8 +46,30 @@ class ConfirmDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppDialog(
+      footer: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _buildButton(
+            context,
+            label: cancelLabel,
+            bgColor: AppColors.inputBg,
+            borderColor: AppColors.inputBorder,
+            textColor: AppColors.textMuted,
+            onTap: () => Navigator.of(context).pop(false),
+          ),
+          const SizedBox(width: 12),
+          _buildButton(
+            context,
+            label: confirmLabel,
+            bgColor: destructive ? AppColors.btnReset : AppColors.btnAdd,
+            borderColor: destructive ? AppColors.btnResetBorder : AppColors.btnAddBorder,
+            textColor: destructive ? AppColors.btnResetText : AppColors.btnAddText,
+            onTap: () => Navigator.of(context).pop(true),
+          ),
+        ],
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -61,33 +83,6 @@ class ConfirmDialog extends StatelessWidget {
               message,
               style: AppFonts.dot(fontSize: 14, color: AppColors.text),
               textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildButton(
-                  context,
-                  label: cancelLabel,
-                  bgColor: AppColors.inputBg,
-                  borderColor: AppColors.inputBorder,
-                  textColor: AppColors.textMuted,
-                  onTap: () => Navigator.of(context).pop(false),
-                ),
-                const SizedBox(width: 12),
-                _buildButton(
-                  context,
-                  label: confirmLabel,
-                  bgColor: destructive ? AppColors.btnReset : AppColors.btnAdd,
-                  borderColor: destructive
-                      ? AppColors.btnResetBorder
-                      : AppColors.btnAddBorder,
-                  textColor: destructive
-                      ? AppColors.btnResetText
-                      : AppColors.btnAddText,
-                  onTap: () => Navigator.of(context).pop(true),
-                ),
-              ],
             ),
           ],
         ),

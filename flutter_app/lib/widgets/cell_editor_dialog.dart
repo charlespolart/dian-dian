@@ -163,8 +163,10 @@ class _CellEditorDialogState extends State<CellEditorDialog> {
     final legends = context.watch<LegendsProvider>().legends;
 
     return AppDialog(
+      // Buttons stay put under the body (never scroll away or get cut).
+      footer: _hasCell ? _buildViewFooter(lang) : _buildEditFooter(lang),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -242,49 +244,6 @@ class _CellEditorDialogState extends State<CellEditorDialog> {
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),
           ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              GestureDetector(
-                onTap: () {
-                  // Reload original comment
-                  final cells = context.read<CellsProvider>();
-                  final cell = cells.getCell(_month, _day);
-                  _commentController.text = cell?.comment ?? '';
-                  setState(() => _editingComment = false);
-                },
-                child: Text(
-                  lang.t('common.cancel'),
-                  style: AppFonts.pixel(fontSize: 12, color: AppColors.textMuted),
-                ),
-              ),
-              const SizedBox(width: 20),
-              GestureDetector(
-                onTap: () async {
-                  final cells = context.read<CellsProvider>();
-                  final newComment = _commentController.text.trim();
-                  await cells.setCell(
-                    _month, _day, _selectedColor!,
-                    comment: newComment.isNotEmpty ? newComment : null,
-                  );
-                  setState(() => _editingComment = false);
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: AppColors.btnAdd,
-                    border: Border.all(color: AppColors.btnAddBorder),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    lang.t('common.ok'),
-                    style: AppFonts.pixel(fontSize: 12, color: AppColors.btnAddText),
-                  ),
-                ),
-              ),
-            ],
-          ),
         ] else ...[
           // Show comment block with edit icon, or small "add" button if no comment
           if (comment.isNotEmpty)
@@ -334,60 +293,157 @@ class _CellEditorDialogState extends State<CellEditorDialog> {
               ),
             ),
 
-          const SizedBox(height: 20),
+        ],
+      ],
+    );
+  }
 
-          // Buttons
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => Navigator.of(context).pop(),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  child: Text(
-                    lang.t('settings.back'),
-                    style: AppFonts.pixel(fontSize: 12, color: AppColors.textMuted),
-                  ),
-                ),
+  /// View mode buttons: Cancel / OK while the comment is being edited,
+  /// Back / Delete otherwise.
+  Widget _buildViewFooter(LanguageProvider lang) {
+    if (_editingComment) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              // Reload original comment
+              final cells = context.read<CellsProvider>();
+              final cell = cells.getCell(_month, _day);
+              _commentController.text = cell?.comment ?? '';
+              setState(() => _editingComment = false);
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Text(
+                lang.t('common.cancel'),
+                style: AppFonts.pixel(fontSize: 12, color: AppColors.textMuted),
               ),
-              const SizedBox(width: 20),
-              GestureDetector(
-                onTap: () async {
-                  final cells = context.read<CellsProvider>();
-                  final navigator = Navigator.of(context);
-                  await cells.deleteCell(_month, _day);
-                  navigator.pop();
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.btnReset,
-                    border: Border.all(color: AppColors.btnResetBorder),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.delete_outline, size: 14, color: AppColors.btnResetText),
-                      const SizedBox(width: 6),
-                      Text(
-                        lang.t('common.delete'),
-                        style: AppFonts.pixel(
-                          fontSize: 12,
-                          color: AppColors.btnResetText,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+            ),
+          ),
+          const SizedBox(width: 20),
+          GestureDetector(
+            onTap: () async {
+              final cells = context.read<CellsProvider>();
+              final newComment = _commentController.text.trim();
+              await cells.setCell(
+                _month, _day, _selectedColor!,
+                comment: newComment.isNotEmpty ? newComment : null,
+              );
+              setState(() => _editingComment = false);
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.btnAdd,
+                border: Border.all(color: AppColors.btnAddBorder),
+                borderRadius: BorderRadius.circular(6),
               ),
-            ],
+              child: Text(
+                lang.t('common.ok'),
+                style: AppFonts.pixel(fontSize: 12, color: AppColors.btnAddText),
+              ),
+            ),
           ),
         ],
+      );
+    }
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => Navigator.of(context).pop(),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Text(
+              lang.t('settings.back'),
+              style: AppFonts.pixel(fontSize: 12, color: AppColors.textMuted),
+            ),
+          ),
+        ),
+        const SizedBox(width: 20),
+        GestureDetector(
+          onTap: () async {
+            final cells = context.read<CellsProvider>();
+            final navigator = Navigator.of(context);
+            await cells.deleteCell(_month, _day);
+            navigator.pop();
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.btnReset,
+              border: Border.all(color: AppColors.btnResetBorder),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.delete_outline, size: 14, color: AppColors.btnResetText),
+                const SizedBox(width: 6),
+                Text(
+                  lang.t('common.delete'),
+                  style: AppFonts.pixel(fontSize: 12, color: AppColors.btnResetText),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Edit mode buttons: Cancel / OK (OK needs a legend picked).
+  Widget _buildEditFooter(LanguageProvider lang) {
+    final canSave = _selectedColor != null;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => Navigator.of(context).pop(),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Text(
+              lang.t('common.cancel'),
+              style: AppFonts.pixel(fontSize: 12, color: AppColors.textMuted),
+            ),
+          ),
+        ),
+        const SizedBox(width: 20),
+        GestureDetector(
+          onTap: !canSave
+              ? null
+              : () async {
+                  final cells = context.read<CellsProvider>();
+                  final navigator = Navigator.of(context);
+                  final comment = _commentController.text.trim();
+                  await cells.setCell(
+                    _month,
+                    _day,
+                    _selectedColor!,
+                    comment: comment.isNotEmpty ? comment : null,
+                  );
+                  navigator.pop();
+                },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            decoration: BoxDecoration(
+              color: canSave ? AppColors.btnAdd : AppColors.dotEmpty,
+              border: Border.all(color: canSave ? AppColors.btnAddBorder : AppColors.dotBorder),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              lang.t('common.ok'),
+              style: AppFonts.pixel(
+                fontSize: 12,
+                color: canSave ? AppColors.btnAddText : AppColors.textMuted,
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -397,18 +453,14 @@ class _CellEditorDialogState extends State<CellEditorDialog> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Legend selection
-        ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 200),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: legends.map((legend) {
-                  return _buildLegendRow(legend);
-                }).toList(),
-              ),
-            ),
-          ),
+        // Legend selection (the dialog grows with it; AppDialog scrolls
+        // the body only once the screen is full)
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: legends.map((legend) {
+            return _buildLegendRow(legend);
+          }).toList(),
+        ),
 
         const SizedBox(height: 16),
 
@@ -435,67 +487,6 @@ class _CellEditorDialogState extends State<CellEditorDialog> {
           ),
         ),
 
-        const SizedBox(height: 16),
-
-        // Action buttons
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            GestureDetector(
-              onTap: () => Navigator.of(context).pop(),
-              child: Text(
-                lang.t('common.cancel'),
-                style: AppFonts.pixel(
-                  fontSize: 12,
-                  color: AppColors.textMuted,
-                ),
-              ),
-            ),
-            const SizedBox(width: 20),
-            GestureDetector(
-              onTap: _selectedColor == null
-                  ? null
-                  : () async {
-                      final cells = context.read<CellsProvider>();
-                      final navigator = Navigator.of(context);
-                      final comment = _commentController.text.trim();
-                      await cells.setCell(
-                        _month,
-                        _day,
-                        _selectedColor!,
-                        comment: comment.isNotEmpty ? comment : null,
-                      );
-                      navigator.pop();
-                    },
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: _selectedColor != null
-                      ? AppColors.btnAdd
-                      : AppColors.dotEmpty,
-                  border: Border.all(
-                    color: _selectedColor != null
-                        ? AppColors.btnAddBorder
-                        : AppColors.dotBorder,
-                  ),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  lang.t('common.ok'),
-                  style: AppFonts.pixel(
-                    fontSize: 12,
-                    color: _selectedColor != null
-                        ? AppColors.btnAddText
-                        : AppColors.textMuted,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
       ],
     );
   }

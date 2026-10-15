@@ -30,7 +30,6 @@ class LegendEditorDialog extends StatefulWidget {
 class _LegendEditorDialogState extends State<LegendEditorDialog> {
   final _labelController = TextEditingController();
   final _editLabelController = TextEditingController();
-  final _scrollController = ScrollController();
   String _selectedColor = AppTheme.defaultPalette[0][0];
   // Track selection by position: "row,col" (e.g. "0,3" or "custom,2")
   String _selectedPos = '0,0';
@@ -61,7 +60,6 @@ class _LegendEditorDialogState extends State<LegendEditorDialog> {
   void dispose() {
     _labelController.dispose();
     _editLabelController.dispose();
-    _scrollController.dispose();
     super.dispose();
   }
 
@@ -100,10 +98,12 @@ class _LegendEditorDialogState extends State<LegendEditorDialog> {
   @override
   Widget build(BuildContext context) {
     final lang = context.read<LanguageProvider>();
+    final editing = _editIndex != null;
     return AppDialog(
+      footer: editing ? _buildEditFooter(lang) : _buildListFooter(lang),
       child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: _editIndex != null ? _buildEdit(lang) : _buildList(lang),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+        child: editing ? _buildEdit(lang) : _buildList(lang),
       ),
     );
   }
@@ -163,26 +163,30 @@ class _LegendEditorDialogState extends State<LegendEditorDialog> {
           ),
         ),
         _buildPalettePicker(),
-        const SizedBox(height: 16),
-        Semantics(
-          button: true,
-          child: GestureDetector(
-            onTap: _closeEdit,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.btnAdd,
-                border: Border.all(color: AppColors.btnAddBorder),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                lang.t('common.ok'),
-                style: AppFonts.pixel(fontSize: 12, color: AppColors.btnAddText),
-              ),
+      ],
+    );
+  }
+
+  Widget _buildEditFooter(LanguageProvider lang) {
+    return Center(
+      child: Semantics(
+        button: true,
+        child: GestureDetector(
+          onTap: _closeEdit,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.btnAdd,
+              border: Border.all(color: AppColors.btnAddBorder),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              lang.t('common.ok'),
+              style: AppFonts.pixel(fontSize: 12, color: AppColors.btnAddText),
             ),
           ),
         ),
-      ],
+      ),
     );
   }
 
@@ -210,11 +214,8 @@ class _LegendEditorDialogState extends State<LegendEditorDialog> {
             ),
           )
         else
-          Flexible(
-            child: SingleChildScrollView(
-              controller: _scrollController,
-              child: Column(
-                children: List.generate(legends.length, (i) {
+          Column(
+            children: List.generate(legends.length, (i) {
                   return _DraggableLegendTile(
                     index: i,
                     legend: legends[i],
@@ -240,8 +241,6 @@ class _LegendEditorDialogState extends State<LegendEditorDialog> {
                     },
                   );
                 }),
-              ),
-            ),
           ),
 
         const SizedBox(height: 16),
@@ -288,15 +287,6 @@ class _LegendEditorDialogState extends State<LegendEditorDialog> {
                     await _prov.createLegend(_selectedColor, label);
                     _labelController.clear();
                     _refresh();
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (_scrollController.hasClients) {
-                        _scrollController.animateTo(
-                          _scrollController.position.maxScrollExtent,
-                          duration: const Duration(milliseconds: 200),
-                          curve: Curves.easeOut,
-                        );
-                      }
-                    });
                   },
                   child: Container(
                     alignment: Alignment.center,
@@ -318,20 +308,26 @@ class _LegendEditorDialogState extends State<LegendEditorDialog> {
               ],
             ),
           ),
+      ],
+    );
+  }
 
-        const SizedBox(height: 16),
-
-        GestureDetector(
+  Widget _buildListFooter(LanguageProvider lang) {
+    return Center(
+      child: Semantics(
+        button: true,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
           onTap: () => Navigator.of(context).pop(),
-          child: Text(
-            lang.t('settings.back'),
-            style: AppFonts.pixel(
-              fontSize: 12,
-              color: AppColors.accent,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Text(
+              lang.t('settings.back'),
+              style: AppFonts.pixel(fontSize: 12, color: AppColors.accent),
             ),
           ),
         ),
-      ],
+      ),
     );
   }
 
@@ -819,44 +815,65 @@ class _DraggableLegendTile extends StatelessWidget {
     required this.onDelete,
   });
 
+  /// Three hit zones: the handle (long press = reorder, a tap does
+  /// nothing), the dot + label (tap = open the editor), the cross (delete).
+  /// Each zone carries its own padding, so a tap near the handle or the
+  /// cross never opens the editor.
   Widget _buildContent({bool ghost = false}) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: ghost ? null : onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: ghost ? AppColors.dotEmpty : AppColors.inputBg,
-          border: Border.all(color: ghost ? AppColors.dotBorder : AppColors.inputBorder),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Opacity(
-          opacity: ghost ? 0.3 : 1.0,
-          child: Row(
-            children: [
-              Icon(Icons.drag_handle, size: 16, color: AppColors.textMuted),
-              const SizedBox(width: 8),
-              Container(
-                width: 14,
-                height: 14,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: parseHex(legend.color),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 4),
+      decoration: BoxDecoration(
+        color: ghost ? AppColors.dotEmpty : AppColors.inputBg,
+        border: Border.all(color: ghost ? AppColors.dotBorder : AppColors.inputBorder),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Opacity(
+        opacity: ghost ? 0.3 : 1.0,
+        child: Row(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 10, 6, 10),
+              child: Icon(Icons.drag_handle, size: 16, color: AppColors.textMuted),
+            ),
+            Expanded(
+              child: Semantics(
+                button: true,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: ghost ? null : onTap,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 14,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: parseHex(legend.color),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: MarqueeText(
+                            text: legend.label,
+                            style: AppFonts.dot(fontSize: 13, color: AppColors.text),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: MarqueeText(
-                  text: legend.label,
-                  style: AppFonts.dot(fontSize: 13, color: AppColors.text),
-                ),
-              ),
-              if (!ghost)
-                GestureDetector(
+            ),
+            if (!ghost)
+              Semantics(
+                button: true,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
                   onTap: onDelete,
                   child: Padding(
-                    padding: const EdgeInsets.all(4),
+                    padding: const EdgeInsets.fromLTRB(8, 10, 10, 10),
                     child: Icon(
                       Icons.close,
                       size: 16,
@@ -864,8 +881,8 @@ class _DraggableLegendTile extends StatelessWidget {
                     ),
                   ),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );

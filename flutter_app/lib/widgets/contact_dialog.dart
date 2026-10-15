@@ -128,8 +128,31 @@ class _ContactDialogState extends State<ContactDialog> {
   Widget build(BuildContext context) {
     final lang = context.watch<LanguageProvider>();
     return AppDialog(
+      footer: _sent
+          ? Center(child: _button(lang.t('common.ok'), () => Navigator.of(context).pop()))
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Semantics(
+                  button: true,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _busy ? null : () => Navigator.of(context).pop(),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Text(
+                        lang.t('common.cancel'),
+                        style: AppFonts.pixel(fontSize: 12, color: _busy ? AppColors.dotEmpty : AppColors.textMuted),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 20),
+                _button(lang.t('contact.send'), () => _send(lang), busy: _busy),
+              ],
+            ),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
         child: _sent ? _buildSent(lang) : _buildForm(lang),
       ),
     );
@@ -146,8 +169,6 @@ class _ContactDialogState extends State<ContactDialog> {
           style: AppFonts.dot(fontSize: 14, color: AppColors.text),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 16),
-        _button(lang.t('common.ok'), () => Navigator.of(context).pop()),
       ],
     );
   }
@@ -222,24 +243,6 @@ class _ContactDialogState extends State<ContactDialog> {
             textAlign: TextAlign.center,
           ),
         ],
-        const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Semantics(
-              button: true,
-              child: GestureDetector(
-                onTap: _busy ? null : () => Navigator.of(context).pop(),
-                child: Text(
-                  lang.t('common.cancel'),
-                  style: AppFonts.pixel(fontSize: 12, color: _busy ? AppColors.dotEmpty : AppColors.textMuted),
-                ),
-              ),
-            ),
-            const SizedBox(width: 20),
-            _button(lang.t('contact.send'), () => _send(lang), busy: _busy),
-          ],
-        ),
       ],
     );
   }
