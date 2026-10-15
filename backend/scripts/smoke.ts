@@ -80,6 +80,7 @@ async function main() {
   // --- December is saveable; invalid dates are rejected --------------------
   r = await call('PUT', `/api/cells/${pageId}`, { year: 2026, month: 12, day: 31, color: '#FF0000' });
   assert.equal(r.status, 200, `december: ${JSON.stringify(r.json)}`);
+  assert.equal(typeof r.json.createdAt, 'string', 'cells carry createdAt (backend 1.2.0)');
   r = await call('PUT', `/api/cells/${pageId}`, { year: 2026, month: 2, day: 30, color: '#FF0000' });
   assert.equal(r.status, 400, 'feb 30 rejected');
   r = await call('PUT', `/api/cells/${pageId}`, { year: 2024, month: 2, day: 29, color: '#00FF00', comment: 'leap' });

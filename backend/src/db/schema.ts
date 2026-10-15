@@ -94,6 +94,9 @@ export const cells = pgTable('cells', {
   day: smallint('day').notNull(),
   color: text('color').notNull(),
   comment: text('comment'),
+  // Set once at the first write (1.2.0, backfilled from updated_at);
+  // the upsert never touches it. Activation stats read it.
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   primaryKey({ columns: [t.pageId, t.year, t.month, t.day] }),
