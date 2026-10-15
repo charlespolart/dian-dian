@@ -3,9 +3,21 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import '../models/legend_model.dart';
 import '../models/page_model.dart';
 import '../services/api_service.dart';
 import '../services/ws_service.dart';
+
+/// A legend to create along with a page (first-tracker flow).
+typedef LegendDraft = ({String color, String label});
+
+/// What [PagesProvider.createFirstTracker] returns: the page and its legends
+/// as the server stored them.
+class CreatedPage {
+  final PageModel page;
+  final List<LegendModel> legends;
+  const CreatedPage({required this.page, required this.legends});
+}
 
 class PagesProvider extends ChangeNotifier {
   final ApiService _api;
@@ -76,6 +88,58 @@ class PagesProvider extends ChangeNotifier {
       debugPrint('PagesProvider: createPage failed: $e');
     }
     return null;
+  }
+
+  /// Creates a page with its [legends] in one server transaction (backend
+  /// ≥ 1.2.0). With [replaces], an empty page of the user is deleted in that
+  /// transaction and the new page takes its slot; if the server refuses it
+  /// (404 gone, 409 not empty any more) the page is created without
+  /// replacing anything. Returns `null` on failure: nothing was created.
+  Future<CreatedPage?> createFirstTracker({
+    required String title,
+    required List<LegendDraft> legends,
+    String? replaces,
+  }) async {
+    final body = <String, dynamic>{
+      'title': title,
+      'legends': [for (final l in legends) {'color': l.color, 'label': l.label}],
+      if (replaces != null) 'replaces': replaces else 'position': _pages.length,
+    };
+    try {
+      var response = await _api.apiFetch('/api/pages', method: 'POST', body: body);
+      if (replaces != null && (response.statusCode == 404 || response.statusCode == 409)) {
+        body.remove('replaces');
+        body['position'] = _pages.length;
+        response = await _api.apiFetch('/api/pages', method: 'POST', body: body);
+      }
+      if (response.statusCode != 201 && response.statusCode != 200) return null;
+
+      final json = jsonDecode(response.body) as Map<String, dynamic>;
+      final page = PageModel.fromJson(_parsePalette(json));
+      final legendRows = (json['legends'] as List<dynamic>? ?? const [])
+          .map((j) => LegendModel.fromJson(j as Map<String, dynamic>))
+          .toList(growable: false);
+
+      // The replaced page leaves; the new one takes its index (or the end).
+      var index = _pages.length;
+      final replaced = json['replaced'] as String?;
+      if (replaced != null) {
+        final i = _pages.indexWhere((p) => p.id == replaced);
+        if (i != -1) {
+          _pages.removeAt(i);
+          index = i;
+        }
+      }
+      if (!_pages.any((p) => p.id == page.id)) {
+        _pages.insert(index.clamp(0, _pages.length), page);
+      }
+      _touch();
+      notifyListeners();
+      return CreatedPage(page: page, legends: legendRows);
+    } catch (e) {
+      debugPrint('PagesProvider: createFirstTracker failed: $e');
+      return null;
+    }
   }
 
   Future<void> updatePage(String id, Map<String, dynamic> updates) async {

@@ -61,6 +61,13 @@ class LegendsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Replaces the legends of [pageId] with [list] — used right after a page
+  /// is created together with its legends, without waiting for the WS echo.
+  void setLegends(String pageId, List<LegendModel> list) {
+    _set(pageId, list);
+    notifyListeners();
+  }
+
   void clear() {
     _byPage.clear();
     _currentPageId = null;
@@ -246,6 +253,23 @@ class LegendsProvider extends ChangeNotifier {
         if (pageId == null || raw == null) return;
         _recolor(pageId, raw.map((k, v) => MapEntry(k, v as String)));
         notifyListeners();
+
+      case 'page:created':
+        // Backend ≥ 1.2.0 sends the legends created with the page.
+        final json = message.data as Map<String, dynamic>;
+        final rows = json['legends'] as List<dynamic>?;
+        final pageId = json['id'] as String?;
+        if (rows == null || pageId == null) return;
+        _set(pageId, [for (final j in rows) LegendModel.fromJson(j as Map<String, dynamic>)]);
+        notifyListeners();
+
+      case 'page:deleted':
+        final json = message.data as Map<String, dynamic>;
+        final pageId = json['id'] as String?;
+        if (pageId != null && _byPage.remove(pageId) != null) {
+          _mutationEpoch++;
+          notifyListeners();
+        }
     }
   }
 

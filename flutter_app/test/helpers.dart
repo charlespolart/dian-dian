@@ -47,3 +47,12 @@ Map<String, dynamic> pageJson(String id, {int position = 0, String title = 'T'})
       'palette': null,
       'createdAt': '',
     };
+
+Map<String, dynamic> legendJson(String id, String pageId, String color, int position, {String? label}) => {
+      'id': id,
+      'pageId': pageId,
+      'color': color,
+      'label': label ?? id,
+      'position': position,
+      'createdAt': '',
+    };

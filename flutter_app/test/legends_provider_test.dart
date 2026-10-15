@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:dian_dian/models/legend_model.dart';
 import 'package:dian_dian/providers/legends_provider.dart';
 import 'package:dian_dian/services/ws_service.dart';
 
@@ -78,5 +79,37 @@ void main() {
     p.clear();
     expect(p.legendsFor('c'), isEmpty);
     expect(p.currentPageId, isNull);
+  });
+
+  test('setLegends replaces a page list and bumps the epoch', () {
+    final p = loaded();
+    final e0 = p.mutationEpoch;
+    p.setLegends('b', [LegendModel.fromJson(legend('l9', 'b', '#999999', 0))]);
+    expect(p.legendsFor('b').single.id, 'l9');
+    expect(p.mutationEpoch, e0 + 1);
+  });
+
+  test('page:created carrying legends fills that page (first tracker made on another device)', () {
+    final p = loaded();
+    p.debugHandleWs(WsMessage(event: 'page:created', data: {
+      'id': 'c', 'userId': 'u1', 'title': 'Humeur', 'position': 2, 'palette': null, 'createdAt': '',
+      'legends': [legend('l5', 'c', '#FFEC99', 0), legend('l6', 'c', '#FFD43B', 1)],
+      'replaced': null,
+    }));
+    expect(p.legendsFor('c').map((l) => l.id), ['l5', 'l6']);
+  });
+
+  test('page:created without legends (backend < 1.2.0) changes nothing', () {
+    final p = loaded();
+    p.debugHandleWs(const WsMessage(event: 'page:created', data: {
+      'id': 'c', 'userId': 'u1', 'title': 'T', 'position': 2, 'palette': null, 'createdAt': '',
+    }));
+    expect(p.legendsFor('c'), isEmpty);
+  });
+
+  test('page:deleted forgets the legends of that page', () {
+    final p = loaded();
+    p.debugHandleWs(const WsMessage(event: 'page:deleted', data: {'id': 'a'}));
+    expect(p.legendsFor('a'), isEmpty);
   });
 }
