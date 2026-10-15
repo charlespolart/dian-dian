@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -688,12 +689,7 @@ class _TrackerScreenState extends State<TrackerScreen> {
                   style: AppFonts.pixel(fontSize: 9, color: AppColors.subtitle),
                 ),
               ),
-            const SizedBox(height: 6),
-
-            // Today: the daily action, the sidebar's one primary button,
-            // apart from the legend tools below.
-            _todayButton(label: lang.t('tracker.today'), showLabel: showLabels, fontSize: editFs),
-            const SizedBox(height: 10),
+            const SizedBox(height: 4),
 
             // Legend section title
             _buildSectionHeader(lang.t('tracker.legend'), showLabels, sectionFs),
@@ -835,6 +831,21 @@ class _TrackerScreenState extends State<TrackerScreen> {
               ),
             ),
 
+            // Today's dot: the daily action, apart from the legend tools.
+            // Empty (dashed, "+") until the day is set, then in its color
+            // with the grid's "today" ring. Tap = editor on today's date.
+            const SizedBox(height: 6),
+            _todayDot(label: lang.t('tracker.today'), showLabel: showLabels, fontSize: editFs, dotSize: dotSize),
+            const SizedBox(height: 6),
+            FractionallySizedBox(
+              widthFactor: 0.7,
+              child: CustomPaint(
+                size: const Size(double.infinity, 1),
+                painter: _DashedLinePainter(color: AppColors.screenBorder),
+              ),
+            ),
+            const SizedBox(height: 6),
+
             // Stats at bottom
             _buildSectionHeader(lang.t('tracker.stats'), showLabels, sectionFs),
             if (showLabels && (isLandscape || isTablet)) ...[
@@ -875,42 +886,68 @@ class _TrackerScreenState extends State<TrackerScreen> {
     );
   }
 
-  /// "Today", the sidebar's primary button: filled with the add-button
-  /// colors, full width when labels show, icon-only when collapsed.
-  Widget _todayButton({required String label, required bool showLabel, required double fontSize}) {
-    final fg = AppColors.btnAddText;
+  /// Today's dot, the sidebar's primary action. Shows the color set for
+  /// today on this tracker (any displayed year), or an empty dashed dot
+  /// with a "+" when nothing is set yet. Framed like Edit, bigger.
+  Widget _todayDot({
+    required String label,
+    required bool showLabel,
+    required double fontSize,
+    required double dotSize,
+  }) {
+    final today = DateTime.now();
+    final color = context
+        .read<CellsProvider>()
+        .cellsFor(_page.id, today.year)
+        ?.get(today.month, today.day)
+        ?.color;
+    final big = showLabel ? dotSize * 1.8 : dotSize * 1.3;
+    final dot = color != null
+        ? Container(
+            width: big + 6,
+            height: big + 6,
+            padding: const EdgeInsets.all(2),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.accent, width: 1.5),
+            ),
+            child: Container(
+              decoration: BoxDecoration(shape: BoxShape.circle, color: _parseHex(color)),
+            ),
+          )
+        : CustomPaint(
+            painter: _DashedCirclePainter(color: AppColors.accent),
+            child: Container(
+              width: big + 6,
+              height: big + 6,
+              alignment: Alignment.center,
+              child: Icon(Icons.add, size: big * 0.6, color: AppColors.accent),
+            ),
+          );
     return Semantics(
       button: true,
       child: GestureDetector(
         onTap: _openToday,
-        child: Container(
-          width: showLabel ? double.infinity : null,
-          padding: EdgeInsets.symmetric(horizontal: showLabel ? 8 : 5, vertical: 7),
-          decoration: BoxDecoration(
-            color: AppColors.btnAdd,
-            border: Border.all(color: AppColors.btnAddBorder, width: 1.2),
-            borderRadius: BorderRadius.circular(6),
+        child: DashedBorder(
+          color: AppColors.inputBorder,
+          borderRadius: 6,
+          dashLength: 3,
+          gapLength: 2,
+          padding: EdgeInsets.symmetric(horizontal: showLabel ? 8 : 4, vertical: 6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              dot,
+              if (showLabel) ...[
+                const SizedBox(height: 4),
+                Text(
+                  label,
+                  style: AppFonts.pixel(fontSize: fontSize, color: AppColors.accent),
+                  maxLines: 1,
+                ),
+              ],
+            ],
           ),
-          child: showLabel
-              ? Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.circle, size: 11, color: fg),
-                    const SizedBox(width: 4),
-                    Flexible(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          label,
-                          style: AppFonts.pixel(fontSize: fontSize + 1, color: fg),
-                          maxLines: 1,
-                        ),
-                      ),
-                    ),
-                  ],
-                )
-              : Icon(Icons.circle, size: 13, color: fg),
         ),
       ),
     );
@@ -1035,6 +1072,37 @@ class _MaybePulseState extends State<_MaybePulse>
       child: widget.child,
     );
   }
+}
+
+/// Dashed circle for the empty "today" dot (DashedBorder only does rounded rects).
+class _DashedCirclePainter extends CustomPainter {
+  final Color color;
+  const _DashedCirclePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.2
+      ..style = PaintingStyle.stroke;
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.shortestSide / 2 - 1;
+    const dashes = 14;
+    const gapRatio = 0.4;
+    final step = 2 * math.pi / dashes;
+    for (var i = 0; i < dashes; i++) {
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        i * step,
+        step * (1 - gapRatio),
+        false,
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DashedCirclePainter old) => old.color != color;
 }
 
 class _DashedLinePainter extends CustomPainter {
