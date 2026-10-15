@@ -81,6 +81,7 @@ dian-dian/
 ├── release-app.sh                  # Cut app-vX.Y.Z (analyze + tests, tag, push)
 ├── deploy-prod.sh                  # Install the latest backend release on the VPS (asks twice)
 ├── rollback-prod.sh                # One backend version back (asks twice)
+├── set-prod-env.sh                 # Set one backend env var on the VPS and restart the backend
 ├── .github/workflows/release.yml       # backend-v* tag: checks, smoke, image, GitHub Release — never deploys
 ├── .github/workflows/release-app.yml   # app-v* tag: analyze, tests, GitHub Release
 ├── Makefile                        # `make run/back/db/test/prod-ios/prod-android/version`
@@ -180,6 +181,7 @@ backend version it needs in the changelog.
                              # dates CHANGELOG "Unreleased", tags backend-vX.Y.Z, pushes
 ./deploy-prod.sh             # latest released tag → production (SSH), asks twice
 ./rollback-prod.sh           # one version back, asks twice
+./set-prod-env.sh KEY=VALUE  # change one env var in /srv/dian-dian/.env, restart the backend only
 ```
 
 1. `./release-backend.sh` refuses to run unless master is
