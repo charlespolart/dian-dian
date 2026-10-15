@@ -204,6 +204,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       TextField(
         controller: _emailController,
         keyboardType: TextInputType.emailAddress,
+        enableSuggestions: false,
         autocorrect: false,
         style: AppFonts.dot(fontSize: 14, color: AppColors.inputText),
         decoration: InputDecoration(

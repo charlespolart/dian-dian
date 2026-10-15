@@ -205,6 +205,7 @@ class _ContactDialogState extends State<ContactDialog> {
           controller: _email,
           enabled: !_busy,
           keyboardType: TextInputType.emailAddress,
+          enableSuggestions: false,
           autocorrect: false,
           style: AppFonts.dot(fontSize: 14, color: AppColors.inputText),
           decoration: InputDecoration(

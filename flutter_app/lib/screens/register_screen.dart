@@ -145,6 +145,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     TextField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
+                      enableSuggestions: false,
                       autofillHints: const [AutofillHints.email],
                       autocorrect: false,
                       style: AppFonts.dot(
