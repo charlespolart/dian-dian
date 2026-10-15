@@ -10,6 +10,9 @@ working against the new backend.
 
 ## [Unreleased]
 
+### Added
+- Landing: visitors arriving with `utm_source` / `utm_campaign` get store buttons carrying the campaign (Play `referrer`, App Store `pt`/`ct` when `APPLE_CAMPAIGN_PT` is set) — attribution for Pinterest and other channels.
+
 ## [1.1.0] - 2026-10-14
 
 ### Added

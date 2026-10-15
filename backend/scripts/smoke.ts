@@ -133,6 +133,16 @@ async function main() {
   r = await call('GET', `/api/legends/${pageId}`);
   assert.equal(r.json.length, 1);
 
+  // --- landing forwards a campaign to the store links (Pinterest attribution) ---
+  {
+    const res = await fetch(`${BASE}/?utm_source=pinterest&utm_campaign=mood-en`);
+    assert.equal(res.status, 200);
+    const html = await res.text();
+    assert.ok(html.includes('referrer=utm_source%3Dpinterest%26utm_campaign%3Dmood-en'), 'Play link carries the campaign referrer');
+    const plain = await (await fetch(`${BASE}/`)).text();
+    assert.ok(!plain.includes('referrer='), 'no referrer without a campaign');
+  }
+
   // --- cleanup --------------------------------------------------------------
   r = await call('DELETE', '/api/auth/account');
   assert.equal(r.status, 200);

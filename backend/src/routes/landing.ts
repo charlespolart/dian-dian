@@ -23,6 +23,34 @@ const ORIGIN = 'https://diandian.overridedev.com';
 const APP_STORE_URL = 'https://apps.apple.com/app/id6761432329';
 const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=app.mydiandian';
 
+// Campaign attribution. A visitor arriving with ?utm_source=pinterest&utm_campaign=mood-en
+// (our pins, posts…) gets store buttons that carry the campaign:
+//   - Play: `referrer=utm_source%3D…` → Play Console → Acquisition;
+//   - App Store: `pt=<provider token>&ct=<campaign>&mt=8` → App Store Connect →
+//     Analytics → Sources. The provider token (pt) is per developer account:
+//     App Store Connect → Analytics → Campaigns → "Generate campaign link".
+//     Until APPLE_CAMPAIGN_PT is set, the App Store link stays plain.
+const APPLE_CAMPAIGN_PT = process.env.APPLE_CAMPAIGN_PT || '';
+
+type StoreLinks = { apple: string; play: string };
+const DEFAULT_LINKS: StoreLinks = { apple: APP_STORE_URL, play: PLAY_STORE_URL };
+
+function campaignParam(value: unknown, max: number): string {
+  return String(value ?? '').slice(0, max).replace(/[^a-zA-Z0-9_-]/g, '').toLowerCase();
+}
+
+function storeLinks(req: Request): StoreLinks {
+  const source = campaignParam(req.query.utm_source, 40);
+  if (!source) return DEFAULT_LINKS;
+  const campaign = campaignParam(req.query.utm_campaign, 60);
+  const ct = campaign ? `${source}-${campaign}` : source;
+  const referrer = encodeURIComponent(`utm_source=${source}${campaign ? `&utm_campaign=${campaign}` : ''}`);
+  return {
+    apple: APPLE_CAMPAIGN_PT ? `${APP_STORE_URL}?pt=${encodeURIComponent(APPLE_CAMPAIGN_PT)}&ct=${encodeURIComponent(ct)}&mt=8` : APP_STORE_URL,
+    play: `${PLAY_STORE_URL}&referrer=${referrer}`,
+  };
+}
+
 // App Store screenshots shipped under /shots (see backend/public/shots).
 // Each feature row pairs a screenshot with a line of copy.
 type Copy = {
@@ -172,9 +200,9 @@ const APPLE_GLYPH =
 const PLAY_GLYPH =
   '<svg viewBox="0 0 512 512" aria-hidden="true"><path d="M325.3 234.3L104.6 13l280.8 161.2-60.1 60.1zM47 0C34 6.8 25.3 19.2 25.3 35.3v441.3c0 16.1 8.7 28.5 21.7 35.3l256.6-256L47 0zm425.2 225.6l-58.9-34.1-65.7 64.5 65.7 64.5 60.1-34.1c18-14.3 18-46.5-1.2-60.8zM104.6 499l280.8-161.2-60.1-60.1L104.6 499z"/></svg>';
 
-function storeButton(c: Copy): string {
-  return `<a class="btn-store" href="${APP_STORE_URL}" target="_blank" rel="noopener">${APPLE_GLYPH}<span>${c.cta}</span></a>
-          <a class="btn-store" href="${PLAY_STORE_URL}" target="_blank" rel="noopener">${PLAY_GLYPH}<span>${c.ctaPlay}</span></a>`;
+function storeButton(c: Copy, links: StoreLinks): string {
+  return `<a class="btn-store" href="${links.apple}" target="_blank" rel="noopener">${APPLE_GLYPH}<span>${c.cta}</span></a>
+          <a class="btn-store" href="${links.play}" target="_blank" rel="noopener">${PLAY_GLYPH}<span>${c.ctaPlay}</span></a>`;
 }
 
 const LANG_LABELS: Record<Lang, string> = { en: 'EN', fr: 'FR', 'zh-CN': '简', 'zh-TW': '繁' };
@@ -199,7 +227,7 @@ function langPicker(lang: Lang): string {
       </div>`;
 }
 
-function page(lang: Lang): string {
+function page(lang: Lang, links: StoreLinks = DEFAULT_LINKS): string {
   const c = t[lang];
 
   const heroDots = CHIP_HUES.concat(['--p-pink', '--p-green'])
@@ -375,7 +403,7 @@ function page(lang: Lang): string {
         <h1>${c.h1}</h1>
         <p class="sub">${c.sub}</p>
         <div class="cta-row">
-          ${storeButton(c)}
+          ${storeButton(c, links)}
           <span class="note">${c.note}</span>
         </div>
         <div class="dots" aria-hidden="true">${heroDots}</div>
@@ -404,7 +432,7 @@ function page(lang: Lang): string {
     <section class="wrap final reveal">
       <h2>${c.finalH}</h2>
       <div class="cta-row" style="justify-content:center">
-        ${storeButton(c)}
+        ${storeButton(c, links)}
         <span class="note">${c.note}</span>
       </div>
     </section>
@@ -455,7 +483,7 @@ function page(lang: Lang): string {
 
 router.get('/', (req, res) => {
   const lang = detectLang(req);
-  res.type('html').send(page(lang));
+  res.type('html').send(page(lang, storeLinks(req)));
 });
 
 export default router;
