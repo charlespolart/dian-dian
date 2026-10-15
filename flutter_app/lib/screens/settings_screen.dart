@@ -436,6 +436,10 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
             const SizedBox(height: 8),
             TextField(
               controller: _controller,
+              // The user retypes their email (or DELETE): no keyboard "help".
+              keyboardType: widget.email != null ? TextInputType.emailAddress : TextInputType.text,
+              autocorrect: false,
+              enableSuggestions: false,
               style: AppFonts.dot(fontSize: 14, color: AppColors.inputText),
               textAlign: TextAlign.center,
               decoration: InputDecoration(
