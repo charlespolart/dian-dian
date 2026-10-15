@@ -286,4 +286,42 @@ void main() {
     await sync.revalidate();
     expect(bootstrapCalls, 1);
   });
+
+  test('activated comes from the network body, snapshotActivated from the disk snapshot', () async {
+    final first = build(body: (y) => {...bootstrapBody(y), 'activated': false});
+    expect(first.activated, isNull, reason: 'nothing fetched yet');
+    await first.start(userId: 'u1', year: 2026);
+    await first.ensureYear(2026); // awaits the bootstrap start() kicked off
+    expect(first.activated, isFalse);
+    final saved = snapshots.data!;
+
+    final sync = build(body: (y) => {...bootstrapBody(y), 'activated': true});
+    snapshots.data = saved;
+    await sync.start(userId: 'u1', year: 2026);
+    expect(sync.snapshotActivated, isFalse, reason: 'written by the previous session');
+    await sync.ensureYear(2026);
+    expect(sync.activated, isTrue, reason: 'the server has the last word');
+  });
+
+  test('activated stays unknown when the body or the snapshot lacks it (backend < 1.2.0, app ≤ 1.3.0)', () async {
+    final first = build();
+    await first.start(userId: 'u1', year: 2026);
+    await first.ensureYear(2026); // awaits the bootstrap start() kicked off
+    expect(first.activated, isNull);
+    final saved = snapshots.data!;
+
+    final sync = build();
+    snapshots.data = saved;
+    await sync.start(userId: 'u1', year: 2026);
+    expect(sync.snapshotActivated, isNull);
+  });
+
+  test('clear forgets activated', () async {
+    final sync = build(body: (y) => {...bootstrapBody(y), 'activated': true});
+    await sync.ensureYear(2026);
+    expect(sync.activated, isTrue);
+    await sync.clear();
+    expect(sync.activated, isNull);
+    expect(sync.snapshotActivated, isNull);
+  });
 }

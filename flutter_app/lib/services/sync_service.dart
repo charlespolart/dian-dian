@@ -42,6 +42,12 @@ class SyncService with WidgetsBindingObserver {
   // Store epoch at the time each year's body was last applied. A byte-identical
   // body may be skipped only if nothing touched the store since then.
   final Map<int, int> _lastAppliedEpoch = {};
+  // `activated` = the account has at least one cell (any page, any year).
+  // Network value and snapshot value are kept apart: the first-tracker flow
+  // only runs on a network `false`, the snapshot `true` only lets an active
+  // user land without waiting for the network.
+  bool? _activated;
+  bool? _snapshotActivated;
 
   SyncService({
     required ApiService api,
@@ -65,6 +71,13 @@ class SyncService with WidgetsBindingObserver {
   /// The year the UI is currently looking at (last requested).
   int get activeYear => _activeYear;
 
+  /// From the last successful network bootstrap of this session; `null`
+  /// until then, or when the server did not send it (backend < 1.2.0).
+  bool? get activated => _activated;
+
+  /// From the disk snapshot read by [start]; `null` when absent.
+  bool? get snapshotActivated => _snapshotActivated;
+
   // ---------------------------------------------------------------------------
   // Public API
   // ---------------------------------------------------------------------------
@@ -83,10 +96,15 @@ class SyncService with WidgetsBindingObserver {
 
   /// Makes [year] the active year and loads it unless every page already has
   /// its entry for that year (a page discovered through another year's
-  /// bootstrap has none yet).
+  /// bootstrap has none yet). A fetch of [year] already in flight (the one
+  /// [start] kicked off, a revalidation) is awaited instead of skipped, so a
+  /// hydrated session can wait for the server's answer — [activated] — by
+  /// awaiting this.
   Future<void> ensureYear(int year) {
     _started = true;
     _activeYear = year;
+    final inflight = _inflight[year];
+    if (inflight != null) return inflight;
     if (_yearComplete(year)) return Future.value();
     return _bootstrap(year);
   }
@@ -126,6 +144,8 @@ class SyncService with WidgetsBindingObserver {
     _inflight.clear();
     _lastBody.clear();
     _lastAppliedEpoch.clear();
+    _activated = null;
+    _snapshotActivated = null;
     _pages.clear();
     _legends.clear();
     _cells.clear();
@@ -191,6 +211,7 @@ class SyncService with WidgetsBindingObserver {
       }
       final data = jsonDecode(res.body) as Map<String, dynamic>;
       _apply(data, applyCells: true);
+      _activated = data['activated'] as bool?;
       _lastBody[year] = res.body;
       _lastAppliedEpoch[year] = _epoch;
       await persistSnapshot();
@@ -215,6 +236,7 @@ class SyncService with WidgetsBindingObserver {
       if (snap['v'] != _snapshotVersion || snap['userId'] != userId) return false;
       final data = snap['data'] as Map<String, dynamic>;
       _apply(data, applyCells: data['year'] == year);
+      _snapshotActivated = data['activated'] as bool?;
       return (data['pages'] as List<dynamic>).isNotEmpty;
     } catch (e) {
       debugPrint('SyncService: snapshot hydrate failed: $e');
@@ -226,6 +248,7 @@ class SyncService with WidgetsBindingObserver {
     final pages = _pages.pages;
     return {
       'year': year,
+      if ((_activated ?? _snapshotActivated) != null) 'activated': _activated ?? _snapshotActivated,
       'pages': [for (final p in pages) p.toJson()],
       'legends': {
         for (final p in pages) p.id: [for (final l in _legends.legendsFor(p.id)) l.toJson()],
