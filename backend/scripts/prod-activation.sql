@@ -16,7 +16,7 @@
 
 \pset format aligned
 
-\echo === Activation par cohorte hebdomadaire (semaine d inscription, 16 dernières) ===
+\echo === Activation par cohorte : inscriptions par semaine, 16 dernières semaines ===
 WITH real AS (
   SELECT id, created_at
   FROM users

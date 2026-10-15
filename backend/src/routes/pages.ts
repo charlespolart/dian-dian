@@ -56,10 +56,14 @@ router.post('/', validate(createPageSchema), async (req, res) => {
       let replaced: string | null = null;
       let resolvedPosition = position ?? 0;
       if (replaces) {
+        // Row lock: a legend/cell insert on this page takes FOR KEY SHARE on
+        // it, which waits on this FOR UPDATE, so the emptiness check and
+        // the delete below are atomic.
         const [old] = await tx.select({ id: pages.id, position: pages.position })
           .from(pages)
           .where(and(eq(pages.id, replaces), eq(pages.userId, userId)))
-          .limit(1);
+          .limit(1)
+          .for('update');
         if (!old) return { status: 404 as const, error: 'Page not found' };
         const [legendRow] = await tx.select({ id: legends.id })
           .from(legends).where(eq(legends.pageId, replaces)).limit(1);
@@ -92,9 +96,12 @@ router.post('/', validate(createPageSchema), async (req, res) => {
       replaced: result.replaced,
     };
     // Other devices of the account: drop the replaced page, then add the new
-    // one with its legends (clients ≤ 1.3.0 ignore the extra keys).
+    // one with its legends. Apps ≤ 1.3.0 ignore the `legends` key of
+    // page:created, so each legend is also sent as legend:created (1.4.0
+    // dedupes by id).
     if (result.replaced) broadcast(userId, 'page:deleted', { id: result.replaced });
     broadcast(userId, 'page:created', body);
+    for (const legend of result.legends) broadcast(userId, 'legend:created', legend);
     res.status(201).json(body);
   } catch (err) {
     console.error('Create page error:', err);
