@@ -19,6 +19,7 @@ import '../widgets/in_app_web_page.dart';
 import '../widgets/premium_gate_dialog.dart';
 import '../widgets/theme_picker_dialog.dart';
 import '../widgets/top_bar.dart';
+import '../widgets/contact_dialog.dart';
 
 class SettingsScreen extends StatelessWidget {
   final VoidCallback onBack;
@@ -31,7 +32,6 @@ class SettingsScreen extends StatelessWidget {
   static final Future<String> _versionFuture = PackageInfo.fromPlatform()
       .then((info) => info.version);
   static const String _aboutUrl = 'https://diandian.overridedev.com/about';
-  static const String _contactUrl = 'https://diandian.overridedev.com/contact';
   static const String _privacyUrl = 'https://diandian.overridedev.com/privacy';
   static const String _termsUrl = 'https://diandian.overridedev.com/terms';
   static const String _legalUrl = 'https://diandian.overridedev.com/legal';
@@ -131,7 +131,15 @@ class SettingsScreen extends StatelessWidget {
                     ),
                     _buildLinkTile(
                       label: lang.t('settings.contact'),
-                      onTap: () => _openLegal(context, _contactUrl, lang.t('settings.contact')),
+                      onTap: () {
+                        final auth = context.read<AuthProvider>();
+                        ContactDialog.show(
+                          context,
+                          email: auth.email,
+                          userId: auth.userId,
+                          version: _versionFuture,
+                        );
+                      },
                     ),
                     _buildLinkTile(
                       label: lang.t('settings.privacy'),

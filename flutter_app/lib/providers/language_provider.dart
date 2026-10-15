@@ -354,6 +354,17 @@ class LanguageProvider extends ChangeNotifier {
       'date.month.10': 'octobre',
       'date.month.11': 'novembre',
       'date.month.12': 'décembre',
+      // Contact form (1.4.0)
+      'contact.title': 'Contact',
+      'contact.intro': 'Une idée, un bug, une question ?',
+      'contact.reasonIdea': 'Idée',
+      'contact.reasonBug': 'Bug',
+      'contact.reasonQuestion': 'Question',
+      'contact.messageHint': 'Votre message',
+      'contact.emailHint': 'Email pour la réponse',
+      'contact.send': 'Envoyer',
+      'contact.sent': "Merci, c'est envoyé. Nous répondons par email.",
+      'contact.error': 'Envoi impossible, réessayez',
     },
     Language.en: {
       // Auth
@@ -567,6 +578,17 @@ class LanguageProvider extends ChangeNotifier {
       'date.month.10': 'October',
       'date.month.11': 'November',
       'date.month.12': 'December',
+      // Contact form (1.4.0)
+      'contact.title': 'Contact',
+      'contact.intro': 'An idea, a bug, a question?',
+      'contact.reasonIdea': 'Idea',
+      'contact.reasonBug': 'Bug',
+      'contact.reasonQuestion': 'Question',
+      'contact.messageHint': 'Your message',
+      'contact.emailHint': 'Email for the reply',
+      'contact.send': 'Send',
+      'contact.sent': "Thanks, it's sent. We reply by email.",
+      'contact.error': 'Could not send, try again',
     },
     Language.zhCN: {
       // Auth
@@ -776,6 +798,17 @@ class LanguageProvider extends ChangeNotifier {
       'date.month.10': '10月',
       'date.month.11': '11月',
       'date.month.12': '12月',
+      // Contact form (1.4.0)
+      'contact.title': '联系我们',
+      'contact.intro': '有想法、问题，或遇到 bug？',
+      'contact.reasonIdea': '想法',
+      'contact.reasonBug': 'Bug',
+      'contact.reasonQuestion': '问题',
+      'contact.messageHint': '你的留言',
+      'contact.emailHint': '回复邮箱',
+      'contact.send': '发送',
+      'contact.sent': '已发送，谢谢。我们会通过邮件回复。',
+      'contact.error': '发送失败，请重试',
     },
     Language.zhTW: {
       // Auth
@@ -985,6 +1018,17 @@ class LanguageProvider extends ChangeNotifier {
       'date.month.10': '10月',
       'date.month.11': '11月',
       'date.month.12': '12月',
+      // Contact form (1.4.0)
+      'contact.title': '聯絡我們',
+      'contact.intro': '有想法、問題，或遇到 bug？',
+      'contact.reasonIdea': '想法',
+      'contact.reasonBug': 'Bug',
+      'contact.reasonQuestion': '問題',
+      'contact.messageHint': '你的留言',
+      'contact.emailHint': '回覆信箱',
+      'contact.send': '傳送',
+      'contact.sent': '已傳送，謝謝。我們會透過電子郵件回覆。',
+      'contact.error': '傳送失敗，請重試',
     },
   };
 }

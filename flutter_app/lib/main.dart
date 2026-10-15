@@ -18,8 +18,10 @@ import 'screens/page_list_screen.dart';
 import 'screens/first_tracker_screen.dart';
 import 'screens/tracker_screen.dart';
 import 'screens/settings_screen.dart';
+import 'services/orientation_policy.dart';
 import 'theme/app_theme.dart';
 import 'widgets/custom_cursor.dart';
+import 'widgets/back_swipe.dart';
 import 'widgets/dotted_background.dart';
 import 'package:flutter/services.dart';
 import 'widgets/undo_delete_bar.dart';
@@ -32,11 +34,19 @@ import 'services/ws_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
-    statusBarColor: AppColors.bg,
-    statusBarIconBrightness: Brightness.dark,
-    statusBarBrightness: Brightness.light,
-  ));
+  // Phones stay in portrait; tablets keep every orientation.
+  final view = WidgetsBinding.instance.platformDispatcher.views.first;
+  final lock = preferredOrientationsFor(
+    view.physicalSize.shortestSide / view.devicePixelRatio,
+  );
+  if (lock != null) await SystemChrome.setPreferredOrientations(lock);
+  SystemChrome.setSystemUIOverlayStyle(
+    SystemUiOverlayStyle(
+      statusBarColor: AppColors.bg,
+      statusBarIconBrightness: Brightness.dark,
+      statusBarBrightness: Brightness.light,
+    ),
+  );
   // Configure RevenueCat early so the listener is ready when providers init.
   await PurchaseService().init();
   runApp(const DianDianApp());
@@ -104,7 +114,23 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-enum AppScreen { login, register, forgotPassword, firstTracker, pageList, tracker, settings }
+enum AppScreen {
+  login,
+  register,
+  forgotPassword,
+  firstTracker,
+  pageList,
+  tracker,
+  settings,
+}
+
+/// Where the system back (Android button or edge gesture) goes from
+/// [screen]. `null`: a root, nowhere left to go, the app may close.
+AppScreen? systemBackTarget(AppScreen screen) => switch (screen) {
+  AppScreen.tracker || AppScreen.settings => AppScreen.pageList,
+  AppScreen.register || AppScreen.forgotPassword => AppScreen.login,
+  AppScreen.login || AppScreen.pageList || AppScreen.firstTracker => null,
+};
 
 class _AppShellState extends State<AppShell> {
   static const _lastTrackerIdKey = 'last_tracker_id';
@@ -138,7 +164,9 @@ class _AppShellState extends State<AppShell> {
       await _startSessionInner(auth);
     } finally {
       // Whatever happened, never leave the splash up forever.
-      if (mounted && _restoreInProgress) setState(() => _restoreInProgress = false);
+      if (mounted && _restoreInProgress) {
+        setState(() => _restoreInProgress = false);
+      }
     }
   }
 
@@ -159,7 +187,9 @@ class _AppShellState extends State<AppShell> {
     // first paint). Everyone else waits for the server once: new and dormant
     // accounts get the first-tracker flow only on a confirmed "no cell at
     // all". Offline, `activated` stays null and the normal app shows.
-    if (!hydrated || sync.snapshotActivated != true) await sync.ensureYear(year);
+    if (!hydrated || sync.snapshotActivated != true) {
+      await sync.ensureYear(year);
+    }
     if (!mounted) return;
 
     // The wait above can span a logout (refresh refused): then there is no
@@ -175,7 +205,8 @@ class _AppShellState extends State<AppShell> {
       doneOnThisDevice: doneOnThisDevice,
       pageCount: pagesProv.pages.length,
       maxTrackers: context.read<PremiumProvider>().maxTrackers,
-      hasReplaceablePage: replaceablePageId(pagesProv.pages, legendsProv.legendsFor) != null,
+      hasReplaceablePage:
+          replaceablePageId(pagesProv.pages, legendsProv.legendsFor) != null,
     )) {
       setState(() {
         _screen = AppScreen.firstTracker;
@@ -238,8 +269,12 @@ class _AppShellState extends State<AppShell> {
     // Apply server settings to providers
     final settings = auth.serverSettings;
     if (auth.isAuthenticated && settings != null) {
-      context.read<ThemeProvider>().applyServerSettings(settings['theme'] as String?);
-      context.read<LanguageProvider>().applyServerSettings(settings['language'] as String?);
+      context.read<ThemeProvider>().applyServerSettings(
+        settings['theme'] as String?,
+      );
+      context.read<LanguageProvider>().applyServerSettings(
+        settings['language'] as String?,
+      );
       context.read<PremiumProvider>().applyServerSettings(
         cursorId: settings['cursorId'] as String?,
         cursorEnabled: settings['cursorEnabled'] as bool?,
@@ -266,7 +301,8 @@ class _AppShellState extends State<AppShell> {
 
     // Network confirmation after a pending/offline start: the snapshot may
     // be stale, re-fetch now (deduped with any bootstrap already in flight).
-    final cameBackOnline = _wasOffline && auth.isAuthenticated && !auth.isOffline;
+    final cameBackOnline =
+        _wasOffline && auth.isAuthenticated && !auth.isOffline;
     _wasOffline = auth.isAuthenticated && auth.isOffline;
     if (cameBackOnline && _sessionStarted) {
       context.read<SyncService>().revalidate();
@@ -280,8 +316,10 @@ class _AppShellState extends State<AppShell> {
       context.read<SyncService>().clear();
       _clearLastTracker();
     }
-    if (!auth.isAuthenticated && _screen != AppScreen.login &&
-        _screen != AppScreen.register && _screen != AppScreen.forgotPassword) {
+    if (!auth.isAuthenticated &&
+        _screen != AppScreen.login &&
+        _screen != AppScreen.register &&
+        _screen != AppScreen.forgotPassword) {
       setState(() {
         _screen = AppScreen.login;
         _activePageId = null;
@@ -314,51 +352,61 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    return DottedBackground(
-      child: Consumer<AuthProvider>(
-        builder: (context, auth, _) {
-          if (auth.isLoading) return const _LoadingScreen();
-          // Hold the splash while we figure out where to land — avoids a
-          // visible flash of the page list before jumping to the saved tracker.
-          if (auth.isAuthenticated && _restoreInProgress) {
-            return const _LoadingScreen();
-          }
+    // The screens are swapped by hand (no route per screen), so the system
+    // back must be routed here or it would close the app from any screen.
+    return PopScope(
+      canPop: systemBackTarget(_screen) == null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        final target = systemBackTarget(_screen);
+        if (target != null) _navigate(target);
+      },
+      child: DottedBackground(
+        child: Consumer<AuthProvider>(
+          builder: (context, auth, _) {
+            if (auth.isLoading) return const _LoadingScreen();
+            // Hold the splash while we figure out where to land — avoids a
+            // visible flash of the page list before jumping to the saved tracker.
+            if (auth.isAuthenticated && _restoreInProgress) {
+              return const _LoadingScreen();
+            }
 
-          if (!auth.isAuthenticated) {
-            return AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
-              child: _buildAuthScreen(),
-            );
-          }
-
-          return Stack(
-            children: [
-              AnimatedSwitcher(
+            if (!auth.isAuthenticated) {
+              return AnimatedSwitcher(
                 duration: const Duration(milliseconds: 200),
-                child: _buildAppScreen(),
-              ),
-              // Global undo delete bar
-              Consumer<PagesProvider>(
-                builder: (context, pagesProv, _) {
-                  if (pagesProv.pendingDeletePage == null) {
-                    return const SizedBox.shrink();
-                  }
-                  return Positioned(
-                    left: 16,
-                    right: 16,
-                    bottom: 24 + MediaQuery.of(context).padding.bottom,
-                    child: UndoDeleteBar(
-                      pageName: pagesProv.pendingDeletePage!.title,
-                      onUndo: () => pagesProv.undoDeletePage(),
-                      duration: const Duration(seconds: 8),
-                      key: ValueKey(pagesProv.pendingDeletePage!.id),
-                    ),
-                  );
-                },
-              ),
-            ],
-          );
-        },
+                child: _buildAuthScreen(),
+              );
+            }
+
+            return Stack(
+              children: [
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child: _buildAppScreen(),
+                ),
+                // Global undo delete bar
+                Consumer<PagesProvider>(
+                  builder: (context, pagesProv, _) {
+                    if (pagesProv.pendingDeletePage == null) {
+                      return const SizedBox.shrink();
+                    }
+                    return Positioned(
+                      left: 16,
+                      right: 16,
+                      bottom: 24 + MediaQuery.of(context).padding.bottom,
+                      child: UndoDeleteBar(
+                        pageName: pagesProv.pendingDeletePage!.title,
+                        onUndo: () => pagesProv.undoDeletePage(),
+                        duration: const Duration(seconds: 8),
+                        key: ValueKey(pagesProv.pendingDeletePage!.id),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -400,23 +448,27 @@ class _AppShellState extends State<AppShell> {
           },
         );
       case AppScreen.settings:
-        return SettingsScreen(
+        return BackSwipe(
           key: const ValueKey('settings'),
           onBack: () => _navigate(AppScreen.pageList),
+          child: SettingsScreen(onBack: () => _navigate(AppScreen.pageList)),
         );
       case AppScreen.tracker:
-        return TrackerScreen(
+        return BackSwipe(
           key: ValueKey('tracker_$_activePageId'),
-          pageId: _activePageId!,
-          initialYear: _selectedYear,
           onBack: () => _navigate(AppScreen.pageList),
-          onOpenSettings: () => _navigate(AppScreen.settings),
-          onYearChanged: (year) {
-            _selectedYear = year;
-            if (_activePageId != null) {
-              _saveLastTracker(_activePageId!, year);
-            }
-          },
+          child: TrackerScreen(
+            pageId: _activePageId!,
+            initialYear: _selectedYear,
+            onBack: () => _navigate(AppScreen.pageList),
+            onOpenSettings: () => _navigate(AppScreen.settings),
+            onYearChanged: (year) {
+              _selectedYear = year;
+              if (_activePageId != null) {
+                _saveLastTracker(_activePageId!, year);
+              }
+            },
+          ),
         );
       default:
         return PageListScreen(

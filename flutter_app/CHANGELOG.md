@@ -21,8 +21,16 @@ Requires backend ≥ 1.2.0.
 - First-tracker flow: buttons are announced as buttons to screen readers; a page the server committed but whose response was lost (or one made on another device with the same template) is adopted on Retry instead of duplicated; at the free limit a refused replace never creates a locked tracker; a 1.3.0 snapshot with cells lands without waiting for the network.
 - `PagesProvider.createFirstTracker` (page + legends in one request, replacing an empty page when the server allows it), `SyncService.activated` / `snapshotActivated`, `LanguageProvider.longDate`.
 
+- Settings → Contact opens an in-app form (idea, bug or question, reply email prefilled from the account and editable) sent through `POST /api/contact`; the account id, app version, platform and language are appended to the message.
+- Phones are locked to portrait (shortest side under 600 dp); tablets keep every orientation.
+- Swipe from the left edge to go back from the tracker and the settings (iOS-style, works on both platforms).
+
+### Fixed
+- Android: the system back button or gesture closed the app from the tracker and the settings (the app swaps screens without routes); it now goes back to the list, and from register / forgot-password to login.
+
 ### Removed
 - The three explanatory onboarding cards and the `onboarding_done` device flag: the flow explains by doing.
+- The Contact link no longer opens the web page (which only shows the address); the form replaces it.
 
 ## [1.3.0] - 2026-10-14
 
