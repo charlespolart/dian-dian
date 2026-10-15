@@ -3,7 +3,7 @@ import { env } from './env.js';
 
 const resend = new Resend(env.RESEND_API_KEY);
 
-const FROM_EMAIL = 'diandian@overridedev.com';
+const FROM_EMAIL = 'contact@diandian.overridedev.com';
 const FROM_NAME = 'Dian Dian';
 
 export interface EmailOptions {
