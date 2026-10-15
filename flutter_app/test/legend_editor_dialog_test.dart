@@ -39,6 +39,7 @@ class Harness {
         }), 200);
       }
       if (req.method == 'PATCH' && req.url.path == '/api/cells/p/recolor') return _json('{"ok":true}', 200);
+      if (req.method == 'PUT' && req.url.path == '/api/legends/p/reorder') return _json('{"ok":true}', 200);
       return _json('{"error":"unexpected ${req.method} ${req.url.path}"}', 404);
     });
     final api = ApiService.custom(client: client, tokens: FakeTokens());
@@ -152,19 +153,6 @@ void main() {
     expect(find.text('Delete'), findsWidgets, reason: 'the delete confirmation is up');
   });
 
-  testWidgets('a long press anywhere on the item (label, dot, padding) starts the drag', (tester) async {
-    await open(tester);
-    final label = tester.getCenter(find.text('Great'));
-    final gesture = await tester.startGesture(label);
-    await tester.pump(const Duration(milliseconds: 700));
-    await gesture.moveBy(const Offset(0, 60));
-    await tester.pump();
-    expect(find.text('Great'), findsNWidgets(2), reason: 'ghost row + drag feedback');
-    await gesture.up();
-    await tester.pumpAndSettle();
-    expect(find.byKey(const Key('legend.editLabel')), findsNothing, reason: 'a drag is not a tap');
-  });
-
   testWidgets('dragging the handle reorders at once, no long press needed', (tester) async {
     await open(tester);
     final handle = tester.getCenter(find.byIcon(Icons.drag_handle).first);
@@ -172,10 +160,31 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
     await gesture.moveBy(const Offset(0, 40));
     await tester.pump();
-    expect(find.text('Great'), findsNWidgets(2), reason: 'ghost row + drag feedback');
+    expect(find.text('≡'), findsOneWidget, reason: 'the chip follows the finger');
+    expect(
+      tester.widget<Opacity>(find.ancestor(of: find.text('Great'), matching: find.byType(Opacity)).first).opacity,
+      0.3,
+      reason: 'the dragged row is the ghost',
+    );
     await gesture.up();
     await tester.pumpAndSettle();
+    expect(find.text('≡'), findsNothing);
     expect(find.byKey(const Key('legend.editLabel')), findsNothing);
+  });
+
+  testWidgets('dropping the handle on another legend reorders (PUT reorder with the new ids)', (tester) async {
+    final h = await open(tester);
+    final handle = tester.getCenter(find.byIcon(Icons.drag_handle).first);
+    final target = tester.getCenter(find.text('Good'));
+    final gesture = await tester.startGesture(handle);
+    await tester.pump(const Duration(milliseconds: 50));
+    await gesture.moveTo(target);
+    await tester.pump();
+    await gesture.up();
+    await tester.pumpAndSettle();
+    final put = h.requests.where((r) => r.method == 'PUT').single;
+    expect(put.url.path, '/api/legends/p/reorder');
+    expect(jsonDecode(put.body), {'ids': ['l2', 'l1']});
   });
 
   testWidgets('a handle drag dropped back where it started leaves the row normal, not greyed', (tester) async {

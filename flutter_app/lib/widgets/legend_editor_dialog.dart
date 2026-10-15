@@ -801,10 +801,10 @@ class _HuePainter extends CustomPainter {
 }
 
 /// A single legend tile that supports drag-to-reorder and inline label editing.
-/// One legend row: drag handle, dot, label, delete. Dragging the handle
-/// reorders at once; a long press anywhere on the row does too. Tapping the
-/// dot + label opens the legend's editor (label + color); the label is no
-/// longer edited inline.
+/// One legend row: drag handle, dot, label, delete. Reorders like the
+/// tracker list: drag the handle (a small "≡" chip follows the finger), the
+/// row under it highlights, the dragged row greys out. Tapping the dot +
+/// label opens the legend's editor (label + color).
 class _DraggableLegendTile extends StatelessWidget {
   final int index;
   final dynamic legend;
@@ -828,22 +828,28 @@ class _DraggableLegendTile extends StatelessWidget {
     required this.onDelete,
   });
 
-  Widget _feedback(BuildContext context) => Material(
+  /// What follows the finger: the same chip as the tracker list.
+  Widget _chip() => Material(
         color: Colors.transparent,
-        child: SizedBox(
-          width: MediaQuery.of(context).size.width * 0.7,
-          child: _buildContent(context, inFlight: true),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: AppColors.shell,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: AppColors.accent),
+          ),
+          child: Text('≡', style: TextStyle(fontSize: 14, height: 1, color: AppColors.accent)),
         ),
       );
 
   /// Three hit zones: the handle (drag at once), the dot + label (tap =
   /// open the editor), the cross (delete). Each zone carries its own
   /// padding, so a touch near the handle or the cross never opens the editor.
-  Widget _buildContent(BuildContext context, {bool ghost = false, bool inFlight = false}) {
-    // Wide enough to grab without aiming: ~56 px, the full row height.
-    final handle = Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-      child: Icon(Icons.drag_handle, size: 20, color: AppColors.textMuted),
+  Widget _buildContent(BuildContext context) {
+    final ghost = isDragging;
+    const handle = Padding(
+      padding: EdgeInsets.fromLTRB(16, 10, 16, 10),
+      child: SizedBox(width: 20, height: 20),
     );
     return Container(
       margin: const EdgeInsets.only(bottom: 4),
@@ -856,22 +862,19 @@ class _DraggableLegendTile extends StatelessWidget {
         opacity: ghost ? 0.3 : 1.0,
         child: Row(
           children: [
-            // The handle drags without waiting for a long press. The ghost
-            // row keeps the same widget tree (the Draggable stays mounted):
-            // swapping it out mid-drag would orphan the drag and never fire
-            // onDragEnd, leaving the row greyed. The feedback copy is plain.
-            if (inFlight)
-              handle
-            else
-              Draggable<int>(
-                data: index,
-                axis: Axis.vertical,
-                onDragStarted: onDragStarted,
-                onDragEnd: (_) => onDragEnd(),
-                feedback: _feedback(context),
-                childWhenDragging: handle,
-                child: handle,
+            // The handle drags at once; it stays mounted while its row is
+            // the ghost (swapping it out mid-drag would never end the drag).
+            Draggable<int>(
+              data: index,
+              onDragStarted: onDragStarted,
+              onDragEnd: (_) => onDragEnd(),
+              feedback: _chip(),
+              childWhenDragging: handle,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                child: Icon(Icons.drag_handle, size: 20, color: AppColors.textMuted),
               ),
+            ),
             Expanded(
               child: Semantics(
                 button: true,
@@ -903,22 +906,21 @@ class _DraggableLegendTile extends StatelessWidget {
                 ),
               ),
             ),
-            if (!ghost)
-              Semantics(
-                button: true,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: onDelete,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(6, 10, 10, 10),
-                    child: Icon(
-                      Icons.close,
-                      size: 16,
-                      color: AppColors.btnResetText,
-                    ),
+            Semantics(
+              button: true,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: ghost ? null : onDelete,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(6, 10, 10, 10),
+                  child: Icon(
+                    Icons.close,
+                    size: 16,
+                    color: AppColors.btnResetText,
                   ),
                 ),
               ),
+            ),
           ],
         ),
       ),
@@ -932,24 +934,30 @@ class _DraggableLegendTile extends StatelessWidget {
       onAcceptWithDetails: (details) => onAccept(details.data),
       builder: (context, candidateData, rejectedData) {
         final isOver = candidateData.isNotEmpty;
-        return Column(
-          mainAxisSize: MainAxisSize.min,
+        return Stack(
           children: [
+            _buildContent(context),
+            // Drop highlight over the row under the finger (same as the
+            // tracker list), inside the row's bottom margin.
             if (isOver)
-              Container(
-                height: 2,
-                color: AppColors.accent,
-                margin: const EdgeInsets.only(bottom: 2),
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 0,
+                bottom: 4,
+                child: IgnorePointer(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.accent.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: AppColors.accent.withValues(alpha: 0.5),
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            LongPressDraggable<int>(
-              data: index,
-              onDragStarted: onDragStarted,
-              onDragEnd: (_) => onDragEnd(),
-              feedback: _feedback(context),
-              childWhenDragging: _buildContent(context, ghost: true),
-              // Ghost while the handle drag is in flight too.
-              child: _buildContent(context, ghost: isDragging),
-            ),
           ],
         );
       },
