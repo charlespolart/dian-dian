@@ -64,6 +64,10 @@ class Harness {
           'replaced': body['replaces'],
         }), 201);
       }
+      if (req.method == 'PATCH' && req.url.path == '/api/pages/n') {
+        final body = jsonDecode(req.body) as Map<String, dynamic>;
+        return _json(jsonEncode(pageJson('n', title: body['title'] as String)), 200);
+      }
       if (req.method == 'PUT' && req.url.path == '/api/cells/n') {
         final status = cellStatus();
         if (status != 200) return _json('{"error":"x"}', status);
@@ -100,12 +104,21 @@ class Harness {
   List<http.Request> get puts => requests.where((r) => r.method == 'PUT').toList();
 }
 
+/// A phone-sized surface (390 × 844 logical): the default 800 × 600 test
+/// window puts the lower buttons of screen 2 below the fold.
+void phone(WidgetTester tester) {
+  tester.view.physicalSize = const Size(1170, 2532);
+  tester.view.devicePixelRatio = 3.0;
+  addTearDown(tester.view.reset);
+}
+
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   final oct15 = DateTime(2026, 10, 15, 9);
 
   testWidgets('Mood → Great creates the page with five legends and sets today\'s cell', (tester) async {
+    phone(tester);
     final h = Harness(now: () => oct15);
     await tester.pumpWidget(h.widget);
     await tester.pump();
@@ -136,6 +149,7 @@ void main() {
   });
 
   testWidgets('Open my tracker hands the created page and the current year to the parent', (tester) async {
+    phone(tester);
     String? opened;
     final h = Harness(now: () => oct15, onOpen: (id, year) => opened = '$id/$year');
     await tester.pumpWidget(h.widget);
@@ -149,6 +163,7 @@ void main() {
   });
 
   testWidgets('a failed cell shows the error; Retry only replays the cell', (tester) async {
+    phone(tester);
     var failCell = true;
     final h = Harness(now: () => oct15)..cellStatus = () => failCell ? 500 : 200;
     await tester.pumpWidget(h.widget);
@@ -171,6 +186,7 @@ void main() {
   });
 
   testWidgets('a failed page creation shows the error; Retry creates it then sets the cell', (tester) async {
+    phone(tester);
     final h = Harness(now: () => oct15)..pageStatus = 500;
     await tester.pumpWidget(h.widget);
     await tester.tap(find.text('Sleep'));
@@ -190,6 +206,7 @@ void main() {
   });
 
   testWidgets('the date is read at tap time (midnight while the screen is open)', (tester) async {
+    phone(tester);
     var clock = DateTime(2026, 10, 15, 23, 59);
     final h = Harness(now: () => clock);
     await tester.pumpWidget(h.widget);
@@ -205,6 +222,7 @@ void main() {
   });
 
   testWidgets('Other… needs a non-blank title before continuing', (tester) async {
+    phone(tester);
     final h = Harness(now: () => oct15);
     await tester.pumpWidget(h.widget);
     await tester.tap(find.text('Other…'));
@@ -232,6 +250,7 @@ void main() {
   });
 
   testWidgets('Not today creates the tracker without a cell and opens it', (tester) async {
+    phone(tester);
     String? opened;
     final h = Harness(now: () => oct15, onOpen: (id, year) => opened = '$id/$year');
     await tester.pumpWidget(h.widget);
@@ -246,6 +265,7 @@ void main() {
   });
 
   testWidgets('a dormant account\'s empty page is replaced, not doubled', (tester) async {
+    phone(tester);
     final h = Harness(
       now: () => oct15,
       pageRows: [pageJson('old', title: 'My Tracker')],
@@ -263,6 +283,7 @@ void main() {
   });
 
   testWidgets('Later leaves without a request and is remembered for this account on this device', (tester) async {
+    phone(tester);
     var later = false;
     final h = Harness(now: () => oct15, onLater: () => later = true);
     await tester.pumpWidget(h.widget);
@@ -276,6 +297,7 @@ void main() {
   });
 
   testWidgets('at the free limit, a refused replace shows the error instead of creating a locked 4th tracker', (tester) async {
+    phone(tester);
     final h = Harness(
       now: () => oct15,
       pageRows: [pageJson('old', title: 'My Tracker'), pageJson('p2', position: 1), pageJson('p3', position: 2)],
@@ -300,6 +322,7 @@ void main() {
   });
 
   testWidgets('a page committed server-side but lost in transit is adopted on Retry, never duplicated', (tester) async {
+    phone(tester);
     final h = Harness(now: () => oct15)..throwOnPost = true;
     await tester.pumpWidget(h.widget);
     await tester.tap(find.text('Mood'));
@@ -331,6 +354,7 @@ void main() {
   });
 
   testWidgets('a custom title is capped at 35 UTF-16 units, like the server', (tester) async {
+    phone(tester);
     final h = Harness(now: () => oct15);
     await tester.pumpWidget(h.widget);
     await tester.tap(find.text('Other…'));
@@ -346,6 +370,7 @@ void main() {
   });
 
   testWidgets('tappable controls are announced as buttons', (tester) async {
+    phone(tester);
     final handle = tester.ensureSemantics();
     final h = Harness(now: () => oct15);
     await tester.pumpWidget(h.widget);
@@ -359,5 +384,67 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.getSemantics(find.text('Open my tracker')), isSemantics(isButton: true, hasTapAction: true, label: 'Open my tracker'));
     handle.dispose();
+  });
+
+  testWidgets('screen 2 teaches renaming: tap the title, type, and the new title is used at creation', (tester) async {
+    phone(tester);
+    final h = Harness(now: () => oct15);
+    await tester.pumpWidget(h.widget);
+    await tester.tap(find.text('Mood'));
+    await tester.pumpAndSettle();
+    expect(find.text('Tap the title to rename it, here and in the tracker.'), findsOneWidget);
+    expect(find.byIcon(Icons.edit), findsOneWidget, reason: 'a pencil next to the title');
+
+    await tester.tap(find.text('Mood'));
+    await tester.pumpAndSettle();
+    final field = find.byKey(const Key('firstTracker.title'));
+    expect(field, findsOneWidget);
+    expect(tester.widget<TextField>(field).controller!.text, 'Mood');
+    await tester.enterText(field, 'Vibes');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('firstTracker.title')), findsNothing);
+    expect(find.text('Vibes'), findsOneWidget);
+
+    await tester.tap(find.text('Great'));
+    await tester.pumpAndSettle();
+    expect((jsonDecode(h.posts.single.body) as Map)['title'], 'Vibes');
+    expect(h.requests.where((r) => r.method == 'PATCH'), isEmpty);
+  });
+
+  testWidgets('renaming after the page exists patches its title', (tester) async {
+    phone(tester);
+    final h = Harness(now: () => oct15);
+    await tester.pumpWidget(h.widget);
+    await tester.tap(find.text('Sleep'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('8 h+'));
+    await tester.pumpAndSettle();
+    expect(h.posts.length, 1);
+
+    await tester.tap(find.text('Sleep'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('firstTracker.title')), 'Nights');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    final patch = h.requests.where((r) => r.method == 'PATCH').single;
+    expect(patch.url.path, '/api/pages/n');
+    expect(jsonDecode(patch.body), {'title': 'Nights'});
+    expect(h.pages.pages.single.title, 'Nights');
+    expect(find.text('Nights'), findsOneWidget);
+  });
+
+  testWidgets('a blank rename keeps the previous title', (tester) async {
+    phone(tester);
+    final h = Harness(now: () => oct15);
+    await tester.pumpWidget(h.widget);
+    await tester.tap(find.text('Mood'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mood'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('firstTracker.title')), '   ');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(find.text('Mood'), findsOneWidget);
   });
 }

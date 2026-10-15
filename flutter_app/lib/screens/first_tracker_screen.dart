@@ -64,6 +64,10 @@ class _FirstTrackerScreenState extends State<FirstTrackerScreen> {
   FirstTrackerTemplate? _template;
   bool _titleOpen = false;
   final _titleController = TextEditingController();
+  // Screen 2: the title is renamed by tapping it — the same gesture as in
+  // the tracker, which nobody guesses otherwise.
+  bool _renaming = false;
+  final _renameController = TextEditingController();
 
   /// Page + legends once the server has them; created at most once.
   CreatedPage? _created;
@@ -82,6 +86,7 @@ class _FirstTrackerScreenState extends State<FirstTrackerScreen> {
   @override
   void dispose() {
     _titleController.dispose();
+    _renameController.dispose();
     super.dispose();
   }
 
@@ -89,19 +94,47 @@ class _FirstTrackerScreenState extends State<FirstTrackerScreen> {
   // Actions
   // ---------------------------------------------------------------------------
 
-  String _title(LanguageProvider lang) => _template!.customTitle
-      ? _titleController.text.trim()
-      : lang.t(_template!.titleKey);
+  /// The tracker title: what was typed (custom template, or a rename on
+  /// screen 2), else the template name.
+  String _title(LanguageProvider lang) {
+    final typed = _titleController.text.trim();
+    return typed.isNotEmpty ? typed : lang.t(_template!.titleKey);
+  }
 
   void _choose(FirstTrackerTemplate t) {
     setState(() {
       _template = t;
+      _titleController.clear();
       if (t.customTitle) {
         _titleOpen = true;
       } else {
         _step = _Step.today;
       }
     });
+  }
+
+  void _startRename(LanguageProvider lang) {
+    _renameController.text = _title(lang);
+    setState(() => _renaming = true);
+  }
+
+  /// Keeps the previous title when the field is left blank; patches the
+  /// page when it already exists on the server.
+  Future<void> _commitRename(LanguageProvider lang) async {
+    if (!_renaming) return;
+    final typed = _renameController.text.trim();
+    final previous = _title(lang);
+    setState(() => _renaming = false);
+    if (typed.isEmpty || typed == previous) return;
+    _titleController.text = typed;
+    final created = _created;
+    if (created == null) return;
+    final pages = context.read<PagesProvider>();
+    await pages.updatePage(created.page.id, {'title': typed});
+    if (!mounted) return;
+    final updated =
+        pages.pages.where((p) => p.id == created.page.id).firstOrNull ?? created.page;
+    setState(() => _created = CreatedPage(page: updated, legends: created.legends));
   }
 
   void _continueWithTitle() {
@@ -336,12 +369,50 @@ class _FirstTrackerScreenState extends State<FirstTrackerScreen> {
     final legends = _template!.legends(lang);
     return _Card(
       children: [
+        if (_renaming)
+          TextField(
+            key: const Key('firstTracker.title'),
+            controller: _renameController,
+            autofocus: true,
+            textAlign: TextAlign.center,
+            inputFormatters: const [Utf16LengthLimit(35)],
+            style: AppFonts.pixel(fontSize: 16, color: AppColors.title),
+            decoration: const InputDecoration(
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            onSubmitted: (_) => _commitRename(lang),
+            onTapOutside: (_) => _commitRename(lang),
+          )
+        else
+          Semantics(
+            button: true,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _busy ? null : () => _startRename(lang),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Flexible(
+                    child: Text(
+                      _title(lang),
+                      style: AppFonts.pixel(fontSize: 16, color: AppColors.title),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Icon(Icons.edit, size: 12, color: AppColors.accent),
+                ],
+              ),
+            ),
+          ),
+        const SizedBox(height: 4),
         Text(
-          _title(lang),
-          style: AppFonts.pixel(fontSize: 16, color: AppColors.title),
+          lang.t('firstTracker.renameHint'),
+          style: AppFonts.dot(fontSize: 11, color: AppColors.textMuted),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
         Text(
           lang.longDate(today),
           style: AppFonts.dot(fontSize: 14, color: AppColors.textMuted),

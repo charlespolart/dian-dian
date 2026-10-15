@@ -15,7 +15,7 @@ count of the tagged commit (same on iOS and Android).
 Requires backend ≥ 1.2.0.
 
 ### Added
-- First-tracker flow for any account without a single cell (new or dormant): pick a ready-made template (Mood, Sleep, Exercise, Reading, Habits, or a custom title), see today's date and set today's dot right there; the tracker then opens with the dot already placed. "Later" is remembered per device and account; the flow never runs offline or against a backend older than 1.2.0.
+- First-tracker flow for any account without a single cell (new or dormant): pick a ready-made template (Mood, Sleep, Exercise, Reading, Habits, or a custom title), see today's date and set today's dot right there; the tracker then opens with the dot already placed. On the second screen the title is renamed by tapping it (the gesture used in the tracker, taught once). "Later" is remembered per device and account; the flow never runs offline or against a backend older than 1.2.0.
 - "Today" button in the tracker sidebar: opens the cell editor on today's date, switching to the current year first (and waiting for it to load) when another one is shown.
 - Tracker titles are capped at 35 UTF-16 units in the create dialog and the first-tracker flow, the way the server counts (18 emoji no longer pass the field and fail server-side).
 - First-tracker flow: buttons are announced as buttons to screen readers; a page the server committed but whose response was lost (or one made on another device with the same template) is adopted on Retry instead of duplicated; at the free limit a refused replace never creates a locked tracker; a 1.3.0 snapshot with cells lands without waiting for the network.
