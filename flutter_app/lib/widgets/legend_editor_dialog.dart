@@ -44,7 +44,9 @@ class _LegendEditorDialogState extends State<LegendEditorDialog> {
     super.initState();
     _legends = List.of(context.read<LegendsProvider>().legends);
     // Deep copy the default palette so edits don't affect the original
-    _palette = AppTheme.defaultPalette.map((row) => List<String>.from(row)).toList();
+    _palette = AppTheme.defaultPalette
+        .map((row) => List<String>.from(row))
+        .toList();
   }
 
   Color _parseHex(String hex) {
@@ -141,7 +143,10 @@ class _LegendEditorDialogState extends State<LegendEditorDialog> {
                 style: AppFonts.dot(fontSize: 13, color: AppColors.inputText),
                 decoration: InputDecoration(
                   hintText: lang.t('tracker.legendPlaceholder'),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   isDense: true,
                 ),
                 onSubmitted: (_) => _closeEdit(),
@@ -216,31 +221,31 @@ class _LegendEditorDialogState extends State<LegendEditorDialog> {
         else
           Column(
             children: List.generate(legends.length, (i) {
-                  return _DraggableLegendTile(
-                    index: i,
-                    legend: legends[i],
-                    isDragging: _draggingIndex == i,
-                    parseHex: _parseHex,
-                    onDragStarted: () => setState(() => _draggingIndex = i),
-                    onDragEnd: () => setState(() => _draggingIndex = null),
-                    onAccept: (fromIndex) => _onReorder(fromIndex, i),
-                    onTap: () => _openEdit(i),
-                    onDelete: () async {
-                      final confirmed = await ConfirmDialog.show(
-                        context,
-                        title: lang.t('common.delete'),
-                        message: lang.t('tracker.deleteLegendConfirm'),
-                        confirmLabel: lang.t('common.delete'),
-                        cancelLabel: lang.t('common.cancel'),
-                        destructive: true,
-                      );
-                      if (confirmed == true && mounted) {
-                        await _prov.deleteLegend(legends[i].id);
-                        _refresh();
-                      }
-                    },
+              return _DraggableLegendTile(
+                index: i,
+                legend: legends[i],
+                isDragging: _draggingIndex == i,
+                parseHex: _parseHex,
+                onDragStarted: () => setState(() => _draggingIndex = i),
+                onDragEnd: () => setState(() => _draggingIndex = null),
+                onAccept: (fromIndex) => _onReorder(fromIndex, i),
+                onTap: () => _openEdit(i),
+                onDelete: () async {
+                  final confirmed = await ConfirmDialog.show(
+                    context,
+                    title: lang.t('common.delete'),
+                    message: lang.t('tracker.deleteLegendConfirm'),
+                    confirmLabel: lang.t('common.delete'),
+                    cancelLabel: lang.t('common.cancel'),
+                    destructive: true,
                   );
-                }),
+                  if (confirmed == true && mounted) {
+                    await _prov.deleteLegend(legends[i].id);
+                    _refresh();
+                  }
+                },
+              );
+            }),
           ),
 
         const SizedBox(height: 16),
@@ -356,7 +361,9 @@ class _LegendEditorDialogState extends State<LegendEditorDialog> {
 
   Widget _buildColorDot(String hex, String pos, {VoidCallback? onLongPress}) {
     final editing = _editing;
-    final isSelected = editing != null ? editing.color == hex : _selectedPos == pos;
+    final isSelected = editing != null
+        ? editing.color == hex
+        : _selectedPos == pos;
     // Selection = an accent ring separated from the dot by a shell-colored
     // gap, so it reads on dark blues and purples as well as on pastels.
     // Unselected dots keep the same footprint (transparent ring).
@@ -473,9 +480,15 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
     _saturation = hsv.saturation;
     _value = hsv.value;
     _hexController = TextEditingController(text: _colorToHex(_currentColor));
-    _rController = TextEditingController(text: '${(_currentColor.r * 255).round()}');
-    _gController = TextEditingController(text: '${(_currentColor.g * 255).round()}');
-    _bController = TextEditingController(text: '${(_currentColor.b * 255).round()}');
+    _rController = TextEditingController(
+      text: '${(_currentColor.r * 255).round()}',
+    );
+    _gController = TextEditingController(
+      text: '${(_currentColor.g * 255).round()}',
+    );
+    _bController = TextEditingController(
+      text: '${(_currentColor.b * 255).round()}',
+    );
   }
 
   Color get _currentColor =>
@@ -533,8 +546,15 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
     final r = int.tryParse(_rController.text);
     final g = int.tryParse(_gController.text);
     final b = int.tryParse(_bController.text);
-    if (r != null && g != null && b != null &&
-        r >= 0 && r <= 255 && g >= 0 && g <= 255 && b >= 0 && b <= 255) {
+    if (r != null &&
+        g != null &&
+        b != null &&
+        r >= 0 &&
+        r <= 255 &&
+        g >= 0 &&
+        g <= 255 &&
+        b >= 0 &&
+        b <= 255) {
       _setFromColor(Color.fromARGB(255, r, g, b));
     }
   }
@@ -556,7 +576,10 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: _currentColor,
-                    border: Border.all(color: AppColors.shellBorder, width: 1.5),
+                    border: Border.all(
+                      color: AppColors.shellBorder,
+                      width: 1.5,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -590,9 +613,15 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
                               height: 16,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 2),
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 2,
+                                ),
                                 boxShadow: const [
-                                  BoxShadow(blurRadius: 2, color: Colors.black26),
+                                  BoxShadow(
+                                    blurRadius: 2,
+                                    color: Colors.black26,
+                                  ),
                                 ],
                               ),
                             ),
@@ -612,25 +641,35 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   return GestureDetector(
-                    onPanDown: (d) => _onHuePick(d.localPosition.dx, constraints.maxWidth),
-                    onPanUpdate: (d) => _onHuePick(d.localPosition.dx, constraints.maxWidth),
+                    onPanDown: (d) =>
+                        _onHuePick(d.localPosition.dx, constraints.maxWidth),
+                    onPanUpdate: (d) =>
+                        _onHuePick(d.localPosition.dx, constraints.maxWidth),
                     child: CustomPaint(
                       size: Size(constraints.maxWidth, 20),
                       painter: _HuePainter(),
                       child: Stack(
                         children: [
                           Positioned(
-                            left: (_hue / 360 * constraints.maxWidth - 4)
-                                .clamp(0, constraints.maxWidth - 8),
+                            left: (_hue / 360 * constraints.maxWidth - 4).clamp(
+                              0,
+                              constraints.maxWidth - 8,
+                            ),
                             top: 2,
                             child: Container(
                               width: 8,
                               height: 16,
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(3),
-                                border: Border.all(color: Colors.white, width: 2),
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 2,
+                                ),
                                 boxShadow: const [
-                                  BoxShadow(blurRadius: 2, color: Colors.black26),
+                                  BoxShadow(
+                                    blurRadius: 2,
+                                    color: Colors.black26,
+                                  ),
                                 ],
                               ),
                             ),
@@ -649,14 +688,26 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
               children: [
                 SizedBox(
                   width: 32,
-                  child: Text('HEX', style: AppFonts.pixel(fontSize: 9, color: AppColors.textMuted)),
+                  child: Text(
+                    'HEX',
+                    style: AppFonts.pixel(
+                      fontSize: 9,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
                 ),
                 Expanded(
                   child: TextField(
                     controller: _hexController,
-                    style: AppFonts.dot(fontSize: 13, color: AppColors.inputText),
+                    style: AppFonts.dot(
+                      fontSize: 13,
+                      color: AppColors.inputText,
+                    ),
                     decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       isDense: true,
                     ),
                     onChanged: _onHexChanged,
@@ -671,7 +722,13 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
               children: [
                 SizedBox(
                   width: 32,
-                  child: Text('RGB', style: AppFonts.pixel(fontSize: 9, color: AppColors.textMuted)),
+                  child: Text(
+                    'RGB',
+                    style: AppFonts.pixel(
+                      fontSize: 9,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
                 ),
                 _rgbField(_rController, 'R'),
                 const SizedBox(width: 4),
@@ -690,7 +747,10 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
                   onTap: () => Navigator.of(context).pop(),
                   child: Text(
                     context.read<LanguageProvider>().t('common.cancel'),
-                    style: AppFonts.pixel(fontSize: 12, color: AppColors.textMuted),
+                    style: AppFonts.pixel(
+                      fontSize: 12,
+                      color: AppColors.textMuted,
+                    ),
                   ),
                 ),
                 GestureDetector(
@@ -699,7 +759,10 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
                     Navigator.of(context).pop();
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.btnAdd,
                       border: Border.all(color: AppColors.btnAddBorder),
@@ -707,7 +770,10 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
                     ),
                     child: Text(
                       context.read<LanguageProvider>().t('common.ok'),
-                      style: AppFonts.pixel(fontSize: 12, color: AppColors.btnAddText),
+                      style: AppFonts.pixel(
+                        fontSize: 12,
+                        color: AppColors.btnAddText,
+                      ),
                     ),
                   ),
                 ),
@@ -741,7 +807,10 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
         keyboardType: TextInputType.number,
         style: AppFonts.dot(fontSize: 13, color: AppColors.inputText),
         decoration: InputDecoration(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 8,
+            vertical: 6,
+          ),
           isDense: true,
           hintText: label,
           hintStyle: AppFonts.dot(fontSize: 13, color: AppColors.textMuted),
@@ -802,9 +871,9 @@ class _HuePainter extends CustomPainter {
 
 /// A single legend tile that supports drag-to-reorder and inline label editing.
 /// One legend row: drag handle, dot, label, delete. Reorders like the
-/// tracker list: drag the handle (a small "≡" chip follows the finger), the
-/// row under it highlights, the dragged row greys out. Tapping the dot +
-/// label opens the legend's editor (label + color).
+/// tracker list: drag the handle (a copy of the row follows the finger),
+/// the row under it highlights, the dragged row greys out. Tapping the dot
+/// + label opens the legend's editor (label + color).
 class _DraggableLegendTile extends StatelessWidget {
   final int index;
   final dynamic legend;
@@ -828,34 +897,32 @@ class _DraggableLegendTile extends StatelessWidget {
     required this.onDelete,
   });
 
-  /// What follows the finger: the same chip as the tracker list.
-  Widget _chip() => Material(
-        color: Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: AppColors.shell,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: AppColors.accent),
-          ),
-          child: Text('≡', style: TextStyle(fontSize: 14, height: 1, color: AppColors.accent)),
-        ),
-      );
-
   /// Three hit zones: the handle (drag at once), the dot + label (tap =
   /// open the editor), the cross (delete). Each zone carries its own
   /// padding, so a touch near the handle or the cross never opens the editor.
-  Widget _buildContent(BuildContext context) {
-    final ghost = isDragging;
-    const handle = Padding(
-      padding: EdgeInsets.fromLTRB(16, 10, 16, 10),
-      child: SizedBox(width: 20, height: 20),
+  ///
+  /// [static] renders a plain copy (no Draggable inside): the drag feedback,
+  /// sized to [width] so it looks like the row it came from.
+  Widget _buildContent(
+    BuildContext context, {
+    bool static = false,
+    double? width,
+  }) {
+    final ghost = isDragging && !static;
+    // A painted (transparent) box: the whole rectangle is the hit zone,
+    // not just the icon — a bare Padding would ignore touches around it.
+    final handleBox = Container(
+      color: Colors.transparent,
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+      child: Icon(Icons.drag_handle, size: 20, color: AppColors.textMuted),
     );
     return Container(
       margin: const EdgeInsets.only(bottom: 4),
       decoration: BoxDecoration(
         color: ghost ? AppColors.dotEmpty : AppColors.inputBg,
-        border: Border.all(color: ghost ? AppColors.dotBorder : AppColors.inputBorder),
+        border: Border.all(
+          color: ghost ? AppColors.dotBorder : AppColors.inputBorder,
+        ),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Opacity(
@@ -864,17 +931,23 @@ class _DraggableLegendTile extends StatelessWidget {
           children: [
             // The handle drags at once; it stays mounted while its row is
             // the ghost (swapping it out mid-drag would never end the drag).
-            Draggable<int>(
-              data: index,
-              onDragStarted: onDragStarted,
-              onDragEnd: (_) => onDragEnd(),
-              feedback: _chip(),
-              childWhenDragging: handle,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-                child: Icon(Icons.drag_handle, size: 20, color: AppColors.textMuted),
+            if (static)
+              handleBox
+            else
+              Draggable<int>(
+                data: index,
+                onDragStarted: onDragStarted,
+                onDragEnd: (_) => onDragEnd(),
+                feedback: Material(
+                  color: Colors.transparent,
+                  child: SizedBox(
+                    width: width,
+                    child: _buildContent(context, static: true),
+                  ),
+                ),
+                childWhenDragging: handleBox,
+                child: handleBox,
               ),
-            ),
             Expanded(
               child: Semantics(
                 button: true,
@@ -882,7 +955,10 @@ class _DraggableLegendTile extends StatelessWidget {
                   behavior: HitTestBehavior.opaque,
                   onTap: ghost ? null : onTap,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 8,
+                    ),
                     child: Row(
                       children: [
                         Container(
@@ -897,7 +973,10 @@ class _DraggableLegendTile extends StatelessWidget {
                         Expanded(
                           child: MarqueeText(
                             text: legend.label,
-                            style: AppFonts.dot(fontSize: 13, color: AppColors.text),
+                            style: AppFonts.dot(
+                              fontSize: 13,
+                              color: AppColors.text,
+                            ),
                           ),
                         ),
                       ],
@@ -929,38 +1008,40 @@ class _DraggableLegendTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DragTarget<int>(
-      onWillAcceptWithDetails: (details) => details.data != index,
-      onAcceptWithDetails: (details) => onAccept(details.data),
-      builder: (context, candidateData, rejectedData) {
-        final isOver = candidateData.isNotEmpty;
-        return Stack(
-          children: [
-            _buildContent(context),
-            // Drop highlight over the row under the finger (same as the
-            // tracker list), inside the row's bottom margin.
-            if (isOver)
-              Positioned(
-                left: 0,
-                right: 0,
-                top: 0,
-                bottom: 4,
-                child: IgnorePointer(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.accent.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: AppColors.accent.withValues(alpha: 0.5),
-                        width: 2,
+    return LayoutBuilder(
+      builder: (context, constraints) => DragTarget<int>(
+        onWillAcceptWithDetails: (details) => details.data != index,
+        onAcceptWithDetails: (details) => onAccept(details.data),
+        builder: (context, candidateData, rejectedData) {
+          final isOver = candidateData.isNotEmpty;
+          return Stack(
+            children: [
+              _buildContent(context, width: constraints.maxWidth),
+              // Drop highlight over the row under the finger (same as the
+              // tracker list), inside the row's bottom margin.
+              if (isOver)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  bottom: 4,
+                  child: IgnorePointer(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.accent.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: AppColors.accent.withValues(alpha: 0.5),
+                          width: 2,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-          ],
-        );
-      },
+            ],
+          );
+        },
+      ),
     );
   }
 }
@@ -978,7 +1059,11 @@ class _DashedHLinePainter extends CustomPainter {
     const dash = 4.0;
     const gap = 3.0;
     while (x < size.width) {
-      canvas.drawLine(Offset(x, 0), Offset((x + dash).clamp(0, size.width), 0), paint);
+      canvas.drawLine(
+        Offset(x, 0),
+        Offset((x + dash).clamp(0, size.width), 0),
+        paint,
+      );
       x += dash + gap;
     }
   }

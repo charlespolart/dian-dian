@@ -160,16 +160,29 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
     await gesture.moveBy(const Offset(0, 40));
     await tester.pump();
-    expect(find.text('≡'), findsOneWidget, reason: 'the chip follows the finger');
+    expect(find.text('Great'), findsNWidgets(2), reason: 'a copy of the row follows the finger');
     expect(
       tester.widget<Opacity>(find.ancestor(of: find.text('Great'), matching: find.byType(Opacity)).first).opacity,
       0.3,
-      reason: 'the dragged row is the ghost',
+      reason: 'the row left behind is the ghost',
     );
     await gesture.up();
     await tester.pumpAndSettle();
-    expect(find.text('≡'), findsNothing);
+    expect(find.text('Great'), findsOneWidget);
     expect(find.byKey(const Key('legend.editLabel')), findsNothing);
+  });
+
+  testWidgets('the whole handle box drags, not only the icon', (tester) async {
+    await open(tester);
+    final iconRect = tester.getRect(find.byIcon(Icons.drag_handle).first);
+    // 8 px left of the icon: inside the handle padding, outside the icon.
+    final gesture = await tester.startGesture(Offset(iconRect.left - 8, iconRect.center.dy));
+    await tester.pump(const Duration(milliseconds: 50));
+    await gesture.moveBy(const Offset(0, 40));
+    await tester.pump();
+    expect(find.text('Great'), findsNWidgets(2), reason: 'drag started from the padding');
+    await gesture.up();
+    await tester.pumpAndSettle();
   });
 
   testWidgets('dropping the handle on another legend reorders (PUT reorder with the new ids)', (tester) async {
