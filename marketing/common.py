@@ -134,8 +134,16 @@ class Filler:
                 return None
             return self._weekly[wd] if rng.random() > 0.15 else rng.choice(pal)
         if self.mode == 'dominant':
+            # Every legend colour shows up: main most days, second sometimes,
+            # the rest now and then, and a few misses.
             r = rng.random()
-            return None if r < 0.10 else (self._second if r < 0.28 else self._main)
+            if r < 0.10:
+                return None
+            if r < 0.66:
+                return self._main
+            if r < 0.84:
+                return self._second
+            return rng.choice(pal[2:]) if len(pal) > 2 else self._main
         # runs
         if self._left <= 0:
             step = rng.choice([-1, -1, 0, 1, 1, 2, -2])
