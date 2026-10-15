@@ -26,7 +26,7 @@ LANGS = ['en', 'fr', 'zh-Hant']
 # One card per theme: the title printed on the card and the pin copy per language.
 THEMES = [
     {
-        'key': 'mood', 'mode': 'runs', 'palette': c.PALETTES['MOOD'], 'card': 'MOOD', 'seed': 11,
+        'key': 'mood', 'labels': {"en": ["Amazing", "Great", "Good", "Okay", "Meh"], "fr": ["Génial", "Super", "Bien", "Bof", "Mou"], "zh-Hant": ["超棒", "很好", "不錯", "普通", "低落"]}, 'mode': 'runs', 'palette': c.PALETTES['MOOD'], 'card': 'MOOD', 'seed': 11,
         'title': {'en': 'MOOD TRACKER', 'fr': "SUIVI D'HUMEUR", 'zh-Hant': '心情追蹤'},
         'pin_title': {
             'en': 'Mood tracker: a year in pixels, one dot a day',
@@ -41,7 +41,7 @@ THEMES = [
         'keywords': 'year in pixels, mood tracker, mood tracker app, pixel diary, bullet journal, mood journal',
     },
     {
-        'key': 'sleep', 'mode': 'runs', 'palette': c.PALETTES['SLEEP'], 'card': 'SLEEP', 'seed': 12,
+        'key': 'sleep', 'labels': {"en": ["8h+", "7-8h", "6-7h", "5-6h", "<5h"], "fr": ["8 h+", "7-8 h", "6-7 h", "5-6 h", "<5 h"], "zh-Hant": ["8h+", "7-8h", "6-7h", "5-6h", "<5h"]}, 'mode': 'runs', 'palette': c.PALETTES['SLEEP'], 'card': 'SLEEP', 'seed': 12,
         'title': {'en': 'SLEEP TRACKER', 'fr': 'SUIVI DU SOMMEIL', 'zh-Hant': '睡眠追蹤'},
         'pin_title': {
             'en': 'Sleep tracker in pixels: see your whole year at a glance',
@@ -56,7 +56,7 @@ THEMES = [
         'keywords': 'sleep tracker, sleep log, year in pixels, habit tracker, bullet journal sleep tracker',
     },
     {
-        'key': 'exercise', 'mode': 'weekly', 'palette': c.PALETTES['EXERCISE'], 'card': 'EXERCISE', 'seed': 13,
+        'key': 'exercise', 'labels': {"en": ["Running", "Swimming", "Gym", "Yoga", "Cycling"], "fr": ["Course", "Natation", "Muscu", "Yoga", "Vélo"], "zh-Hant": ["跑步", "游泳", "健身", "瑜伽", "騎車"]}, 'mode': 'weekly', 'palette': c.PALETTES['EXERCISE'], 'card': 'EXERCISE', 'seed': 13,
         'title': {'en': 'WORKOUT LOG', 'fr': 'SUIVI SPORTIF', 'zh-Hant': '運動追蹤'},
         'pin_title': {
             'en': 'Workout log in pixels: running, gym, yoga, one color each',
@@ -71,7 +71,7 @@ THEMES = [
         'keywords': 'workout tracker, fitness tracker, habit tracker, year in pixels, exercise log',
     },
     {
-        'key': 'reading', 'mode': 'runs', 'palette': c.PALETTES['READING'], 'card': 'READING', 'seed': 14,
+        'key': 'reading', 'labels': {"en": ["1-10 p.", "11-30 p.", "31-60 p.", "60+ p."], "fr": ["1-10 p.", "11-30 p.", "31-60 p.", "60+ p."], "zh-Hant": ["1-10 頁", "11-30 頁", "31-60 頁", "60+ 頁"]}, 'mode': 'runs', 'palette': c.PALETTES['READING'], 'card': 'READING', 'seed': 14,
         'title': {'en': 'READING LOG', 'fr': 'JOURNAL DE LECTURE', 'zh-Hant': '讀書追蹤'},
         'pin_title': {
             'en': 'Reading log in pixels: how many pages did you read today?',
@@ -86,7 +86,7 @@ THEMES = [
         'keywords': 'reading log, reading tracker, book tracker, year in pixels, bullet journal reading',
     },
     {
-        'key': 'habits', 'mode': 'dominant', 'palette': c.PALETTES['HABITS'], 'card': 'HABITS', 'seed': 15,
+        'key': 'habits', 'labels': {"en": ["Done", "Almost", "A bit", "Rest", "Sick"], "fr": ["Fait", "Presque", "Un peu", "Repos", "Malade"], "zh-Hant": ["完成", "幾乎", "一點", "休息", "生病"]}, 'mode': 'dominant', 'palette': c.PALETTES['HABITS'], 'card': 'HABITS', 'seed': 15,
         'title': {'en': 'HABIT TRACKER', 'fr': "SUIVI D'HABITUDES", 'zh-Hant': '習慣追蹤'},
         'pin_title': {
             'en': 'Habit tracker in pixels: build streaks you can see',
@@ -101,7 +101,7 @@ THEMES = [
         'keywords': 'habit tracker, habit tracker app, daily habits, streaks, year in pixels, bullet journal habit tracker',
     },
     {
-        'key': 'year', 'mode': 'runs', 'palette': c.PALETTES['YEAR'], 'card': None, 'seed': 16,
+        'key': 'year', 'labels': {"en": ["Work", "Rest", "Friends", "Sport", "Travel", "Study", "Family"], "fr": ["Travail", "Repos", "Amis", "Sport", "Voyage", "Études", "Famille"], "zh-Hant": ["工作", "休息", "朋友", "運動", "旅行", "學習", "家人"]}, 'mode': 'runs', 'palette': c.PALETTES['YEAR'], 'card': None, 'seed': 16,
         'title': {'en': 'YEAR IN PIXELS', 'fr': 'UNE ANNÉE EN PIXELS', 'zh-Hant': '像素年曆'},
         'pin_title': {
             'en': 'Year in pixels app: your whole year on one screen',
@@ -118,6 +118,11 @@ THEMES = [
 ]
 
 TAGLINE = {'en': 'ONE DOT A DAY', 'fr': 'UN POINT PAR JOUR', 'zh-Hant': '一天一點'}
+WORDS = {
+    'en': {'legend': 'LEGEND', 'stats': 'STATS', 'days': 'days', 'streak': 'streak', 'year': 'year'},
+    'fr': {'legend': 'LÉGENDE', 'stats': 'STATS', 'days': 'jours', 'streak': 'série', 'year': 'année'},
+    'zh-Hant': {'legend': '圖例', 'stats': '統計', 'days': '天', 'streak': '連續', 'year': '年度'},
+}
 FREE = {'en': 'FREE ON IOS & ANDROID', 'fr': 'GRATUIT SUR IOS ET ANDROID', 'zh-Hant': 'iOS / Android 免費下載'}
 ALT = {
     'en': 'Dian Dian app: a {what} shown as a year-in-pixels grid, 12 columns for the months, one colored dot per day, pixel-art style.',
@@ -175,12 +180,13 @@ def render(theme, lang, out):
     ty += (nb[3] - nb[1]) + 12
     d.text((tx - fb[0], ty - fb[1]), free, font=free_f, fill=c.MUTED)
 
-    # The card takes all the height left between the title block and the footer.
+    # The app's tracker screen (sidebar + grid) takes all the height left
+    # between the title block and the footer.
     card_h = int(row_y - 34 - card_top)
-    has_title = theme['card'] is not None
-    w = c.card_metrics(card_h, 1.0, title=has_title, legend=has_title)['w']
-    c.draw_card(img, int(cx - w / 2), card_top, card_h, theme['card'], theme['palette'],
-                c.seeded(theme['seed']), s=1.0, fill_until=(9, 14), legend=has_title, mode=theme['mode'])
+    w = c.tracker_screen_metrics(card_h, 1.0)['w']
+    c.draw_tracker_screen(img, int(cx - w / 2), card_top, card_h, theme['palette'], theme['labels'][lang],
+                          c.seeded(theme['seed']), s=1.0, fill_until=(9, 14), mode=theme['mode'],
+                          year=2026, words=WORDS[lang])
 
     img.save(out, 'PNG', optimize=True)
 
