@@ -177,4 +177,21 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('legend.editLabel')), findsNothing);
   });
+
+  testWidgets('a handle drag dropped back where it started leaves the row normal, not greyed', (tester) async {
+    await open(tester);
+    double opacityOf(String label) =>
+        tester.widget<Opacity>(find.ancestor(of: find.text(label), matching: find.byType(Opacity)).first).opacity;
+    final handle = tester.getCenter(find.byIcon(Icons.drag_handle).at(3)); // "Meh"
+    final gesture = await tester.startGesture(handle);
+    await tester.pump(const Duration(milliseconds: 50));
+    await gesture.moveBy(const Offset(0, 30));
+    await tester.pump();
+    await gesture.moveBy(const Offset(0, -30));
+    await tester.pump();
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(find.text('Meh'), findsOneWidget);
+    expect(opacityOf('Meh'), 1.0, reason: 'the ghost style must go away when the drag ends');
+  });
 }

@@ -840,9 +840,10 @@ class _DraggableLegendTile extends StatelessWidget {
   /// open the editor), the cross (delete). Each zone carries its own
   /// padding, so a touch near the handle or the cross never opens the editor.
   Widget _buildContent(BuildContext context, {bool ghost = false, bool inFlight = false}) {
+    // Wide enough to grab without aiming: ~56 px, the full row height.
     final handle = Padding(
-      padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
-      child: Icon(Icons.drag_handle, size: 18, color: AppColors.textMuted),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+      child: Icon(Icons.drag_handle, size: 20, color: AppColors.textMuted),
     );
     return Container(
       margin: const EdgeInsets.only(bottom: 4),
@@ -855,9 +856,11 @@ class _DraggableLegendTile extends StatelessWidget {
         opacity: ghost ? 0.3 : 1.0,
         child: Row(
           children: [
-            // The handle drags without waiting for a long press (not in the
-            // drag feedback itself, nor in the ghost).
-            if (inFlight || ghost)
+            // The handle drags without waiting for a long press. The ghost
+            // row keeps the same widget tree (the Draggable stays mounted):
+            // swapping it out mid-drag would orphan the drag and never fire
+            // onDragEnd, leaving the row greyed. The feedback copy is plain.
+            if (inFlight)
               handle
             else
               Draggable<int>(
@@ -866,6 +869,7 @@ class _DraggableLegendTile extends StatelessWidget {
                 onDragStarted: onDragStarted,
                 onDragEnd: (_) => onDragEnd(),
                 feedback: _feedback(context),
+                childWhenDragging: handle,
                 child: handle,
               ),
             Expanded(
