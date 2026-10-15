@@ -26,7 +26,7 @@ LANGS = ['en', 'fr', 'zh-Hant']
 # One card per theme: the title printed on the card and the pin copy per language.
 THEMES = [
     {
-        'key': 'mood', 'palette': c.PALETTES['MOOD'], 'card': 'MOOD', 'seed': 11,
+        'key': 'mood', 'mode': 'runs', 'palette': c.PALETTES['MOOD'], 'card': 'MOOD', 'seed': 11,
         'title': {'en': 'MOOD TRACKER', 'fr': "SUIVI D'HUMEUR", 'zh-Hant': '心情追蹤'},
         'pin_title': {
             'en': 'Mood tracker: a year in pixels, one dot a day',
@@ -41,7 +41,7 @@ THEMES = [
         'keywords': 'year in pixels, mood tracker, mood tracker app, pixel diary, bullet journal, mood journal',
     },
     {
-        'key': 'sleep', 'palette': c.PALETTES['SLEEP'], 'card': 'SLEEP', 'seed': 12,
+        'key': 'sleep', 'mode': 'runs', 'palette': c.PALETTES['SLEEP'], 'card': 'SLEEP', 'seed': 12,
         'title': {'en': 'SLEEP TRACKER', 'fr': 'SUIVI DU SOMMEIL', 'zh-Hant': '睡眠追蹤'},
         'pin_title': {
             'en': 'Sleep tracker in pixels: see your whole year at a glance',
@@ -56,7 +56,7 @@ THEMES = [
         'keywords': 'sleep tracker, sleep log, year in pixels, habit tracker, bullet journal sleep tracker',
     },
     {
-        'key': 'exercise', 'palette': c.PALETTES['EXERCISE'], 'card': 'EXERCISE', 'seed': 13,
+        'key': 'exercise', 'mode': 'weekly', 'palette': c.PALETTES['EXERCISE'], 'card': 'EXERCISE', 'seed': 13,
         'title': {'en': 'WORKOUT LOG', 'fr': 'SUIVI SPORTIF', 'zh-Hant': '運動追蹤'},
         'pin_title': {
             'en': 'Workout log in pixels: running, gym, yoga, one color each',
@@ -71,7 +71,7 @@ THEMES = [
         'keywords': 'workout tracker, fitness tracker, habit tracker, year in pixels, exercise log',
     },
     {
-        'key': 'reading', 'palette': c.PALETTES['READING'], 'card': 'READING', 'seed': 14,
+        'key': 'reading', 'mode': 'runs', 'palette': c.PALETTES['READING'], 'card': 'READING', 'seed': 14,
         'title': {'en': 'READING LOG', 'fr': 'JOURNAL DE LECTURE', 'zh-Hant': '讀書追蹤'},
         'pin_title': {
             'en': 'Reading log in pixels: how many pages did you read today?',
@@ -86,7 +86,7 @@ THEMES = [
         'keywords': 'reading log, reading tracker, book tracker, year in pixels, bullet journal reading',
     },
     {
-        'key': 'habits', 'palette': c.PALETTES['HABITS'], 'card': 'HABITS', 'seed': 15,
+        'key': 'habits', 'mode': 'dominant', 'palette': c.PALETTES['HABITS'], 'card': 'HABITS', 'seed': 15,
         'title': {'en': 'HABIT TRACKER', 'fr': "SUIVI D'HABITUDES", 'zh-Hant': '習慣追蹤'},
         'pin_title': {
             'en': 'Habit tracker in pixels: build streaks you can see',
@@ -101,7 +101,7 @@ THEMES = [
         'keywords': 'habit tracker, habit tracker app, daily habits, streaks, year in pixels, bullet journal habit tracker',
     },
     {
-        'key': 'year', 'palette': c.PALETTES['YEAR'], 'card': None, 'seed': 16,
+        'key': 'year', 'mode': 'runs', 'palette': c.PALETTES['YEAR'], 'card': None, 'seed': 16,
         'title': {'en': 'YEAR IN PIXELS', 'fr': 'UNE ANNÉE EN PIXELS', 'zh-Hant': '像素年曆'},
         'pin_title': {
             'en': 'Year in pixels app: your whole year on one screen',
@@ -145,29 +145,42 @@ def render(theme, lang, out):
     c.dotted_background(img, step=92, radius=5)
     d = ImageDraw.Draw(img)
     cx = W / 2
-
-    # title + tagline at the top
-    title = theme['title'][lang]
     cjk = lang == 'zh-Hant'
-    y = 100
-    y += c.text_centered(d, cx, y, title, fitted_font(title, 92 if cjk else 64, MAX_TITLE_W), c.TITLE) + 26
+
+    # Title block: a fixed height whatever the language, so every card has
+    # the same size (a taller CJK title must not squash the grid).
+    title = theme['title'][lang]
+    y = 76
+    y += c.text_centered(d, cx, y, title, fitted_font(title, 80 if cjk else 58, MAX_TITLE_W), c.TITLE) + 18
     tag = TAGLINE[lang]
-    y += c.text_centered(d, cx, y, tag, c.font_for(tag, 40 if cjk else 28, pixel_bold=False), c.MUTED)
+    c.text_centered(d, cx, y, tag, c.font_for(tag, 36 if cjk else 26, pixel_bold=False), c.MUTED)
+    card_top = 226
 
-    # the tracker card, filled up to mid-October
-    card_top = y + 64
-    card_h = 1180 - card_top
-    c.draw_card(img, 150, card_top, 700, card_h, theme['card'], theme['palette'],
-                c.seeded(theme['seed']), s=1.0, fill_until=(9, 14), legend=theme['card'] is not None)
-
-    # footer: cat, name, "free on iOS & Android" — well inside the bottom edge
-    icon = 100
-    fy = 1226
-    c.paste_icon(img, int(cx - icon / 2), fy, icon)
-    ny = fy + icon + 28
-    ny += c.text_centered(d, cx, ny, '点点 DIAN DIAN', c.font_for('点点', 36), c.TITLE) + 16
+    # Footer: cat icon with the two lines stacked beside it, one row.
+    icon = 84
+    name_f = c.font_for('点点', 34)
     free = FREE[lang]
-    c.text_centered(d, cx, ny, free, c.font_for(free, 32 if cjk else 24, pixel_bold=False), c.MUTED)
+    free_f = c.font_for(free, 30 if cjk else 22, pixel_bold=False)
+    nb, fb = name_f.getbbox('点点 DIAN DIAN'), free_f.getbbox(free)
+    text_w = max(nb[2] - nb[0], fb[2] - fb[0])
+    gap = 26
+    row_w = icon + gap + text_w
+    row_x = cx - row_w / 2
+    row_y = H - 58 - icon
+    c.paste_icon(img, int(row_x), int(row_y), icon)
+    tx = row_x + icon + gap
+    lines_h = (nb[3] - nb[1]) + 12 + (fb[3] - fb[1])
+    ty = row_y + (icon - lines_h) / 2
+    d.text((tx - nb[0], ty - nb[1]), '点点 DIAN DIAN', font=name_f, fill=c.TITLE)
+    ty += (nb[3] - nb[1]) + 12
+    d.text((tx - fb[0], ty - fb[1]), free, font=free_f, fill=c.MUTED)
+
+    # The card takes all the height left between the title block and the footer.
+    card_h = int(row_y - 34 - card_top)
+    has_title = theme['card'] is not None
+    w = c.card_metrics(card_h, 1.0, title=has_title, legend=has_title)['w']
+    c.draw_card(img, int(cx - w / 2), card_top, card_h, theme['card'], theme['palette'],
+                c.seeded(theme['seed']), s=1.0, fill_until=(9, 14), legend=has_title, mode=theme['mode'])
 
     img.save(out, 'PNG', optimize=True)
 

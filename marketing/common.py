@@ -100,39 +100,114 @@ def text_centered(d, cx, y, text, font, fill):
     return h
 
 
-def draw_card(img, x, y, w, h, title, palette, rng, s=1.0, fill_until=(9, 14), legend=True):
-    """A tracker card like the app's: title, legend dots, 12 × 31 dot grid."""
+MONTHS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']
+
+
+class Filler:
+    """Picks a colour per day so a demo grid reads like real usage instead
+    of confetti. Modes:
+      runs     — a colour holds for a few days, then moves to a neighbour in
+                 the palette (mood, sleep, reading: gradual changes);
+      weekly   — only some weekdays are filled, each with its own colour
+                 (exercise: a routine with rest days);
+      dominant — one main colour most days, a second one sometimes, a few
+                 misses (habits).
+    """
+
+    def __init__(self, mode, palette, rng, year=2026):
+        import datetime
+        self.mode, self.palette, self.rng, self.year = mode, palette, rng, year
+        self._date = datetime.date
+        self._idx = rng.randrange(len(palette))
+        self._left = 0
+        n = len(palette)
+        # weekly: pick 3–4 training weekdays, each with a sport colour
+        days = sorted(rng.sample(range(7), 4))
+        self._weekly = {d: palette[(i * 2) % n] for i, d in enumerate(days)}
+        self._main, self._second = palette[0], palette[min(1, n - 1)]
+
+    def color(self, month, day):
+        rng, pal = self.rng, self.palette
+        if self.mode == 'weekly':
+            wd = self._date(self.year, month + 1, day + 1).weekday()
+            if wd not in self._weekly or rng.random() < 0.12:
+                return None
+            return self._weekly[wd] if rng.random() > 0.15 else rng.choice(pal)
+        if self.mode == 'dominant':
+            r = rng.random()
+            return None if r < 0.10 else (self._second if r < 0.28 else self._main)
+        # runs
+        if self._left <= 0:
+            step = rng.choice([-1, -1, 0, 1, 1, 2, -2])
+            self._idx = max(0, min(len(pal) - 1, self._idx + step))
+            self._left = rng.randint(2, 6)
+        self._left -= 1
+        return None if rng.random() < 0.05 else pal[self._idx]
+
+
+def card_metrics(h, s=1.0, title=True, legend=True):
+    """Geometry of a tracker card of height `h`: everything derives from the
+    square cell size so the dot spacing is identical in x and y, like the
+    app's grid (13 columns: day labels + 12 months; 32 rows: month labels +
+    31 days). Returns a dict with the card width and inner positions."""
+    pad = int(36 * s)          # card padding around the screen
+    inner = int(16 * s)        # screen padding around the grid
+    header = int(44 * s) + (int(48 * s) + int(22 * s) if title else 0) + (int(26 * s) + int(30 * s) if legend else 0)
+    screen_h = h - header - pad
+    cell = (screen_h - 2 * inner) / 32
+    label_font = ImageFont.truetype(FONT_PIXEL, max(8, int(cell * 0.58)))
+    lab_w = max(cell, label_font.getbbox('30')[2] + int(8 * s))
+    grid_w = lab_w + 12 * cell
+    screen_w = grid_w + 2 * inner
+    w = int(screen_w + 2 * pad)
+    return dict(w=w, pad=pad, inner=inner, header=header, cell=cell, lab_w=lab_w, label_font=label_font)
+
+
+def draw_card(img, x, y, h, title, palette, rng, s=1.0, fill_until=(9, 14), legend=True, mode='runs'):
+    """A tracker card like the app's: title, legend dots, then the grid with
+    month letters on top and day numbers on the left, square cells.
+    Width follows from the height (see card_metrics); returns it."""
+    m = card_metrics(h, s, title=bool(title), legend=legend)
+    w, pad, inner, cell, lab_w = m['w'], m['pad'], m['inner'], m['cell'], m['lab_w']
     d = ImageDraw.Draw(img)
     d.rounded_rectangle([x, y, x + w, y + h], radius=int(30 * s), fill=CARD, outline=CARD_BORDER, width=max(2, int(4 * s)))
-    top = y + int(60 * s)
+    top = y + int(44 * s)
     if title:
-        f = font_for(title, int(50 * s))
-        top += text_centered(d, x + w / 2, top, title, f, TEXT) + int(28 * s)
+        f = font_for(title, int(48 * s))
+        top += text_centered(d, x + w / 2, top, title, f, TEXT) + int(22 * s)
     if legend:
-        ld = int(28 * s); gap = int(16 * s)
+        ld = int(26 * s); gap = int(16 * s)
         total = len(palette) * ld + (len(palette) - 1) * gap
         lx = x + (w - total) / 2
-        for c in palette:
-            d.ellipse([lx, top, lx + ld, top + ld], fill=c); lx += ld + gap
-        top += ld + int(40 * s)
-    pad = int(42 * s)
+        for col in palette:
+            d.ellipse([lx, top, lx + ld, top + ld], fill=col); lx += ld + gap
+        top += ld + int(30 * s)
     sx, sy = x + pad, top
     sw, sh = w - 2 * pad, y + h - pad - top
     d.rounded_rectangle([sx, sy, sx + sw, sy + sh], radius=int(20 * s), fill=SCREEN, outline=SCREEN_BORDER, width=max(2, int(3 * s)))
-    cols, rows = 12, 31
-    inner = int(24 * s)
-    stepx = (sw - 2 * inner) / cols; stepy = (sh - 2 * inner) / rows
-    rad = min(stepx, stepy) * 0.40
+    gx, gy = sx + inner, sy + inner
+    lf = m['label_font']
+    # month letters (row 0) and day numbers (column 0), muted like the app
+    for mi, letter in enumerate(MONTHS):
+        cx = gx + lab_w + mi * cell + cell / 2
+        text_centered(d, cx, gy + (cell - lf.getbbox('J')[3]) / 2, letter, lf, MUTED)
+    for day in range(31):
+        cy = gy + (day + 1) * cell + cell / 2
+        box = lf.getbbox(str(day + 1))
+        text_centered(d, gx + lab_w / 2, cy - (box[3] - box[1]) / 2, str(day + 1), lf, MUTED)
+    rad = cell * 0.40
     fm, fd = fill_until
-    for m in range(cols):
-        for day in range(rows):
-            if day >= DAYS[m]:
+    filler = Filler(mode, palette, rng)
+    for mi in range(12):
+        for day in range(31):
+            if day >= DAYS[mi]:
                 continue
-            cx = sx + inner + stepx * m + stepx / 2
-            cy = sy + inner + stepy * day + stepy / 2
-            filled = m < fm or (m == fm and day < fd)
-            color = rng.choice(palette) if (filled and rng.random() > 0.08) else EMPTY
+            cx = gx + lab_w + mi * cell + cell / 2
+            cy = gy + (day + 1) * cell + cell / 2
+            filled = mi < fm or (mi == fm and day < fd)
+            color = (filler.color(mi, day) if filled else None) or EMPTY
             d.ellipse([cx - rad, cy - rad, cx + rad, cy + rad], fill=color)
+    return w
 
 
 def paste_icon(img, x, y, size, s=1.0):
