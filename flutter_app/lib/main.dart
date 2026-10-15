@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'data/first_tracker_decision.dart';
 import 'providers/auth_provider.dart';
 import 'providers/cells_provider.dart';
 import 'providers/language_provider.dart';
@@ -14,8 +15,8 @@ import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/forgot_password_screen.dart';
 import 'screens/page_list_screen.dart';
+import 'screens/first_tracker_screen.dart';
 import 'screens/tracker_screen.dart';
-import 'screens/onboarding_screen.dart';
 import 'screens/settings_screen.dart';
 import 'theme/app_theme.dart';
 import 'widgets/custom_cursor.dart';
@@ -103,7 +104,7 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-enum AppScreen { login, register, forgotPassword, onboarding, pageList, tracker, settings }
+enum AppScreen { login, register, forgotPassword, firstTracker, pageList, tracker, settings }
 
 class _AppShellState extends State<AppShell> {
   static const _lastTrackerIdKey = 'last_tracker_id';
@@ -131,7 +132,7 @@ class _AppShellState extends State<AppShell> {
 
   /// Runs once per authenticated session. Hydrates the store from the disk
   /// snapshot (instant first paint), kicks the network bootstrap, then lands
-  /// on onboarding, the last open tracker, or the page list.
+  /// on the first-tracker flow, the last open tracker, or the page list.
   Future<void> _startSession(AuthProvider auth) async {
     try {
       await _startSessionInner(auth);
@@ -154,21 +155,33 @@ class _AppShellState extends State<AppShell> {
     final hydrated = await sync.start(userId: auth.userId!, year: year);
     if (!mounted) return;
 
-    if (await OnboardingScreen.shouldShow()) {
-      if (!mounted) return;
+    // Anyone the snapshot already knows as active lands at once (instant
+    // first paint). Everyone else waits for the server once: new and dormant
+    // accounts get the first-tracker flow only on a confirmed "no cell at
+    // all". Offline, `activated` stays null and the normal app shows.
+    if (!hydrated || sync.snapshotActivated != true) await sync.ensureYear(year);
+    if (!mounted) return;
+
+    final userId = auth.userId!;
+    final doneOnThisDevice = await FirstTrackerScreen.isDone(userId);
+    if (!mounted) return;
+    final pagesProv = context.read<PagesProvider>();
+    final legendsProv = context.read<LegendsProvider>();
+    if (shouldShowFirstTracker(
+      activated: sync.activated,
+      doneOnThisDevice: doneOnThisDevice,
+      pageCount: pagesProv.pages.length,
+      maxTrackers: context.read<PremiumProvider>().maxTrackers,
+      hasReplaceablePage: replaceablePageId(pagesProv.pages, legendsProv.legendsFor) != null,
+    )) {
       setState(() {
-        _screen = AppScreen.onboarding;
+        _screen = AppScreen.firstTracker;
         _selectedYear = year;
         _restoreInProgress = false;
       });
       return;
     }
 
-    // First launch on this device: nothing on disk, wait once for the network.
-    if (!hydrated) await sync.ensureYear(year);
-    if (!mounted) return;
-
-    final pagesProv = context.read<PagesProvider>();
     if (lastId != null && pagesProv.pages.any((p) => p.id == lastId)) {
       // Wire providers as if the user had tapped the tracker in the page list.
       context.read<CellsProvider>().setContext(pageId: lastId, year: year);
@@ -370,10 +383,17 @@ class _AppShellState extends State<AppShell> {
 
   Widget _buildAppScreen() {
     switch (_screen) {
-      case AppScreen.onboarding:
-        return OnboardingScreen(
-          key: const ValueKey('onboarding'),
-          onDone: () => _navigate(AppScreen.pageList),
+      case AppScreen.firstTracker:
+        return FirstTrackerScreen(
+          key: const ValueKey('firstTracker'),
+          userId: context.read<AuthProvider>().userId!,
+          onLater: () => _navigate(AppScreen.pageList),
+          onOpenTracker: (pageId, year) {
+            // The created tracker becomes the last-opened one (saved by
+            // _navigate) so the next launch lands on it.
+            _selectedYear = year;
+            _navigate(AppScreen.tracker, pageId: pageId);
+          },
         );
       case AppScreen.settings:
         return SettingsScreen(
