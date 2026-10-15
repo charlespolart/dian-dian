@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import { z } from 'zod';
 import * as argon2 from 'argon2';
 import { db } from '../db/index.js';
-import { users, refreshTokens, pages, passwordResetTokens, subscriptions, oauthAccounts } from '../db/schema.js';
+import { users, refreshTokens, passwordResetTokens, subscriptions, oauthAccounts } from '../db/schema.js';
 import { and } from 'drizzle-orm';
 import { signAccessToken, generateRefreshToken, hashToken } from '../lib/jwt.js';
 import { validate } from '../middleware/validate.js';
@@ -85,9 +85,7 @@ router.post('/register', validate(registerSchema), async (req, res) => {
     const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
 
     const [user] = await db.insert(users).values({ email, passwordHash }).returning();
-
-    // Create default page
-    await db.insert(pages).values({ userId: user.id, title: 'My Tracker', position: 0 });
+    // No default page since 1.2.0: the app's first-tracker flow creates it.
 
     res.status(201).json(await issueSession(res, user));
   } catch (err) {
@@ -177,7 +175,8 @@ router.post('/oauth', validate(oauthSchema), async (req, res) => {
       }
     }
 
-    // 3) Brand-new account — create user (no password) + link, plus default page.
+    // 3) Brand-new account — create user (no password) + link. No default page
+    //    since 1.2.0: the app's first-tracker flow creates it.
     if (!claims.email) {
       res.status(400).json({ error: 'Provider did not return an email' });
       return;
@@ -189,7 +188,6 @@ router.post('/oauth', validate(oauthSchema), async (req, res) => {
       emailVerified: claims.emailVerified === true,
     }).returning();
     await db.insert(oauthAccounts).values({ provider, subject: claims.subject, userId: created.id });
-    await db.insert(pages).values({ userId: created.id, title: 'My Tracker', position: 0 });
 
     res.status(201).json(await issueSession(res, created));
   } catch (err) {

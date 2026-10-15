@@ -78,8 +78,12 @@ void main() {
     final hydrated = await sync.start(userId: userId, year: year);
     expect(hydrated, isFalse);
     await sync.ensureYear(year);
-    expect(pages.pages.length, 1, reason: 'default tracker created at register');
-    final pageId = pages.pages.single.id;
+    expect(pages.pages, isEmpty, reason: 'no default tracker since backend 1.2.0');
+    final first = await pages.createPage('First');
+    expect(first, isNotNull, reason: 'the app creates the first tracker');
+    final pageId = first!.id;
+    // The new page has no cells entry until a bootstrap sees it.
+    await sync.ensureYear(year);
     expect(cells.isYearLoaded(year), isTrue);
     expect(cells.cellsFor(pageId, year)!.isEmpty, isTrue);
 

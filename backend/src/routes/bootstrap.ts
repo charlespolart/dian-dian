@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { db } from '../db/index.js';
 import { pages, cells, legends } from '../db/schema.js';
 import { requireAuth } from '../middleware/auth.js';
-import { eq, and, asc } from 'drizzle-orm';
+import { eq, and, asc, sql } from 'drizzle-orm';
 
 const router = Router();
 router.use(requireAuth);
@@ -27,12 +27,13 @@ type CompactCell = [number, number, string] | [number, number, string, string];
 //
 // Every page id is present as a key in `legends` and `cells` (possibly an
 // empty array) so the client can treat "key present" as "loaded".
+// `activated`: the account has at least one cell (any page, any year).
 router.get('/', async (req, res) => {
   try {
     const userId = req.userId!;
     const year = parseYear(req.query.year) ?? new Date().getFullYear();
 
-    const [pageRows, legendRows, cellRows] = await Promise.all([
+    const [pageRows, legendRows, cellRows, anyCell] = await Promise.all([
       db.select()
         .from(pages)
         .where(eq(pages.userId, userId))
@@ -62,6 +63,14 @@ router.get('/', async (req, res) => {
         .innerJoin(pages, eq(pages.id, cells.pageId))
         .where(and(eq(pages.userId, userId), eq(cells.year, year)))
         .orderBy(asc(cells.pageId), asc(cells.month), asc(cells.day)),
+      // Any cell at all for this account (any page, any year): drives the
+      // first-tracker flow in app ≥ 1.4.0. Index pages_user_id_idx + the
+      // cells primary key (page_id first) make it a lookup.
+      db.select({ one: sql<number>`1` })
+        .from(cells)
+        .innerJoin(pages, eq(pages.id, cells.pageId))
+        .where(eq(pages.userId, userId))
+        .limit(1),
     ]);
 
     const legendsByPage: Record<string, typeof legendRows> = {};
@@ -80,6 +89,7 @@ router.get('/', async (req, res) => {
     res.set('Cache-Control', 'no-store');
     res.json({
       year,
+      activated: anyCell.length > 0,
       pages: pageRows.map((p) => ({ ...p, palette: p.palette ? JSON.parse(p.palette) : null })),
       legends: legendsByPage,
       cells: cellsByPage,

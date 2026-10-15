@@ -62,11 +62,15 @@ async function main() {
   assert.equal(r.json.email, email, 'refresh returns email');
   access = r.json.accessToken; refresh = r.json.refreshToken;
 
-  // --- default page exists ----------------------------------------------
+  // --- no default page since 1.2.0: the app creates the first tracker -------
   r = await call('GET', '/api/pages');
   assert.equal(r.status, 200);
-  assert.equal(r.json.length, 1, 'one default page');
-  const pageId: string = r.json[0].id;
+  assert.deepEqual(r.json, [], 'no default page at register');
+  r = await call('GET', '/api/bootstrap');
+  assert.equal(r.json.activated, false, 'activated: no cell yet');
+  r = await call('POST', '/api/pages', { title: 'First', position: 0 });
+  assert.equal(r.status, 201);
+  const pageId: string = r.json.id;
 
   // --- second page + single-request reorder --------------------------------
   r = await call('POST', '/api/pages', { title: 'Second', position: 1 });
@@ -102,6 +106,7 @@ async function main() {
   r = await call('GET', '/api/bootstrap?year=2026');
   assert.equal(r.status, 200, `bootstrap: ${JSON.stringify(r.json)}`);
   assert.equal(r.json.year, 2026);
+  assert.equal(r.json.activated, true, 'activated once a cell exists');
   assert.deepEqual(r.json.pages.map((p: Json) => p.id), [page2, pageId], 'bootstrap pages in position order');
   assert.equal(r.json.pages[1].palette, null, 'palette parsed (null)');
   assert.deepEqual(r.json.cells[pageId], [[12, 31, '#FF0000']], 'compact cells for 2026');
