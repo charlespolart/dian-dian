@@ -5,3 +5,6 @@ node_modules/
 
 # superpowers SDD workspace (ledger, briefs)
 .superpowers/
+
+# Python bytecode (marketing generators)
+__pycache__/
