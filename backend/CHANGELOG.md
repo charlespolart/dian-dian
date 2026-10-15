@@ -15,6 +15,7 @@ working against the new backend.
 - `GET /api/bootstrap` returns `activated`: the account has at least one cell, on any page, any year.
 - `cells.created_at` (migration 0013, backfilled from `updated_at`), returned as `createdAt` by the cell routes.
 - `scripts/prod-activation.sql`: activation by weekly signup cohort (first cell within 24 h / 7 days, never).
+- `POST /api/events` `{ name }` (auth, 120 / 15 min per IP) and table `events` (migration 0014): the app reports each paywall gate it shows (`paywall.tracker_limit`, …) so the free limit's real pull can be read with `scripts/prod-events.sql`.
 
 ### Changed
 - No "My Tracker" page is created at signup (email or OAuth) any more: the app's first-tracker flow (1.4.0) creates the first page with its legends.

@@ -198,6 +198,14 @@ async function main() {
     assert.equal(r.json.length, before, 'refused creations wrote nothing');
   }
 
+  // --- events (roadmap #2: count the paywall gates) ------------------------
+  r = await call('POST', '/api/events', { name: 'paywall.tracker_limit' });
+  assert.equal(r.status, 204, `event: ${JSON.stringify(r.json)}`);
+  r = await call('POST', '/api/events', { name: 'Bad Name!' });
+  assert.equal(r.status, 400, 'event names are lower-case slugs');
+  r = await call('POST', '/api/events', { name: 'paywall.tracker_limit' }, false);
+  assert.equal(r.status, 401, 'events need a session');
+
   // --- cleanup --------------------------------------------------------------
   r = await call('DELETE', '/api/auth/account');
   assert.equal(r.status, 200);

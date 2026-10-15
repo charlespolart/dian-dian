@@ -112,3 +112,15 @@ export const legends = pgTable('legends', {
 }, (t) => [
   index('legends_page_id_idx').on(t.pageId),
 ]);
+
+// Product events reported by the app (roadmap #2): one row per paywall gate
+// shown, e.g. `paywall.tracker_limit`. A counter, not analytics: name +
+// account + time, no payload. Read by scripts/prod-events.sql.
+export const events = pgTable('events', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('events_name_created_at_idx').on(t.name, t.createdAt),
+]);

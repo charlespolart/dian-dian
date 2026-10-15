@@ -21,6 +21,7 @@ import landingRoutes from './routes/landing.js';
 import purchaseRoutes from './routes/purchase.js';
 import bootstrapRoutes from './routes/bootstrap.js';
 import statsRoutes from './routes/stats.js';
+import eventsRoutes from './routes/events.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -93,6 +94,13 @@ const forgotLimiter = rateLimit({
   message: { error: 'Too many attempts, try again in 15 minutes' },
 });
 
+// Product events are cheap but unbounded by design: cap them per IP.
+const eventsLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 min
+  max: 120,
+  message: { error: 'Too many events' },
+});
+
 // Routes
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
@@ -105,6 +113,7 @@ app.use('/api/legends', legendsRoutes);
 app.use('/api/purchase', purchaseRoutes);
 app.use('/api/bootstrap', bootstrapRoutes);
 app.use('/api/stats', statsRoutes);
+app.use('/api/events', eventsLimiter, eventsRoutes);
 
 // Liveness — deliberately cheap and DB-free. This is what the container
 // healthcheck polls: if it depended on Postgres, every DB blip would mark the
