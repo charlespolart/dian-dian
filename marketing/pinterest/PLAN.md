@@ -6,9 +6,12 @@ Premier canal de communication (décidé le 2026-10-15). Objectif : du trafic
 Pinterest est un moteur de recherche visuel : une épingle vit des mois, le
 rythme compte plus que le volume.
 
-Pas de chinois simplifié : Pinterest n'est pas disponible en Chine
-continentale. Langues : anglais (le gros du trafic), français, chinois
-traditionnel (Taïwan, Hong Kong).
+Langues : anglais (le gros du trafic) et français (communauté bullet
+journal très active, langue des réponses aux commentaires). Pas de chinois
+simplifié, Pinterest n'est pas disponible en Chine continentale ; le chinois
+traditionnel (Taïwan, Hong Kong) est généré mais pas publié pour l'instant,
+l'audience Pinterest y est trop petite. À rouvrir à 8 semaines si Analytics
+montre du trafic depuis ces pays.
 
 ## Compte et tableaux
 
@@ -25,7 +28,10 @@ Tableaux (un par intention de recherche, titres = mots-clés) :
 | Habit Tracker | épingles "habits", "exercise", "reading" |
 | Sleep Tracker | épingles "sleep" |
 | Suivi d'humeur & habitudes (FR) | toutes les épingles françaises |
-| 心情與習慣追蹤 (繁體) | toutes les épingles en chinois traditionnel |
+
+Un tableau 心情與習慣追蹤 (繁體) viendra si le chinois traditionnel est
+activé. Descriptions des tableaux : une phrase avec le mot-clé du tableau,
+"one dot a day" et "Dian Dian, free on iOS & Android".
 
 ## Les épingles
 
@@ -53,7 +59,8 @@ pour un mood tracker"), avant/après (grille vide → grille pleine).
 ## Rythme
 
 - Semaine 1 : créer le compte et les tableaux, publier 6 épingles anglaises
-  (une par thème), 3 françaises, 2 en chinois traditionnel.
+  (une par thème) et 3 françaises (mood, year, habits), étalées sur la
+  semaine avec "Publier à une date ultérieure".
 - Ensuite : 3 à 5 épingles par semaine, programmées d'avance dans Pinterest
   (bouton "Publier à une date"), en alternant thèmes et langues. Une même
   image peut être réépinglée sur un second tableau pertinent deux semaines
