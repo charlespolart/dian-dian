@@ -80,6 +80,13 @@ class _TrackerScreenState extends State<TrackerScreen> {
     widget.onYearChanged?.call(newYear);
   }
 
+  /// "Today": the cell editor on today's date, from any year.
+  void _openToday() {
+    final today = DateTime.now();
+    if (_year != today.year) _changeYear(today.year - _year);
+    CellEditorDialog.show(context, month: today.month, day: today.day, year: today.year);
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -812,6 +819,36 @@ class _TrackerScreenState extends State<TrackerScreen> {
                               ),
                       ),
                     ))),
+                    // Today: one tap to the day that matters.
+                    const SizedBox(height: 6),
+                    Center(
+                      child: GestureDetector(
+                        onTap: _openToday,
+                        child: DashedBorder(
+                          color: AppColors.inputBorder,
+                          borderRadius: 4,
+                          dashLength: 3,
+                          gapLength: 2,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: showLabels ? 8 : 4,
+                            vertical: 5,
+                          ),
+                          child: showLabels
+                              ? Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.circle, size: 10, color: AppColors.accent),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      lang.t('tracker.today'),
+                                      style: AppFonts.pixel(fontSize: editFs, color: AppColors.accent),
+                                    ),
+                                  ],
+                                )
+                              : Icon(Icons.circle, size: 12, color: AppColors.accent),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
