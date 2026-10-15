@@ -306,7 +306,7 @@ def draw_tracker_screen(img, x, y, h, palette, labels, rng, s=1.0, fill_until=(9
     cx = fx0 + pad + sb / 2
     ty = fy0 + pad + int(10 * s)
     yf = ImageFont.truetype(FONT_CJK, int(17 * s))
-    ty += text_centered(d, cx, ty, f'<  {year}  >', yf, SUBTITLE) + int(14 * s)
+    ty += text_centered(d, cx, ty, f'~ {year} ~', yf, SUBTITLE) + int(14 * s)
     ty += section_header(d, cx, ty, words['legend'], sb, s)
     lf = font_for(''.join(labels), int(14 * s), pixel_bold=False)
     if all(ord(ch) < 0x2E80 for ch in ''.join(labels)):
