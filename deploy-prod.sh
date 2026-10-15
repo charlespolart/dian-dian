@@ -56,10 +56,17 @@ tag="$(git tag -l "${prefix}*" | sort -V | tail -1)"
 [ -n "$tag" ] || fail "no backend version tag yet: run ./release-backend.sh first"
 
 # The tag's Release workflow is what typechecked, smoke-tested and built the image.
-conclusion="$(gh api "repos/$repo/actions/workflows/release.yml/runs?event=push&per_page=50" \
-  --jq "[.workflow_runs[] | select(.head_branch == \"$tag\")] | first | .conclusion // \"missing\"")"
+run="$(gh api "repos/$repo/actions/workflows/release.yml/runs?event=push&per_page=50" \
+  --jq "[.workflow_runs[] | select(.head_branch == \"$tag\")] | first | \"\\(.id) \\(.status) \\(.conclusion // \"-\")\"")"
 
-[ "$conclusion" = "success" ] || fail "the Release workflow of $tag is '$conclusion', not 'success': https://github.com/$repo/actions"
+[ -n "$run" ] || fail "no Release workflow run for $tag yet: wait a moment, or check https://github.com/$repo/actions"
+
+read -r run_id run_status run_conclusion <<<"$run"
+
+if [ "$run_status" != "completed" ]; then
+  fail "the Release workflow of $tag is still $run_status: follow it with  gh run watch $run_id --exit-status"
+fi
+[ "$run_conclusion" = "success" ] || fail "the Release workflow of $tag ended with '$run_conclusion', not 'success': https://github.com/$repo/actions/runs/$run_id"
 
 gh release view "$tag" >/dev/null 2>&1 || fail "$tag has no GitHub Release yet: wait for the Release workflow"
 

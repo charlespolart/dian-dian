@@ -191,6 +191,8 @@ backend version it needs in the changelog.
    migrations on a throwaway Postgres, the smoke suite against the built
    server, then the image `ghcr.io/charlespolart/dian-dian-backend:backend-vX.Y.Z`
    and a GitHub Release with the changelog section. It never touches the VPS.
+   The release script prints the run and `gh run watch <id> --exit-status`
+   to follow it from the terminal until it is green.
 3. `./deploy-prod.sh` takes the newest tag, refuses it
    unless its workflow is green and the GitHub Release exists, shows
    "production: vA → vB", asks for `y` then for the version typed back. Over

@@ -151,6 +151,21 @@ fi
 
 repo="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
 
+# The tag push starts the Release (backend) workflow; find its run so the user can
+# follow it (it can take a few seconds to appear).
+run_id=""
+for _ in $(seq 1 12); do
+  run_id="$(gh run list --workflow=release.yml --branch "$tag" --limit 1 --json databaseId -q '.[0].databaseId' 2>/dev/null || true)"
+  [ -n "$run_id" ] && break
+  sleep 5
+done
+
 echo
-echo "Released $tag. The Release workflow is running: https://github.com/$repo/actions"
-echo "When it is green, deploy with: ./deploy-prod.sh"
+if [ -n "$run_id" ]; then
+  echo "Released $tag. The Release (backend) workflow is running: https://github.com/$repo/actions/runs/$run_id"
+  echo "Follow it (exits 0 when green):  gh run watch $run_id --exit-status"
+else
+  echo "Released $tag. The Release (backend) workflow should be running: https://github.com/$repo/actions"
+  echo "Follow it:  gh run list --workflow=release.yml --branch $tag"
+fi
+echo "When it is green, deploy with:      ./deploy-prod.sh   (it refuses to run until then)"
