@@ -38,14 +38,26 @@ class MemorySnapshots implements SnapshotStore {
   Future<void> delete() async => data = null;
 }
 
-Map<String, dynamic> pageJson(String id, {int position = 0, String title = 'T'}) => {
+Map<String, dynamic> pageJson(
+  String id, {
+  int position = 0,
+  String title = 'T',
+  String createdAt = '',
+  int recentCells = 0,
+  String? lastCellAt,
+  bool keepFree = false,
+}) =>
+    {
       'id': id,
       'userId': 'u1',
       'title': title,
       'year': 2026,
       'position': position,
       'palette': null,
-      'createdAt': '',
+      'createdAt': createdAt,
+      'recentCells': recentCells,
+      'lastCellAt': lastCellAt,
+      'keepFree': keepFree,
     };
 
 Map<String, dynamic> legendJson(String id, String pageId, String color, int position, {String? label}) => {

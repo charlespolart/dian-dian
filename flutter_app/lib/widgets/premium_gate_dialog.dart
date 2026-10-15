@@ -11,13 +11,15 @@ import '../services/store_links.dart';
 import '../theme/app_theme.dart';
 import 'app_dialog.dart';
 import 'custom_paywall_dialog.dart';
+import 'keep_trackers_dialog.dart';
 
 /// Dialog shown when a free user tries to access a premium feature.
 /// Shows what premium includes, then opens the RevenueCat paywall on upgrade.
 class PremiumGateDialog extends StatelessWidget {
   final String feature;
+  final String? event;
 
-  const PremiumGateDialog({super.key, required this.feature});
+  const PremiumGateDialog({super.key, required this.feature, this.event});
 
   /// Shows the dialog. Returns true if the user is now premium.
   /// [event] names the gate for the server-side counter (`paywall.<event>`,
@@ -26,7 +28,7 @@ class PremiumGateDialog extends StatelessWidget {
     if (event != null) unawaited(EventsService().track('paywall.$event'));
     final result = await showDialog<bool>(
       context: context,
-      builder: (_) => PremiumGateDialog(feature: feature),
+      builder: (_) => PremiumGateDialog(feature: feature, event: event),
     );
     return result ?? false;
   }
@@ -86,6 +88,31 @@ class PremiumGateDialog extends StatelessWidget {
             _buildBenefit(Icons.image, lang.t('premium.feature.export')),
             _buildBenefit(Icons.bar_chart, lang.t('premium.feature.stats')),
             _buildBenefit(Icons.block, lang.t('premium.feature.noAds')),
+
+            // A locked tracker was tapped: the free account can pick which
+            // trackers stay open instead.
+            if (event == 'locked_tracker') ...[
+              const SizedBox(height: 12),
+              Semantics(
+                button: true,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    final navigator = Navigator.of(context);
+                    navigator.pop(false);
+                    KeepTrackersDialog.show(navigator.context, maxTrackers: PremiumProvider.maxFreeTrackers);
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Text(
+                      lang.t('keep.change'),
+                      style: AppFonts.dot(fontSize: 13, color: AppColors.accent),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              ),
+            ],
 
             const SizedBox(height: 20),
 

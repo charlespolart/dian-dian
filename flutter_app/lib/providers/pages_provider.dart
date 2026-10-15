@@ -148,6 +148,25 @@ class PagesProvider extends ChangeNotifier {
     }
   }
 
+  /// Which trackers stay open on a free account over the limit (≤ the free
+  /// limit). Optimistic; reverted when the server refuses.
+  Future<bool> keepFree(List<String> ids) async {
+    final previous = _pages;
+    _pages = [for (final p in _pages) p.copyWith(keepFree: ids.contains(p.id))];
+    _touch();
+    notifyListeners();
+    try {
+      final response = await _api.apiFetch('/api/pages/keep', method: 'PUT', body: {'ids': ids});
+      if (response.statusCode == 200) return true;
+    } catch (e) {
+      debugPrint('PagesProvider: keepFree failed: $e');
+    }
+    _pages = previous;
+    _touch();
+    notifyListeners();
+    return false;
+  }
+
   Future<void> updatePage(String id, Map<String, dynamic> updates) async {
     try {
       final response = await _api.apiFetch(
@@ -343,6 +362,15 @@ class PagesProvider extends ChangeNotifier {
         final ids = (json['ids'] as List<dynamic>?)?.cast<String>();
         if (ids == null) break;
         _applyOrder(ids);
+        _touch();
+        notifyListeners();
+        break;
+
+      case 'pages:kept':
+        final json = message.data as Map<String, dynamic>;
+        final ids = (json['ids'] as List<dynamic>?)?.cast<String>();
+        if (ids == null) break;
+        _pages = [for (final p in _pages) p.copyWith(keepFree: ids.contains(p.id))];
         _touch();
         notifyListeners();
         break;

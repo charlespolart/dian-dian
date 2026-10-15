@@ -196,6 +196,16 @@ class _TrackerScreenState extends State<TrackerScreen> {
       });
       return const SizedBox.shrink();
     }
+    // Locked by the free tier (premium lapsed while open, or restored from
+    // a stale state): leave and show the gate, instead of editing on.
+    if (context.watch<PremiumProvider>().lockedTrackerIds(pagesProv.pages).contains(widget.pageId)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        widget.onBack();
+        PremiumGateDialog.show(context, feature: lang.t('premium.trackerLimit'), event: 'locked_tracker');
+      });
+      return const SizedBox.shrink();
+    }
 
     // Stats are memoized in the provider (recomputed only when cells change).
     final filledDays = cellsProv.filledDays;

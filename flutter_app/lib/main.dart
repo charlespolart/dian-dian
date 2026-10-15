@@ -216,7 +216,12 @@ class _AppShellState extends State<AppShell> {
       return;
     }
 
-    if (lastId != null && pagesProv.pages.any((p) => p.id == lastId)) {
+    // A tracker locked by the free tier (premium lapsed since) is not
+    // restored: land on the list, where it shows closed.
+    final locked = context.read<PremiumProvider>().lockedTrackerIds(pagesProv.pages);
+    if (lastId != null &&
+        pagesProv.pages.any((p) => p.id == lastId) &&
+        !locked.contains(lastId)) {
       // Wire providers as if the user had tapped the tracker in the page list.
       context.read<CellsProvider>().setContext(pageId: lastId, year: year);
       context.read<LegendsProvider>().setPageId(lastId);

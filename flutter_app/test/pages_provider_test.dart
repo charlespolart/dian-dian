@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
+import 'package:dian_dian/models/page_model.dart';
 import 'package:dian_dian/providers/pages_provider.dart';
 import 'package:dian_dian/services/api_service.dart';
 import 'package:dian_dian/services/ws_service.dart';
@@ -131,5 +132,46 @@ void main() {
     expect(created, isNull);
     expect(calls, 1, reason: 'no second request');
     expect(p.pages.map((x) => x.id), ['a', 'b', 'c']);
+  });
+
+  test('keepFree sends the ids, flags them locally and clears the others', () async {
+    late Map<String, dynamic> sent;
+    late String path;
+    final client = MockClient((req) async {
+      path = '${req.method} ${req.url.path}';
+      sent = jsonDecode(req.body) as Map<String, dynamic>;
+      return http.Response('{"ok":true}', 200);
+    });
+    final p = withClient(client, [pageJson('a', keepFree: true), pageJson('b', position: 1), pageJson('c', position: 2)]);
+    final ok = await p.keepFree(['b', 'c']);
+    expect(ok, isTrue);
+    expect(path, 'PUT /api/pages/keep');
+    expect(sent, {'ids': ['b', 'c']});
+    expect(p.pages.map((x) => '${x.id}:${x.keepFree}'), ['a:false', 'b:true', 'c:true']);
+  });
+
+  test('keepFree reverts the flags when the server refuses', () async {
+    final client = MockClient((req) async => http.Response('{"error":"x"}', 500));
+    final p = withClient(client, [pageJson('a', keepFree: true), pageJson('b', position: 1)]);
+    expect(await p.keepFree(['b']), isFalse);
+    expect(p.pages.map((x) => '${x.id}:${x.keepFree}'), ['a:true', 'b:false']);
+  });
+
+  test('pages:kept from another device applies the choice', () {
+    final p = withServer(200);
+    p.debugHandleWs(const WsMessage(event: 'pages:kept', data: {'ids': ['b']}));
+    expect(p.pages.map((x) => '${x.id}:${x.keepFree}'), ['a:false', 'b:true']);
+  });
+
+  test('PageModel reads activity and keepFree, defaults when absent (snapshot of 1.3.0)', () {
+    final full = PageModel.fromJson(pageJson('a', recentCells: 7, lastCellAt: '2026-10-15T00:00:00Z', keepFree: true));
+    expect(full.recentCells, 7);
+    expect(full.lastCellAt, '2026-10-15T00:00:00Z');
+    expect(full.keepFree, isTrue);
+    final old = PageModel.fromJson({'id': 'b', 'userId': 'u1', 'title': 'T', 'year': 2026, 'position': 0, 'palette': null, 'createdAt': ''});
+    expect(old.recentCells, 0);
+    expect(old.lastCellAt, isNull);
+    expect(old.keepFree, isFalse);
+    expect(PageModel.fromJson(full.toJson()).keepFree, isTrue, reason: 'round-trips through the snapshot');
   });
 }

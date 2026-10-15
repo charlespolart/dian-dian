@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../data/tracker_lock.dart';
 import '../models/page_model.dart';
 import '../services/api_service.dart';
 import '../services/purchase_service.dart';
@@ -79,19 +80,11 @@ class PremiumProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Returns the IDs of trackers locked by the free tier — i.e. trackers
-  /// beyond the [maxFreeTrackers]-th oldest by `createdAt`.
-  ///
-  /// We pin the unlock to creation order so a user can't bypass the limit by
-  /// dragging a locked tracker into the top of the page list whenever they
-  /// want to edit it. The position field stays purely visual.
-  Set<String> lockedTrackerIds(List<PageModel> allPages) {
-    if (isPremium) return const <String>{};
-    if (allPages.length <= maxFreeTrackers) return const <String>{};
-    final byAge = List<PageModel>.of(allPages)
-      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
-    return byAge.skip(maxFreeTrackers).map((p) => p.id).toSet();
-  }
+  /// Ids of the trackers locked by the free tier: the user's kept ones stay
+  /// open, else the most active (see `lockedTrackerIdsFor`). Never the list
+  /// position, which would make the limit trivial to bypass by reordering.
+  Set<String> lockedTrackerIds(List<PageModel> allPages) =>
+      lockedTrackerIdsFor(allPages, premium: isPremium, maxTrackers: maxFreeTrackers);
 
   /// Apply settings from server (called after login / session restore).
   void applyServerSettings({String? cursorId, bool? cursorEnabled}) {

@@ -25,6 +25,7 @@ Requires backend ≥ 1.2.0.
 - Phones are locked to portrait (shortest side under 600 dp); tablets keep every orientation.
 - Swipe from the left edge to go back from the tracker and the settings (iOS-style, works on both platforms).
 - A pencil next to the tracker title (top bar and cover) shows that tapping it renames the tracker.
+- Free tier over the limit (a lapsed subscription with more than 3 trackers): the trackers that stay open are the user's choice, asked once in the list with the 3 most active preselected (cells touched in the last 90 days, then last cell date), stored on the server (`PUT /api/pages/keep`) and shared by every device; the choice can be changed from a locked tracker's paywall. Before, the 3 oldest stayed open with no say. Nothing is ever deleted.
 - Each premium gate shown is reported to the server (`POST /api/events`, `paywall.<gate>`) so the pull of the free limit can be measured; nothing else is sent.
 
 ### Fixed
@@ -33,6 +34,7 @@ Requires backend ≥ 1.2.0.
 - Legend editor: tapping a legend opens its own editor (label field + color picker) instead of editing the label inline; the drag handle and the delete cross have their own hit zones and never open the editor.
 
 - RevenueCat `logOut` was called for an anonymous SDK user at every cold start and logged an error.
+- A tracker locked by the free tier could still be edited: when it was the last one open at launch (restored directly), or when the subscription lapsed while it was open. Both now go back to the list with the paywall. The server also refuses a 4th tracker for a free account.
 
 ### Removed
 - The three explanatory onboarding cards and the `onboarding_done` device flag: the flow explains by doing.

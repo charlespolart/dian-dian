@@ -366,6 +366,13 @@ class LanguageProvider extends ChangeNotifier {
       'contact.send': 'Envoyer',
       'contact.sent': "Merci, c'est envoyé. Nous répondons par email.",
       'contact.error': 'Envoi impossible, réessayez',
+      // Free tier: which trackers stay open (1.4.0)
+      'keep.title': 'Compte gratuit : {n} trackers',
+      'keep.intro': 'Choisissez les {n} trackers qui restent ouverts. Les autres sont conservés et se rouvrent avec Premium.',
+      'keep.recent': '{n} jours remplis sur les 90 derniers',
+      'keep.never': 'jamais rempli',
+      'keep.confirm': 'Garder ces {n}',
+      'keep.change': 'Choisir les trackers gratuits',
     },
     Language.en: {
       // Auth
@@ -591,6 +598,13 @@ class LanguageProvider extends ChangeNotifier {
       'contact.send': 'Send',
       'contact.sent': "Thanks, it's sent. We reply by email.",
       'contact.error': 'Could not send, try again',
+      // Free tier: which trackers stay open (1.4.0)
+      'keep.title': 'Free account: {n} trackers',
+      'keep.intro': 'Choose the {n} trackers that stay open. The others are kept and reopen with Premium.',
+      'keep.recent': '{n} days filled in the last 90',
+      'keep.never': 'never filled',
+      'keep.confirm': 'Keep these {n}',
+      'keep.change': 'Choose the free trackers',
     },
     Language.zhCN: {
       // Auth
@@ -812,6 +826,13 @@ class LanguageProvider extends ChangeNotifier {
       'contact.send': '发送',
       'contact.sent': '已发送，谢谢。我们会通过邮件回复。',
       'contact.error': '发送失败，请重试',
+      // Free tier: which trackers stay open (1.4.0)
+      'keep.title': '免费账户：{n} 个追踪器',
+      'keep.intro': '选择保持开放的 {n} 个追踪器。其余的会保留，升级 Premium 后重新打开。',
+      'keep.recent': '近 90 天填写 {n} 天',
+      'keep.never': '从未填写',
+      'keep.confirm': '保留这 {n} 个',
+      'keep.change': '选择免费追踪器',
     },
     Language.zhTW: {
       // Auth
@@ -1033,6 +1054,13 @@ class LanguageProvider extends ChangeNotifier {
       'contact.send': '傳送',
       'contact.sent': '已傳送，謝謝。我們會透過電子郵件回覆。',
       'contact.error': '傳送失敗，請重試',
+      // Free tier: which trackers stay open (1.4.0)
+      'keep.title': '免費帳戶：{n} 個追蹤器',
+      'keep.intro': '選擇保持開放的 {n} 個追蹤器。其餘的會保留，升級 Premium 後重新打開。',
+      'keep.recent': '近 90 天填寫 {n} 天',
+      'keep.never': '從未填寫',
+      'keep.confirm': '保留這 {n} 個',
+      'keep.change': '選擇免費追蹤器',
     },
   };
 }

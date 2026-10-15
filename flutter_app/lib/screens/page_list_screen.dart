@@ -6,6 +6,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 
 import '../models/legend_model.dart';
+import '../data/tracker_lock.dart';
 import '../models/page_model.dart';
 import '../models/year_cells.dart';
 import '../providers/cells_provider.dart';
@@ -25,6 +26,7 @@ import '../widgets/premium_gate_dialog.dart';
 import '../widgets/marquee_text.dart';
 import '../widgets/utf16_length_limit.dart';
 import '../widgets/drag_feedback.dart';
+import '../widgets/keep_trackers_dialog.dart';
 
 class PageListScreen extends StatefulWidget {
   final void Function(String id, int year) onSelectPage;
@@ -47,6 +49,9 @@ class PageListScreen extends StatefulWidget {
 class _PageListScreenState extends State<PageListScreen> {
   late int _selectedYear;
   int? _draggingIndex;
+  // The "which trackers stay open" question, asked once per session when a
+  // free account is over the limit without a stored choice.
+  bool _keepAsked = false;
   bool _bannerVisible = kIsWeb;
 
   @override
@@ -292,9 +297,19 @@ class _PageListScreenState extends State<PageListScreen> {
                       )
                     : Consumer2<CellsProvider, LegendsProvider>(
                         builder: (context, cellsProv, legendsProv, _) {
-                          final lockedIds = context
-                              .read<PremiumProvider>()
-                              .lockedTrackerIds(sortedPages);
+                          final premium = context.read<PremiumProvider>();
+                          final lockedIds = premium.lockedTrackerIds(sortedPages);
+                          if (!_keepAsked &&
+                              !premium.isPremium &&
+                              sortedPages.length > PremiumProvider.maxFreeTrackers &&
+                              !hasKeepChoice(sortedPages)) {
+                            _keepAsked = true;
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (mounted) {
+                                KeepTrackersDialog.show(context, maxTrackers: PremiumProvider.maxFreeTrackers);
+                              }
+                            });
+                          }
                           return LayoutBuilder(
                             builder: (context, constraints) {
                               // Responsive: fit 2 cards on phone, more on tablet

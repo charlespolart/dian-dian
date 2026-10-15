@@ -7,6 +7,15 @@ class PageModel {
   final List<List<String>>? palette;
   final String createdAt;
 
+  /// Cells touched in the last 90 days (server-computed, all years) and the
+  /// last cell date: what "most active" means for the free-tier lock.
+  final int recentCells;
+  final String? lastCellAt;
+
+  /// The user's choice of trackers that stay open on a free account over
+  /// the limit (none chosen → the most active ones).
+  final bool keepFree;
+
   const PageModel({
     required this.id,
     required this.userId,
@@ -15,6 +24,9 @@ class PageModel {
     required this.position,
     this.palette,
     required this.createdAt,
+    this.recentCells = 0,
+    this.lastCellAt,
+    this.keepFree = false,
   });
 
   factory PageModel.fromJson(Map<String, dynamic> json) {
@@ -31,6 +43,9 @@ class PageModel {
               .toList()
           : null,
       createdAt: (json['createdAt'] ?? json['created_at'] ?? '') as String,
+      recentCells: (json['recentCells'] ?? 0) as int,
+      lastCellAt: json['lastCellAt'] as String?,
+      keepFree: (json['keepFree'] ?? json['keep_free'] ?? false) as bool,
     );
   }
 
@@ -43,6 +58,9 @@ class PageModel {
       'position': position,
       'palette': palette,
       'createdAt': createdAt,
+      'recentCells': recentCells,
+      'lastCellAt': lastCellAt,
+      'keepFree': keepFree,
     };
   }
 
@@ -54,6 +72,9 @@ class PageModel {
     int? position,
     List<List<String>>? palette,
     String? createdAt,
+    int? recentCells,
+    String? lastCellAt,
+    bool? keepFree,
   }) {
     return PageModel(
       id: id ?? this.id,
@@ -63,6 +84,9 @@ class PageModel {
       position: position ?? this.position,
       palette: palette ?? this.palette,
       createdAt: createdAt ?? this.createdAt,
+      recentCells: recentCells ?? this.recentCells,
+      lastCellAt: lastCellAt ?? this.lastCellAt,
+      keepFree: keepFree ?? this.keepFree,
     );
   }
 }
