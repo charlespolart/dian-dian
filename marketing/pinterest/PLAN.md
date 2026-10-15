@@ -50,6 +50,26 @@ descriptif ; lien vers la landing avec `utm_source=pinterest` et un
 `utm_campaign` par épingle (la landing le reporte sur les boutons stores,
 voir "Mesure").
 
+Thèmes étiquetés (le champ « Thèmes étiquetés » du créateur d'épingle) :
+ce sont des nœuds de la taxonomie d'intérêts Pinterest, invisibles pour les
+lecteurs mais utilisés pour la distribution dans le feed. Le sélecteur ne
+prend que des noms existants ; taper le nom anglais fait apparaître
+l'intitulé traduit (« Bullet Journal » → « Journal à Bulles »). La liste
+publiée par Pinterest pour les annonceurs (sous-ensemble du même arbre,
+3 400 entrées) est la Google Sheet liée depuis l'aide du bulk editor
+(`help.pinterest.com/en/business/article/use-the-bulk-editor`, lien
+« Interest targeting »), copie dans `pinterest-interests.csv` à côté des
+épingles. Par thème :
+
+| Thème | Thèmes étiquetés |
+|---|---|
+| mood | Bullet Journal, Daily Routine, Lifestyle, Health |
+| sleep | Sleep, Night Routine, Daily Routine, Bullet Journal |
+| exercise | Fitness and Exercises, Exercise Plan, 30 Day Workout Challenge, Daily Routine |
+| reading | Reading, Books To Read, Book, Bullet Journal |
+| habits | Daily Routine, Lifestyle, Bullet Journal, Study Planner |
+| year | Bullet Journal, Daily Routine, Lifestyle, DIY Stationery |
+
 Thèmes v1 : mood, sleep, exercise, reading, habits, year (18 épingles).
 Thèmes à ajouter ensuite : water, meditation, study, period, "12 things to
 track in 2027" (épingle liste), palettes de couleurs (épingle "5 palettes
