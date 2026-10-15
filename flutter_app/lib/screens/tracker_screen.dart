@@ -782,78 +782,27 @@ class _TrackerScreenState extends State<TrackerScreen> {
                       ),
                       );
                     }),
-                    // Edit button right after legends
-                    const SizedBox(height: 4),
-                    Center(child: _MaybePulse(
-                      pulse: legends.isEmpty,
-                      child: GestureDetector(
-                        onTap: () {
-                          LegendEditorDialog.show(context, pageId: _page.id);
-                        },
-                        child: DashedBorder(
-                        color: AppColors.inputBorder,
-                        borderRadius: 4,
-                        dashLength: 3,
-                        gapLength: 2,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: showLabels ? 8 : 4,
-                          vertical: 5,
-                        ),
-                        child: showLabels
-                            ? Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.edit,
-                                    size: 10,
-                                    color: AppColors.accent,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    lang.t('tracker.editLegends'),
-                                    style: AppFonts.pixel(
-                                      fontSize: editFs,
-                                      color: AppColors.accent,
-                                    ),
-                                  ),
-                                ],
-                              )
-                            : Icon(
-                                Icons.edit,
-                                size: 12,
-                                color: AppColors.accent,
-                              ),
-                      ),
-                    ))),
-                    // Today: one tap to the day that matters.
+                    // Edit (outlined) and Today (filled): the two actions
+                    // of the sidebar, solid so they read at a glance.
                     const SizedBox(height: 6),
-                    Center(
-                      child: GestureDetector(
-                        onTap: _openToday,
-                        child: DashedBorder(
-                          color: AppColors.inputBorder,
-                          borderRadius: 4,
-                          dashLength: 3,
-                          gapLength: 2,
-                          padding: EdgeInsets.symmetric(
-                            horizontal: showLabels ? 8 : 4,
-                            vertical: 5,
-                          ),
-                          child: showLabels
-                              ? Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.circle, size: 10, color: AppColors.accent),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      lang.t('tracker.today'),
-                                      style: AppFonts.pixel(fontSize: editFs, color: AppColors.accent),
-                                    ),
-                                  ],
-                                )
-                              : Icon(Icons.circle, size: 12, color: AppColors.accent),
-                        ),
+                    _MaybePulse(
+                      pulse: legends.isEmpty,
+                      child: _sidebarButton(
+                        icon: Icons.edit,
+                        label: lang.t('tracker.editLegends'),
+                        showLabel: showLabels,
+                        fontSize: editFs,
+                        onTap: () => LegendEditorDialog.show(context, pageId: _page.id),
                       ),
+                    ),
+                    const SizedBox(height: 6),
+                    _sidebarButton(
+                      icon: Icons.circle,
+                      label: lang.t('tracker.today'),
+                      showLabel: showLabels,
+                      fontSize: editFs,
+                      filled: true,
+                      onTap: _openToday,
                     ),
                   ],
                 ),
@@ -896,6 +845,55 @@ class _TrackerScreenState extends State<TrackerScreen> {
         ),
       ),
       ),
+      ),
+    );
+  }
+
+  /// Sidebar action button. [filled] uses the add-button colors (Today,
+  /// the daily action); otherwise an outlined accent button (Edit). Full
+  /// width when labels show, icon-only when the sidebar is collapsed.
+  Widget _sidebarButton({
+    required IconData icon,
+    required String label,
+    required bool showLabel,
+    required double fontSize,
+    required VoidCallback onTap,
+    bool filled = false,
+  }) {
+    final fg = filled ? AppColors.btnAddText : AppColors.accent;
+    return Semantics(
+      button: true,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: showLabel ? double.infinity : null,
+          padding: EdgeInsets.symmetric(horizontal: showLabel ? 8 : 5, vertical: 7),
+          decoration: BoxDecoration(
+            color: filled ? AppColors.btnAdd : AppColors.inputBg,
+            border: Border.all(color: filled ? AppColors.btnAddBorder : AppColors.accent, width: 1.2),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: showLabel
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(icon, size: 11, color: fg),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          label,
+                          style: AppFonts.pixel(fontSize: fontSize + 1, color: fg),
+                          maxLines: 1,
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : Icon(icon, size: 13, color: fg),
+        ),
       ),
     );
   }
