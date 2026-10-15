@@ -12,6 +12,16 @@ count of the tagged commit (same on iOS and Android).
 
 ## [Unreleased]
 
+Requires backend ≥ 1.2.0.
+
+### Added
+- First-tracker flow for any account without a single cell (new or dormant): pick a ready-made template (Mood, Sleep, Exercise, Reading, Habits, or a custom title), see today's date and set today's dot right there; the tracker then opens with the dot already placed. "Later" is remembered per device and account; the flow never runs offline or against a backend older than 1.2.0.
+- "Today" button in the tracker sidebar: opens the cell editor on today's date, switching to the current year first when another one is shown.
+- `PagesProvider.createFirstTracker` (page + legends in one request, replacing an empty page when the server allows it), `SyncService.activated` / `snapshotActivated`, `LanguageProvider.longDate`.
+
+### Removed
+- The three explanatory onboarding cards and the `onboarding_done` device flag: the flow explains by doing.
+
 ## [1.3.0] - 2026-10-14
 
 Requires backend ≥ 1.1.0.

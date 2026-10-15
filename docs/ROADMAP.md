@@ -35,14 +35,18 @@ Requêtes : `backend/scripts/prod-stats.sql`, `backend/scripts/prod-trackers.sql
 
 ## À faire, par priorité
 
-### 1. Activation (premier geste)
-Objectif : faire poser le premier point à l'inscription.
-- Premier tracker guidé : proposer un titre et des légendes prêtes à l'emploi
-  (mood, sommeil, sport, lecture — les titres qu'on observe) au lieu d'un
-  "My Tracker" vide.
-- Onboarding qui se termine par le point d'aujourd'hui posé pour de vrai.
+### 1. Activation (premier geste) — en cours
+Objectif : faire poser le premier point à l'inscription. Spec validé le
+2026-10-15 : `docs/superpowers/specs/2026-10-15-activation-first-tracker-design.md`,
+plan `docs/superpowers/plans/2026-10-15-activation-first-tracker.md`.
+- Backend 1.2.0 : `POST /api/pages` avec légendes et remplacement d'une page
+  vide, `bootstrap.activated`, plus de "My Tracker" à l'inscription,
+  `cells.created_at`, `scripts/prod-activation.sql`.
+- App 1.4.0 : parcours en deux écrans (modèle → point du jour) pour tout
+  compte sans case, bouton Aujourd'hui dans le tracker.
 - Mesure de succès : part des nouveaux comptes avec ≥ 1 case à J+1 et J+7
-  (aujourd'hui ~53 % à vie).
+  par cohorte hebdomadaire (aujourd'hui ~53 % à vie). Première lecture de
+  référence à la sortie, bilan à huit semaines.
 
 ### 2. Mesurer la demande bloquée par la limite
 On ne voit pas les gratuits qui tapent "+" avec 3 trackers et tombent sur le

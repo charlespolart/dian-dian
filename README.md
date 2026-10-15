@@ -137,6 +137,18 @@ npm install
 npx drizzle-kit migrate
 ```
 
+### First tracker (1.4.0+)
+
+`GET /api/bootstrap` says whether the account has any cell (`activated`).
+When it does not (new or dormant account), and the device has not already
+finished or skipped it for this account, the app shows the first-tracker
+flow instead of the page list: six templates (`lib/data/first_tracker_templates.dart`,
+labels in `language_provider.dart`), one `POST /api/pages` with `legends`
+(and `replaces` when an empty page exists), then today's cell through the
+usual cell route. The decision is `shouldShowFirstTracker` in
+`lib/data/first_tracker_decision.dart`; the server never creates a page at
+signup. Activation by signup cohort: `backend/scripts/prod-activation.sql`.
+
 ### Environment Variables
 
 Listed in `backend/.env.example`. Required:
