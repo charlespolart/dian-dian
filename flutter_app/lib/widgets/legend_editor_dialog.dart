@@ -357,20 +357,32 @@ class _LegendEditorDialogState extends State<LegendEditorDialog> {
   Widget _buildColorDot(String hex, String pos, {VoidCallback? onLongPress}) {
     final editing = _editing;
     final isSelected = editing != null ? editing.color == hex : _selectedPos == pos;
+    // Selection = an accent ring separated from the dot by a shell-colored
+    // gap, so it reads on dark blues and purples as well as on pastels.
+    // Unselected dots keep the same footprint (transparent ring).
     return GestureDetector(
       key: Key('palette.$pos'),
       onTap: () => _onPaletteColorTap(hex, pos),
       onLongPress: onLongPress,
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 3),
-        width: 28,
-        height: 28,
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        padding: const EdgeInsets.all(2),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: _parseHex(hex),
-          border: isSelected
-              ? Border.all(color: AppColors.accent, width: 2.5)
-              : Border.all(color: AppColors.dotBorder, width: 0.5),
+          color: AppColors.shell,
+          border: Border.all(
+            color: isSelected ? AppColors.accent : Colors.transparent,
+            width: 2,
+          ),
+        ),
+        child: Container(
+          width: 26,
+          height: 26,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: _parseHex(hex),
+            border: Border.all(color: AppColors.dotBorder, width: 0.5),
+          ),
         ),
       ),
     );
