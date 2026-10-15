@@ -8,6 +8,7 @@ import '../theme/app_theme.dart';
 import 'app_dialog.dart';
 import 'marquee_text.dart';
 import 'confirm_dialog.dart';
+import 'utf16_length_limit.dart';
 
 /// Dialog for managing legends: list, add, delete, reorder.
 class LegendEditorDialog extends StatefulWidget {
@@ -28,14 +29,15 @@ class LegendEditorDialog extends StatefulWidget {
 
 class _LegendEditorDialogState extends State<LegendEditorDialog> {
   final _labelController = TextEditingController();
+  final _editLabelController = TextEditingController();
   final _scrollController = ScrollController();
   String _selectedColor = AppTheme.defaultPalette[0][0];
   // Track selection by position: "row,col" (e.g. "0,3" or "custom,2")
   String _selectedPos = '0,0';
   List<dynamic> _legends = [];
   int? _draggingIndex;
-  // When non-null, we're picking a color for this legend index
-  int? _recolorIndex;
+  // Legend being edited (label + color on one screen); null = the list.
+  int? _editIndex;
   late List<List<String>> _palette;
 
   @override
@@ -53,9 +55,12 @@ class _LegendEditorDialogState extends State<LegendEditorDialog> {
 
   LegendsProvider get _prov => context.read<LegendsProvider>();
 
+  dynamic get _editing => _editIndex == null ? null : _legends[_editIndex!];
+
   @override
   void dispose() {
     _labelController.dispose();
+    _editLabelController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -75,212 +80,272 @@ class _LegendEditorDialogState extends State<LegendEditorDialog> {
     _prov.reorderLegends(ids);
   }
 
+  void _openEdit(int i) {
+    _editLabelController.text = _legends[i].label as String;
+    setState(() => _editIndex = i);
+  }
+
+  /// Back to the list; the label is saved if it changed and is not blank.
+  Future<void> _closeEdit() async {
+    final legend = _editing;
+    if (legend == null) return;
+    final label = _editLabelController.text.trim();
+    setState(() => _editIndex = null);
+    if (label.isNotEmpty && label != legend.label) {
+      await _prov.updateLegend(legend.id as String, label: label);
+      _refresh();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final lang = context.read<LanguageProvider>();
-    final legends = _legends;
-
     return AppDialog(
       child: Padding(
         padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Title
-            Opacity(
-              opacity: _recolorIndex != null ? 0.3 : 1.0,
-              child: Text(
-                lang.t('tracker.legend'),
-                style: AppFonts.pixel(fontSize: 16, color: AppColors.title),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Existing legends (tiles handle their own dimming)
-            if (legends.isEmpty)
-              Opacity(
-                opacity: _recolorIndex != null ? 0.3 : 1.0,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Text(
-                    lang.t('tracker.noLegends'),
-                    style:
-                        AppFonts.dot(fontSize: 13, color: AppColors.textMuted),
-                  ),
-                ),
-              )
-            else
-              Flexible(
-                child: SingleChildScrollView(
-                  controller: _scrollController,
-                  child: Column(
-                    children: List.generate(legends.length, (i) {
-                      return _DraggableLegendTile(
-                        index: i,
-                        legend: legends[i],
-                        isDragging: _draggingIndex == i,
-                        dimmed: _recolorIndex != null && _recolorIndex != i,
-                        highlighted: _recolorIndex == i,
-                        parseHex: _parseHex,
-                        onDragStarted: () => setState(() => _draggingIndex = i),
-                        onDragEnd: () => setState(() => _draggingIndex = null),
-                        onAccept: (fromIndex) => _onReorder(fromIndex, i),
-                        onColorTap: () => setState(() {
-                          _recolorIndex = _recolorIndex == i ? null : i;
-                        }),
-                        onEditLabel: (newLabel) async {
-                          await _prov.updateLegend(legends[i].id, label: newLabel);
-                          _refresh();
-                        },
-                        onDelete: () async {
-                          final confirmed = await ConfirmDialog.show(
-                            context,
-                            title: lang.t('common.delete'),
-                            message: lang.t('tracker.deleteLegendConfirm'),
-                            confirmLabel: lang.t('common.delete'),
-                            cancelLabel: lang.t('common.cancel'),
-                            destructive: true,
-                          );
-                          if (confirmed == true && mounted) {
-                            await _prov.deleteLegend(legends[i].id);
-                            _refresh();
-                          }
-                        },
-                      );
-                    }),
-                  ),
-                ),
-              ),
-
-            const SizedBox(height: 16),
-            Opacity(
-              opacity: _recolorIndex != null ? 0.3 : 1.0,
-              child: CustomPaint(
-                size: const Size(double.infinity, 1),
-                painter: _DashedHLinePainter(color: AppColors.sectionBorder),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Recolor hint
-            if (_recolorIndex != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
-                  lang.t('tracker.pickColor'),
-                  style: AppFonts.pixel(fontSize: 10, color: AppColors.accent),
-                ),
-              ),
-
-            // Color palette picker
-            _buildPalettePicker(),
-
-            const SizedBox(height: 12),
-
-            // Add new legend (max 12)
-            if (legends.length < 12 && _recolorIndex == null)
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _labelController,
-                      maxLength: 30,
-                      style: AppFonts.dot(
-                        fontSize: 13,
-                        color: AppColors.inputText,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: lang.t('tracker.legendPlaceholder'),
-                        counterText: '',
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        isDense: true,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () async {
-                      final label = _labelController.text.trim();
-                      if (label.isEmpty) return;
-                      await _prov.createLegend(_selectedColor, label);
-                      _labelController.clear();
-                      _refresh();
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (_scrollController.hasClients) {
-                          _scrollController.animateTo(
-                            _scrollController.position.maxScrollExtent,
-                            duration: const Duration(milliseconds: 200),
-                            curve: Curves.easeOut,
-                          );
-                        }
-                      });
-                    },
-                    child: Container(
-                      alignment: Alignment.center,
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      decoration: BoxDecoration(
-                        color: AppColors.btnAdd,
-                        border: Border.all(color: AppColors.btnAddBorder),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        lang.t('common.add'),
-                        style: AppFonts.pixel(
-                          fontSize: 12,
-                          color: AppColors.btnAddText,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Close / Cancel button
-            GestureDetector(
-              onTap: () {
-                if (_recolorIndex != null) {
-                  setState(() => _recolorIndex = null);
-                } else {
-                  Navigator.of(context).pop();
-                }
-              },
-              child: Opacity(
-                opacity: _recolorIndex != null ? 0.5 : 1.0,
-                child: Text(
-                  _recolorIndex != null
-                      ? lang.t('common.cancel')
-                      : lang.t('settings.back'),
-                  style: AppFonts.pixel(
-                    fontSize: 12,
-                    color: AppColors.accent,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+        child: _editIndex != null ? _buildEdit(lang) : _buildList(lang),
       ),
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Edit one legend: its label and its color, nothing else on screen
+  // ---------------------------------------------------------------------------
+
+  Widget _buildEdit(LanguageProvider lang) {
+    final legend = _editing;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          lang.t('tracker.editLegends'),
+          style: AppFonts.pixel(fontSize: 16, color: AppColors.title),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Container(
+              width: 18,
+              height: 18,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _parseHex(legend.color as String),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: TextField(
+                key: const Key('legend.editLabel'),
+                controller: _editLabelController,
+                inputFormatters: const [Utf16LengthLimit(30)],
+                style: AppFonts.dot(fontSize: 13, color: AppColors.inputText),
+                decoration: InputDecoration(
+                  hintText: lang.t('tracker.legendPlaceholder'),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  isDense: true,
+                ),
+                onSubmitted: (_) => _closeEdit(),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        CustomPaint(
+          size: const Size(double.infinity, 1),
+          painter: _DashedHLinePainter(color: AppColors.sectionBorder),
+        ),
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(
+            lang.t('tracker.pickColor'),
+            style: AppFonts.pixel(fontSize: 10, color: AppColors.accent),
+          ),
+        ),
+        _buildPalettePicker(),
+        const SizedBox(height: 16),
+        Semantics(
+          button: true,
+          child: GestureDetector(
+            onTap: _closeEdit,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.btnAdd,
+                border: Border.all(color: AppColors.btnAddBorder),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                lang.t('common.ok'),
+                style: AppFonts.pixel(fontSize: 12, color: AppColors.btnAddText),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // The list: reorder, open one, delete, add
+  // ---------------------------------------------------------------------------
+
+  Widget _buildList(LanguageProvider lang) {
+    final legends = _legends;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          lang.t('tracker.legend'),
+          style: AppFonts.pixel(fontSize: 16, color: AppColors.title),
+        ),
+        const SizedBox(height: 16),
+
+        if (legends.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Text(
+              lang.t('tracker.noLegends'),
+              style: AppFonts.dot(fontSize: 13, color: AppColors.textMuted),
+            ),
+          )
+        else
+          Flexible(
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              child: Column(
+                children: List.generate(legends.length, (i) {
+                  return _DraggableLegendTile(
+                    index: i,
+                    legend: legends[i],
+                    isDragging: _draggingIndex == i,
+                    parseHex: _parseHex,
+                    onDragStarted: () => setState(() => _draggingIndex = i),
+                    onDragEnd: () => setState(() => _draggingIndex = null),
+                    onAccept: (fromIndex) => _onReorder(fromIndex, i),
+                    onTap: () => _openEdit(i),
+                    onDelete: () async {
+                      final confirmed = await ConfirmDialog.show(
+                        context,
+                        title: lang.t('common.delete'),
+                        message: lang.t('tracker.deleteLegendConfirm'),
+                        confirmLabel: lang.t('common.delete'),
+                        cancelLabel: lang.t('common.cancel'),
+                        destructive: true,
+                      );
+                      if (confirmed == true && mounted) {
+                        await _prov.deleteLegend(legends[i].id);
+                        _refresh();
+                      }
+                    },
+                  );
+                }),
+              ),
+            ),
+          ),
+
+        const SizedBox(height: 16),
+        CustomPaint(
+          size: const Size(double.infinity, 1),
+          painter: _DashedHLinePainter(color: AppColors.sectionBorder),
+        ),
+        const SizedBox(height: 16),
+
+        // Color of the legend to add
+        _buildPalettePicker(),
+
+        const SizedBox(height: 12),
+
+        // Add new legend (max 12)
+        if (legends.length < 12)
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _labelController,
+                    inputFormatters: const [Utf16LengthLimit(30)],
+                    style: AppFonts.dot(
+                      fontSize: 13,
+                      color: AppColors.inputText,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: lang.t('tracker.legendPlaceholder'),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      isDense: true,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () async {
+                    final label = _labelController.text.trim();
+                    if (label.isEmpty) return;
+                    await _prov.createLegend(_selectedColor, label);
+                    _labelController.clear();
+                    _refresh();
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (_scrollController.hasClients) {
+                        _scrollController.animateTo(
+                          _scrollController.position.maxScrollExtent,
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeOut,
+                        );
+                      }
+                    });
+                  },
+                  child: Container(
+                    alignment: Alignment.center,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    decoration: BoxDecoration(
+                      color: AppColors.btnAdd,
+                      border: Border.all(color: AppColors.btnAddBorder),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      lang.t('common.add'),
+                      style: AppFonts.pixel(
+                        fontSize: 12,
+                        color: AppColors.btnAddText,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+        const SizedBox(height: 16),
+
+        GestureDetector(
+          onTap: () => Navigator.of(context).pop(),
+          child: Text(
+            lang.t('settings.back'),
+            style: AppFonts.pixel(
+              fontSize: 12,
+              color: AppColors.accent,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Palette
+  // ---------------------------------------------------------------------------
+
   void _onPaletteColorTap(String hex, String pos) async {
-    if (_recolorIndex != null) {
-      // Apply color to the legend and recolor matching cells
-      final legend = _legends[_recolorIndex!];
+    final legend = _editing;
+    if (legend != null) {
+      // Recolor the edited legend and its cells; stay on the editor.
       final oldColor = legend.color as String;
       final cells = context.read<CellsProvider>();
-      setState(() {
-        _recolorIndex = null;
-      });
-      await _prov.updateLegend(legend.id, color: hex);
+      await _prov.updateLegend(legend.id as String, color: hex);
       if (oldColor != hex) {
         await cells.recolorCells({oldColor: hex});
       }
@@ -294,8 +359,10 @@ class _LegendEditorDialogState extends State<LegendEditorDialog> {
   }
 
   Widget _buildColorDot(String hex, String pos, {VoidCallback? onLongPress}) {
-    final isSelected = _selectedPos == pos && _recolorIndex == null;
+    final editing = _editing;
+    final isSelected = editing != null ? editing.color == hex : _selectedPos == pos;
     return GestureDetector(
+      key: Key('palette.$pos'),
       onTap: () => _onPaletteColorTap(hex, pos),
       onLongPress: onLongPress,
       child: Container(
@@ -726,95 +793,42 @@ class _HuePainter extends CustomPainter {
 }
 
 /// A single legend tile that supports drag-to-reorder and inline label editing.
-class _DraggableLegendTile extends StatefulWidget {
+/// One legend row: drag handle (long press to reorder), dot, label, delete.
+/// Tapping the row opens the legend's editor (label + color); the label is
+/// no longer edited inline.
+class _DraggableLegendTile extends StatelessWidget {
   final int index;
   final dynamic legend;
   final bool isDragging;
-  final bool dimmed;
-  final bool highlighted;
   final Color Function(String) parseHex;
   final VoidCallback onDragStarted;
   final VoidCallback onDragEnd;
   final void Function(int fromIndex) onAccept;
-  final VoidCallback onColorTap;
-  final void Function(String newLabel) onEditLabel;
+  final VoidCallback onTap;
   final VoidCallback onDelete;
 
   const _DraggableLegendTile({
     required this.index,
     required this.legend,
     required this.isDragging,
-    this.dimmed = false,
-    this.highlighted = false,
     required this.parseHex,
     required this.onDragStarted,
     required this.onDragEnd,
     required this.onAccept,
-    required this.onColorTap,
-    required this.onEditLabel,
+    required this.onTap,
     required this.onDelete,
   });
 
-  @override
-  State<_DraggableLegendTile> createState() => _DraggableLegendTileState();
-}
-
-class _DraggableLegendTileState extends State<_DraggableLegendTile> {
-  bool _editing = false;
-  late TextEditingController _controller;
-  late FocusNode _focusNode;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.legend.label);
-    _focusNode = FocusNode();
-    _focusNode.addListener(() {
-      if (!_focusNode.hasFocus && _editing) {
-        _submitEdit();
-      }
-    });
-  }
-
-  @override
-  void didUpdateWidget(covariant _DraggableLegendTile old) {
-    super.didUpdateWidget(old);
-    if (old.legend.label != widget.legend.label && !_editing) {
-      _controller.text = widget.legend.label;
-    }
-  }
-
-  @override
-  void dispose() {
-    _focusNode.dispose();
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _submitEdit() {
-    final newLabel = _controller.text.trim();
-    if (newLabel.isNotEmpty && newLabel != widget.legend.label) {
-      widget.onEditLabel(newLabel);
-    }
-    setState(() => _editing = false);
-  }
-
   Widget _buildContent({bool ghost = false}) {
-    final dimmed = widget.dimmed && !ghost;
-    final highlighted = widget.highlighted && !ghost;
-    return Opacity(
-      opacity: dimmed ? 0.3 : 1.0,
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: ghost ? null : onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           color: ghost ? AppColors.dotEmpty : AppColors.inputBg,
-          border: Border.all(
-            color: highlighted
-                ? AppColors.accent
-                : ghost ? AppColors.dotBorder : AppColors.inputBorder,
-            width: highlighted ? 1.5 : 1.0,
-          ),
+          border: Border.all(color: ghost ? AppColors.dotBorder : AppColors.inputBorder),
           borderRadius: BorderRadius.circular(6),
         ),
         child: Opacity(
@@ -823,66 +837,45 @@ class _DraggableLegendTileState extends State<_DraggableLegendTile> {
             children: [
               Icon(Icons.drag_handle, size: 16, color: AppColors.textMuted),
               const SizedBox(width: 8),
-              GestureDetector(
-                onTap: ghost ? null : widget.onColorTap,
-                child: Container(
-                  width: 14,
-                  height: 14,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                color: widget.parseHex(widget.legend.color),
-              ),
-            ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _editing && !ghost
-                  ? TextField(
-                      controller: _controller,
-                      focusNode: _focusNode,
-                      autofocus: true,
-                      maxLength: 30,
-                      style: AppFonts.dot(fontSize: 13, color: AppColors.text),
-                      decoration: const InputDecoration(
-                        border: InputBorder.none,
-                        isDense: true,
-                        contentPadding: EdgeInsets.zero,
-                        counterText: '',
-                      ),
-                      onSubmitted: (_) => _submitEdit(),
-                    )
-                  : GestureDetector(
-                      onTap: ghost ? null : () => setState(() => _editing = true),
-                      child: MarqueeText(
-                        text: widget.legend.label,
-                        style: AppFonts.dot(fontSize: 13, color: AppColors.text),
-                      ),
-                    ),
-            ),
-            if (!ghost)
-              GestureDetector(
-                onTap: widget.onDelete,
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: Icon(
-                    Icons.close,
-                    size: 16,
-                    color: AppColors.btnResetText,
-                  ),
+              Container(
+                width: 14,
+                height: 14,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: parseHex(legend.color),
                 ),
               ),
-          ],
+              const SizedBox(width: 10),
+              Expanded(
+                child: MarqueeText(
+                  text: legend.label,
+                  style: AppFonts.dot(fontSize: 13, color: AppColors.text),
+                ),
+              ),
+              if (!ghost)
+                GestureDetector(
+                  onTap: onDelete,
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Icon(
+                      Icons.close,
+                      size: 16,
+                      color: AppColors.btnResetText,
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
-    ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return DragTarget<int>(
-      onWillAcceptWithDetails: (details) => details.data != widget.index,
-      onAcceptWithDetails: (details) => widget.onAccept(details.data),
+      onWillAcceptWithDetails: (details) => details.data != index,
+      onAcceptWithDetails: (details) => onAccept(details.data),
       builder: (context, candidateData, rejectedData) {
         final isOver = candidateData.isNotEmpty;
         return Column(
@@ -895,9 +888,9 @@ class _DraggableLegendTileState extends State<_DraggableLegendTile> {
                 margin: const EdgeInsets.only(bottom: 2),
               ),
             LongPressDraggable<int>(
-              data: widget.index,
-              onDragStarted: widget.onDragStarted,
-              onDragEnd: (_) => widget.onDragEnd(),
+              data: index,
+              onDragStarted: onDragStarted,
+              onDragEnd: (_) => onDragEnd(),
               feedback: Material(
                 color: Colors.transparent,
                 child: SizedBox(
