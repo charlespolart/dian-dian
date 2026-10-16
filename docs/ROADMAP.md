@@ -35,7 +35,7 @@ Requêtes : `backend/scripts/prod-stats.sql`, `backend/scripts/prod-trackers.sql
 
 ## À faire, par priorité
 
-### 1. Activation (premier geste) — en cours
+### 1. Activation (premier geste) — implémenté, à sortir
 Objectif : faire poser le premier point à l'inscription. Spec validé le
 2026-10-15 : `docs/superpowers/specs/2026-10-15-activation-first-tracker-design.md`,
 plan `docs/superpowers/plans/2026-10-15-activation-first-tracker.md`.
@@ -48,12 +48,13 @@ plan `docs/superpowers/plans/2026-10-15-activation-first-tracker.md`.
   par cohorte hebdomadaire (aujourd'hui ~53 % à vie). Première lecture de
   référence à la sortie, bilan à huit semaines.
 
-### 2. Mesurer la demande bloquée par la limite
-On ne voit pas les gratuits qui tapent "+" avec 3 trackers et tombent sur le
-paywall. Ajouter un compteur côté serveur quand le gate "limite de trackers"
-s'affiche (une route `POST /api/events` minimale + un appel dans
-`PremiumGateDialog`). Donne la vraie valeur de la limite comme levier de
-conversion avant d'y toucher.
+### 2. Mesurer la demande bloquée par la limite — fait (2026-10-16, backend 1.2.0 / app 1.4.0)
+`POST /api/events` + table `events` : l'app envoie un événement à chaque mur
+premium affiché (`paywall.tracker_limit`, `locked_tracker`, `themes`, …).
+Lecture : `backend/scripts/prod-events.sql`. À lire quelques semaines après
+la sortie de la 1.4.0, avant de toucher à la limite. Au passage : limite
+appliquée côté serveur, et le passage en gratuit laisse choisir les 3
+trackers gardés (les plus actifs par défaut).
 
 ### 3. Communication — Pinterest en cours (décidé le 2026-10-15)
 Plan éditorial : `marketing/pinterest/PLAN.md`. Épingles générées
