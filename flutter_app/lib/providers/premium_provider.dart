@@ -60,17 +60,19 @@ class PremiumProvider extends ChangeNotifier {
     return _purchaseService.restorePurchases();
   }
 
-  /// Check subscription status from server (used as a backup, e.g. if RC
-  /// listener missed an update). The webhook keeps the DB authoritative.
-  Future<void> checkServerSubscription() async {
+  /// Reconciles the cached premium flag with the server at every session
+  /// start (the RevenueCat webhook keeps the server authoritative). "Yes"
+  /// from either the server or the SDK wins; "no" needs both to agree, so a
+  /// purchase the webhook has not seen yet is never taken away. This is
+  /// also what makes a lapsed subscription take effect, and what a local
+  /// backend toggles for tests (see README, "Testing Premium locally").
+  Future<void> checkServerSubscription({ApiService? api}) async {
     try {
-      final response = await ApiService().apiFetch('/api/purchase/status');
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        if (data['premium'] == true && !_isPremium) {
-          await _setPremiumCached(true);
-        }
-      }
+      final response = await (api ?? ApiService()).apiFetch('/api/purchase/status');
+      if (response.statusCode != 200) return;
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final next = data['premium'] == true || _purchaseService.isPremiumActive;
+      if (next != _isPremium) await _setPremiumCached(next);
     } catch (_) {}
   }
 

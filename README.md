@@ -119,6 +119,25 @@ cd backend && npx tsx scripts/seed-demo-local.ts              # demo@diandian.ap
 In development the backend logs one line per `/api` call (method, path,
 status, duration, size) — the quickest way to see what a screen costs.
 
+### Testing Premium locally
+
+Real purchases need a device and an App Store sandbox tester (or
+TestFlight), and RevenueCat's webhook only reaches the production backend.
+Against the local backend, grant or revoke a subscription straight in the
+local database — the app re-reads `/api/purchase/status` at every session
+start, both ways:
+
+```sql
+-- grant 30 days to a local account
+INSERT INTO subscriptions (user_id, store, product_id, original_transaction_id, expires_at, active)
+VALUES ((SELECT id FROM users WHERE email = 'you@example.com'), 'apple', 'local_test', 'local-test-1', now() + interval '30 days', true);
+-- revoke (the trackers over the free limit lock, the app asks which 3 to keep)
+UPDATE subscriptions SET active = false WHERE original_transaction_id = 'local-test-1';
+```
+
+Never use the `vip` flag for this: VIP is a manual, permanent status excluded
+from every stat.
+
 ### Data loading (1.3.0+)
 
 The app makes **one** `GET /api/bootstrap?year=` per year (pages + legends +
