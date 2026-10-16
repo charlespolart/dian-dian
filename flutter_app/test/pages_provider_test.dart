@@ -174,4 +174,19 @@ void main() {
     expect(old.keepFree, isFalse);
     expect(PageModel.fromJson(full.toJson()).keepFree, isTrue, reason: 'round-trips through the snapshot');
   });
+
+  test('createFirstTracker forwards the clientId and accepts a 200 replay', () async {
+    late Map<String, dynamic> sent;
+    final client = MockClient((req) async {
+      sent = jsonDecode(req.body) as Map<String, dynamic>;
+      return http.Response(jsonEncode({...pageJson('n', title: 'X'), 'legends': <dynamic>[], 'replaced': null}), 200);
+    });
+    final p = withClient(client, const []);
+    final created = await p.createFirstTracker(
+      title: 'X', legends: const [], clientId: '11111111-1111-4111-8111-111111111111',
+    );
+    expect(sent['clientId'], '11111111-1111-4111-8111-111111111111');
+    expect(created!.page.id, 'n');
+    expect(p.pages.single.id, 'n');
+  });
 }

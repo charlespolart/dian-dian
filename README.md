@@ -138,6 +138,16 @@ UPDATE subscriptions SET active = false WHERE original_transaction_id = 'local-t
 Never use the `vip` flag for this: VIP is a manual, permanent status excluded
 from every stat.
 
+To exercise the paywall itself on the simulator, `flutter_app/ios/Configuration.storekit`
+is wired into the Runner scheme's Run action (StoreKit local testing: fake
+products, no App Store account). Its product identifiers must match the ones
+in App Store Connect / RevenueCat (`dian_dian_premium_yearly` is confirmed;
+check the monthly and lifetime ids) and RevenueCat must have the StoreKit
+test certificate uploaded (Xcode → Editor → Save Public Certificate, then
+RevenueCat → project settings → Apple → StoreKit testing) for purchases made
+this way to unlock the entitlement. Without that, purchases "succeed" in
+StoreKit but RevenueCat rejects the receipt — use the SQL above instead.
+
 ### Data loading (1.3.0+)
 
 The app makes **one** `GET /api/bootstrap?year=` per year (pages + legends +

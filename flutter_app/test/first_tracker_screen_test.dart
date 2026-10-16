@@ -203,6 +203,11 @@ void main() {
     expect(h.posts.length, 2);
     expect(h.puts.length, 1);
     expect(find.text('Open my tracker'), findsOneWidget);
+    // Both attempts carry the same idempotency key, a v4 uuid: a response
+    // lost after a server-side commit can never produce a twin.
+    final keys = h.posts.map((r) => (jsonDecode(r.body) as Map)['clientId'] as String).toList();
+    expect(keys[0], keys[1]);
+    expect(keys[0], matches(RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$')));
   });
 
   testWidgets('the date is read at tap time (midnight while the screen is open)', (tester) async {

@@ -103,11 +103,15 @@ class PagesProvider extends ChangeNotifier {
     required List<LegendDraft> legends,
     String? replaces,
     bool fallbackWithoutReplaces = true,
+    String? clientId,
   }) async {
     final body = <String, dynamic>{
       'title': title,
       'legends': [for (final l in legends) {'color': l.color, 'label': l.label}],
       if (replaces != null) 'replaces': replaces else 'position': _pages.length,
+      // Idempotency key (backend ≥ 1.2.0): a retry after a lost response
+      // gets the page already created (200) instead of a twin.
+      'clientId': ?clientId,
     };
     try {
       var response = await _api.apiFetch('/api/pages', method: 'POST', body: body);

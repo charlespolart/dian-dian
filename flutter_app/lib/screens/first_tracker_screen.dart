@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -71,6 +73,10 @@ class _FirstTrackerScreenState extends State<FirstTrackerScreen> {
 
   /// Page + legends once the server has them; created at most once.
   CreatedPage? _created;
+
+  /// Idempotency key for the creation, one per flow: every retry sends the
+  /// same one, so the server answers with the page it already made.
+  final String _clientId = _uuidV4();
   String? _todayColor;
   bool _busy = false;
   bool _error = false;
@@ -209,6 +215,7 @@ class _FirstTrackerScreenState extends State<FirstTrackerScreen> {
           legends: _template!.legends(lang),
           replaces: replaceablePageId(pages.pages, legends.legendsFor),
           fallbackWithoutReplaces: pages.pages.length < widget.maxTrackers,
+          clientId: _clientId,
         );
     if (created == null || !mounted) return created;
     // Point the store at the new page, as the page list would have.
@@ -478,6 +485,16 @@ class _FirstTrackerScreenState extends State<FirstTrackerScreen> {
       ],
     );
   }
+}
+
+/// A random v4 uuid (no package needed).
+String _uuidV4() {
+  final r = Random.secure();
+  final b = List<int>.generate(16, (_) => r.nextInt(256));
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  final h = b.map((x) => x.toRadixString(16).padLeft(2, '0')).join();
+  return '${h.substring(0, 8)}-${h.substring(8, 12)}-${h.substring(12, 16)}-${h.substring(16, 20)}-${h.substring(20)}';
 }
 
 Color _hex(String hex) =>
