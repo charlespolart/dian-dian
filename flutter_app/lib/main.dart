@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -300,6 +302,9 @@ class _AppShellState extends State<AppShell> {
     if (auth.isAuthenticated && auth.userId != null && !_sessionStarted) {
       _sessionStarted = true;
       _wasOffline = auth.isOffline;
+      // Premium from the server (webhook-fed), both ways; in parallel with
+      // the session start, which does not depend on it.
+      unawaited(context.read<PremiumProvider>().checkServerSubscription());
       await _startSession(auth);
     }
     if (!mounted) return;
@@ -311,6 +316,7 @@ class _AppShellState extends State<AppShell> {
     _wasOffline = auth.isAuthenticated && auth.isOffline;
     if (cameBackOnline && _sessionStarted) {
       context.read<SyncService>().revalidate();
+      unawaited(context.read<PremiumProvider>().checkServerSubscription());
     }
 
     if (!auth.isAuthenticated && _sessionStarted) {

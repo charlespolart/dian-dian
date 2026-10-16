@@ -34,6 +34,7 @@ Requires backend ≥ 1.2.0.
 - Legend editor: tapping a legend opens its own editor (label field + color picker) instead of editing the label inline; the drag handle and the delete cross have their own hit zones and never open the editor.
 
 - RevenueCat `logOut` was called for an anonymous SDK user at every cold start and logged an error.
+- The server's premium status (fed by the RevenueCat webhook) was never read by the app; it is now reconciled at every session start and when the network comes back, both ways, so a lapsed subscription takes effect on the next launch.
 - A tracker locked by the free tier could still be edited: when it was the last one open at launch (restored directly), or when the subscription lapsed while it was open. Both now go back to the list with the paywall. The server also refuses a 4th tracker for a free account.
 
 ### Removed
