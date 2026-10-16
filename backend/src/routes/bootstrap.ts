@@ -3,6 +3,7 @@ import { db } from '../db/index.js';
 import { pages, cells, legends } from '../db/schema.js';
 import { requireAuth } from '../middleware/auth.js';
 import { eq, and, asc, sql } from 'drizzle-orm';
+import { pageActivity } from '../lib/premium.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -35,7 +36,7 @@ router.get('/', async (req, res) => {
     const userId = req.userId!;
     const year = parseYear(req.query.year) ?? new Date().getFullYear();
 
-    const [pageRows, legendRows, cellRows, anyCell, activityRows] = await Promise.all([
+    const [pageRows, legendRows, cellRows, anyCell, activity] = await Promise.all([
       db.select()
         .from(pages)
         .where(eq(pages.userId, userId))
@@ -75,17 +76,8 @@ router.get('/', async (req, res) => {
         .limit(1),
       // Activity per page, all years: lets a free account over the limit
       // keep its most active trackers by default (1.2.0).
-      db.select({
-        pageId: cells.pageId,
-        recent: sql<number>`count(*) filter (where ${cells.updatedAt} > now() - interval '90 days')`,
-        last: sql<Date | string | null>`max(${cells.updatedAt})`,
-      })
-        .from(cells)
-        .innerJoin(pages, eq(pages.id, cells.pageId))
-        .where(eq(pages.userId, userId))
-        .groupBy(cells.pageId),
+      pageActivity(userId),
     ]);
-    const activity = new Map(activityRows.map((a) => [a.pageId, a]));
 
     const legendsByPage: Record<string, typeof legendRows> = {};
     const cellsByPage: Record<string, CompactCell[]> = {};
@@ -109,8 +101,8 @@ router.get('/', async (req, res) => {
         return {
           ...p,
           palette: p.palette ? JSON.parse(p.palette) : null,
-          recentCells: Number(a?.recent ?? 0),
-          lastCellAt: a?.last ? new Date(a.last).toISOString() : null,
+          recentCells: a?.recentCells ?? 0,
+          lastCellAt: a?.lastCellAt?.toISOString() ?? null,
         };
       }),
       legends: legendsByPage,

@@ -7,9 +7,19 @@ import { validate } from '../middleware/validate.js';
 import { broadcast } from '../lib/ws.js';
 import { eq, and } from 'drizzle-orm';
 import { daysInMonth } from '../lib/dates.js';
+import { lockedPageIds } from '../lib/premium.js';
 
 const router = Router();
 router.use(requireAuth);
+
+// A tracker the free tier shows closed is also closed to writes here (the
+// app computes the same set); apps ≤ 1.3.0 that still open it see their
+// taps reverted. Reads stay open: nothing is ever hidden or deleted.
+async function lockedByFreeTier(userId: string, pageId: string, res: import('express').Response): Promise<boolean> {
+  if (!(await lockedPageIds(userId)).has(pageId)) return false;
+  res.status(403).json({ error: 'Tracker locked by the free tier' });
+  return true;
+}
 
 // Legacy clients (≤ 1.1.0) don't send a year — we fall back to the page's
 // own pages.year so their stored data continues to render correctly. New
@@ -72,6 +82,7 @@ router.put('/:pageId', validate(upsertCellSchema), async (req, res) => {
       .where(and(eq(pages.id, pageId), eq(pages.userId, req.userId!)))
       .limit(1);
     if (!page) { res.status(404).json({ error: 'Page not found' }); return; }
+    if (await lockedByFreeTier(req.userId!, pageId, res)) return;
     const year = pickYear(req.body.year, page.year);
     // Leap-aware day check needs the resolved year, so it lives here rather
     // than in the zod schema.
@@ -112,6 +123,7 @@ router.delete('/:pageId', validate(deleteCellSchema), async (req, res) => {
       .where(and(eq(pages.id, pageId), eq(pages.userId, req.userId!)))
       .limit(1);
     if (!page) { res.status(404).json({ error: 'Page not found' }); return; }
+    if (await lockedByFreeTier(req.userId!, pageId, res)) return;
     const year = pickYear(req.body.year, page.year);
 
     await db.delete(cells)
@@ -144,6 +156,7 @@ router.patch('/:pageId/recolor', validate(recolorSchema), async (req, res) => {
       .where(and(eq(pages.id, pageId), eq(pages.userId, req.userId!)))
       .limit(1);
     if (!page) { res.status(404).json({ error: 'Page not found' }); return; }
+    if (await lockedByFreeTier(req.userId!, pageId, res)) return;
 
     const { colorMap } = req.body;
     // One transaction: a multi-color rename must not half-apply.
@@ -172,6 +185,7 @@ router.delete('/:pageId/all', async (req, res) => {
       .where(and(eq(pages.id, pageId), eq(pages.userId, req.userId!)))
       .limit(1);
     if (!page) { res.status(404).json({ error: 'Page not found' }); return; }
+    if (await lockedByFreeTier(req.userId!, pageId, res)) return;
 
     const year = pickYear(req.body?.year ?? req.query.year, page.year);
     await db.delete(cells)

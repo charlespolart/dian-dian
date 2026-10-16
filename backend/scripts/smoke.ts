@@ -147,6 +147,9 @@ async function main() {
     assert.ok(html.includes('referrer=utm_source%3Dpinterest%26utm_campaign%3Dmood-en'), 'Play link carries the campaign referrer');
     const plain = await (await fetch(`${BASE}/`)).text();
     assert.ok(!plain.includes('referrer='), 'no referrer without a campaign');
+    // The website's contact page is a real form posting to /api/contact.
+    const contact = await (await fetch(`${BASE}/contact?lang=fr`)).text();
+    assert.ok(contact.includes('id="contact-form"') && contact.includes('/api/contact'), 'contact page has the form');
   }
 
   // --- first tracker (app 1.4.0): page + legends in one transaction ---------
@@ -213,6 +216,21 @@ async function main() {
     assert.equal(byId[mood].lastCellAt, null, 'no cell → null');
     r = await call('PUT', '/api/pages/keep', { ids: [mood, sleep, pageId, '00000000-0000-4000-8000-000000000000'] });
     assert.equal(r.status, 400, 'at most 3 kept');
+
+    // --- idempotent creation: the same clientId never makes a twin ---------
+    // (the app retries with the key it generated when the response was lost)
+    const clientId = '11111111-1111-4111-8111-111111111111';
+    r = await call('DELETE', `/api/pages/${sleep}`);
+    assert.equal(r.status, 200, 'free a slot');
+    r = await call('POST', '/api/pages', { title: 'Twin', clientId, legends: [{ color: '#111111', label: 'One' }] });
+    assert.equal(r.status, 201, `create with clientId: ${JSON.stringify(r.json)}`);
+    const twin: string = r.json.id;
+    r = await call('POST', '/api/pages', { title: 'Twin', clientId, legends: [{ color: '#111111', label: 'One' }] });
+    assert.equal(r.status, 200, `replay: ${JSON.stringify(r.json)}`);
+    assert.equal(r.json.id, twin, 'the replay returns the page already created');
+    assert.equal(r.json.legends.length, 1, 'with its legends');
+    r = await call('GET', '/api/pages');
+    assert.equal(r.json.length, 3, 'no twin');
   }
 
   // --- events (roadmap #2: count the paywall gates) ------------------------

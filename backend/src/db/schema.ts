@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, smallint, integer, boolean, timestamp, primaryKey, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, smallint, integer, boolean, timestamp, primaryKey, index, uniqueIndex } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -86,9 +86,13 @@ export const pages = pgTable('pages', {
   // account is over the free limit (1.2.0). None chosen = the app keeps
   // the most active ones.
   keepFree: boolean('keep_free').notNull().default(false),
+  // Idempotency key the app sets when creating its first tracker (1.4.0):
+  // a retry after a lost response finds the page instead of making a twin.
+  clientId: text('client_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   index('pages_user_id_idx').on(t.userId),
+  uniqueIndex('pages_user_client_id_idx').on(t.userId, t.clientId),
 ]);
 
 export const cells = pgTable('cells', {

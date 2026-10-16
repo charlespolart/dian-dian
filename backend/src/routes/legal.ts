@@ -475,19 +475,53 @@ router.get('/about', (req, res) => {
 // ── Contact ──
 
 function contactContent(lang: Lang): string {
+  const t = {
+    en: { title: 'Contact', sub: "An idea, a bug, a question? We'd love to hear from you.", name: 'Name', email: 'Email', message: 'Message', send: 'Send', sending: 'Sending…', sent: 'Thanks, your message is sent. We reply by email.', error: 'Could not send. Please try again, or write to', delay: 'As a solo indie project, please allow up to <strong>48 hours</strong> for a response.' },
+    fr: { title: 'Contact', sub: 'Une idée, un bug, une question ? Nous serions ravis de vous lire.', name: 'Nom', email: 'Email', message: 'Message', send: 'Envoyer', sending: 'Envoi…', sent: 'Merci, votre message est envoyé. Nous répondons par email.', error: "Envoi impossible. Réessayez, ou écrivez à", delay: 'En tant que projet indépendant, veuillez prévoir jusqu\'à <strong>48 heures</strong> pour une réponse.' },
+    'zh-CN': { title: '联系我们', sub: '有想法、问题或遇到 bug？我们很想听到您的意见。', name: '姓名', email: '邮箱', message: '留言', send: '发送', sending: '发送中…', sent: '已发送，谢谢。我们会通过邮件回复。', error: '发送失败。请重试，或写信至', delay: '作为独立开发项目，请允许最多 <strong>48 小时</strong> 的回复时间。' },
+    'zh-TW': { title: '聯繫我們', sub: '有想法、問題或遇到 bug？我們很想聽到您的意見。', name: '姓名', email: '信箱', message: '留言', send: '傳送', sending: '傳送中…', sent: '已傳送，謝謝。我們會透過電子郵件回覆。', error: '傳送失敗。請重試，或寫信至', delay: '作為獨立開發專案，請允許最多 <strong>48 小時</strong> 的回覆時間。' },
+  }[lang];
+  const field = 'width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #d0c8b0;border-radius:8px;background:#fffdf8;font:inherit;color:#4e4c60;';
   return `
-    <h1>${{ en: 'Contact', fr: 'Contact', 'zh-CN': '联系我们', 'zh-TW': '聯繫我們' }[lang]}</h1>
-    <p class="subtitle">${{ en: "We'd love to hear from you", fr: 'Nous serions ravis de vous entendre', 'zh-CN': '我们很想听到您的意见', 'zh-TW': '我們很想聽到您的意見' }[lang]}</p>
+    <h1>${t.title}</h1>
+    <p class="subtitle">${t.sub}</p>
 
-    <p style="text-align:center;margin-top:24px;">
-      <a href="mailto:contact@diandian.overridedev.com" style="display:inline-block;padding:12px 24px;background:#d8e8c8;border:2px solid #b0c8a0;border-radius:10px;color:#708060;text-decoration:none;font-family:'Silkscreen',monospace;font-size:13px;">
-        contact@diandian.overridedev.com
-      </a>
+    <form id="contact-form" style="max-width:520px;margin:24px auto 0;display:grid;gap:12px;" data-sent="${t.sent}" data-error="${t.error}" data-sending="${t.sending}" data-send="${t.send}">
+      <label style="display:grid;gap:4px;font-size:14px;">${t.name}<input name="name" required maxlength="80" autocomplete="name" style="${field}"></label>
+      <label style="display:grid;gap:4px;font-size:14px;">${t.email}<input name="email" type="email" required maxlength="120" autocomplete="email" autocapitalize="off" spellcheck="false" style="${field}"></label>
+      <label style="display:grid;gap:4px;font-size:14px;">${t.message}<textarea name="message" required maxlength="2000" rows="6" style="${field}resize:vertical;"></textarea></label>
+      <button type="submit" style="justify-self:center;padding:12px 28px;background:#d8e8c8;border:2px solid #b0c8a0;border-radius:10px;color:#708060;font:inherit;font-weight:600;cursor:pointer;">${t.send}</button>
+      <p id="contact-status" role="status" aria-live="polite" style="text-align:center;min-height:1.4em;margin:0;font-size:14px;"></p>
+    </form>
+
+    <p style="text-align:center;margin-top:16px;font-size:14px;">
+      <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a>
     </p>
+    <p style="font-size:13px;color:#a0855b;margin-top:12px;text-align:center;">${t.delay}</p>
 
-    <p style="font-size:13px;color:#a0855b;margin-top:24px;text-align:center;">
-      ${{ en: 'As a solo indie project, please allow up to <strong>48 hours</strong> for a response.', fr: 'En tant que projet indépendant, veuillez prévoir jusqu\'à <strong>48 heures</strong> pour une réponse.', 'zh-CN': '作为个人独立项目，请允许最多 <strong>48 小时</strong>的回复时间。', 'zh-TW': '作為個人獨立專案，請允許最多 <strong>48 小時</strong>的回覆時間。' }[lang]}
-    </p>`;
+    <script>
+      (function () {
+        var form = document.getElementById('contact-form');
+        var status = document.getElementById('contact-status');
+        var button = form.querySelector('button');
+        form.addEventListener('submit', function (e) {
+          e.preventDefault();
+          status.textContent = form.dataset.sending;
+          button.disabled = true;
+          fetch('/api/contact', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: form.name.value, email: form.email.value, message: form.message.value }),
+          }).then(function (r) {
+            if (!r.ok) throw new Error(String(r.status));
+            status.textContent = form.dataset.sent;
+            form.reset();
+          }).catch(function () {
+            status.textContent = form.dataset.error + ' contact@diandian.overridedev.com';
+          }).then(function () { button.disabled = false; });
+        });
+      })();
+    </script>`;
 }
 
 router.get('/contact', (req, res) => {

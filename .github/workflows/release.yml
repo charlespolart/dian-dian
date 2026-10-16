@@ -87,6 +87,9 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
+      - name: Unit tests
+        run: npx tsx --test src/lib/*.test.ts
+
       - name: Build
         run: npm run build
 

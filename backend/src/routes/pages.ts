@@ -44,6 +44,9 @@ const createPageSchema = z.object({
   // 1.4.0: an empty page of the caller (no legend, no cell) deleted in the
   // same transaction — a dormant account's "My Tracker" is reused, not doubled.
   replaces: z.string().uuid().optional(),
+  // 1.4.0: idempotency key; the same key on a retry returns the page
+  // already created (200) instead of a twin.
+  clientId: z.string().uuid().optional(),
 });
 type CreatePageBody = z.infer<typeof createPageSchema>;
 
@@ -51,7 +54,24 @@ type CreatePageBody = z.infer<typeof createPageSchema>;
 router.post('/', validate(createPageSchema), async (req, res) => {
   try {
     const userId = req.userId!;
-    const { title, position, year, legends: legendInputs, replaces } = req.body as CreatePageBody;
+    const { title, position, year, legends: legendInputs, replaces, clientId } = req.body as CreatePageBody;
+
+    if (clientId) {
+      const [existing] = await db.select().from(pages)
+        .where(and(eq(pages.userId, userId), eq(pages.clientId, clientId)))
+        .limit(1);
+      if (existing) {
+        const existingLegends = await db.select().from(legends)
+          .where(eq(legends.pageId, existing.id)).orderBy(asc(legends.position));
+        res.status(200).json({
+          ...existing,
+          palette: existing.palette ? JSON.parse(existing.palette) : null,
+          legends: existingLegends,
+          replaced: null,
+        });
+        return;
+      }
+    }
     const unlimited = await isUnlimited(userId);
 
     const result = await db.transaction(async (tx) => {
@@ -86,7 +106,10 @@ router.post('/', validate(createPageSchema), async (req, res) => {
         }
       }
       const [page] = await tx.insert(pages)
-        .values({ userId, title, position: resolvedPosition, ...(year !== undefined ? { year } : {}) })
+        .values({
+          userId, title, position: resolvedPosition, clientId: clientId ?? null,
+          ...(year !== undefined ? { year } : {}),
+        })
         .returning();
       const created = legendInputs.length === 0
         ? []
