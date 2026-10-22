@@ -98,6 +98,9 @@ jamais un spectacle.
 Lot 2, à cadrer juste après par un brainstorm dédié : sons (deux existent,
 point posé et effacé) à d'autres moments, réglage « Sons » pour tout couper,
 sources libres (Kenney, freesound).
+Lot 3, demandé le 2026-10-22, à faire à la suite : un indicateur discret sur
+les points qui portent un commentaire (on ne sait plus lesquels en ont ; le
+cercle du jour est déjà pris, trouver autre chose de léger).
 
 ## Fait récemment
 - 2026-10-14 : backend 1.1.0 en prod (bootstrap en une requête, store
