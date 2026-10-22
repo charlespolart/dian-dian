@@ -391,8 +391,7 @@ class _TrackerScreenState extends State<TrackerScreen> {
     required int yearPercent,
     bool fitWidth = false,
   }) {
-    final content = Container(
-      key: widget.anchors?.shell,
+    final shell = Container(
       decoration: BoxDecoration(
         color: AppColors.shell,
         borderRadius: BorderRadius.circular(14),
@@ -432,6 +431,10 @@ class _TrackerScreenState extends State<TrackerScreen> {
         ),
       ),
     );
+
+    // The morph measures the shell through this anchor.
+    final anchors = widget.anchors;
+    final content = anchors == null ? shell : MorphAnchor.shell(anchors: anchors, child: shell);
 
     if (!fitWidth) {
       return Padding(

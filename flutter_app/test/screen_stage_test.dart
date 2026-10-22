@@ -5,6 +5,29 @@ import 'package:dian_dian/theme/motion.dart';
 import 'package:dian_dian/widgets/morph_anchors.dart';
 import 'package:dian_dian/widgets/screen_stage.dart';
 
+/// How many times each screen's State was created: a screen must keep its
+/// element while it moves from current to outgoing.
+final Map<String, int> inits = {};
+
+class _Counting extends StatefulWidget {
+  final String name;
+  final Widget child;
+  const _Counting(this.name, {super.key, required this.child});
+  @override
+  State<_Counting> createState() => _CountingState();
+}
+
+class _CountingState extends State<_Counting> {
+  @override
+  void initState() {
+    super.initState();
+    inits[widget.name] = (inits[widget.name] ?? 0) + 1;
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+
 /// Two fake screens: 'list' holds a card anchored as page 'p', 'tracker'
 /// holds a shell; anything else is plain text.
 class _Host extends StatefulWidget {
@@ -25,14 +48,23 @@ class _HostState extends State<_Host> {
         transition = t;
       });
 
-  Widget _screen(String name) => switch (name) {
-        'list' => Stack(key: const ValueKey('list'), children: [
-            Positioned(left: 20, top: 40, child: SizedBox(key: widget.anchors.cardKey('p'), width: 60, height: 120, child: const Text('list'))),
-          ]),
-        'tracker' => Center(key: const ValueKey('tracker'), child: SizedBox(key: widget.anchors.shell, width: 200, height: 400, child: const Text('tracker'))),
-        'bare' => const Center(key: ValueKey('bare'), child: Text('bare')),
-        _ => Center(key: ValueKey(name), child: Text(name)),
-      };
+  Widget _screen(String name) => _Counting(
+        name,
+        key: ValueKey(name),
+        child: switch (name) {
+          'list' => Stack(children: [
+              Positioned(
+                left: 20,
+                top: 40,
+                child: MorphAnchor.card(anchors: widget.anchors, pageId: 'p', child: const SizedBox(width: 60, height: 120, child: Text('list'))),
+              ),
+            ]),
+          'tracker' => Center(
+              child: MorphAnchor.shell(anchors: widget.anchors, child: const SizedBox(width: 200, height: 400, child: Text('tracker'))),
+            ),
+          _ => Center(child: Text(name)),
+        },
+      );
 
   @override
   Widget build(BuildContext context) => MediaQuery(
@@ -52,6 +84,28 @@ class _HostState extends State<_Host> {
 
 void main() {
   _HostState state(WidgetTester tester) => tester.state<_HostState>(find.byType(_Host));
+  setUp(inits.clear);
+
+  testWidgets('a screen keeps its state through a fade and through a morph (no re-inflation)', (tester) async {
+    await tester.pumpWidget(_Host(anchors: MorphAnchors()));
+    expect(inits, {'list': 1});
+    state(tester).go('bare', StageTransition.fade);
+    await tester.pump();
+    await tester.pump(AppMotion.base ~/ 2);
+    await tester.pumpAndSettle();
+    expect(inits, {'list': 1, 'bare': 1});
+    state(tester).go('list', StageTransition.fade);
+    await tester.pumpAndSettle();
+    state(tester).go('tracker', StageTransition.morphOpen);
+    await tester.pump(); // measure frame
+    await tester.pump();
+    await tester.pump(AppMotion.screen ~/ 2);
+    await tester.pumpAndSettle();
+    expect(inits, {'list': 2, 'bare': 1, 'tracker': 1});
+    state(tester).go('list', StageTransition.morphClose);
+    await tester.pumpAndSettle();
+    expect(inits, {'list': 3, 'bare': 1, 'tracker': 1});
+  });
 
   testWidgets('fade: both screens midway, only the new one once settled', (tester) async {
     await tester.pumpWidget(_Host(anchors: MorphAnchors()));

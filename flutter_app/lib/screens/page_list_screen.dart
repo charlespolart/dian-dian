@@ -115,6 +115,9 @@ class _PageListScreenState extends State<PageListScreen> {
   bool _firstBuildDone = false;
   String? _removingId;
   ScrollController? _scroll;
+  /// Keeps the scroll offset across the year slide (a new GridView per
+  /// year); unique per screen so a new list still starts on its reveal row.
+  late final PageStorageKey<int> _gridStorageKey = PageStorageKey(identityHashCode(this));
 
   @override
   void initState() {
@@ -134,6 +137,12 @@ class _PageListScreenState extends State<PageListScreen> {
   void dispose() {
     _scroll?.dispose();
     super.dispose();
+  }
+
+  /// The card the morph measures, registered while it is in the grid.
+  Widget _anchored(String pageId, Widget card) {
+    final anchors = widget.anchors;
+    return anchors == null ? card : MorphAnchor.card(anchors: anchors, pageId: pageId, child: card);
   }
 
   ({AppearStyle style, Duration delay}) _appearanceOf(String id, int index) {
@@ -245,14 +254,15 @@ class _PageListScreenState extends State<PageListScreen> {
     );
     if (confirmed != true || !mounted) return;
 
-    // Shrink and fade first, then leave the grid.
+    // Shrink and fade first, then leave the grid. The removal is committed
+    // even if the list goes away meanwhile: the user confirmed it.
+    final pagesProv = context.read<PagesProvider>();
     setState(() => _removingId = page.id);
     await Future<void>.delayed(AppMotion.of(context, AppMotion.quick));
-    if (!mounted) return;
-    context.read<PagesProvider>().softDeletePage(page);
+    pagesProv.softDeletePage(page);
     _appearance.remove(page.id);
     _seenIds.remove(page.id);
-    setState(() => _removingId = null);
+    if (mounted) setState(() => _removingId = null);
   }
 
   @override
@@ -445,6 +455,7 @@ class _PageListScreenState extends State<PageListScreen> {
                                 child: KeyedSubtree(
                                   key: ValueKey(_selectedYear),
                                   child: GridView.builder(
+                                key: _gridStorageKey,
                                 controller: _scroll,
                                 padding: EdgeInsets.only(
                                   left: _gridSidePadding,
@@ -514,20 +525,25 @@ class _PageListScreenState extends State<PageListScreen> {
                                                 child: AnimatedOpacity(
                                                   opacity: removing ? 0 : 1,
                                                   duration: AppMotion.of(context, AppMotion.quick),
-                                                  child: PageCard(
-                                                    key: widget.anchors?.cardKey(page.id),
+                                                  child: _anchored(
+                                                    page.id,
+                                                    PageCard(
                                                     page: page,
                                                     year: _selectedYear,
                                                     cells: previewCells,
                                                     legends: previewLegends,
                                                     onTap: removing ? null : () => _openTracker(page),
-                                                    onDelete: () => _deletePage(page),
+                                                    onDelete: () {
+                                                      if (!removing) _deletePage(page);
+                                                    },
                                                     isDragGhost:
                                                         _draggingIndex == index,
                                                     isLocked: lockedIds.contains(
                                                       page.id,
                                                     ),
-                                                    dragHandle: Draggable<int>(
+                                                    dragHandle: removing
+                                                        ? null
+                                                        : Draggable<int>(
                                                       data: index,
                                                       onDragStarted: () => setState(
                                                         () => _draggingIndex = index,
@@ -558,6 +574,7 @@ class _PageListScreenState extends State<PageListScreen> {
                                                             height: 28,
                                                           ),
                                                       child: handleGlyph,
+                                                    ),
                                                     ),
                                                   ),
                                                 ),

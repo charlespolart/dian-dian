@@ -152,55 +152,65 @@ class _ScreenStageState extends State<ScreenStage> with SingleTickerProviderStat
         });
       }
       _lastSize = size;
-
-      final outgoing = _outgoing;
-      if (outgoing == null) return widget.child;
-      if (_measuring) {
-        return Stack(fit: StackFit.expand, children: [
-          outgoing,
-          IgnorePointer(child: Opacity(opacity: 0, child: widget.child)),
-        ]);
-      }
+      // One stable tree whatever the phase, so a screen keeps its element
+      // (and its state) while it goes from current to outgoing: the Stack
+      // reorders its keyed children instead of inflating them again.
       return IgnorePointer(
+        ignoring: _animating,
         child: AnimatedBuilder(
           animation: _controller,
-          builder: (context, _) => Stack(fit: StackFit.expand, children: _layers(outgoing, size)),
+          builder: (context, _) => Stack(fit: StackFit.expand, children: _layers(size)),
         ),
       );
     });
   }
 
+  /// A screen in the stack: the same wrapper chain in every phase, keyed on
+  /// the screen's own key.
+  static Widget _layer(Widget screen, {double opacity = 1, Offset offset = Offset.zero, bool ignoring = false}) {
+    return KeyedSubtree(
+      key: ValueKey<Key?>(screen.key),
+      child: IgnorePointer(
+        ignoring: ignoring,
+        child: Opacity(
+          opacity: opacity,
+          child: Transform.translate(offset: offset, child: screen),
+        ),
+      ),
+    );
+  }
+
   static double _window(double e, double from, double to) => ((e - from) / (to - from)).clamp(0.0, 1.0);
 
-  List<Widget> _layers(Widget outgoing, Size size) {
+  static const _shellKey = ValueKey('morph-shell');
+
+  List<Widget> _layers(Size size) {
     final incoming = widget.child;
+    final outgoing = _outgoing;
+    if (outgoing == null) return [_layer(incoming)];
+    if (_measuring) return [_layer(outgoing), _layer(incoming, opacity: 0, ignoring: true)];
     final t = _controller.value;
     switch (_running) {
       case StageTransition.fade:
         final e = AppMotion.enter.transform(t);
-        return [Opacity(opacity: 1 - e, child: outgoing), Opacity(opacity: e, child: incoming)];
+        return [_layer(outgoing, opacity: 1 - e), _layer(incoming, opacity: e)];
       case StageTransition.slideIn:
       case StageTransition.slideOut:
         final e = AppMotion.enter.transform(t);
         final sign = _running == StageTransition.slideIn ? 1.0 : -1.0;
         final shift = size.width * ScreenStage.slideFraction;
         return [
-          Opacity(
-            opacity: 1 - e,
-            child: Transform.translate(offset: Offset(-sign * shift * e, 0), child: outgoing),
-          ),
-          Opacity(
-            opacity: e,
-            child: Transform.translate(offset: Offset(sign * shift * (1 - e), 0), child: incoming),
-          ),
+          _layer(outgoing, opacity: 1 - e, offset: Offset(-sign * shift * e, 0)),
+          _layer(incoming, opacity: e, offset: Offset(sign * shift * (1 - e), 0)),
         ];
       case StageTransition.morphOpen:
         final e = AppMotion.enter.transform(t);
         final fallback = _cardRect == null;
         final card = _cardRect ?? _centered(size);
         return [
-          Opacity(opacity: 1 - _window(e, 0, 0.6), child: outgoing),
+          _layer(outgoing, opacity: 1 - _window(e, 0, 0.6)),
           MorphShell(
+            key: _shellKey,
             rect: Rect.lerp(card, _shellRect, e)!,
             radius: lerpDouble(10, 14, e)!,
             opacity: fallback ? _window(e, 0, 0.4) : 1,
@@ -208,15 +218,16 @@ class _ScreenStageState extends State<ScreenStage> with SingleTickerProviderStat
             cardOpacity: 1 - _window(e, 0, 0.4),
             card: widget.morphCard,
           ),
-          Opacity(opacity: _window(e, 0.4, 1), child: incoming),
+          _layer(incoming, opacity: _window(e, 0.4, 1)),
         ];
       case StageTransition.morphClose:
         final e = AppMotion.exit.transform(t);
         final fallback = _cardRect == null;
         final card = _cardRect ?? _centered(size);
         return [
-          Opacity(opacity: _window(e, 0.4, 1), child: incoming),
+          _layer(incoming, opacity: _window(e, 0.4, 1)),
           MorphShell(
+            key: _shellKey,
             rect: Rect.lerp(_shellRect, card, e)!,
             radius: lerpDouble(14, 10, e)!,
             opacity: fallback ? 1 - _window(e, 0.6, 1) : 1,
@@ -224,7 +235,7 @@ class _ScreenStageState extends State<ScreenStage> with SingleTickerProviderStat
             cardOpacity: fallback ? 0 : _window(e, 0.6, 1),
             card: widget.morphCard,
           ),
-          Opacity(opacity: 1 - _window(e, 0, 0.4), child: outgoing),
+          _layer(outgoing, opacity: 1 - _window(e, 0, 0.4)),
         ];
     }
   }

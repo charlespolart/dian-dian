@@ -108,8 +108,12 @@ class TrackerGrid extends StatelessWidget {
         final gridW = labelColWidth + cellSize * 12;
         final gridH = rowHeight * _rows;
 
+        // A fill pops at the cell's *current* colour (a recolor or a remote
+        // edit right after the tap must show), and vanishes with the cell;
+        // an erase shrinks the colour that was there.
         final pop = this.pop;
-        final popCenter = pop != null && pop.year == year
+        final popColor = pop == null ? null : pop.erased ? pop.color : getCellColor(pop.month, pop.day);
+        final popCenter = pop != null && pop.year == year && (pop.erased || popColor != null)
             ? cellCenter(month: pop.month, day: pop.day, labelColWidth: labelColWidth, cellSize: cellSize, rowHeight: rowHeight)
             : null;
 
@@ -232,7 +236,7 @@ class TrackerGrid extends StatelessWidget {
                   child: IgnorePointer(
                     child: DotPop(
                       key: ValueKey(pop!.seq),
-                      color: pop.color == null ? AppColors.dotEmpty : _parseColor(pop.color!),
+                      color: popColor == null ? AppColors.dotEmpty : _parseColor(popColor),
                       erased: pop.erased,
                       size: dotSize,
                     ),

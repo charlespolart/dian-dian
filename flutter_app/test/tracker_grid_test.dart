@@ -35,12 +35,18 @@ void main() {
     });
   });
 
+  // The popped cell is filled (a fill pop over an empty cell draws nothing).
   Widget popHost(CellChange? pop) => MaterialApp(
         home: Center(
           child: SizedBox(
             width: 260,
             height: 640,
-            child: TrackerGrid(year: 2026, getCellColor: (_, _) => null, onCellPress: (_, _, _) {}, pop: pop),
+            child: TrackerGrid(
+              year: 2026,
+              getCellColor: (m, d) => m == 2 && d == 5 ? '#FF0000' : null,
+              onCellPress: (_, _, _) {},
+              pop: pop,
+            ),
           ),
         ),
       );
@@ -57,6 +63,25 @@ void main() {
 
   testWidgets('a change on another year draws nothing', (tester) async {
     await tester.pumpWidget(popHost(const CellChange(pageId: 'a', year: 2025, month: 2, day: 5, color: '#FF0000', erased: false, seq: 1)));
+    expect(find.byType(DotPop), findsNothing);
+  });
+
+  testWidgets('the pop follows the cell\'s current colour (a recolor right after the tap), and vanishes with the cell', (tester) async {
+    const pop = CellChange(pageId: 'a', year: 2026, month: 2, day: 5, color: '#FF0000', erased: false, seq: 1);
+    Widget host(String? Function(int, int) colorOf) => MaterialApp(
+          home: Center(
+            child: SizedBox(
+              width: 260,
+              height: 640,
+              child: TrackerGrid(year: 2026, getCellColor: colorOf, onCellPress: (_, _, _) {}, pop: pop),
+            ),
+          ),
+        );
+    await tester.pumpWidget(host((m, d) => m == 2 && d == 5 ? '#00FF00' : null));
+    await tester.pumpAndSettle();
+    expect(tester.widget<DotPop>(find.byType(DotPop)).color, const Color(0xFF00FF00));
+    await tester.pumpWidget(host((_, _) => null));
+    await tester.pump();
     expect(find.byType(DotPop), findsNothing);
   });
 }
