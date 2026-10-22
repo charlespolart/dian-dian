@@ -84,7 +84,10 @@ class _HostState extends State<_Host> {
 
 void main() {
   _HostState state(WidgetTester tester) => tester.state<_HostState>(find.byType(_Host));
-  setUp(inits.clear);
+  setUp(() {
+    inits.clear();
+    AppMotion.debugMorphSlowdown = 1; // the inspection knob never shapes a test
+  });
 
   testWidgets('a screen keeps its state through a fade and through a morph (no re-inflation)', (tester) async {
     await tester.pumpWidget(_Host(anchors: MorphAnchors()));

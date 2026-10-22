@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/widgets.dart';
 
 /// The app's one timing rule. Every animation reads its duration through
@@ -19,6 +20,11 @@ class AppMotion {
   static const pop = Duration(milliseconds: 360);
   /// Opening and closing a tracker.
   static const screen = Duration(milliseconds: 420);
+
+  /// Debug only, an inspection aid: stretches the tracker open / close morph
+  /// by this factor so every phase can be watched (8 → about 3.4 s). Always 1
+  /// in release; set it back to 1 here once the morph is validated.
+  static double debugMorphSlowdown = kDebugMode ? 8 : 1;
 
   static const Curve enter = Curves.easeOutCubic;
   static const Curve exit = Curves.easeInCubic;

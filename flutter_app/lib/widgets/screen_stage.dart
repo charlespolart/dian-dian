@@ -90,7 +90,7 @@ class _ScreenStageState extends State<ScreenStage> with SingleTickerProviderStat
     _running = transition;
     _cardRect = null;
     _shellRect = null;
-    _controller.duration = _isMorph ? AppMotion.screen : AppMotion.base;
+    _controller.duration = _isMorph ? AppMotion.screen * AppMotion.debugMorphSlowdown : AppMotion.base;
     if (_isMorph) {
       // The rect of the screen that is still laid out is read now; the other
       // one after a frame where the incoming screen is laid out invisible.
