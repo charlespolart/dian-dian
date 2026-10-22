@@ -178,8 +178,8 @@ l'écran sortant tel quel). Une ancre indispensable manquante (cadre, écran,
 grille d'un côté ou de l'autre) → la transition continue en fondu. Titre ou
 légendes manquants → ces éléments sont simplement omis.
 
-**Réglage.** `AppMotion.debugMorphSlowdown` (debug seulement) étire le
-morphing pour le juger ; à remettre à 1 une fois validé.
+**Réglage.** `AppMotion.debugMorphSlowdown`, à 1 ; à relever sur un build
+de debug pour étirer le morphing et le juger, jamais livré au-dessus de 1.
 
 ### Ce que `AppShell` change
 
