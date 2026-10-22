@@ -67,9 +67,22 @@ class WhatsNewDialog extends StatelessWidget {
                 ),
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 10),
-                  child: Text(
-                    bullets[i],
-                    style: AppFonts.dot(fontSize: 14, color: AppColors.text).copyWith(height: 1.35),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        margin: const EdgeInsets.only(top: 6, right: 10),
+                        decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.accent),
+                      ),
+                      Expanded(
+                        child: Text(
+                          bullets[i],
+                          style: AppFonts.dot(fontSize: 14, color: AppColors.text).copyWith(height: 1.35),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
