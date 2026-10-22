@@ -55,15 +55,20 @@ class WhatsNewDialog extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 14),
-            // One after another, a short fade + rise: a light touch, no show.
+            // One after another: each bullet waits its turn (140 ms apart),
+            // then fades in while rising 14 px over 380 ms. Light, but seen.
             for (var i = 0; i < bullets.length; i++)
               TweenAnimationBuilder<double>(
                 tween: Tween(begin: 0, end: 1),
-                duration: Duration(milliseconds: 320 + 110 * i),
-                curve: Curves.easeOutCubic,
+                duration: Duration(milliseconds: 380 + 140 * i),
+                curve: Interval(
+                  (140 * i) / (380 + 140 * i),
+                  1,
+                  curve: Curves.easeOutCubic,
+                ),
                 builder: (context, t, child) => Opacity(
                   opacity: t,
-                  child: Transform.translate(offset: Offset(0, 10 * (1 - t)), child: child),
+                  child: Transform.translate(offset: Offset(0, 14 * (1 - t)), child: child),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 10),
