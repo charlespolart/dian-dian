@@ -10,6 +10,7 @@ import 'marquee_text.dart';
 import 'confirm_dialog.dart';
 import 'drag_feedback.dart';
 import 'utf16_length_limit.dart';
+import 'press_scale.dart';
 
 /// Dialog for managing legends: list, add, delete, reorder.
 class LegendEditorDialog extends StatefulWidget {
@@ -286,7 +287,7 @@ class _LegendEditorDialogState extends State<LegendEditorDialog> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                GestureDetector(
+                PressScale(
                   onTap: () async {
                     final label = _labelController.text.trim();
                     if (label.isEmpty) return;
@@ -754,7 +755,7 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
                     ),
                   ),
                 ),
-                GestureDetector(
+                PressScale(
                   onTap: () {
                     widget.onColorSelected(_colorToHex(_currentColor));
                     Navigator.of(context).pop();

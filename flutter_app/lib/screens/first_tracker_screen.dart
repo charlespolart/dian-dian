@@ -12,6 +12,7 @@ import '../providers/legends_provider.dart';
 import '../providers/pages_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/utf16_length_limit.dart';
+import '../widgets/press_scale.dart';
 
 /// First-tracker flow (1.4.0), shown instead of the page list to any account
 /// the server reports with no cell at all (new or dormant).
@@ -533,7 +534,7 @@ class _ShellButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      child: GestureDetector(
+      child: PressScale(
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -570,7 +571,7 @@ class _PrimaryButton extends StatelessWidget {
       enabled: enabled,
       child: Opacity(
         opacity: enabled ? 1 : 0.5,
-        child: GestureDetector(
+        child: PressScale(
           onTap: enabled ? onTap : null,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -613,7 +614,7 @@ class _Tile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      child: GestureDetector(
+      child: PressScale(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Container(
@@ -741,7 +742,7 @@ class _LegendButton extends StatelessWidget {
       child: Semantics(
         button: true,
         enabled: enabled,
-        child: GestureDetector(
+        child: PressScale(
           onTap: enabled ? onTap : null,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),

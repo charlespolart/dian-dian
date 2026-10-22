@@ -9,6 +9,7 @@ import '../theme/app_theme.dart';
 import 'app_dialog.dart';
 import 'legend_editor_dialog.dart';
 import 'swipe_nav.dart';
+import 'press_scale.dart';
 
 class CellEditorDialog extends StatefulWidget {
   final int month;
@@ -46,7 +47,7 @@ class CellEditorDialog extends StatefulWidget {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 20),
-                GestureDetector(
+                PressScale(
                   onTap: () {
                     Navigator.of(ctx).pop();
                     if (pageId != null) {
@@ -323,7 +324,7 @@ class _CellEditorDialogState extends State<CellEditorDialog> {
             ),
           ),
           const SizedBox(width: 20),
-          GestureDetector(
+          PressScale(
             onTap: () async {
               final cells = context.read<CellsProvider>();
               final newComment = _commentController.text.trim();
@@ -364,7 +365,7 @@ class _CellEditorDialogState extends State<CellEditorDialog> {
           ),
         ),
         const SizedBox(width: 20),
-        GestureDetector(
+        PressScale(
           onTap: () async {
             final cells = context.read<CellsProvider>();
             final navigator = Navigator.of(context);
@@ -413,7 +414,7 @@ class _CellEditorDialogState extends State<CellEditorDialog> {
           ),
         ),
         const SizedBox(width: 20),
-        GestureDetector(
+        PressScale(
           onTap: !canSave
               ? null
               : () async {

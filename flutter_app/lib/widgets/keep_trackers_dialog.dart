@@ -7,6 +7,7 @@ import '../providers/language_provider.dart';
 import '../providers/pages_provider.dart';
 import '../theme/app_theme.dart';
 import 'app_dialog.dart';
+import 'press_scale.dart';
 
 /// A free account over the limit chooses which trackers stay open. The
 /// most active ones are preselected; the choice is stored on the server
@@ -144,7 +145,7 @@ class _Row extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return PressScale(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Container(

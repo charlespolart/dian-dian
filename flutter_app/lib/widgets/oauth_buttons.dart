@@ -9,6 +9,7 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
+import 'press_scale.dart';
 
 const String _googleGLogoSvg = '''
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18">
@@ -198,7 +199,7 @@ class _GoogleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return PressScale(
       onTap: onPressed,
       child: Container(
         width: double.infinity,

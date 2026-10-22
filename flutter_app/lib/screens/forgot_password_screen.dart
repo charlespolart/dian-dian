@@ -6,6 +6,7 @@ import '../providers/language_provider.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/password_field.dart';
+import '../widgets/press_scale.dart';
 
 enum _Step { email, code }
 
@@ -271,7 +272,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   Widget _primaryButton({required String label, VoidCallback? onTap}) {
-    return GestureDetector(
+    return PressScale(
       onTap: onTap,
       child: Container(
         width: double.infinity,

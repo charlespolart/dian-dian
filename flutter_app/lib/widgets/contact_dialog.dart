@@ -9,6 +9,7 @@ import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import 'app_dialog.dart';
 import 'utf16_length_limit.dart';
+import 'press_scale.dart';
 
 enum ContactReason { idea, bug, question }
 
@@ -251,7 +252,7 @@ class _ContactDialogState extends State<ContactDialog> {
     return Semantics(
       button: true,
       enabled: !busy,
-      child: GestureDetector(
+      child: PressScale(
         onTap: busy ? null : onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -284,7 +285,7 @@ class _ReasonChip extends StatelessWidget {
     return Semantics(
       button: true,
       selected: selected,
-      child: GestureDetector(
+      child: PressScale(
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),

@@ -8,6 +8,7 @@ import '../theme/app_theme.dart';
 import '../widgets/language_dropdown.dart';
 import '../widgets/oauth_buttons.dart';
 import '../widgets/password_field.dart';
+import '../widgets/press_scale.dart';
 
 class LoginScreen extends StatefulWidget {
   final VoidCallback onSwitchToRegister;
@@ -200,7 +201,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
 
                     // Login button
-                    GestureDetector(
+                    PressScale(
                       onTap: _loading ? null : _login,
                       child: Container(
                         width: double.infinity,

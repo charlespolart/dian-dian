@@ -12,6 +12,7 @@ import '../theme/app_theme.dart';
 import 'app_dialog.dart';
 import 'custom_paywall_dialog.dart';
 import 'keep_trackers_dialog.dart';
+import 'press_scale.dart';
 
 /// Dialog shown when a free user tries to access a premium feature.
 /// Shows what premium includes, then opens the RevenueCat paywall on upgrade.
@@ -192,7 +193,7 @@ class _UpgradeButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final lang = context.read<LanguageProvider>();
 
-    return GestureDetector(
+    return PressScale(
       onTap: () async {
         final premium = await CustomPaywallDialog.show(context);
         if (!context.mounted) return;
@@ -225,7 +226,7 @@ class _StoreButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return PressScale(
       onTap: onOpen,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

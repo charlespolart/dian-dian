@@ -8,6 +8,7 @@ import '../services/purchase_service.dart';
 import '../theme/app_theme.dart';
 import 'app_dialog.dart';
 import 'in_app_web_page.dart';
+import 'press_scale.dart';
 
 /// Pixel-art paywall that uses RevenueCat under the hood for offerings,
 /// purchases, and restore — but renders the UI in Dian Dian's own style.
@@ -254,7 +255,7 @@ class _CustomPaywallDialogState extends State<CustomPaywallDialog> {
               ],
 
               const SizedBox(height: 16),
-              GestureDetector(
+              PressScale(
                 onTap: _purchasing ? null : _buy,
                 child: Container(
                   width: double.infinity,
@@ -532,7 +533,7 @@ class _PackageTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return PressScale(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Container(

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/language_provider.dart';
 import '../theme/app_theme.dart';
 import 'app_dialog.dart';
+import 'press_scale.dart';
 
 /// "What's new in X.Y.Z": the bullets of `lib/data/whats_new.dart`, once
 /// after an update (see `_maybeShowWhatsNew` in main.dart).
@@ -27,7 +28,7 @@ class WhatsNewDialog extends StatelessWidget {
       footer: Center(
         child: Semantics(
           button: true,
-          child: GestureDetector(
+          child: PressScale(
             onTap: () => Navigator.of(context).pop(),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),

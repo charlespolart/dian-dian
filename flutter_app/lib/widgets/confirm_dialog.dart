@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 import 'app_dialog.dart';
+import 'press_scale.dart';
 
 /// A custom confirmation dialog that matches the warm cream pixel aesthetic.
 ///
@@ -98,7 +99,7 @@ class ConfirmDialog extends StatelessWidget {
     required Color textColor,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
+    return PressScale(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),

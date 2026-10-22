@@ -20,6 +20,7 @@ import '../widgets/premium_gate_dialog.dart';
 import '../widgets/theme_picker_dialog.dart';
 import '../widgets/top_bar.dart';
 import '../widgets/contact_dialog.dart';
+import '../widgets/press_scale.dart';
 
 class SettingsScreen extends StatelessWidget {
   final VoidCallback onBack;
@@ -288,7 +289,7 @@ class SettingsScreen extends StatelessWidget {
   }
 
   Widget _buildLinkTile({required String label, required VoidCallback onTap}) {
-    return GestureDetector(
+    return PressScale(
       onTap: onTap,
       child: Container(
         width: double.infinity,
@@ -324,7 +325,7 @@ class SettingsScreen extends StatelessWidget {
     required Color textColor,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
+    return PressScale(
       onTap: onTap,
       child: Container(
         width: double.infinity,
@@ -431,7 +432,7 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
             ),
           ),
           const SizedBox(width: 20),
-          GestureDetector(
+          PressScale(
             onTap: _canConfirm ? () => Navigator.of(context).pop(true) : null,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),

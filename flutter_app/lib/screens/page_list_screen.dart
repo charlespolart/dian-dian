@@ -27,6 +27,7 @@ import '../widgets/marquee_text.dart';
 import '../widgets/utf16_length_limit.dart';
 import '../widgets/drag_feedback.dart';
 import '../widgets/keep_trackers_dialog.dart';
+import '../widgets/press_scale.dart';
 
 class PageListScreen extends StatefulWidget {
   final void Function(String id, int year) onSelectPage;
@@ -474,7 +475,7 @@ class _PageListScreenState extends State<PageListScreen> {
                 : (!kIsWeb && !context.read<PremiumProvider>().isPremium
                       ? 66
                       : 16),
-            child: GestureDetector(
+            child: PressScale(
               onTap: _createPage,
               child: Container(
                 width: 48,
@@ -829,7 +830,7 @@ class _CreateTrackerDialogState extends State<_CreateTrackerDialog> {
                   ),
                 ),
                 const SizedBox(width: 20),
-                GestureDetector(
+                PressScale(
                   onTap: _create,
                   child: Container(
                     padding: const EdgeInsets.symmetric(

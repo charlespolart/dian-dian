@@ -24,6 +24,7 @@ import '../widgets/stats_detail_dialog.dart';
 import '../widgets/ad_banner.dart';
 import '../widgets/swipe_nav.dart';
 import '../widgets/tracker_grid.dart';
+import '../widgets/press_scale.dart';
 
 class TrackerScreen extends StatefulWidget {
   final String pageId;
@@ -818,7 +819,7 @@ class _TrackerScreenState extends State<TrackerScreen> {
                     const SizedBox(height: 4),
                     Center(child: _MaybePulse(
                       pulse: legends.isEmpty,
-                      child: GestureDetector(
+                      child: PressScale(
                         onTap: () {
                           LegendEditorDialog.show(context, pageId: _page.id);
                         },
@@ -957,7 +958,7 @@ class _TrackerScreenState extends State<TrackerScreen> {
           );
     return Semantics(
       button: true,
-      child: GestureDetector(
+      child: PressScale(
         onTap: _openToday,
         child: DashedBorder(
           color: AppColors.inputBorder,

@@ -14,6 +14,7 @@ import '../theme/app_theme.dart';
 import 'app_dialog.dart';
 import 'marquee_text.dart';
 import 'premium_gate_dialog.dart';
+import 'press_scale.dart';
 
 class GlobalStatsDialog extends StatelessWidget {
   final int year;
@@ -415,7 +416,7 @@ class _RangeToggle extends StatelessWidget {
   }
 
   Widget _segment({required String label, required bool active, required VoidCallback onTap}) {
-    return GestureDetector(
+    return PressScale(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Container(
