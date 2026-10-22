@@ -27,7 +27,7 @@ class PremiumGateDialog extends StatelessWidget {
   /// roadmap #2): which premium walls people actually hit.
   static Future<bool> show(BuildContext context, {required String feature, String? event}) async {
     if (event != null) unawaited(EventsService().track('paywall.$event'));
-    final result = await showDialog<bool>(
+    final result = await showAppDialog<bool>(
       context: context,
       builder: (_) => PremiumGateDialog(feature: feature, event: event),
     );

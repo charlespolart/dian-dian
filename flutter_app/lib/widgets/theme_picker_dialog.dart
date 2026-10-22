@@ -9,7 +9,7 @@ import 'app_dialog.dart';
 import 'premium_gate_dialog.dart';
 
 Future<void> showThemePickerDialog(BuildContext context) {
-  return showDialog(
+  return showAppDialog(
     context: context,
     builder: (_) => const _ThemePickerDialog(),
   );

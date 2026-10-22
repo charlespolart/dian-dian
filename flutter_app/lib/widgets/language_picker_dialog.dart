@@ -6,7 +6,7 @@ import 'app_dialog.dart';
 
 /// Shows a dialog to pick a language. Returns when a language is selected.
 Future<void> showLanguagePickerDialog(BuildContext context, LanguageProvider lang) {
-  return showDialog(
+  return showAppDialog(
     context: context,
     builder: (ctx) => AppDialog(
       child: Padding(

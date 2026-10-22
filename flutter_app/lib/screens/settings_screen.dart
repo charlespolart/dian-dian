@@ -367,7 +367,7 @@ class SettingsScreen extends StatelessWidget {
     LanguageProvider lang,
   ) async {
     final email = context.read<AuthProvider>().email;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
       builder: (_) => _DeleteAccountDialog(lang: lang, email: email),
     );

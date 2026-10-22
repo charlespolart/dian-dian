@@ -53,7 +53,7 @@ class ContactDialog extends StatefulWidget {
     required Future<String> version,
     ApiService? api,
   }) {
-    return showDialog(
+    return showAppDialog(
       context: context,
       builder: (_) => ContactDialog(email: email, userId: userId, version: version, api: api ?? ApiService()),
     );

@@ -33,7 +33,7 @@ class CellEditorDialog extends StatefulWidget {
     if (legends.isEmpty) {
       final lang = context.read<LanguageProvider>();
       final pageId = context.read<CellsProvider>().currentPageId;
-      return showDialog(
+      return showAppDialog(
         context: context,
         builder: (ctx) => AppDialog(
           child: Padding(
@@ -73,7 +73,7 @@ class CellEditorDialog extends StatefulWidget {
         ),
       );
     }
-    return showDialog(
+    return showAppDialog(
       context: context,
       builder: (_) => CellEditorDialog(month: month, day: day, year: year),
     );

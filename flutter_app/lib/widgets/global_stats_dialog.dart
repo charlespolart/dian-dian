@@ -28,7 +28,7 @@ class GlobalStatsDialog extends StatelessWidget {
       await PremiumGateDialog.show(context, feature: lang.t('premium.feature.stats'), event: 'global_stats');
       return;
     }
-    return showDialog(
+    return showAppDialog(
       context: context,
       builder: (_) => GlobalStatsDialog(year: year),
     );

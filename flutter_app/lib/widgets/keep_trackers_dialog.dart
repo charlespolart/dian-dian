@@ -19,7 +19,7 @@ class KeepTrackersDialog extends StatefulWidget {
   const KeepTrackersDialog({super.key, required this.maxTrackers});
 
   static Future<void> show(BuildContext context, {required int maxTrackers}) {
-    return showDialog(
+    return showAppDialog(
       context: context,
       builder: (_) => KeepTrackersDialog(maxTrackers: maxTrackers),
     );

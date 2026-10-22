@@ -27,7 +27,7 @@ class StatsDetailDialog extends StatelessWidget {
     required List<LegendModel> legends,
     required int year,
   }) {
-    return showDialog(
+    return showAppDialog(
       context: context,
       builder: (_) => StatsDetailDialog(cells: cells, legends: legends, year: year),
     );

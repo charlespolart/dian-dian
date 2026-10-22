@@ -32,7 +32,7 @@ class ConfirmDialog extends StatelessWidget {
     required String cancelLabel,
     bool destructive = false,
   }) {
-    return showDialog<bool>(
+    return showAppDialog<bool>(
       context: context,
       builder: (_) => ConfirmDialog(
         title: title,

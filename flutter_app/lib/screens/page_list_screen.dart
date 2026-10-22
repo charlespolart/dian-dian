@@ -107,7 +107,7 @@ class _PageListScreenState extends State<PageListScreen> {
       }
     }
 
-    final created = await showDialog<PageModel?>(
+    final created = await showAppDialog<PageModel?>(
       context: context,
       barrierDismissible: false,
       builder: (_) => const _CreateTrackerDialog(),

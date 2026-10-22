@@ -23,7 +23,7 @@ class CustomPaywallDialog extends StatefulWidget {
 
   /// Returns true if the user is now premium when the dialog closes.
   static Future<bool> show(BuildContext context) async {
-    final result = await showDialog<bool>(
+    final result = await showAppDialog<bool>(
       context: context,
       builder: (_) => const CustomPaywallDialog(),
     );

@@ -19,7 +19,7 @@ class LegendEditorDialog extends StatefulWidget {
   const LegendEditorDialog({super.key, required this.pageId});
 
   static Future<void> show(BuildContext context, {required String pageId}) {
-    return showDialog(
+    return showAppDialog(
       context: context,
       builder: (_) => LegendEditorDialog(pageId: pageId),
     );
@@ -398,7 +398,7 @@ class _LegendEditorDialogState extends State<LegendEditorDialog> {
   }
 
   void _editPaletteColor(int rowIdx, int colIdx) {
-    showDialog(
+    showAppDialog(
       context: context,
       builder: (_) => _ColorPickerDialog(
         initialColor: _parseHex(_palette[rowIdx][colIdx]),

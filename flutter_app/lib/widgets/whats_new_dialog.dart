@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/language_provider.dart';
 import '../theme/app_theme.dart';
+import '../theme/motion.dart';
 import 'app_dialog.dart';
 import 'press_scale.dart';
 
@@ -15,7 +16,7 @@ class WhatsNewDialog extends StatelessWidget {
   const WhatsNewDialog({super.key, required this.version, required this.bullets});
 
   static Future<void> show(BuildContext context, {required String version, required List<String> bullets}) {
-    return showDialog(
+    return showAppDialog(
       context: context,
       builder: (_) => WhatsNewDialog(version: version, bullets: bullets),
     );
@@ -61,11 +62,11 @@ class WhatsNewDialog extends StatelessWidget {
             for (var i = 0; i < bullets.length; i++)
               TweenAnimationBuilder<double>(
                 tween: Tween(begin: 0, end: 1),
-                duration: Duration(milliseconds: 380 + 140 * i),
+                duration: Duration(milliseconds: AppMotion.base.inMilliseconds + 380 + 140 * i),
                 curve: Interval(
-                  (140 * i) / (380 + 140 * i),
+                  (AppMotion.base.inMilliseconds + 140 * i) / (AppMotion.base.inMilliseconds + 380 + 140 * i),
                   1,
-                  curve: Curves.easeOutCubic,
+                  curve: AppMotion.enter,
                 ),
                 builder: (context, t, child) => Opacity(
                   opacity: t,

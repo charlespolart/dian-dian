@@ -39,7 +39,7 @@ Future<void> showCursorPickerDialog(BuildContext context) {
     PremiumGateDialog.show(context, feature: lang.t('premium.feature.cursor'), event: 'cursor');
     return Future.value();
   }
-  return showDialog(
+  return showAppDialog(
     context: context,
     builder: (_) => const _CursorPickerDialog(),
   );
