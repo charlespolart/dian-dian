@@ -49,28 +49,28 @@ class WhatsNewDialog extends StatelessWidget {
           children: [
             Center(
               child: Text(
-                lang.t('whatsNew.title').replaceFirst('{v}', version),
+                '✨ ${lang.t('whatsNew.title').replaceFirst('{v}', version)}',
                 style: AppFonts.pixel(fontSize: 16, color: AppColors.title),
                 textAlign: TextAlign.center,
               ),
             ),
             const SizedBox(height: 14),
-            for (final b in bullets)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      margin: const EdgeInsets.only(top: 6, right: 10),
-                      decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.accent),
-                    ),
-                    Expanded(
-                      child: Text(b, style: AppFonts.dot(fontSize: 14, color: AppColors.text)),
-                    ),
-                  ],
+            // One after another, a short fade + rise: a light touch, no show.
+            for (var i = 0; i < bullets.length; i++)
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: 1),
+                duration: Duration(milliseconds: 320 + 110 * i),
+                curve: Curves.easeOutCubic,
+                builder: (context, t, child) => Opacity(
+                  opacity: t,
+                  child: Transform.translate(offset: Offset(0, 10 * (1 - t)), child: child),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Text(
+                    bullets[i],
+                    style: AppFonts.dot(fontSize: 14, color: AppColors.text).copyWith(height: 1.35),
+                  ),
                 ),
               ),
           ],

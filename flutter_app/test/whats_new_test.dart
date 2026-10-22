@@ -67,7 +67,7 @@ void main() {
     ));
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
-    expect(find.text("What's new in 1.4.0"), findsOneWidget);
+    expect(find.text("✨ What's new in 1.4.0"), findsOneWidget);
     expect(find.text('First bullet'), findsOneWidget);
     expect(find.text('Second bullet'), findsOneWidget);
     await tester.tap(find.text('OK'));
