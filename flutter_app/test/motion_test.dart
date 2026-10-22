@@ -29,4 +29,10 @@ void main() {
     expect(AppMotion.base > AppMotion.quick, isTrue);
     expect(AppMotion.screen > AppMotion.base, isTrue);
   });
+
+  test('a stagger between groups is a fraction of an entrance, and the morph hands over near its end', () {
+    expect(AppMotion.stagger, const Duration(milliseconds: 60));
+    expect(AppMotion.stagger * 5, AppMotion.base);
+    expect(AppMotion.morphHandover, 0.85);
+  });
 }

@@ -19,6 +19,13 @@ class AppMotion {
   static const pop = Duration(milliseconds: 360);
   /// Opening and closing a tracker.
   static const screen = Duration(milliseconds: 420);
+  /// Between two groups that enter one after the other (the tracker's
+  /// reveal): a fifth of an entrance, felt as one sweep, not as steps.
+  static const stagger = Duration(milliseconds: 60);
+  /// Where, in the open morph, the real tracker takes over from the layer
+  /// (its dots have landed within a few px); the tracker's reveal starts
+  /// there. The close morph hands over at 1 − this.
+  static const morphHandover = 0.85;
 
   /// An inspection aid, 1 in normal use: raise it on a debug build to
   /// stretch the tracker open / close morph so every phase can be watched

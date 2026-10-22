@@ -268,7 +268,7 @@ class _ScreenStageState extends State<ScreenStage> with SingleTickerProviderStat
           _layer(outgoing, opacity: 1 - _window(t, 0, 0.5)),
           Opacity(
             key: _morphKey,
-            opacity: 1 - _window(t, 0.85, 1),
+            opacity: 1 - _window(t, AppMotion.morphHandover, 1),
             child: MorphLayer(
               ends: ends,
               content: content,
@@ -276,7 +276,7 @@ class _ScreenStageState extends State<ScreenStage> with SingleTickerProviderStat
               legendsOpacity: 1 - _window(t, 0, 0.25),
             ),
           ),
-          _layer(incoming, opacity: _window(t, 0.85, 1)),
+          _layer(incoming, opacity: _window(t, AppMotion.morphHandover, 1)),
         ];
       case StageTransition.morphClose:
         if (measuring || ends == null || content == null) {
@@ -293,7 +293,7 @@ class _ScreenStageState extends State<ScreenStage> with SingleTickerProviderStat
             g: 1 - AppMotion.morph.transform(t),
             legendsOpacity: _window(t, 0.75, 1),
           ),
-          _layer(outgoing, opacity: 1 - _window(t, 0, 0.15)),
+          _layer(outgoing, opacity: 1 - _window(t, 0, 1 - AppMotion.morphHandover)),
         ];
     }
   }
