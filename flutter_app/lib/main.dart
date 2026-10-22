@@ -143,6 +143,11 @@ AppScreen? systemBackTarget(AppScreen screen) => switch (screen) {
 
 /// How the stage goes from [from] to [to]: the tracker morphs out of and
 /// back into its card, the settings slide in and out, everything else fades.
+/// The tracker reveals its chrome after the open morph only; any other way
+/// in shows it whole.
+TrackerEntrance trackerEntranceFor(StageTransition transition) =>
+    transition == StageTransition.morphOpen ? TrackerEntrance.morph : TrackerEntrance.none;
+
 StageTransition transitionFor(AppScreen from, AppScreen to) => switch ((from, to)) {
       (AppScreen.pageList, AppScreen.tracker) => StageTransition.morphOpen,
       (AppScreen.tracker, AppScreen.pageList) => StageTransition.morphClose,
@@ -165,6 +170,7 @@ class _AppShellState extends State<AppShell> {
   String? _morphPageId;
   ListEntrance _listEntrance = ListEntrance.cascade;
   String? _revealPageId;
+  TrackerEntrance _trackerEntrance = TrackerEntrance.none;
   // One session start per authentication: hydrate + bootstrap + land on
   // the right screen. Reset on logout.
   bool _sessionStarted = false;
@@ -423,6 +429,7 @@ class _AppShellState extends State<AppShell> {
       // Back from a tracker: the list opens on its card and skips the cascade.
       _revealPageId = transition == StageTransition.morphClose ? leavingPageId : null;
       _listEntrance = from == AppScreen.tracker ? ListEntrance.none : ListEntrance.cascade;
+      _trackerEntrance = trackerEntranceFor(transition);
       _screen = screen;
       if (pageId != null) _activePageId = pageId;
     });
@@ -570,6 +577,7 @@ class _AppShellState extends State<AppShell> {
           onBack: () => _navigate(AppScreen.pageList),
           child: TrackerScreen(
             anchors: _anchors,
+            entrance: _trackerEntrance,
             pageId: _activePageId!,
             initialYear: _selectedYear,
             onBack: () => _navigate(AppScreen.pageList),

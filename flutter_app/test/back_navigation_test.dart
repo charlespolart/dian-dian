@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:dian_dian/main.dart';
+import 'package:dian_dian/screens/tracker_screen.dart';
 import 'package:dian_dian/widgets/back_swipe.dart';
 import 'package:dian_dian/widgets/screen_stage.dart';
 
@@ -33,6 +34,12 @@ void main() {
       expect(transitionFor(AppScreen.settings, AppScreen.pageList), StageTransition.slideOut);
       expect(transitionFor(AppScreen.firstTracker, AppScreen.tracker), StageTransition.fade);
       expect(transitionFor(AppScreen.login, AppScreen.register), StageTransition.fade);
+    });
+
+    test('only the open morph arms the tracker\'s reveal', () {
+      expect(trackerEntranceFor(StageTransition.morphOpen), TrackerEntrance.morph);
+      expect(trackerEntranceFor(StageTransition.fade), TrackerEntrance.none);
+      expect(trackerEntranceFor(StageTransition.morphClose), TrackerEntrance.none);
     });
   });
 

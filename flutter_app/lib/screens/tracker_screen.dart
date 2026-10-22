@@ -28,6 +28,11 @@ import '../widgets/swipe_nav.dart';
 import '../widgets/tracker_grid.dart';
 import '../widgets/press_scale.dart';
 
+/// How the tracker arrives: by the open morph — its chrome (labels, sidebar,
+/// bar) then reveals itself once the stage hands over — or any other way,
+/// whole at once.
+enum TrackerEntrance { morph, none }
+
 class TrackerScreen extends StatefulWidget {
   final String pageId;
   final int initialYear;
@@ -36,6 +41,8 @@ class TrackerScreen extends StatefulWidget {
   final ValueChanged<int>? onYearChanged;
   /// The key the card → tracker morph measures the book shell with.
   final MorphAnchors? anchors;
+  /// Read once, when the screen mounts.
+  final TrackerEntrance entrance;
 
   const TrackerScreen({
     super.key,
@@ -45,13 +52,14 @@ class TrackerScreen extends StatefulWidget {
     required this.onOpenSettings,
     this.onYearChanged,
     this.anchors,
+    this.entrance = TrackerEntrance.none,
   });
 
   @override
   State<TrackerScreen> createState() => _TrackerScreenState();
 }
 
-class _TrackerScreenState extends State<TrackerScreen> {
+class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProviderStateMixin {
   static const _sidebarExpandedLandscape = 150.0;
   static const _sidebarExpandedPortrait = 90.0;
   static const _sidebarExpandedTabletPortrait = 140.0;
@@ -65,6 +73,31 @@ class _TrackerScreenState extends State<TrackerScreen> {
   late int _year;
   // Sign of the last year change: the grid and the label slide that way.
   int _yearDirection = 0;
+
+  // The reveal after the open morph: one clock for the screen, three slices
+  // — the grid's chrome, then the sidebar, then the bar — each an entrance,
+  // a stagger apart, the first starting where the stage hands over to the
+  // real tracker. The clock belongs to the screen, so a year change (a new
+  // grid) never replays it.
+  late final AnimationController _reveal;
+  late final Animation<double> _revealGrid;
+  late final Animation<double> _revealSidebar;
+  late final Animation<double> _revealBar;
+  bool _revealArmed = false;
+
+  /// From the start of the open morph to where the real tracker takes over.
+  static Duration get revealDelay => AppMotion.screen * AppMotion.debugMorphSlowdown * AppMotion.morphHandover;
+  /// From the start of the open morph to the end of the last group's entrance.
+  static Duration get revealTotal => revealDelay + AppMotion.stagger * 2 + AppMotion.base;
+
+  Animation<double> _revealSlice(int group) {
+    final total = revealTotal.inMicroseconds.toDouble();
+    final start = revealDelay + AppMotion.stagger * group;
+    return CurvedAnimation(
+      parent: _reveal,
+      curve: Interval(start.inMicroseconds / total, (start + AppMotion.base).inMicroseconds / total, curve: AppMotion.enter),
+    );
+  }
 
   /// Registers [child] for the card → tracker morph when the shell owns anchors.
   Widget _anchor(String key, Widget child) {
@@ -84,6 +117,10 @@ class _TrackerScreenState extends State<TrackerScreen> {
     final pages = context.read<PagesProvider>().pages;
     final page = pages.firstWhere((p) => p.id == widget.pageId);
     _titleController = TextEditingController(text: page.title);
+    _reveal = AnimationController(vsync: this, duration: revealTotal);
+    _revealGrid = _revealSlice(0);
+    _revealSidebar = _revealSlice(1);
+    _revealBar = _revealSlice(2);
   }
 
   void _changeYear(int delta) {
@@ -118,10 +155,19 @@ class _TrackerScreenState extends State<TrackerScreen> {
     if (_bottomSafe == 0) {
       _bottomSafe = MediaQuery.of(context).padding.bottom;
     }
+    if (!_revealArmed) {
+      _revealArmed = true;
+      if (widget.entrance == TrackerEntrance.morph && !AppMotion.reduced(context)) {
+        _reveal.forward();
+      } else {
+        _reveal.value = 1;
+      }
+    }
   }
 
   @override
   void dispose() {
+    _reveal.dispose();
     _titleController.dispose();
     super.dispose();
   }
@@ -266,16 +312,19 @@ class _TrackerScreenState extends State<TrackerScreen> {
       padding: const EdgeInsets.only(left: 4, right: 0, top: 0, bottom: 0),
       child: Row(
         children: [
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: widget.onBack,
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Text(
-                '<',
-                style: AppFonts.pixel(
-                  fontSize: 20,
-                  color: AppColors.accent,
+          FadeTransition(
+            opacity: _revealBar,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: widget.onBack,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(
+                  '<',
+                  style: AppFonts.pixel(
+                    fontSize: 20,
+                    color: AppColors.accent,
+                  ),
                 ),
               ),
             ),
@@ -321,27 +370,38 @@ class _TrackerScreenState extends State<TrackerScreen> {
                           ),
                         ),
                         const SizedBox(width: 6),
-                        Icon(Icons.edit, size: 12, color: AppColors.accent),
+                        FadeTransition(
+                          opacity: _revealBar,
+                          child: Icon(Icons.edit, size: 12, color: AppColors.accent),
+                        ),
                       ],
                     ),
                   ),
           ),
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: _showDetailedStats,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-              child: Icon(Icons.bar_chart, size: 18, color: AppColors.accent),
-            ),
-          ),
-          Builder(
-            builder: (ctx) => GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => _exportImage(ctx),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                child: Icon(Icons.ios_share, size: 18, color: AppColors.accent),
-              ),
+          FadeTransition(
+            opacity: _revealBar,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _showDetailedStats,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                    child: Icon(Icons.bar_chart, size: 18, color: AppColors.accent),
+                  ),
+                ),
+                Builder(
+                  builder: (ctx) => GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => _exportImage(ctx),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                      child: Icon(Icons.ios_share, size: 18, color: AppColors.accent),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -362,6 +422,7 @@ class _TrackerScreenState extends State<TrackerScreen> {
               key: ValueKey(_year),
               child: TrackerGrid(
                 anchors: widget.anchors,
+                chrome: _revealGrid,
                 year: _year,
                 pop: pop,
                 getCellColor: (month, day) => cellsProv.getCellColor(month, day),
@@ -409,38 +470,59 @@ class _TrackerScreenState extends State<TrackerScreen> {
       ),
       child: Padding(
         padding: const EdgeInsets.all(8),
-        child: DashedBorder(
-          color: AppColors.screenBorder,
-          borderRadius: 10,
-          dashLength: 5,
-          gapLength: 3,
-          child: _anchor(
-            MorphAnchors.screen,
-            Container(
-            decoration: BoxDecoration(
-              color: AppColors.screen,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              children: [
-                _buildSidebar(
-                  lang: lang,
-                  legends: legends,
-                  filledDays: filledDays,
-                  streak: streak,
-                  yearPercent: yearPercent,
-                  isLandscape: fitWidth,
+        child: Stack(
+          fit: StackFit.passthrough,
+          children: [
+            _anchor(
+              MorphAnchors.screen,
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.screen,
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                DashedVerticalDivider(
-                  color: AppColors.screenBorder,
-                  dashLength: 4,
-                  gapLength: 3,
+                child: Row(
+                  children: [
+                    FadeTransition(
+                      opacity: _revealSidebar,
+                      child: _buildSidebar(
+                        lang: lang,
+                        legends: legends,
+                        filledDays: filledDays,
+                        streak: streak,
+                        yearPercent: yearPercent,
+                        isLandscape: fitWidth,
+                      ),
+                    ),
+                    FadeTransition(
+                      opacity: _revealGrid,
+                      child: DashedVerticalDivider(
+                        color: AppColors.screenBorder,
+                        dashLength: 4,
+                        gapLength: 3,
+                      ),
+                    ),
+                    _buildGrid(cellsProv, legends),
+                  ],
                 ),
-                _buildGrid(cellsProv, legends),
-              ],
+              ),
             ),
+            // The screen's dashed edge, drawn over it: the morph's layer ends
+            // with no edge, so it comes in with the grid's chrome.
+            Positioned.fill(
+              child: IgnorePointer(
+                child: FadeTransition(
+                  opacity: _revealGrid,
+                  child: DashedBorder(
+                    color: AppColors.screenBorder,
+                    borderRadius: 10,
+                    dashLength: 5,
+                    gapLength: 3,
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -540,8 +622,10 @@ class _TrackerScreenState extends State<TrackerScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Left panel: back, title, year, stars
-          SizedBox(
+          // Left panel: back, title, year, stars — the bar's group of the reveal.
+          FadeTransition(
+            opacity: _revealBar,
+            child: SizedBox(
             width: 240,
             child: Column(
               children: [
@@ -670,6 +754,7 @@ class _TrackerScreenState extends State<TrackerScreen> {
                 ),
               ],
             ),
+          ),
           ),
           // Grid shell — sized to fit
           _buildBookShell(

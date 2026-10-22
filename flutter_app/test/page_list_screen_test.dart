@@ -73,14 +73,6 @@ class ListHarness {
   }
 }
 
-/// A 500 × 844 logical surface: tall enough to scroll, wide enough for the
-/// header under the test font (every glyph a square).
-void phone(WidgetTester tester) {
-  tester.view.physicalSize = const Size(1500, 2532);
-  tester.view.devicePixelRatio = 3.0;
-  addTearDown(tester.view.reset);
-}
-
 /// The grid's own scroll position (the first Scrollable under it; the card
 /// titles have marquee scrollables of their own).
 ScrollPosition gridPosition(WidgetTester tester) =>
