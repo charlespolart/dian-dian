@@ -25,6 +25,7 @@ import 'screens/tracker_screen.dart';
 import 'screens/settings_screen.dart';
 import 'services/orientation_policy.dart';
 import 'theme/app_theme.dart';
+import 'theme/motion.dart';
 import 'widgets/custom_cursor.dart';
 import 'widgets/back_swipe.dart';
 import 'widgets/dotted_background.dart';
@@ -421,7 +422,7 @@ class _AppShellState extends State<AppShell> {
 
             if (!auth.isAuthenticated) {
               return AnimatedSwitcher(
-                duration: const Duration(milliseconds: 200),
+                duration: AppMotion.of(context, AppMotion.base),
                 child: _buildAuthScreen(),
               );
             }
@@ -429,7 +430,7 @@ class _AppShellState extends State<AppShell> {
             return Stack(
               children: [
                 AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 200),
+                  duration: AppMotion.of(context, AppMotion.base),
                   child: _buildAppScreen(),
                 ),
                 // Global undo delete bar

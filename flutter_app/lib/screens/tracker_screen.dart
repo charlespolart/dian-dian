@@ -13,6 +13,7 @@ import '../providers/pages_provider.dart';
 import '../providers/premium_provider.dart';
 import '../services/sync_service.dart';
 import '../theme/app_theme.dart';
+import '../theme/motion.dart';
 import '../widgets/cell_editor_dialog.dart';
 import '../widgets/export_image_builder.dart';
 import '../widgets/marquee_text.dart';
@@ -433,7 +434,7 @@ class _TrackerScreenState extends State<TrackerScreen> {
         return Padding(
           padding: EdgeInsets.all(fitWidth ? 4 : 8),
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
+            duration: AppMotion.of(context, AppMotion.base),
             width: totalW.clamp(200, constraints.maxWidth),
             child: content,
           ),
@@ -469,7 +470,7 @@ class _TrackerScreenState extends State<TrackerScreen> {
               final maxW = gridW + sidebarW + 50;
               return Center(
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
+                  duration: AppMotion.of(context, AppMotion.base),
                   constraints: BoxConstraints(maxWidth: maxW),
                   child: _buildBookShell(
                     lang: lang,
@@ -668,7 +669,7 @@ class _TrackerScreenState extends State<TrackerScreen> {
     final sectionFs = isLandscape ? 11.0 : isTablet ? 12.0 : 8.0;
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
+      duration: AppMotion.of(context, AppMotion.base),
       width: currentW,
       clipBehavior: Clip.hardEdge,
       decoration: const BoxDecoration(),
