@@ -75,10 +75,11 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
   int _yearDirection = 0;
 
   // The reveal after the open morph: one clock for the screen, three slices
-  // — the grid's chrome, then the sidebar, then the bar — each an entrance,
-  // a stagger apart, the first starting where the stage hands over to the
-  // real tracker. The clock belongs to the screen, so a year change (a new
-  // grid) never replays it.
+  // — the grid's chrome, then the sidebar, then the bar — each a short
+  // entrance (`quick`: the dots have just landed, the rest must feel part of
+  // that landing, not a second act), a stagger apart, the first starting
+  // where the stage hands over to the real tracker. The clock belongs to
+  // the screen, so a year change (a new grid) never replays it.
   late final AnimationController _reveal;
   late final Animation<double> _revealGrid;
   late final Animation<double> _revealSidebar;
@@ -88,14 +89,14 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
   /// From the start of the open morph to where the real tracker takes over.
   static Duration get revealDelay => AppMotion.screen * AppMotion.debugMorphSlowdown * AppMotion.morphHandover;
   /// From the start of the open morph to the end of the last group's entrance.
-  static Duration get revealTotal => revealDelay + AppMotion.stagger * 2 + AppMotion.base;
+  static Duration get revealTotal => revealDelay + AppMotion.stagger * 2 + AppMotion.quick;
 
   Animation<double> _revealSlice(int group) {
     final total = revealTotal.inMicroseconds.toDouble();
     final start = revealDelay + AppMotion.stagger * group;
     return CurvedAnimation(
       parent: _reveal,
-      curve: Interval(start.inMicroseconds / total, (start + AppMotion.base).inMicroseconds / total, curve: AppMotion.enter),
+      curve: Interval(start.inMicroseconds / total, (start + AppMotion.quick).inMicroseconds / total, curve: AppMotion.enter),
     );
   }
 

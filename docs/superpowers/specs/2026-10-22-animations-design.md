@@ -45,7 +45,7 @@ class AppMotion {
   static const base   = Duration(milliseconds: 300);  // entrée de pop-up, année, cascade
   static const pop    = Duration(milliseconds: 360);  // point qui se remplit
   static const screen = Duration(milliseconds: 420);  // ouverture / fermeture du tracker
-  static const stagger = Duration(milliseconds: 60); // entre deux groupes qui entrent à la suite (réveil du tracker)
+  static const stagger = Duration(milliseconds: 30); // entre deux groupes qui entrent à la suite (réveil du tracker)
   static const morphHandover = 0.85;                 // où le tracker réel prend le relais du calque
 
   static const enter = Curves.easeOutCubic;  // ce qui arrive décélère
@@ -171,9 +171,12 @@ possède n'arrive pas avec lui : voir le réveil ci-dessous.
 pas partaient tous d'un bloc sur les 15 % finaux, soit 63 ms : trop sec.
 Ils partent invisibles et entrent en fondu pur (ni montée ni zoom : les
 points viennent d'atterrir, tout mouvement à côté ferait bouger l'œil), en
-trois groupes, chacun une entrée (`base`, courbe `enter`) décalée de
+trois groupes, chacun une entrée courte (`quick`, courbe `enter` : le reste
+doit faire partie de l'atterrissage, pas d'un second acte) décalée de
 `stagger` par rapport au précédent, le premier démarrant à la prise de
-relais (`screen × morphHandover` après le tap) :
+relais (`screen × morphHandover` après le tap). Première version à `base`
+et 60 ms d'écart, jugée « un petit peu trop tard » sur simulateur le
+2026-10-23 ; resserrée à `quick` et 30 ms.
 
 | Groupe | Contenu | Départ |
 |---|---|---|

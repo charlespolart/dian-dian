@@ -79,24 +79,35 @@ void main() {
 
   testWidgets('arriving by the morph, the chrome is unseen until the handover, then comes in by groups', (tester) async {
     tabletPortrait(tester);
+    // Clock from the first frame, the one the stage's morph starts on too.
+    var elapsed = Duration.zero;
+    Future<void> pumpTo(Duration target) async {
+      await tester.pump(target - elapsed);
+      elapsed = target;
+    }
+
+    final handover = AppMotion.screen * AppMotion.morphHandover;
+    const frame = Duration(milliseconds: 16);
     await tester.pumpWidget(TrackerHarness(entrance: TrackerEntrance.morph).widget);
     for (final g in groups.entries) {
       expect(opacityOver(tester, g.value), 0, reason: '${g.key} on the first frame');
     }
-    await tester.pump(AppMotion.screen * AppMotion.morphHandover - const Duration(milliseconds: 16));
+    await pumpTo(handover - frame);
     for (final g in groups.entries) {
       expect(opacityOver(tester, g.value), 0, reason: '${g.key} just before the handover');
     }
-    // 150 ms past the handover: the grid's chrome leads, the sidebar follows
-    // a stagger behind, the bar another one behind.
-    await tester.pump(const Duration(milliseconds: 16) + AppMotion.stagger * 2 + const Duration(milliseconds: 30));
+    // Three staggers past the handover: the grid's chrome leads, the sidebar
+    // follows a stagger behind, the bar another one behind — and is on its way.
+    await pumpTo(handover + AppMotion.stagger * 3);
     final a = opacityOver(tester, grid);
     final b = opacityOver(tester, sidebar);
     final c = opacityOver(tester, bar);
     expect(a, greaterThan(b));
     expect(b, greaterThan(c));
     expect(c, greaterThan(0));
-    await tester.pump(AppMotion.base);
+    // Each group is a short entrance: the last is over `quick` after it
+    // started, two staggers past the handover.
+    await pumpTo(handover + AppMotion.stagger * 2 + AppMotion.quick + frame);
     for (final g in groups.entries) {
       expect(opacityOver(tester, g.value), 1, reason: '${g.key} once the reveal is over');
     }

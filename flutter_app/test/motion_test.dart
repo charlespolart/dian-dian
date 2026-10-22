@@ -30,9 +30,9 @@ void main() {
     expect(AppMotion.screen > AppMotion.base, isTrue);
   });
 
-  test('a stagger between groups is a fraction of an entrance, and the morph hands over near its end', () {
-    expect(AppMotion.stagger, const Duration(milliseconds: 60));
-    expect(AppMotion.stagger * 5, AppMotion.base);
+  test('a stagger between groups is a couple of frames, and the morph hands over near its end', () {
+    expect(AppMotion.stagger, const Duration(milliseconds: 30));
+    expect(AppMotion.stagger * 10, AppMotion.base);
     expect(AppMotion.morphHandover, 0.85);
   });
 }
