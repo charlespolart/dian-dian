@@ -4,6 +4,7 @@ import '../models/cell_change.dart';
 import '../theme/app_theme.dart';
 import '../theme/motion.dart';
 import 'grid_geometry.dart';
+import 'morph_anchors.dart';
 
 /// The year grid widget: 12 months x 31 days of colored dots.
 ///
@@ -18,6 +19,8 @@ class TrackerGrid extends StatelessWidget {
   /// The cell that just changed on this device, drawn once as a [DotPop]
   /// over the grid (null: nothing to pop).
   final CellChange? pop;
+  /// When set, the grid registers its box and layout for the card → tracker morph.
+  final MorphAnchors? anchors;
 
   const TrackerGrid({
     super.key,
@@ -25,6 +28,7 @@ class TrackerGrid extends StatelessWidget {
     required this.getCellColor,
     required this.onCellPress,
     this.pop,
+    this.anchors,
   });
 
   /// Centre of the dot of (month, day) in the grid's own coordinates: one
@@ -116,7 +120,8 @@ class TrackerGrid extends StatelessWidget {
             ? geometry.center(month: pop.month, day: pop.day)
             : null;
 
-        return SizedBox(
+        final anchors = this.anchors;
+        final box = SizedBox(
           width: gridW,
           height: gridH,
           child: Stack(
@@ -244,6 +249,7 @@ class TrackerGrid extends StatelessWidget {
             ],
           ),
         );
+        return anchors == null ? box : MorphAnchor.grid(anchors: anchors, geometry: geometry, child: box);
       },
     );
   }

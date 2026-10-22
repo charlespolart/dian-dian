@@ -56,11 +56,11 @@ class _HostState extends State<_Host> {
               Positioned(
                 left: 20,
                 top: 40,
-                child: MorphAnchor.card(anchors: widget.anchors, pageId: 'p', child: const SizedBox(width: 60, height: 120, child: Text('list'))),
+                child: MorphAnchor(anchors: widget.anchors, anchorKey: MorphAnchors.card('p'), child: const SizedBox(width: 60, height: 120, child: Text('list'))),
               ),
             ]),
           'tracker' => Center(
-              child: MorphAnchor.shell(anchors: widget.anchors, child: const SizedBox(width: 200, height: 400, child: Text('tracker'))),
+              child: MorphAnchor(anchors: widget.anchors, anchorKey: MorphAnchors.shell, child: const SizedBox(width: 200, height: 400, child: Text('tracker'))),
             ),
           _ => Center(child: Text(name)),
         },

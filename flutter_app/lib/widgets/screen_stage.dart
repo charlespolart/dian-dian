@@ -98,10 +98,10 @@ class _ScreenStageState extends State<ScreenStage> with SingleTickerProviderStat
       // next frame instead of after that (heavy) measure frame.
       final pageId = widget.morphPageId;
       if (transition == StageTransition.morphOpen && pageId != null) {
-        _cardRect = widget.anchors.cardRect(pageId, ancestor: _box);
+        _cardRect = widget.anchors.rect(MorphAnchors.card(pageId), ancestor: _box);
       }
       if (transition == StageTransition.morphClose) {
-        _shellRect = widget.anchors.shellRect(ancestor: _box);
+        _shellRect = widget.anchors.rect(MorphAnchors.shell, ancestor: _box);
       }
       _measuring = true;
       WidgetsBinding.instance.addPostFrameCallback((_) => _afterMeasure());
@@ -114,10 +114,10 @@ class _ScreenStageState extends State<ScreenStage> with SingleTickerProviderStat
     _measuring = false;
     final pageId = widget.morphPageId;
     if (_running == StageTransition.morphOpen) {
-      _shellRect = widget.anchors.shellRect(ancestor: _box);
+      _shellRect = widget.anchors.rect(MorphAnchors.shell, ancestor: _box);
     }
     if (_running == StageTransition.morphClose && pageId != null) {
-      _cardRect = widget.anchors.cardRect(pageId, ancestor: _box);
+      _cardRect = widget.anchors.rect(MorphAnchors.card(pageId), ancestor: _box);
     }
     if (_shellRect == null) {
       // Nothing to morph (the tracker left at its first build): the running

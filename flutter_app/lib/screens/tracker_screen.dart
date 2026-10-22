@@ -66,6 +66,12 @@ class _TrackerScreenState extends State<TrackerScreen> {
   // Sign of the last year change: the grid and the label slide that way.
   int _yearDirection = 0;
 
+  /// Registers [child] for the card → tracker morph when the shell owns anchors.
+  Widget _anchor(String key, Widget child) {
+    final anchors = widget.anchors;
+    return anchors == null ? child : MorphAnchor(anchors: anchors, anchorKey: key, child: child);
+  }
+
   PageModel get _page {
     final pages = context.read<PagesProvider>().pages;
     return pages.firstWhere((p) => p.id == widget.pageId);
@@ -303,11 +309,14 @@ class _TrackerScreenState extends State<TrackerScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Flexible(
-                          child: MarqueeText(
-                            text: _page.title,
-                            style: AppFonts.pixel(
-                              fontSize: 16,
-                              color: AppColors.title,
+                          child: _anchor(
+                            MorphAnchors.barTitle,
+                            MarqueeText(
+                              text: _page.title,
+                              style: AppFonts.pixel(
+                                fontSize: 16,
+                                color: AppColors.title,
+                              ),
                             ),
                           ),
                         ),
@@ -352,6 +361,7 @@ class _TrackerScreenState extends State<TrackerScreen> {
             child: KeyedSubtree(
               key: ValueKey(_year),
               child: TrackerGrid(
+                anchors: widget.anchors,
                 year: _year,
                 pop: pop,
                 getCellColor: (month, day) => cellsProv.getCellColor(month, day),
@@ -404,7 +414,9 @@ class _TrackerScreenState extends State<TrackerScreen> {
           borderRadius: 10,
           dashLength: 5,
           gapLength: 3,
-          child: Container(
+          child: _anchor(
+            MorphAnchors.screen,
+            Container(
             decoration: BoxDecoration(
               color: AppColors.screen,
               borderRadius: BorderRadius.circular(10),
@@ -427,6 +439,7 @@ class _TrackerScreenState extends State<TrackerScreen> {
                 _buildGrid(cellsProv, legends),
               ],
             ),
+            ),
           ),
         ),
       ),
@@ -434,7 +447,7 @@ class _TrackerScreenState extends State<TrackerScreen> {
 
     // The morph measures the shell through this anchor.
     final anchors = widget.anchors;
-    final content = anchors == null ? shell : MorphAnchor.shell(anchors: anchors, child: shell);
+    final content = anchors == null ? shell : MorphAnchor(anchors: anchors, anchorKey: MorphAnchors.shell, child: shell);
 
     if (!fitWidth) {
       return Padding(

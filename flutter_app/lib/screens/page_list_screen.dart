@@ -143,7 +143,7 @@ class _PageListScreenState extends State<PageListScreen> {
   /// The card the morph measures, registered while it is in the grid.
   Widget _anchored(String pageId, Widget card) {
     final anchors = widget.anchors;
-    return anchors == null ? card : MorphAnchor.card(anchors: anchors, pageId: pageId, child: card);
+    return anchors == null ? card : MorphAnchor(anchors: anchors, anchorKey: MorphAnchors.card(pageId), child: card);
   }
 
   ({AppearStyle style, Duration delay}) _appearanceOf(String id, int index) {
@@ -529,6 +529,7 @@ class _PageListScreenState extends State<PageListScreen> {
                                                   child: _anchored(
                                                     page.id,
                                                     PageCard(
+                                                    anchors: widget.anchors,
                                                     page: page,
                                                     year: _selectedYear,
                                                     cells: previewCells,
@@ -680,6 +681,9 @@ class PageCard extends StatelessWidget {
   final bool isLocked;
   final Widget? dragHandle;
   final bool frozen;
+  /// When set, the title, the legend dots, the preview frame and the preview
+  /// grid register themselves for the card → tracker morph.
+  final MorphAnchors? anchors;
 
   const PageCard({
     super.key,
@@ -692,6 +696,7 @@ class PageCard extends StatelessWidget {
     this.isDragGhost = false,
     this.isLocked = false,
     this.dragHandle,
+    this.anchors,
   }) : frozen = false;
 
   const PageCard.frozen({
@@ -705,9 +710,15 @@ class PageCard extends StatelessWidget {
         onDelete = _noop,
         isDragGhost = false,
         dragHandle = null,
+        anchors = null,
         frozen = true;
 
   static void _noop() {}
+
+  Widget _anchor(String key, Widget child) {
+    final anchors = this.anchors;
+    return anchors == null ? child : MorphAnchor(anchors: anchors, anchorKey: key, child: child);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -731,16 +742,21 @@ class PageCard extends StatelessWidget {
                   children: [
                     const SizedBox(height: 14),
                     // Title
-                    MarqueeText(
-                      text: page.title,
-                      style: AppFonts.pixel(
-                        fontSize: 11,
-                        color: AppColors.text,
+                    _anchor(
+                      MorphAnchors.cardTitle(page.id),
+                      MarqueeText(
+                        text: page.title,
+                        style: AppFonts.pixel(
+                          fontSize: 11,
+                          color: AppColors.text,
+                        ),
                       ),
                     ),
                     // Legend dots (transparent placeholder if none)
                     const SizedBox(height: 3),
-                    legends.isNotEmpty
+                    _anchor(
+                      MorphAnchors.cardLegends(page.id),
+                      legends.isNotEmpty
                         ? Wrap(
                             alignment: WrapAlignment.center,
                             spacing: 4,
@@ -764,17 +780,21 @@ class PageCard extends StatelessWidget {
                               color: Colors.transparent,
                             ),
                           ),
+                    ),
                     const SizedBox(height: 6),
                     // Full grid preview
                     Expanded(
-                      child: Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: AppColors.screen,
-                          border: Border.all(color: AppColors.screenBorder),
-                          borderRadius: BorderRadius.circular(6),
+                      child: _anchor(
+                        MorphAnchors.cardScreen(page.id),
+                        Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: AppColors.screen,
+                            border: Border.all(color: AppColors.screenBorder),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: _anchor(MorphAnchors.cardGrid(page.id), _MiniGrid(cells: cells, year: year)),
                         ),
-                        child: _MiniGrid(cells: cells, year: year),
                       ),
                     ),
                   ],
