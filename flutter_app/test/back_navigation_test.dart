@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:dian_dian/main.dart';
 import 'package:dian_dian/widgets/back_swipe.dart';
+import 'package:dian_dian/widgets/screen_stage.dart';
 
 void main() {
   group('systemBackTarget', () {
@@ -20,6 +21,18 @@ void main() {
       expect(systemBackTarget(AppScreen.login), isNull);
       expect(systemBackTarget(AppScreen.pageList), isNull);
       expect(systemBackTarget(AppScreen.firstTracker), isNull);
+    });
+  });
+
+  group('transitionFor', () {
+    test('list ↔ tracker morph, settings slide, everything else fades', () {
+      expect(transitionFor(AppScreen.pageList, AppScreen.tracker), StageTransition.morphOpen);
+      expect(transitionFor(AppScreen.tracker, AppScreen.pageList), StageTransition.morphClose);
+      expect(transitionFor(AppScreen.pageList, AppScreen.settings), StageTransition.slideIn);
+      expect(transitionFor(AppScreen.tracker, AppScreen.settings), StageTransition.slideIn);
+      expect(transitionFor(AppScreen.settings, AppScreen.pageList), StageTransition.slideOut);
+      expect(transitionFor(AppScreen.firstTracker, AppScreen.tracker), StageTransition.fade);
+      expect(transitionFor(AppScreen.login, AppScreen.register), StageTransition.fade);
     });
   });
 

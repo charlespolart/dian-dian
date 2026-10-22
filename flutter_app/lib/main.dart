@@ -25,10 +25,11 @@ import 'screens/tracker_screen.dart';
 import 'screens/settings_screen.dart';
 import 'services/orientation_policy.dart';
 import 'theme/app_theme.dart';
-import 'theme/motion.dart';
 import 'widgets/custom_cursor.dart';
 import 'widgets/back_swipe.dart';
 import 'widgets/dotted_background.dart';
+import 'widgets/morph_anchors.dart';
+import 'widgets/screen_stage.dart';
 import 'widgets/whats_new_dialog.dart';
 import 'package:flutter/services.dart';
 import 'widgets/undo_delete_bar.dart';
@@ -139,6 +140,16 @@ AppScreen? systemBackTarget(AppScreen screen) => switch (screen) {
   AppScreen.login || AppScreen.pageList || AppScreen.firstTracker => null,
 };
 
+/// How the stage goes from [from] to [to]: the tracker morphs out of and
+/// back into its card, the settings slide in and out, everything else fades.
+StageTransition transitionFor(AppScreen from, AppScreen to) => switch ((from, to)) {
+      (AppScreen.pageList, AppScreen.tracker) => StageTransition.morphOpen,
+      (AppScreen.tracker, AppScreen.pageList) => StageTransition.morphClose,
+      (AppScreen.pageList, AppScreen.settings) || (AppScreen.tracker, AppScreen.settings) => StageTransition.slideIn,
+      (AppScreen.settings, AppScreen.pageList) => StageTransition.slideOut,
+      _ => StageTransition.fade,
+    };
+
 class _AppShellState extends State<AppShell> {
   static const _lastTrackerIdKey = 'last_tracker_id';
   static const _lastTrackerYearKey = 'last_tracker_year';
@@ -147,6 +158,12 @@ class _AppShellState extends State<AppShell> {
   AppScreen _screen = AppScreen.login;
   String? _activePageId;
   int _selectedYear = DateTime.now().year;
+  // The stage: how the next screen arrives, and the card it morphs from or to.
+  final MorphAnchors _anchors = MorphAnchors();
+  StageTransition _transition = StageTransition.fade;
+  String? _morphPageId;
+  ListEntrance _listEntrance = ListEntrance.cascade;
+  String? _revealPageId;
   // One session start per authentication: hydrate + bootstrap + land on
   // the right screen. Reset on logout.
   bool _sessionStarted = false;
@@ -218,6 +235,9 @@ class _AppShellState extends State<AppShell> {
     )) {
       unawaited(_maybeShowWhatsNew(recordOnly: true));
       setState(() {
+        _transition = StageTransition.fade;
+        _morphPageId = null;
+        _revealPageId = null;
         _screen = AppScreen.firstTracker;
         _selectedYear = year;
         _restoreInProgress = false;
@@ -236,6 +256,9 @@ class _AppShellState extends State<AppShell> {
       context.read<LegendsProvider>().setPageId(lastId);
       unawaited(_maybeShowWhatsNew(recordOnly: false));
       setState(() {
+        _transition = StageTransition.fade;
+        _morphPageId = null;
+        _revealPageId = null;
         _screen = AppScreen.tracker;
         _activePageId = lastId;
         _selectedYear = year;
@@ -251,6 +274,9 @@ class _AppShellState extends State<AppShell> {
     }
     unawaited(_maybeShowWhatsNew(recordOnly: false));
     setState(() {
+      _transition = StageTransition.fade;
+      _morphPageId = null;
+      _revealPageId = null;
       _screen = AppScreen.pageList;
       _selectedYear = year;
       _restoreInProgress = false;
@@ -370,6 +396,9 @@ class _AppShellState extends State<AppShell> {
         _screen != AppScreen.register &&
         _screen != AppScreen.forgotPassword) {
       setState(() {
+        _transition = StageTransition.fade;
+        _morphPageId = null;
+        _revealPageId = null;
         _screen = AppScreen.login;
         _activePageId = null;
         _selectedYear = DateTime.now().year;
@@ -380,7 +409,19 @@ class _AppShellState extends State<AppShell> {
   }
 
   void _navigate(AppScreen screen, {String? pageId}) {
+    final from = _screen;
+    final leavingPageId = _activePageId;
+    final transition = transitionFor(from, screen);
     setState(() {
+      _transition = transition;
+      _morphPageId = switch (transition) {
+        StageTransition.morphOpen => pageId,
+        StageTransition.morphClose => leavingPageId,
+        _ => null,
+      };
+      // Back from a tracker: the list opens on its card and skips the cascade.
+      _revealPageId = transition == StageTransition.morphClose ? leavingPageId : null;
+      _listEntrance = from == AppScreen.tracker ? ListEntrance.none : ListEntrance.cascade;
       _screen = screen;
       if (pageId != null) _activePageId = pageId;
     });
@@ -421,16 +462,20 @@ class _AppShellState extends State<AppShell> {
             }
 
             if (!auth.isAuthenticated) {
-              return AnimatedSwitcher(
-                duration: AppMotion.of(context, AppMotion.base),
+              return ScreenStage(
+                transition: StageTransition.fade,
+                anchors: _anchors,
                 child: _buildAuthScreen(),
               );
             }
 
             return Stack(
               children: [
-                AnimatedSwitcher(
-                  duration: AppMotion.of(context, AppMotion.base),
+                ScreenStage(
+                  transition: _transition,
+                  anchors: _anchors,
+                  morphPageId: _morphPageId,
+                  morphCard: _morphPageId == null ? null : (ctx) => _buildCardCopy(ctx, _morphPageId!),
                   child: _buildAppScreen(),
                 ),
                 // Global undo delete bar
@@ -457,6 +502,21 @@ class _AppShellState extends State<AppShell> {
           },
         ),
       ),
+    );
+  }
+
+  /// The static card the morph shell stretches: the page as the list shows
+  /// it, from the providers (nothing if it vanished meanwhile).
+  Widget _buildCardCopy(BuildContext ctx, String pageId) {
+    final pages = ctx.read<PagesProvider>().pages;
+    final page = pages.where((p) => p.id == pageId).firstOrNull;
+    if (page == null) return const SizedBox.shrink();
+    return PageCard.frozen(
+      page: page,
+      year: _selectedYear,
+      cells: ctx.read<CellsProvider>().cellsFor(pageId, _selectedYear),
+      legends: ctx.read<LegendsProvider>().legendsFor(pageId),
+      isLocked: ctx.read<PremiumProvider>().lockedTrackerIds(pages).contains(pageId),
     );
   }
 
@@ -507,6 +567,7 @@ class _AppShellState extends State<AppShell> {
           key: ValueKey('tracker_$_activePageId'),
           onBack: () => _navigate(AppScreen.pageList),
           child: TrackerScreen(
+            anchors: _anchors,
             pageId: _activePageId!,
             initialYear: _selectedYear,
             onBack: () => _navigate(AppScreen.pageList),
@@ -522,6 +583,9 @@ class _AppShellState extends State<AppShell> {
       default:
         return PageListScreen(
           key: const ValueKey('pageList'),
+          anchors: _anchors,
+          entrance: _listEntrance,
+          revealPageId: _revealPageId,
           selectedYear: _selectedYear,
           onYearChanged: (year) => _selectedYear = year,
           onSelectPage: (id, year) {

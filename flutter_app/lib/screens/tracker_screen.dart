@@ -21,6 +21,7 @@ import '../widgets/dashed_border.dart';
 import '../widgets/legend_editor_dialog.dart';
 import '../widgets/premium_gate_dialog.dart';
 import '../widgets/slide_switcher.dart';
+import '../widgets/morph_anchors.dart';
 import '../widgets/stats_detail_dialog.dart';
 import '../widgets/ad_banner.dart';
 import '../widgets/swipe_nav.dart';
@@ -33,6 +34,8 @@ class TrackerScreen extends StatefulWidget {
   final VoidCallback onBack;
   final VoidCallback onOpenSettings;
   final ValueChanged<int>? onYearChanged;
+  /// The key the card → tracker morph measures the book shell with.
+  final MorphAnchors? anchors;
 
   const TrackerScreen({
     super.key,
@@ -41,6 +44,7 @@ class TrackerScreen extends StatefulWidget {
     required this.onBack,
     required this.onOpenSettings,
     this.onYearChanged,
+    this.anchors,
   });
 
   @override
@@ -388,6 +392,7 @@ class _TrackerScreenState extends State<TrackerScreen> {
     bool fitWidth = false,
   }) {
     final content = Container(
+      key: widget.anchors?.shell,
       decoration: BoxDecoration(
         color: AppColors.shell,
         borderRadius: BorderRadius.circular(14),
