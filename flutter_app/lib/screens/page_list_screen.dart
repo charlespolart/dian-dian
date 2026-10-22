@@ -32,6 +32,7 @@ import '../widgets/press_scale.dart';
 import '../theme/motion.dart';
 import '../widgets/appear.dart';
 import '../widgets/morph_anchors.dart';
+import '../widgets/grid_geometry.dart';
 
 enum ListEntrance { cascade, none }
 
@@ -862,43 +863,19 @@ class _MiniGridPainter extends CustomPainter {
     return Color(int.parse('FF$h', radix: 16));
   }
 
-  static int _daysInMonth(int month, int year) {
-    if (month == 2) {
-      final isLeap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
-      return isLeap ? 29 : 28;
-    }
-    if ([4, 6, 9, 11].contains(month)) return 30;
-    return 31;
-  }
-
   @override
   void paint(Canvas canvas, Size size) {
-    const cols = 12; // months
-    const rows = 31; // max days
-
-    final pad = 3.0;
-    final availW = size.width - pad * 2;
-    final availH = size.height - pad * 2;
-
-    final stepX = availW / cols;
-    final stepY = availH / rows;
-    final dotRadius = (stepX < stepY ? stepX : stepY) * 0.42;
-
+    final g = MiniGridGeometry.of(size);
     final emptyPaint = Paint()..color = AppColors.dotEmpty;
 
-    for (int m = 0; m < cols; m++) {
-      final month = m + 1;
-      final maxDays = _daysInMonth(month, year);
-      final cx = pad + stepX * m + stepX / 2;
-      for (int d = 0; d < rows; d++) {
-        final day = d + 1;
-        if (day > maxDays) continue;
-        final cy = pad + stepY * d + stepY / 2;
+    for (var month = 1; month <= 12; month++) {
+      final maxDays = daysInMonth(month, year);
+      for (var day = 1; day <= maxDays; day++) {
         final cell = cells?.get(month, day);
         final paint = cell != null
             ? (Paint()..color = _hexToColor(cell.color))
             : emptyPaint;
-        canvas.drawCircle(Offset(cx, cy), dotRadius, paint);
+        canvas.drawCircle(g.center(month: month, day: day), g.radius, paint);
       }
     }
   }

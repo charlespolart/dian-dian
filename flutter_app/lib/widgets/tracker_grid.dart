@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/cell_change.dart';
 import '../theme/app_theme.dart';
 import '../theme/motion.dart';
+import 'grid_geometry.dart';
 
 /// The year grid widget: 12 months x 31 days of colored dots.
 ///
@@ -35,7 +36,8 @@ class TrackerGrid extends StatelessWidget {
     required double cellSize,
     required double rowHeight,
   }) =>
-      Offset(labelColWidth + cellSize * (month - 1) + cellSize / 2, rowHeight * day + rowHeight / 2);
+      TrackerGridGeometry(labelColWidth: labelColWidth, cellSize: cellSize, rowHeight: rowHeight, dotSize: cellSize * 0.78)
+          .center(month: month, day: day);
 
   static const List<String> _monthLabels = [
     'J', 'F', 'M', 'A', 'M', 'J',
@@ -45,15 +47,7 @@ class TrackerGrid extends StatelessWidget {
   static const int _cols = 13; // 1 label + 12 months
   static const int _rows = 32; // 1 header + 31 days
 
-  static int getDaysInMonth(int month, int year) {
-    if (month == 2) {
-      final isLeap =
-          (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
-      return isLeap ? 29 : 28;
-    }
-    if ([4, 6, 9, 11].contains(month)) return 30;
-    return 31;
-  }
+  static int getDaysInMonth(int month, int year) => daysInMonth(month, year);
 
   Color _parseColor(String hex) {
     final cleaned = hex.replaceFirst('#', '');
@@ -103,10 +97,15 @@ class TrackerGrid extends StatelessWidget {
             : estCellSize;
         // Dots stay square — pick the smaller of width-budget and row-height.
         final cellSize = dotColW < rowHeight ? dotColW : rowHeight;
-        final dotSize = cellSize * 0.78;
-
-        final gridW = labelColWidth + cellSize * 12;
-        final gridH = rowHeight * _rows;
+        final geometry = TrackerGridGeometry(
+          labelColWidth: labelColWidth,
+          cellSize: cellSize,
+          rowHeight: rowHeight,
+          dotSize: cellSize * 0.78,
+        );
+        final dotSize = geometry.dotSize;
+        final gridW = geometry.size.width;
+        final gridH = geometry.size.height;
 
         // A fill pops at the cell's *current* colour (a recolor or a remote
         // edit right after the tap must show), and vanishes with the cell;
@@ -114,7 +113,7 @@ class TrackerGrid extends StatelessWidget {
         final pop = this.pop;
         final popColor = pop == null ? null : pop.erased ? pop.color : getCellColor(pop.month, pop.day);
         final popCenter = pop != null && pop.year == year && (pop.erased || popColor != null)
-            ? cellCenter(month: pop.month, day: pop.day, labelColWidth: labelColWidth, cellSize: cellSize, rowHeight: rowHeight)
+            ? geometry.center(month: pop.month, day: pop.day)
             : null;
 
         return SizedBox(
