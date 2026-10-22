@@ -13,6 +13,7 @@ import '../providers/pages_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/utf16_length_limit.dart';
 import '../widgets/press_scale.dart';
+import '../widgets/slide_switcher.dart';
 
 /// First-tracker flow (1.4.0), shown instead of the page list to any account
 /// the server reports with no cell at all (new or dormant).
@@ -292,9 +293,13 @@ class _FirstTrackerScreenState extends State<FirstTrackerScreen> {
                     child: Center(
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 420),
-                        child: _step == _Step.choose
-                            ? _buildChoose(lang)
-                            : _buildToday(lang),
+                        child: SlideSwitcher(
+                          direction: 1,
+                          child: KeyedSubtree(
+                            key: ValueKey(_step),
+                            child: _step == _Step.choose ? _buildChoose(lang) : _buildToday(lang),
+                          ),
+                        ),
                       ),
                     ),
                   ),

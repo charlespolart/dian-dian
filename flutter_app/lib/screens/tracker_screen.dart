@@ -20,6 +20,7 @@ import '../widgets/marquee_text.dart';
 import '../widgets/dashed_border.dart';
 import '../widgets/legend_editor_dialog.dart';
 import '../widgets/premium_gate_dialog.dart';
+import '../widgets/slide_switcher.dart';
 import '../widgets/stats_detail_dialog.dart';
 import '../widgets/ad_banner.dart';
 import '../widgets/swipe_nav.dart';
@@ -58,6 +59,8 @@ class _TrackerScreenState extends State<TrackerScreen> {
   String? _selectedLegendId;
   late TextEditingController _titleController;
   late int _year;
+  // Sign of the last year change: the grid and the label slide that way.
+  int _yearDirection = 0;
 
   PageModel get _page {
     final pages = context.read<PagesProvider>().pages;
@@ -75,7 +78,10 @@ class _TrackerScreenState extends State<TrackerScreen> {
 
   void _changeYear(int delta) {
     final newYear = _year + delta;
-    setState(() => _year = newYear);
+    setState(() {
+      _yearDirection = delta.sign;
+      _year = newYear;
+    });
     // Synchronous pointer move; the grid paints from the store at once when
     // the year is cached, and one bootstrap fills it otherwise.
     context.read<CellsProvider>().setYear(newYear);
@@ -335,7 +341,11 @@ class _TrackerScreenState extends State<TrackerScreen> {
       child: Padding(
         padding: const EdgeInsets.all(6),
         child: Center(
-          child: TrackerGrid(
+          child: SlideSwitcher(
+            direction: _yearDirection,
+            child: KeyedSubtree(
+              key: ValueKey(_year),
+              child: TrackerGrid(
             year: _year,
             getCellColor: (month, day) => cellsProv.getCellColor(month, day),
             onCellPress: (month, day, at) {
@@ -357,6 +367,8 @@ class _TrackerScreenState extends State<TrackerScreen> {
                 CellEditorDialog.show(context, month: month, day: day, year: _year, origin: at);
               }
             },
+            ),
+          ),
           ),
         ),
       ),
@@ -708,17 +720,27 @@ class _TrackerScreenState extends State<TrackerScreen> {
                 arrowPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
                 onPrev: () => _changeYear(-1),
                 onNext: () => _changeYear(1),
-                center: Text(
-                  '$_year',
-                  style: AppFonts.dot(fontSize: 12, color: AppColors.subtitle),
+                center: SlideSwitcher(
+                  direction: _yearDirection,
+                  distance: 12,
+                  child: Text(
+                    '$_year',
+                    key: ValueKey(_year),
+                    style: AppFonts.dot(fontSize: 12, color: AppColors.subtitle),
+                  ),
                 ),
               )
             else
               RotatedBox(
                 quarterTurns: 3,
-                child: Text(
-                  '$_year',
-                  style: AppFonts.pixel(fontSize: 9, color: AppColors.subtitle),
+                child: SlideSwitcher(
+                  direction: _yearDirection,
+                  distance: 12,
+                  child: Text(
+                    '$_year',
+                    key: ValueKey(_year),
+                    style: AppFonts.pixel(fontSize: 9, color: AppColors.subtitle),
+                  ),
                 ),
               ),
             const SizedBox(height: 4),

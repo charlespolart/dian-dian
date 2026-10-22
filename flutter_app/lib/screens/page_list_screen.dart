@@ -22,6 +22,7 @@ import '../widgets/ad_banner.dart';
 import '../widgets/download_app_banner.dart';
 import '../widgets/global_stats_dialog.dart';
 import '../widgets/swipe_nav.dart';
+import '../widgets/slide_switcher.dart';
 import '../widgets/premium_gate_dialog.dart';
 import '../widgets/marquee_text.dart';
 import '../widgets/utf16_length_limit.dart';
@@ -49,6 +50,8 @@ class PageListScreen extends StatefulWidget {
 
 class _PageListScreenState extends State<PageListScreen> {
   late int _selectedYear;
+  // Sign of the last year change: the cards and the label slide that way.
+  int _yearDirection = 0;
   int? _draggingIndex;
   // The "which trackers stay open" question, asked once per session when a
   // free account is over the limit without a stored choice.
@@ -68,7 +71,10 @@ class _PageListScreenState extends State<PageListScreen> {
   }
 
   void _changeYear(int delta) {
-    setState(() => _selectedYear += delta);
+    setState(() {
+      _yearDirection = delta.sign;
+      _selectedYear += delta;
+    });
     widget.onYearChanged(_selectedYear);
     // Instant when the year is cached; one bootstrap request otherwise.
     context.read<SyncService>().ensureYear(_selectedYear);
@@ -213,11 +219,16 @@ class _PageListScreenState extends State<PageListScreen> {
                         arrowColor: AppColors.accent,
                         onPrev: () => _changeYear(-1),
                         onNext: () => _changeYear(1),
-                        center: Text(
-                          '$_selectedYear',
-                          style: AppFonts.pixel(
-                            fontSize: 20,
-                            color: AppColors.title,
+                        center: SlideSwitcher(
+                          direction: _yearDirection,
+                          distance: 12,
+                          child: Text(
+                            '$_selectedYear',
+                            key: ValueKey(_selectedYear),
+                            style: AppFonts.pixel(
+                              fontSize: 20,
+                              color: AppColors.title,
+                            ),
                           ),
                         ),
                       ),
@@ -317,7 +328,12 @@ class _PageListScreenState extends State<PageListScreen> {
                               final maxExtent = constraints.maxWidth < 600
                                   ? 180.0
                                   : 200.0;
-                              return GridView.builder(
+                              return SlideSwitcher(
+                                direction: _yearDirection,
+                                expand: true,
+                                child: KeyedSubtree(
+                                  key: ValueKey(_selectedYear),
+                                  child: GridView.builder(
                                 padding: EdgeInsets.only(
                                   left: 8,
                                   right: 8,
@@ -447,6 +463,8 @@ class _PageListScreenState extends State<PageListScreen> {
                                     ),
                                   );
                                 },
+                                  ),
+                                ),
                               );
                             },
                           );
