@@ -668,8 +668,6 @@ class _PageListScreenState extends State<PageListScreen> {
 }
 
 /// A card displaying a page with a full grid preview, legend dots, and title.
-/// [PageCard.frozen] is the static copy the card → tracker morph stretches:
-/// no handle, no cross, no tap.
 class PageCard extends StatelessWidget {
   final PageModel page;
   final int year;
@@ -680,7 +678,6 @@ class PageCard extends StatelessWidget {
   final bool isDragGhost;
   final bool isLocked;
   final Widget? dragHandle;
-  final bool frozen;
   /// When set, the title, the legend dots, the preview frame and the preview
   /// grid register themselves for the card → tracker morph.
   final MorphAnchors? anchors;
@@ -697,23 +694,7 @@ class PageCard extends StatelessWidget {
     this.isLocked = false,
     this.dragHandle,
     this.anchors,
-  }) : frozen = false;
-
-  const PageCard.frozen({
-    super.key,
-    required this.page,
-    required this.year,
-    required this.cells,
-    required this.legends,
-    required this.isLocked,
-  })  : onTap = null,
-        onDelete = _noop,
-        isDragGhost = false,
-        dragHandle = null,
-        anchors = null,
-        frozen = true;
-
-  static void _noop() {}
+  });
 
   Widget _anchor(String key, Widget child) {
     final anchors = this.anchors;
@@ -726,7 +707,7 @@ class PageCard extends StatelessWidget {
     return Opacity(
       opacity: cardOpacity,
       child: GestureDetector(
-        onTap: isDragGhost || frozen ? null : onTap,
+        onTap: isDragGhost ? null : onTap,
         child: Container(
           decoration: BoxDecoration(
             color: AppColors.shell,
@@ -836,7 +817,7 @@ class PageCard extends StatelessWidget {
                   ),
                 ),
               // Delete button top-right
-              if (!isDragGhost && !frozen)
+              if (!isDragGhost)
                 Positioned(
                   top: 0,
                   right: 0,

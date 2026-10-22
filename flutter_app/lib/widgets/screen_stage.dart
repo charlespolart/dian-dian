@@ -1,10 +1,9 @@
-import 'dart:ui' show lerpDouble;
-
 import 'package:flutter/material.dart';
 
-import '../theme/app_theme.dart';
 import '../theme/motion.dart';
+import 'grid_geometry.dart';
 import 'morph_anchors.dart';
+import 'morph_layer.dart';
 
 enum StageTransition {
   /// Cross-fade over [AppMotion.base].
@@ -19,14 +18,19 @@ enum StageTransition {
   morphClose,
 }
 
+typedef _CardSide = ({Rect card, Rect screen, Rect grid, Rect? title, Rect? legends});
+typedef _TrackerSide = ({Rect shell, Rect screen, Rect grid, TrackerGridGeometry geometry, Rect? title});
+
 /// The app's screen switcher: the previous screen leaves while the new one
-/// arrives, the way [transition] says. For the two morphs a [MorphShell]
-/// animates between the card's rect and the tracker shell's rect, both
-/// measured through [anchors]: the one still on screen at once, the other
-/// after one frame where the incoming screen is laid out invisible, while
-/// the animation is already running. A navigation during a transition ends it at once and
-/// the next one plays as a fade. A size change (rotation, keyboard) ends it
-/// too. Under reduced motion the screens are simply swapped.
+/// arrives, the way [transition] says. The two morphs are a shared element:
+/// a [MorphLayer] draws the card's frame, inner screen, dots and title at a
+/// geometry interpolated towards the tracker's, measured through [anchors]
+/// (the screen still on stage at once, the other after one frame where it
+/// is laid out invisible, while the animation already runs). The real
+/// tracker only appears once the dots have landed. A navigation during a
+/// transition ends it at once and the next one plays as a fade. A size
+/// change (rotation, keyboard) ends it too. Under reduced motion the screens
+/// are simply swapped.
 class ScreenStage extends StatefulWidget {
   /// The current screen; its key tells one screen from the next.
   final Widget child;
@@ -34,12 +38,10 @@ class ScreenStage extends StatefulWidget {
   final MorphAnchors anchors;
   /// The card to morph from (open) or to (close).
   final String? morphPageId;
-  /// A static copy of that card, stretched inside the shell.
-  final WidgetBuilder? morphCard;
+  /// What the morph draws: the tracker's title, cells and legend colours.
+  final MorphContent? morphContent;
   final VoidCallback? onSettled;
 
-  /// Where the shell comes from or goes to when no card rect is known.
-  static const Size fallbackSize = Size(120, 260);
   static const double slideFraction = 0.08;
 
   const ScreenStage({
@@ -48,7 +50,7 @@ class ScreenStage extends StatefulWidget {
     required this.transition,
     required this.anchors,
     this.morphPageId,
-    this.morphCard,
+    this.morphContent,
     this.onSettled,
   });
 
@@ -62,10 +64,11 @@ class _ScreenStageState extends State<ScreenStage> with SingleTickerProviderStat
   Widget? _outgoing;
   StageTransition _running = StageTransition.fade;
   /// The frame where the incoming screen is laid out at opacity 0 so its
-  /// anchor can be measured.
+  /// anchors can be measured.
   bool _measuring = false;
-  Rect? _cardRect;
-  Rect? _shellRect;
+  _CardSide? _cardSide;
+  _TrackerSide? _trackerSide;
+  MorphEnds? _ends;
   Size? _lastSize;
 
   bool get _animating => _outgoing != null;
@@ -88,25 +91,54 @@ class _ScreenStageState extends State<ScreenStage> with SingleTickerProviderStat
   void _start(Widget outgoing, StageTransition transition) {
     _outgoing = outgoing;
     _running = transition;
-    _cardRect = null;
-    _shellRect = null;
+    _cardSide = null;
+    _trackerSide = null;
+    _ends = null;
     _controller.duration = _isMorph ? AppMotion.screen * AppMotion.debugMorphSlowdown : AppMotion.base;
     if (_isMorph) {
-      // The rect of the screen that is still laid out is read now; the other
-      // one after a frame where the incoming screen is laid out invisible.
-      // The animation starts at once, so the tap gets its answer on the very
-      // next frame instead of after that (heavy) measure frame.
       final pageId = widget.morphPageId;
-      if (transition == StageTransition.morphOpen && pageId != null) {
-        _cardRect = widget.anchors.rect(MorphAnchors.card(pageId), ancestor: _box);
+      if (pageId == null || widget.morphContent == null) {
+        _running = StageTransition.fade;
+        _controller.duration = AppMotion.base;
+      } else {
+        // The side still laid out is read now, the other after the measure
+        // frame; the animation starts at once so the tap gets its answer on
+        // the very next frame instead of after that (heavy) frame.
+        if (transition == StageTransition.morphOpen) {
+          _cardSide = _readCard(pageId);
+        } else {
+          _trackerSide = _readTracker();
+        }
+        _measuring = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) => _afterMeasure());
       }
-      if (transition == StageTransition.morphClose) {
-        _shellRect = widget.anchors.rect(MorphAnchors.shell, ancestor: _box);
-      }
-      _measuring = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) => _afterMeasure());
     }
     _controller.forward(from: 0);
+  }
+
+  _CardSide? _readCard(String pageId) {
+    final a = widget.anchors;
+    final card = a.rect(MorphAnchors.card(pageId), ancestor: _box);
+    final screen = a.rect(MorphAnchors.cardScreen(pageId), ancestor: _box);
+    final grid = a.rect(MorphAnchors.cardGrid(pageId), ancestor: _box);
+    if (card == null || screen == null || grid == null) return null;
+    return (
+      card: card,
+      screen: screen,
+      grid: grid,
+      title: a.rect(MorphAnchors.cardTitle(pageId), ancestor: _box),
+      legends: a.rect(MorphAnchors.cardLegends(pageId), ancestor: _box),
+    );
+  }
+
+  _TrackerSide? _readTracker() {
+    final a = widget.anchors;
+    final shell = a.rect(MorphAnchors.shell, ancestor: _box);
+    final screen = a.rect(MorphAnchors.screen, ancestor: _box);
+    final grid = a.rect(MorphAnchors.grid, ancestor: _box);
+    final geometry = a.gridGeometry;
+    if (shell == null || screen == null || grid == null || geometry == null) return null;
+    return (shell: shell, screen: screen, grid: grid, geometry: geometry, title: a.rect(MorphAnchors.barTitle, ancestor: _box));
   }
 
   void _afterMeasure() {
@@ -114,15 +146,29 @@ class _ScreenStageState extends State<ScreenStage> with SingleTickerProviderStat
     _measuring = false;
     final pageId = widget.morphPageId;
     if (_running == StageTransition.morphOpen) {
-      _shellRect = widget.anchors.rect(MorphAnchors.shell, ancestor: _box);
+      _trackerSide = _readTracker();
+    } else if (pageId != null) {
+      _cardSide = _readCard(pageId);
     }
-    if (_running == StageTransition.morphClose && pageId != null) {
-      _cardRect = widget.anchors.rect(MorphAnchors.card(pageId), ancestor: _box);
-    }
-    if (_shellRect == null) {
-      // Nothing to morph (the tracker left at its first build): the running
-      // animation carries on as a fade.
+    final c = _cardSide;
+    final tr = _trackerSide;
+    if (c == null || tr == null) {
+      // An end is missing (the tracker left at its first build, the card is
+      // off screen or gone): the running animation carries on as a fade.
       _running = StageTransition.fade;
+    } else {
+      _ends = MorphEnds(
+        card: c.card,
+        cardScreen: c.screen,
+        cardGrid: c.grid,
+        cardTitle: c.title,
+        cardLegends: c.legends,
+        shell: tr.shell,
+        screen: tr.screen,
+        grid: tr.grid,
+        gridGeometry: tr.geometry,
+        barTitle: tr.title,
+      );
     }
     setState(() {});
   }
@@ -135,8 +181,9 @@ class _ScreenStageState extends State<ScreenStage> with SingleTickerProviderStat
     _controller.stop();
     _outgoing = null;
     _measuring = false;
-    _cardRect = null;
-    _shellRect = null;
+    _cardSide = null;
+    _trackerSide = null;
+    _ends = null;
     if (mounted) setState(() {});
     if (notify) widget.onSettled?.call();
   }
@@ -185,9 +232,9 @@ class _ScreenStageState extends State<ScreenStage> with SingleTickerProviderStat
     );
   }
 
-  static double _window(double e, double from, double to) => ((e - from) / (to - from)).clamp(0.0, 1.0);
+  static double _window(double t, double from, double to) => ((t - from) / (to - from)).clamp(0.0, 1.0);
 
-  static const _shellKey = ValueKey('morph-shell');
+  static const _morphKey = ValueKey('morph-layer');
 
   List<Widget> _layers(Size size) {
     final incoming = widget.child;
@@ -196,6 +243,8 @@ class _ScreenStageState extends State<ScreenStage> with SingleTickerProviderStat
     final t = _controller.value;
     // During the measure frame the incoming screen is laid out but unseen.
     final measuring = _measuring;
+    final ends = _ends;
+    final content = widget.morphContent;
     switch (_running) {
       case StageTransition.fade:
         final e = AppMotion.enter.transform(t);
@@ -210,107 +259,42 @@ class _ScreenStageState extends State<ScreenStage> with SingleTickerProviderStat
           _layer(incoming, opacity: measuring ? 0 : e, offset: Offset(sign * shift * (1 - e), 0), ignoring: measuring),
         ];
       case StageTransition.morphOpen:
-        final e = AppMotion.enter.transform(t);
-        final fallback = _cardRect == null;
-        final card = _cardRect ?? _centered(size);
-        // Until the tracker shell is measured, the shell stays on the card.
-        final target = _shellRect ?? card;
+        if (measuring || ends == null || content == null) {
+          return [_layer(outgoing), _layer(incoming, opacity: 0, ignoring: true)];
+        }
+        // The list fades under the growing frame; the real tracker takes
+        // over from the layer once the dots have landed.
         return [
-          _layer(outgoing, opacity: 1 - _window(e, 0, 0.6)),
-          MorphShell(
-            key: _shellKey,
-            rect: Rect.lerp(card, target, e)!,
-            radius: lerpDouble(10, 14, e)!,
-            opacity: fallback ? _window(e, 0, 0.4) : 1,
-            cardSize: card.size,
-            cardOpacity: 1 - _window(e, 0, 0.4),
-            card: widget.morphCard,
+          _layer(outgoing, opacity: 1 - _window(t, 0, 0.5)),
+          Opacity(
+            key: _morphKey,
+            opacity: 1 - _window(t, 0.85, 1),
+            child: MorphLayer(
+              ends: ends,
+              content: content,
+              g: AppMotion.morph.transform(t),
+              legendsOpacity: 1 - _window(t, 0, 0.25),
+            ),
           ),
-          _layer(incoming, opacity: measuring ? 0 : _window(e, 0.4, 1), ignoring: measuring),
+          _layer(incoming, opacity: _window(t, 0.85, 1)),
         ];
       case StageTransition.morphClose:
-        final e = AppMotion.exit.transform(t);
-        final shell = _shellRect;
-        // Until the card is measured, the shell stays on the tracker shell;
-        // with no card at all it shrinks towards the centre and fades.
-        final fallback = !measuring && _cardRect == null;
-        final card = _cardRect ?? (measuring ? shell : _centered(size));
+        if (measuring || ends == null || content == null) {
+          return [_layer(incoming, opacity: 0, ignoring: true), _layer(outgoing)];
+        }
+        // The layer, identical to the tracker, takes over at once; the list
+        // comes back under the shrinking frame.
         return [
-          _layer(incoming, opacity: measuring ? 0 : _window(e, 0.4, 1), ignoring: measuring),
-          if (shell != null && card != null)
-            MorphShell(
-              key: _shellKey,
-              rect: Rect.lerp(shell, card, e)!,
-              radius: lerpDouble(14, 10, e)!,
-              opacity: fallback ? 1 - _window(e, 0.6, 1) : 1,
-              cardSize: card.size,
-              cardOpacity: fallback ? 0 : _window(e, 0.6, 1),
-              card: widget.morphCard,
-            ),
-          _layer(outgoing, opacity: 1 - _window(e, 0, 0.4)),
+          _layer(incoming, opacity: _window(t, 0.5, 1)),
+          MorphLayer(
+            key: _morphKey,
+            ends: ends,
+            content: content,
+            g: 1 - AppMotion.morph.transform(t),
+            legendsOpacity: _window(t, 0.75, 1),
+          ),
+          _layer(outgoing, opacity: 1 - _window(t, 0, 0.15)),
         ];
     }
-  }
-
-  static Rect _centered(Size size) => Rect.fromCenter(
-        center: size.center(Offset.zero),
-        width: ScreenStage.fallbackSize.width,
-        height: ScreenStage.fallbackSize.height,
-      );
-}
-
-/// The shell that grows from the card to the tracker (and back): the shell
-/// colour and border, the radius in between, and inside it the card's copy
-/// stretched to the shell's width.
-class MorphShell extends StatelessWidget {
-  final Rect rect;
-  final double radius;
-  final double opacity;
-  final Size cardSize;
-  final double cardOpacity;
-  final WidgetBuilder? card;
-
-  const MorphShell({
-    super.key,
-    required this.rect,
-    required this.radius,
-    required this.opacity,
-    required this.cardSize,
-    required this.cardOpacity,
-    required this.card,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final card = this.card;
-    return Positioned.fromRect(
-      rect: rect,
-      child: Opacity(
-        opacity: opacity,
-        child: Container(
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            color: AppColors.shell,
-            borderRadius: BorderRadius.circular(radius),
-            border: Border.all(color: AppColors.shellBorder),
-          ),
-          child: card == null || cardOpacity == 0
-              ? null
-              : Opacity(
-                  opacity: cardOpacity,
-                  child: FittedBox(
-                    fit: BoxFit.fitWidth,
-                    alignment: Alignment.topCenter,
-                    clipBehavior: Clip.hardEdge,
-                    child: SizedBox(
-                      width: cardSize.width,
-                      height: cardSize.height,
-                      child: Builder(builder: card),
-                    ),
-                  ),
-                ),
-        ),
-      ),
-    );
   }
 }

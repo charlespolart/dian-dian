@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:dian_dian/theme/motion.dart';
+import 'package:dian_dian/widgets/grid_geometry.dart';
 import 'package:dian_dian/widgets/morph_anchors.dart';
+import 'package:dian_dian/widgets/morph_layer.dart';
 import 'package:dian_dian/widgets/screen_stage.dart';
 
 /// How many times each screen's State was created: a screen must keep its
@@ -28,8 +30,12 @@ class _CountingState extends State<_Counting> {
   Widget build(BuildContext context) => widget.child;
 }
 
-/// Two fake screens: 'list' holds a card anchored as page 'p', 'tracker'
-/// holds a shell; anything else is plain text.
+const _geometry = TrackerGridGeometry(labelColWidth: 20, cellSize: 10, rowHeight: 10, dotSize: 7.8);
+const _content = MorphContent(title: 'T', cells: null, year: 2026, legendColors: []);
+
+/// Two fake screens with every anchor the morph needs: 'list' holds the
+/// card of page 'p' (frame, preview frame, preview grid), 'tracker' holds a
+/// shell, a screen and a grid with its geometry; 'bare' has no anchor.
 class _Host extends StatefulWidget {
   final MorphAnchors anchors;
   final bool reduced;
@@ -48,23 +54,61 @@ class _HostState extends State<_Host> {
         transition = t;
       });
 
-  Widget _screen(String name) => _Counting(
-        name,
-        key: ValueKey(name),
-        child: switch (name) {
-          'list' => Stack(children: [
-              Positioned(
-                left: 20,
-                top: 40,
-                child: MorphAnchor(anchors: widget.anchors, anchorKey: MorphAnchors.card('p'), child: const SizedBox(width: 60, height: 120, child: Text('list'))),
+  Widget _screen(String name) {
+    final a = widget.anchors;
+    return _Counting(
+      name,
+      key: ValueKey(name),
+      child: switch (name) {
+        'list' => Stack(children: [
+            Positioned(
+              left: 20,
+              top: 40,
+              child: MorphAnchor(
+                anchors: a,
+                anchorKey: MorphAnchors.card('p'),
+                child: SizedBox(
+                  width: 60,
+                  height: 120,
+                  child: Padding(
+                    padding: const EdgeInsets.all(10),
+                    child: MorphAnchor(
+                      anchors: a,
+                      anchorKey: MorphAnchors.cardScreen('p'),
+                      child: Padding(
+                        padding: const EdgeInsets.all(1),
+                        child: MorphAnchor(anchors: a, anchorKey: MorphAnchors.cardGrid('p'), child: const SizedBox.expand(child: Text('list'))),
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            ]),
-          'tracker' => Center(
-              child: MorphAnchor(anchors: widget.anchors, anchorKey: MorphAnchors.shell, child: const SizedBox(width: 200, height: 400, child: Text('tracker'))),
             ),
-          _ => Center(child: Text(name)),
-        },
-      );
+          ]),
+        'tracker' => Center(
+            child: MorphAnchor(
+              anchors: a,
+              anchorKey: MorphAnchors.shell,
+              child: SizedBox(
+                width: 200,
+                height: 400,
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: MorphAnchor(
+                    anchors: a,
+                    anchorKey: MorphAnchors.screen,
+                    child: Center(
+                      child: MorphAnchor.grid(anchors: a, geometry: _geometry, child: const SizedBox(width: 140, height: 320, child: Text('tracker'))),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        _ => Center(child: Text(name)),
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) => MediaQuery(
@@ -74,7 +118,7 @@ class _HostState extends State<_Host> {
             transition: transition,
             anchors: widget.anchors,
             morphPageId: 'p',
-            morphCard: (_) => const Text('copy'),
+            morphContent: _content,
             onSettled: () => settled++,
             child: _screen(screen),
           ),
@@ -84,6 +128,8 @@ class _HostState extends State<_Host> {
 
 void main() {
   _HostState state(WidgetTester tester) => tester.state<_HostState>(find.byType(_Host));
+  double morphG(WidgetTester tester) => tester.widget<MorphLayer>(find.byType(MorphLayer)).g;
+
   setUp(() {
     inits.clear();
     AppMotion.debugMorphSlowdown = 1; // the inspection knob never shapes a test
@@ -123,59 +169,55 @@ void main() {
     expect(state(tester).settled, 1);
   });
 
-  testWidgets('morphOpen: a shell between the card and the tracker shell, gone at the end', (tester) async {
+  testWidgets('morphOpen: the layer goes from the card (g = 0) to the tracker (g = 1), then leaves', (tester) async {
     await tester.pumpWidget(_Host(anchors: MorphAnchors()));
     state(tester).go('tracker', StageTransition.morphOpen);
     await tester.pump(); // measure frame: tracker laid out invisible
-    await tester.pump(); // animation starts
-    await tester.pump(AppMotion.screen ~/ 8);
-    // Early on, the card's copy is still visible inside the shell.
-    expect(find.byType(MorphShell), findsOneWidget);
-    expect(find.text('copy'), findsOneWidget);
-    await tester.pump(AppMotion.screen ~/ 4);
-    final shell = tester.getRect(find.byType(MorphShell));
-    expect(shell.width, greaterThan(60));
-    expect(shell.width, lessThan(200));
+    expect(find.byType(MorphLayer), findsNothing);
+    await tester.pump(); // ends known, the layer is drawn
+    expect(morphG(tester), closeTo(0, 0.01));
+    await tester.pump(AppMotion.screen ~/ 2);
+    expect(morphG(tester), closeTo(0.5, 0.05)); // the test binding's frame bookkeeping shifts t by a few ms
     await tester.pumpAndSettle();
-    expect(find.byType(MorphShell), findsNothing);
+    expect(find.byType(MorphLayer), findsNothing);
     expect(find.text('list'), findsNothing);
     expect(find.text('tracker'), findsOneWidget);
   });
 
-  testWidgets('the morph answers the tap on its very next frame: the shell has moved after two frames', (tester) async {
+  testWidgets('the morph answers the tap on its very next frame: g has moved after two frames', (tester) async {
     await tester.pumpWidget(_Host(anchors: MorphAnchors()));
     state(tester).go('tracker', StageTransition.morphOpen);
     await tester.pump(AppMotion.screen ~/ 4); // the measure frame is already the first animation frame
     await tester.pump(AppMotion.screen ~/ 4);
-    expect(find.byType(MorphShell), findsOneWidget);
-    expect(tester.getRect(find.byType(MorphShell)).width, greaterThan(60));
+    expect(morphG(tester), greaterThan(0.05));
     await tester.pumpAndSettle();
-    expect(find.byType(MorphShell), findsNothing);
+    expect(find.byType(MorphLayer), findsNothing);
     expect(find.text('tracker'), findsOneWidget);
   });
 
-  testWidgets('morphClose ends on the list with no shell left', (tester) async {
+  testWidgets('morphClose: the layer goes from the tracker (g = 1) back to the card, then the list is alone', (tester) async {
     await tester.pumpWidget(_Host(anchors: MorphAnchors()));
     state(tester).go('tracker', StageTransition.morphOpen);
     await tester.pumpAndSettle();
     state(tester).go('list', StageTransition.morphClose);
     await tester.pump();
     await tester.pump();
+    expect(morphG(tester), closeTo(1, 0.01));
     await tester.pump(AppMotion.screen ~/ 2);
-    expect(find.byType(MorphShell), findsOneWidget);
+    expect(morphG(tester), closeTo(0.5, 0.05)); // the test binding's frame bookkeeping shifts t by a few ms
     await tester.pumpAndSettle();
-    expect(find.byType(MorphShell), findsNothing);
+    expect(find.byType(MorphLayer), findsNothing);
     expect(find.text('tracker'), findsNothing);
     expect(find.text('list'), findsOneWidget);
   });
 
-  testWidgets('morphOpen without a shell to measure falls back to a fade', (tester) async {
+  testWidgets('morphOpen towards a screen without anchors falls back to a fade', (tester) async {
     await tester.pumpWidget(_Host(anchors: MorphAnchors()));
     state(tester).go('bare', StageTransition.morphOpen);
     await tester.pump();
     await tester.pump();
     await tester.pump(AppMotion.base ~/ 2);
-    expect(find.byType(MorphShell), findsNothing);
+    expect(find.byType(MorphLayer), findsNothing);
     expect(find.text('bare'), findsOneWidget);
     await tester.pumpAndSettle();
     expect(find.text('list'), findsNothing);
@@ -190,7 +232,7 @@ void main() {
     state(tester).go('bare', StageTransition.slideIn);
     await tester.pump();
     await tester.pumpAndSettle();
-    expect(find.byType(MorphShell), findsNothing);
+    expect(find.byType(MorphLayer), findsNothing);
     expect(find.text('bare'), findsOneWidget);
     expect(find.text('tracker'), findsNothing);
     expect(find.text('list'), findsNothing);
@@ -218,6 +260,6 @@ void main() {
     await tester.pump();
     expect(find.text('list'), findsNothing);
     expect(find.text('tracker'), findsOneWidget);
-    expect(find.byType(MorphShell), findsNothing);
+    expect(find.byType(MorphLayer), findsNothing);
   });
 }

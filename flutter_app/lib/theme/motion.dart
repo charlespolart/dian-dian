@@ -27,6 +27,8 @@ class AppMotion {
   static double debugMorphSlowdown = kDebugMode ? 8 : 1;
 
   static const Curve enter = Curves.easeOutCubic;
+  /// The shared-element morph: symmetrical, reads as a transformation.
+  static const Curve morph = Curves.easeInOutCubic;
   static const Curve exit = Curves.easeInCubic;
 
   static bool reduced(BuildContext context) => MediaQuery.disableAnimationsOf(context);

@@ -29,6 +29,7 @@ import 'widgets/custom_cursor.dart';
 import 'widgets/back_swipe.dart';
 import 'widgets/dotted_background.dart';
 import 'widgets/morph_anchors.dart';
+import 'widgets/morph_layer.dart';
 import 'widgets/screen_stage.dart';
 import 'widgets/whats_new_dialog.dart';
 import 'package:flutter/services.dart';
@@ -475,7 +476,7 @@ class _AppShellState extends State<AppShell> {
                   transition: _transition,
                   anchors: _anchors,
                   morphPageId: _morphPageId,
-                  morphCard: _morphPageId == null ? null : (ctx) => _buildCardCopy(ctx, _morphPageId!),
+                  morphContent: _morphPageId == null ? null : _morphContentFor(context, _morphPageId!),
                   child: _buildAppScreen(),
                 ),
                 // Global undo delete bar
@@ -505,18 +506,19 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
-  /// The static card the morph shell stretches: the page as the list shows
-  /// it, from the providers (nothing if it vanished meanwhile).
-  Widget _buildCardCopy(BuildContext ctx, String pageId) {
-    final pages = ctx.read<PagesProvider>().pages;
-    final page = pages.where((p) => p.id == pageId).firstOrNull;
-    if (page == null) return const SizedBox.shrink();
-    return PageCard.frozen(
-      page: page,
-      year: _selectedYear,
+  /// What the morph draws for [pageId]: its title, its cells of the year
+  /// shown and its legend colours (null if the page vanished meanwhile).
+  MorphContent? _morphContentFor(BuildContext ctx, String pageId) {
+    final page = ctx.read<PagesProvider>().pages.where((p) => p.id == pageId).firstOrNull;
+    if (page == null) return null;
+    return MorphContent(
+      title: page.title,
       cells: ctx.read<CellsProvider>().cellsFor(pageId, _selectedYear),
-      legends: ctx.read<LegendsProvider>().legendsFor(pageId),
-      isLocked: ctx.read<PremiumProvider>().lockedTrackerIds(pages).contains(pageId),
+      year: _selectedYear,
+      legendColors: [
+        for (final l in ctx.read<LegendsProvider>().legendsFor(pageId))
+          Color(int.parse('FF${l.color.replaceFirst('#', '')}', radix: 16)),
+      ],
     );
   }
 
