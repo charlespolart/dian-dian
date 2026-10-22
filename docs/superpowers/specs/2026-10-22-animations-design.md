@@ -45,6 +45,8 @@ class AppMotion {
   static const base   = Duration(milliseconds: 300);  // entrée de pop-up, année, cascade
   static const pop    = Duration(milliseconds: 360);  // point qui se remplit
   static const screen = Duration(milliseconds: 420);  // ouverture / fermeture du tracker
+  static const stagger = Duration(milliseconds: 60); // entre deux groupes qui entrent à la suite (réveil du tracker)
+  static const morphHandover = 0.85;                 // où le tracker réel prend le relais du calque
 
   static const enter = Curves.easeOutCubic;  // ce qui arrive décélère
   static const exit  = Curves.easeInCubic;   // ce qui part accélère
@@ -160,13 +162,39 @@ dessin est identique à la carte, à `t = 1` identique au tracker.
 **Ouverture.** La liste (écran sortant) s'estompe sur `t ∈ [0 ; 0,5]` sous
 le cadre. Les points de légende de la carte s'effacent sur `t ∈ [0 ; 0,25]`.
 Le tracker réel, construit invisible dès la frame de mesure, apparaît sur
-`t ∈ [0,85 ; 1]` pendant que le `MorphLayer` s'efface sur la même fenêtre :
-à ce moment la géométrie est à plus de 98 % de l'arrivée, le fondu croisé
-superpose deux images quasi identiques et fait apparaître ce que seul le
-tracker possède (lettres des mois, numéros des jours, barre latérale, barre
-du haut, bordures en pointillés).
+`t ∈ [morphHandover ; 1]` pendant que le `MorphLayer` s'efface sur la même
+fenêtre : à ce moment la géométrie est à plus de 98 % de l'arrivée, le fondu
+croisé superpose deux images quasi identiques. Ce que seul le tracker
+possède n'arrive pas avec lui : voir le réveil ci-dessous.
 
-**Fermeture.** Miroir : le tracker réel s'efface sur `t ∈ [0 ; 0,15]`
+**Réveil (révision du 2026-10-23).** Les éléments que le calque ne dessine
+pas partaient tous d'un bloc sur les 15 % finaux, soit 63 ms : trop sec.
+Ils partent invisibles et entrent en fondu pur (ni montée ni zoom : les
+points viennent d'atterrir, tout mouvement à côté ferait bouger l'œil), en
+trois groupes, chacun une entrée (`base`, courbe `enter`) décalée de
+`stagger` par rapport au précédent, le premier démarrant à la prise de
+relais (`screen × morphHandover` après le tap) :
+
+| Groupe | Contenu | Départ |
+|---|---|---|
+| grille | lettres des mois, numéros des jours, anneau du jour, bordure pointillée de l'écran, séparateur vertical | relais |
+| barre latérale | légendes, stats, navigation d'année | relais + `stagger` |
+| barre | retour, crayon, stats, partage (paysage : tout le panneau de gauche) | relais + 2 × `stagger` |
+
+Une seule horloge, dans `TrackerScreen`, armée à la première frame si le
+shell dit qu'on arrive par le morphing (`TrackerEntrance.morph`, posé par
+`trackerEntranceFor(transition)`) et que le système ne réduit pas les
+animations ; sinon tout est visible d'emblée. Les trois groupes en lisent des
+tranches (`Interval`). L'horloge appartient à l'écran : un changement
+d'année (nouvelle grille) ne rejoue rien. La grille porte ses lettres,
+numéros et anneau du jour dans un calque à part au-dessus des points, à la
+même géométrie, jamais cible d'un tap, pour que le fondu soit une seule
+couche ; les points ont leur propre limite de repaint. Le tracker est
+tactile pendant le réveil. Le repli en fondu (ancre manquante) garde le
+délai : les éléments annexes arrivent un peu après le reste, cas rare
+accepté.
+
+**Fermeture.** Miroir : le tracker réel s'efface sur `t ∈ [0 ; 1 − morphHandover]`
 pendant que le `MorphLayer`, identique à lui, prend le relais ; la liste
 apparaît dessous sur `t ∈ [0,5 ; 1]` ; les points de légende de la carte
 reviennent sur `t ∈ [0,75 ; 1]` ; à `t = 1` le calque est retiré, la carte
