@@ -28,6 +28,7 @@ class CellEditorDialog extends StatefulWidget {
     required int month,
     required int day,
     required int year,
+    Offset? origin,
   }) {
     final legends = context.read<LegendsProvider>().legends;
     if (legends.isEmpty) {
@@ -35,6 +36,7 @@ class CellEditorDialog extends StatefulWidget {
       final pageId = context.read<CellsProvider>().currentPageId;
       return showAppDialog(
         context: context,
+        origin: origin,
         builder: (ctx) => AppDialog(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -75,6 +77,7 @@ class CellEditorDialog extends StatefulWidget {
     }
     return showAppDialog(
       context: context,
+      origin: origin,
       builder: (_) => CellEditorDialog(month: month, day: day, year: year),
     );
   }

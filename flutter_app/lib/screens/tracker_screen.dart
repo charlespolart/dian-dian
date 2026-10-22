@@ -338,11 +338,11 @@ class _TrackerScreenState extends State<TrackerScreen> {
           child: TrackerGrid(
             year: _year,
             getCellColor: (month, day) => cellsProv.getCellColor(month, day),
-            onCellPress: (month, day) {
+            onCellPress: (month, day, at) {
               final existingCell = cellsProv.getCell(month, day);
               if (existingCell != null) {
                 // Cell is filled → open dialog to view/edit comment
-                CellEditorDialog.show(context, month: month, day: day, year: _year);
+                CellEditorDialog.show(context, month: month, day: day, year: _year, origin: at);
               } else if (_selectedLegendId != null) {
                 // Legend selected as brush → fill directly
                 try {
@@ -354,7 +354,7 @@ class _TrackerScreenState extends State<TrackerScreen> {
                 }
               } else {
                 // No brush selected → open dialog
-                CellEditorDialog.show(context, month: month, day: day, year: _year);
+                CellEditorDialog.show(context, month: month, day: day, year: _year, origin: at);
               }
             },
           ),
@@ -820,9 +820,7 @@ class _TrackerScreenState extends State<TrackerScreen> {
                     Center(child: _MaybePulse(
                       pulse: legends.isEmpty,
                       child: PressScale(
-                        onTap: () {
-                          LegendEditorDialog.show(context, pageId: _page.id);
-                        },
+                        onTapAt: (at) => LegendEditorDialog.show(context, pageId: _page.id, origin: at),
                         child: DashedBorder(
                         color: AppColors.inputBorder,
                         borderRadius: 4,

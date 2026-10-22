@@ -18,9 +18,10 @@ class LegendEditorDialog extends StatefulWidget {
 
   const LegendEditorDialog({super.key, required this.pageId});
 
-  static Future<void> show(BuildContext context, {required String pageId}) {
+  static Future<void> show(BuildContext context, {required String pageId, Offset? origin}) {
     return showAppDialog(
       context: context,
+      origin: origin,
       builder: (_) => LegendEditorDialog(pageId: pageId),
     );
   }

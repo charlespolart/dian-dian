@@ -9,7 +9,9 @@ import '../theme/app_theme.dart';
 class TrackerGrid extends StatelessWidget {
   final int year;
   final String? Function(int month, int day) getCellColor;
-  final void Function(int month, int day) onCellPress;
+  /// Called with the global position of the tap, so the editor can be born
+  /// from the dot.
+  final void Function(int month, int day, Offset globalPosition) onCellPress;
 
   const TrackerGrid({
     super.key,
@@ -151,7 +153,7 @@ class TrackerGrid extends StatelessWidget {
                           width: cellSize,
                           child: Center(
                             child: GestureDetector(
-                              onTap: valid ? () => onCellPress(month, day) : null,
+                              onTapUp: valid ? (d) => onCellPress(month, day, d.globalPosition) : null,
                               child: valid
                                   ? Stack(
                                       alignment: Alignment.center,
