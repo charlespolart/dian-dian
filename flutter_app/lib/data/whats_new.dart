@@ -39,7 +39,7 @@ List<String>? whatsNewFor(String version, Language lang) => whatsNew[version]?[l
 /// Debug only (never in a release build): show the box at every launch,
 /// with the newest entry, whatever the running version says. Flip to false
 /// when done looking at it.
-const bool debugAlwaysShowWhatsNew = true;
+const bool debugAlwaysShowWhatsNew = false;
 
 /// The newest version that has an entry (what the debug flag shows).
 String whatsNewLatestVersion() {

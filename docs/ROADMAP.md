@@ -85,6 +85,13 @@ Remarques Play Console : bannière AdMob sous la navigation 3 boutons à
 vérifier, puis AGP 9 / Gradle 9.1 / Kotlin 2.3 + R8 dans une release
 dédiée testée sur appareil. Détail : `ANDROID_RELEASE_PLAN.md` §8.
 
+### 7. Esthétique : animations dans l'app (à cadrer)
+Décidé le 2026-10-22, pas encore brainstormé. Point de départ : un plan
+par écran (liste, tracker, dialogues, parcours d'accueil) avec des
+transitions courtes et une seule règle de timing ; la boîte « Nouveautés »
+(fondu échelonné des puces) sert de référence de ton : léger, jamais un
+spectacle. Chantier séparé, après la sortie de la 1.4.0.
+
 ## Fait récemment
 - 2026-10-14 : backend 1.1.0 en prod (bootstrap en une requête, store
   client, snapshot disque, fixes décembre / déconnexions / sync légendes),
