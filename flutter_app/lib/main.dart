@@ -257,15 +257,23 @@ class _AppShellState extends State<AppShell> {
 
   /// After an update, the "what's new" box once (bullets from
   /// `lib/data/whats_new.dart`). A fresh install, or a landing on the
-  /// first-tracker flow, only records the version.
+  /// first-tracker flow, only records the version; an account that already
+  /// has cells but no recorded version came from a version without the box.
   Future<void> _maybeShowWhatsNew({required bool recordOnly}) async {
     final prefs = await SharedPreferences.getInstance();
     final current = (await PackageInfo.fromPlatform()).version;
     final seen = prefs.getString(_whatsNewSeenKey);
     if (!mounted) return;
+    final sync = context.read<SyncService>();
+    final existingUser = sync.activated ?? sync.snapshotActivated ?? false;
     final bullets = whatsNewFor(current, context.read<LanguageProvider>().lang);
     final show = !recordOnly &&
-        shouldShowWhatsNew(seenVersion: seen, currentVersion: current, hasNotes: bullets != null);
+        shouldShowWhatsNew(
+          seenVersion: seen,
+          currentVersion: current,
+          hasNotes: bullets != null,
+          existingUser: existingUser,
+        );
     if (show) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) WhatsNewDialog.show(context, version: current, bullets: bullets!);

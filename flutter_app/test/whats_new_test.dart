@@ -9,17 +9,22 @@ import 'package:dian_dian/widgets/whats_new_dialog.dart';
 
 void main() {
   group('shouldShowWhatsNew', () {
-    test('never on a fresh install (nothing seen yet): the version is only recorded', () {
-      expect(shouldShowWhatsNew(seenVersion: null, currentVersion: '1.4.0', hasNotes: true), isFalse);
+    test('never on a fresh install (nothing seen, no cell yet): the version is only recorded', () {
+      expect(shouldShowWhatsNew(seenVersion: null, currentVersion: '1.4.0', hasNotes: true, existingUser: false), isFalse);
+    });
+
+    test('nothing seen yet but an account that already has cells: the app was updated from a version without the box', () {
+      expect(shouldShowWhatsNew(seenVersion: null, currentVersion: '1.4.0', hasNotes: true, existingUser: true), isTrue);
     });
 
     test('once after an update that has notes', () {
-      expect(shouldShowWhatsNew(seenVersion: '1.3.0', currentVersion: '1.4.0', hasNotes: true), isTrue);
-      expect(shouldShowWhatsNew(seenVersion: '1.4.0', currentVersion: '1.4.0', hasNotes: true), isFalse);
+      expect(shouldShowWhatsNew(seenVersion: '1.3.0', currentVersion: '1.4.0', hasNotes: true, existingUser: true), isTrue);
+      expect(shouldShowWhatsNew(seenVersion: '1.4.0', currentVersion: '1.4.0', hasNotes: true, existingUser: true), isFalse);
     });
 
     test('not for a version without notes (a quiet patch)', () {
-      expect(shouldShowWhatsNew(seenVersion: '1.4.0', currentVersion: '1.4.1', hasNotes: false), isFalse);
+      expect(shouldShowWhatsNew(seenVersion: '1.4.0', currentVersion: '1.4.1', hasNotes: false, existingUser: true), isFalse);
+      expect(shouldShowWhatsNew(seenVersion: null, currentVersion: '1.4.1', hasNotes: false, existingUser: true), isFalse);
     });
   });
 

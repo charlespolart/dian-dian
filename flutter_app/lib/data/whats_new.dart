@@ -39,12 +39,18 @@ const whatsNew = <String, Map<Language, List<String>>>{
 
 List<String>? whatsNewFor(String version, Language lang) => whatsNew[version]?[lang];
 
-/// Show the box once after an update: never on a fresh install (nothing
-/// seen yet, the first-tracker flow has the stage), never twice for the
-/// same version, never for a version without notes.
+/// Show the box once after an update: never twice for the same version,
+/// never for a version without notes. With nothing recorded yet, a fresh
+/// install shows nothing (the first-tracker flow has the stage) while an
+/// account that already has cells is an update from a version without the
+/// box (≤ 1.3.0) and sees it.
 bool shouldShowWhatsNew({
   required String? seenVersion,
   required String currentVersion,
   required bool hasNotes,
-}) =>
-    seenVersion != null && seenVersion != currentVersion && hasNotes;
+  required bool existingUser,
+}) {
+  if (!hasNotes) return false;
+  if (seenVersion == null) return existingUser;
+  return seenVersion != currentVersion;
+}
