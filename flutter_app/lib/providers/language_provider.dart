@@ -373,6 +373,7 @@ class LanguageProvider extends ChangeNotifier {
       'keep.never': 'jamais rempli',
       'keep.confirm': 'Garder ces {n}',
       'keep.change': 'Choisir les trackers gratuits',
+      'whatsNew.title': 'Nouveautés {v}',
     },
     Language.en: {
       // Auth
@@ -605,6 +606,7 @@ class LanguageProvider extends ChangeNotifier {
       'keep.never': 'never filled',
       'keep.confirm': 'Keep these {n}',
       'keep.change': 'Choose the free trackers',
+      'whatsNew.title': "What's new in {v}",
     },
     Language.zhCN: {
       // Auth
@@ -833,6 +835,7 @@ class LanguageProvider extends ChangeNotifier {
       'keep.never': '从未填写',
       'keep.confirm': '保留这 {n} 个',
       'keep.change': '选择免费追踪器',
+      'whatsNew.title': '{v} 新功能',
     },
     Language.zhTW: {
       // Auth
@@ -1061,6 +1064,7 @@ class LanguageProvider extends ChangeNotifier {
       'keep.never': '從未填寫',
       'keep.confirm': '保留這 {n} 個',
       'keep.change': '選擇免費追蹤器',
+      'whatsNew.title': '{v} 新功能',
     },
   };
 }

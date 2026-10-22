@@ -25,6 +25,7 @@ Requires backend ≥ 1.2.0.
 - Phones are locked to portrait (shortest side under 600 dp); tablets keep every orientation.
 - Swipe from the left edge to go back from the tracker and the settings (iOS-style, works on both platforms).
 - A pencil next to the tracker title (top bar and cover) shows that tapping it renames the tracker.
+- "What's new" box once after an update (bullets per version and language in `lib/data/whats_new.dart`; `release-app.sh` requires an entry). Fresh installs and landings on the first-tracker flow only record the version.
 - Free tier over the limit (a lapsed subscription with more than 3 trackers): the trackers that stay open are the user's choice, asked once in the list with the 3 most active preselected (cells touched in the last 90 days, then last cell date), stored on the server (`PUT /api/pages/keep`) and shared by every device; the choice can be changed from a locked tracker's paywall. Before, the 3 oldest stayed open with no say. Nothing is ever deleted.
 - Each premium gate shown is reported to the server (`POST /api/events`, `paywall.<gate>`) so the pull of the free limit can be measured; nothing else is sent.
 

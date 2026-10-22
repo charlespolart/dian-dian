@@ -114,6 +114,10 @@ store_notes="flutter_app/docs/changelogs/$next.md"
 
 [ -f "$store_notes" ] || fail "$store_notes is missing: write the store notes of this version first (see README, \"Changelogs\")"
 
+# The in-app "what's new" box (flutter_app/lib/data/whats_new.dart) needs the
+# version's bullets too (four languages), or it would stay silent after the update.
+grep -q "'$next':" flutter_app/lib/data/whats_new.dart || fail "flutter_app/lib/data/whats_new.dart has no entry for $next: add its bullets (four languages)"
+
 for locale in en-US fr-FR zh-Hans zh-Hant; do
   block="$(awk -v h="## $locale" '/^## / { inside = ($0 == h); next } inside' "$store_notes")"
   grep -q '^- ' <<<"$block" || fail "$store_notes has no bullets under \"## $locale\""

@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'data/first_tracker_decision.dart';
+import 'data/whats_new.dart';
 import 'providers/auth_provider.dart';
 import 'providers/cells_provider.dart';
 import 'providers/language_provider.dart';
@@ -25,6 +27,7 @@ import 'theme/app_theme.dart';
 import 'widgets/custom_cursor.dart';
 import 'widgets/back_swipe.dart';
 import 'widgets/dotted_background.dart';
+import 'widgets/whats_new_dialog.dart';
 import 'package:flutter/services.dart';
 import 'widgets/undo_delete_bar.dart';
 
@@ -137,6 +140,7 @@ AppScreen? systemBackTarget(AppScreen screen) => switch (screen) {
 class _AppShellState extends State<AppShell> {
   static const _lastTrackerIdKey = 'last_tracker_id';
   static const _lastTrackerYearKey = 'last_tracker_year';
+  static const _whatsNewSeenKey = 'whats_new_seen_version';
 
   AppScreen _screen = AppScreen.login;
   String? _activePageId;
@@ -210,6 +214,7 @@ class _AppShellState extends State<AppShell> {
       hasReplaceablePage:
           replaceablePageId(pagesProv.pages, legendsProv.legendsFor) != null,
     )) {
+      unawaited(_maybeShowWhatsNew(recordOnly: true));
       setState(() {
         _screen = AppScreen.firstTracker;
         _selectedYear = year;
@@ -227,6 +232,7 @@ class _AppShellState extends State<AppShell> {
       // Wire providers as if the user had tapped the tracker in the page list.
       context.read<CellsProvider>().setContext(pageId: lastId, year: year);
       context.read<LegendsProvider>().setPageId(lastId);
+      unawaited(_maybeShowWhatsNew(recordOnly: false));
       setState(() {
         _screen = AppScreen.tracker;
         _activePageId = lastId;
@@ -241,11 +247,31 @@ class _AppShellState extends State<AppShell> {
       await prefs.remove(_lastTrackerYearKey);
       if (!mounted) return;
     }
+    unawaited(_maybeShowWhatsNew(recordOnly: false));
     setState(() {
       _screen = AppScreen.pageList;
       _selectedYear = year;
       _restoreInProgress = false;
     });
+  }
+
+  /// After an update, the "what's new" box once (bullets from
+  /// `lib/data/whats_new.dart`). A fresh install, or a landing on the
+  /// first-tracker flow, only records the version.
+  Future<void> _maybeShowWhatsNew({required bool recordOnly}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final current = (await PackageInfo.fromPlatform()).version;
+    final seen = prefs.getString(_whatsNewSeenKey);
+    if (!mounted) return;
+    final bullets = whatsNewFor(current, context.read<LanguageProvider>().lang);
+    final show = !recordOnly &&
+        shouldShowWhatsNew(seenVersion: seen, currentVersion: current, hasNotes: bullets != null);
+    if (show) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) WhatsNewDialog.show(context, version: current, bullets: bullets!);
+      });
+    }
+    await prefs.setString(_whatsNewSeenKey, current);
   }
 
   Future<void> _saveLastTracker(String pageId, int year) async {
