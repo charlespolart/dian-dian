@@ -139,6 +139,18 @@ void main() {
     expect(find.text('tracker'), findsOneWidget);
   });
 
+  testWidgets('the morph answers the tap on its very next frame: the shell has moved after two frames', (tester) async {
+    await tester.pumpWidget(_Host(anchors: MorphAnchors()));
+    state(tester).go('tracker', StageTransition.morphOpen);
+    await tester.pump(AppMotion.screen ~/ 4); // the measure frame is already the first animation frame
+    await tester.pump(AppMotion.screen ~/ 4);
+    expect(find.byType(MorphShell), findsOneWidget);
+    expect(tester.getRect(find.byType(MorphShell)).width, greaterThan(60));
+    await tester.pumpAndSettle();
+    expect(find.byType(MorphShell), findsNothing);
+    expect(find.text('tracker'), findsOneWidget);
+  });
+
   testWidgets('morphClose ends on the list with no shell left', (tester) async {
     await tester.pumpWidget(_Host(anchors: MorphAnchors()));
     state(tester).go('tracker', StageTransition.morphOpen);

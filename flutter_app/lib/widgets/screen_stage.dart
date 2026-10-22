@@ -22,8 +22,9 @@ enum StageTransition {
 /// The app's screen switcher: the previous screen leaves while the new one
 /// arrives, the way [transition] says. For the two morphs a [MorphShell]
 /// animates between the card's rect and the tracker shell's rect, both
-/// measured through [anchors] after one frame where the incoming screen is
-/// laid out invisible. A navigation during a transition ends it at once and
+/// measured through [anchors]: the one still on screen at once, the other
+/// after one frame where the incoming screen is laid out invisible, while
+/// the animation is already running. A navigation during a transition ends it at once and
 /// the next one plays as a fade. A size change (rotation, keyboard) ends it
 /// too. Under reduced motion the screens are simply swapped.
 class ScreenStage extends StatefulWidget {
@@ -89,37 +90,41 @@ class _ScreenStageState extends State<ScreenStage> with SingleTickerProviderStat
     _running = transition;
     _cardRect = null;
     _shellRect = null;
-    if (!_isMorph) {
-      _controller.duration = AppMotion.base;
-      _controller.forward(from: 0);
-      return;
+    _controller.duration = _isMorph ? AppMotion.screen : AppMotion.base;
+    if (_isMorph) {
+      // The rect of the screen that is still laid out is read now; the other
+      // one after a frame where the incoming screen is laid out invisible.
+      // The animation starts at once, so the tap gets its answer on the very
+      // next frame instead of after that (heavy) measure frame.
+      final pageId = widget.morphPageId;
+      if (transition == StageTransition.morphOpen && pageId != null) {
+        _cardRect = widget.anchors.cardRect(pageId, ancestor: _box);
+      }
+      if (transition == StageTransition.morphClose) {
+        _shellRect = widget.anchors.shellRect(ancestor: _box);
+      }
+      _measuring = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _afterMeasure());
     }
-    final pageId = widget.morphPageId;
-    if (transition == StageTransition.morphOpen && pageId != null) {
-      // The list is still laid out: read the card now.
-      _cardRect = widget.anchors.cardRect(pageId, ancestor: _box);
-    }
-    _measuring = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) => _afterMeasure());
+    _controller.forward(from: 0);
   }
 
   void _afterMeasure() {
     if (!mounted || !_measuring) return;
     _measuring = false;
     final pageId = widget.morphPageId;
-    _shellRect = widget.anchors.shellRect(ancestor: _box);
+    if (_running == StageTransition.morphOpen) {
+      _shellRect = widget.anchors.shellRect(ancestor: _box);
+    }
     if (_running == StageTransition.morphClose && pageId != null) {
       _cardRect = widget.anchors.cardRect(pageId, ancestor: _box);
     }
     if (_shellRect == null) {
-      // Nothing to morph (the tracker left at its first build): a fade.
+      // Nothing to morph (the tracker left at its first build): the running
+      // animation carries on as a fade.
       _running = StageTransition.fade;
-      _controller.duration = AppMotion.base;
-    } else {
-      _controller.duration = AppMotion.screen;
     }
     setState(() {});
-    _controller.forward(from: 0);
   }
 
   void _onStatus(AnimationStatus status) {
@@ -188,12 +193,13 @@ class _ScreenStageState extends State<ScreenStage> with SingleTickerProviderStat
     final incoming = widget.child;
     final outgoing = _outgoing;
     if (outgoing == null) return [_layer(incoming)];
-    if (_measuring) return [_layer(outgoing), _layer(incoming, opacity: 0, ignoring: true)];
     final t = _controller.value;
+    // During the measure frame the incoming screen is laid out but unseen.
+    final measuring = _measuring;
     switch (_running) {
       case StageTransition.fade:
         final e = AppMotion.enter.transform(t);
-        return [_layer(outgoing, opacity: 1 - e), _layer(incoming, opacity: e)];
+        return [_layer(outgoing, opacity: 1 - e), _layer(incoming, opacity: measuring ? 0 : e, ignoring: measuring)];
       case StageTransition.slideIn:
       case StageTransition.slideOut:
         final e = AppMotion.enter.transform(t);
@@ -201,40 +207,46 @@ class _ScreenStageState extends State<ScreenStage> with SingleTickerProviderStat
         final shift = size.width * ScreenStage.slideFraction;
         return [
           _layer(outgoing, opacity: 1 - e, offset: Offset(-sign * shift * e, 0)),
-          _layer(incoming, opacity: e, offset: Offset(sign * shift * (1 - e), 0)),
+          _layer(incoming, opacity: measuring ? 0 : e, offset: Offset(sign * shift * (1 - e), 0), ignoring: measuring),
         ];
       case StageTransition.morphOpen:
         final e = AppMotion.enter.transform(t);
         final fallback = _cardRect == null;
         final card = _cardRect ?? _centered(size);
+        // Until the tracker shell is measured, the shell stays on the card.
+        final target = _shellRect ?? card;
         return [
           _layer(outgoing, opacity: 1 - _window(e, 0, 0.6)),
           MorphShell(
             key: _shellKey,
-            rect: Rect.lerp(card, _shellRect, e)!,
+            rect: Rect.lerp(card, target, e)!,
             radius: lerpDouble(10, 14, e)!,
             opacity: fallback ? _window(e, 0, 0.4) : 1,
             cardSize: card.size,
             cardOpacity: 1 - _window(e, 0, 0.4),
             card: widget.morphCard,
           ),
-          _layer(incoming, opacity: _window(e, 0.4, 1)),
+          _layer(incoming, opacity: measuring ? 0 : _window(e, 0.4, 1), ignoring: measuring),
         ];
       case StageTransition.morphClose:
         final e = AppMotion.exit.transform(t);
-        final fallback = _cardRect == null;
-        final card = _cardRect ?? _centered(size);
+        final shell = _shellRect;
+        // Until the card is measured, the shell stays on the tracker shell;
+        // with no card at all it shrinks towards the centre and fades.
+        final fallback = !measuring && _cardRect == null;
+        final card = _cardRect ?? (measuring ? shell : _centered(size));
         return [
-          _layer(incoming, opacity: _window(e, 0.4, 1)),
-          MorphShell(
-            key: _shellKey,
-            rect: Rect.lerp(_shellRect, card, e)!,
-            radius: lerpDouble(14, 10, e)!,
-            opacity: fallback ? 1 - _window(e, 0.6, 1) : 1,
-            cardSize: card.size,
-            cardOpacity: fallback ? 0 : _window(e, 0.6, 1),
-            card: widget.morphCard,
-          ),
+          _layer(incoming, opacity: measuring ? 0 : _window(e, 0.4, 1), ignoring: measuring),
+          if (shell != null && card != null)
+            MorphShell(
+              key: _shellKey,
+              rect: Rect.lerp(shell, card, e)!,
+              radius: lerpDouble(14, 10, e)!,
+              opacity: fallback ? 1 - _window(e, 0.6, 1) : 1,
+              cardSize: card.size,
+              cardOpacity: fallback ? 0 : _window(e, 0.6, 1),
+              card: widget.morphCard,
+            ),
           _layer(outgoing, opacity: 1 - _window(e, 0, 0.4)),
         ];
     }
