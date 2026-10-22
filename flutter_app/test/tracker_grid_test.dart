@@ -25,6 +25,36 @@ void main() {
     expect(calls, [(1, 1, center)]);
   });
 
+  testWidgets('the labels live in one fading layer, at their places next to the dots, and never take a tap', (tester) async {
+    final calls = <(int, int, Offset)>[];
+    await tester.pumpWidget(MaterialApp(
+      home: Center(
+        child: SizedBox(
+          width: 260,
+          height: 640,
+          child: TrackerGrid(
+            year: 2026,
+            getCellColor: (_, _) => null,
+            onCellPress: (m, d, at) => calls.add((m, d, at)),
+            chrome: const AlwaysStoppedAnimation(0.0),
+          ),
+        ),
+      ),
+    ));
+    // Dots come in tree order, rows of 12: February 15th is (15 - 1) * 12 + 1.
+    final feb15 = find.byType(GestureDetector).at(14 * 12 + 1);
+    expect(tester.getCenter(find.text('15')).dy, closeTo(tester.getCenter(feb15).dy, 0.01));
+    expect(tester.getCenter(find.text('F')).dx, closeTo(tester.getCenter(feb15).dx, 0.01));
+    // One layer for all of them, driven by [chrome].
+    FadeTransition fadeOf(String label) =>
+        tester.widget<FadeTransition>(find.ancestor(of: find.text(label), matching: find.byType(FadeTransition)).first);
+    expect(fadeOf('15').opacity.value, 0);
+    expect(identical(fadeOf('15'), fadeOf('F')), isTrue);
+    // The layer sits over the dots but never takes their taps.
+    await tester.tap(feb15);
+    expect(calls, [(2, 15, tester.getCenter(feb15))]);
+  });
+
   group('cellCenter', () {
     test('January 1st and December 31st', () {
       const c = (labelColWidth: 20.0, cellSize: 18.0, rowHeight: 18.0);

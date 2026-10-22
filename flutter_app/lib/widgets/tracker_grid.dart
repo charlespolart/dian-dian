@@ -21,6 +21,9 @@ class TrackerGrid extends StatelessWidget {
   final CellChange? pop;
   /// When set, the grid registers its box and layout for the card → tracker morph.
   final MorphAnchors? anchors;
+  /// Opacity of the grid's chrome — month letters, day numbers, the ring
+  /// around today — for the tracker's reveal after the morph. Null: visible.
+  final Animation<double>? chrome;
 
   const TrackerGrid({
     super.key,
@@ -29,6 +32,7 @@ class TrackerGrid extends StatelessWidget {
     required this.onCellPress,
     this.pop,
     this.anchors,
+    this.chrome,
   });
 
   /// Centre of the dot of (month, day) in the grid's own coordinates: one
@@ -126,110 +130,65 @@ class TrackerGrid extends StatelessWidget {
           height: gridH,
           child: Stack(
             children: [
-              Column(
-            children: [
-              // Month headers row
-              SizedBox(
-                height: rowHeight,
-                child: Row(
+              // The dots. The header row and the label column are blank
+              // here, drawn by the chrome layer above; a repaint boundary so
+              // a fading label or a pop never repaints the 372 cells.
+              RepaintBoundary(
+                child: Column(
                   children: [
-                    SizedBox(width: labelColWidth),
-                    ...List.generate(12, (m) {
+                    SizedBox(height: rowHeight),
+                    ...List.generate(31, (dayIdx) {
+                      final day = dayIdx + 1;
                       return SizedBox(
-                        width: cellSize,
-                        child: Center(
-                          child: Text(
-                            _monthLabels[m],
-                            style: AppFonts.pixel(
-                              fontSize: labelSize,
-                              color: AppColors.textMuted,
-                            ),
-                          ),
+                        height: rowHeight,
+                        child: Row(
+                          children: [
+                            SizedBox(width: labelColWidth),
+                            ...List.generate(12, (mIdx) {
+                              final month = mIdx + 1;
+                              final maxDays = getDaysInMonth(month, year);
+                              final valid = day <= maxDays;
+                              final color = valid ? getCellColor(month, day) : null;
+                              return SizedBox(
+                                width: cellSize,
+                                child: Center(
+                                  child: GestureDetector(
+                                    onTapUp: valid ? (d) => onCellPress(month, day, d.globalPosition) : null,
+                                    child: valid
+                                        ? Container(
+                                            width: dotSize,
+                                            height: dotSize,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: color != null ? _parseColor(color) : AppColors.dotEmpty,
+                                              border: color == null
+                                                  ? Border.all(color: AppColors.dotBorder, width: 0.5)
+                                                  : null,
+                                            ),
+                                          )
+                                        : SizedBox(width: dotSize, height: dotSize),
+                                  ),
+                                ),
+                              );
+                            }),
+                          ],
                         ),
                       );
                     }),
                   ],
                 ),
               ),
-              // Day rows (1..31)
-              ...List.generate(31, (dayIdx) {
-                final day = dayIdx + 1;
-                return SizedBox(
-                  height: rowHeight,
-                  child: Row(
-                    children: [
-                      // Day label
-                      SizedBox(
-                        width: labelColWidth,
-                        child: Center(
-                          child: Text(
-                            '$day',
-                            style: AppFonts.pixel(
-                              fontSize: labelSize,
-                              color: AppColors.textMuted,
-                            ),
-                          ),
-                        ),
-                      ),
-                      // Month cells
-                      ...List.generate(12, (mIdx) {
-                        final month = mIdx + 1;
-                        final maxDays = getDaysInMonth(month, year);
-                        final valid = day <= maxDays;
-                        final color = valid ? getCellColor(month, day) : null;
-                        final isToday = showToday &&
-                            month == today.month &&
-                            day == today.day;
-
-                        return SizedBox(
-                          width: cellSize,
-                          child: Center(
-                            child: GestureDetector(
-                              onTapUp: valid ? (d) => onCellPress(month, day, d.globalPosition) : null,
-                              child: valid
-                                  ? Stack(
-                                      alignment: Alignment.center,
-                                      children: [
-                                        Container(
-                                          width: dotSize,
-                                          height: dotSize,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color: color != null
-                                                ? _parseColor(color)
-                                                : AppColors.dotEmpty,
-                                            border: color == null
-                                                ? Border.all(
-                                                    color: AppColors.dotBorder,
-                                                    width: 0.5,
-                                                  )
-                                                : null,
-                                          ),
-                                        ),
-                                        if (isToday)
-                                          Container(
-                                            width: dotSize + 4,
-                                            height: dotSize + 4,
-                                            decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              border: Border.all(
-                                                color: AppColors.accent,
-                                                width: 1.5,
-                                              ),
-                                            ),
-                                          ),
-                                      ],
-                                    )
-                                  : SizedBox(width: dotSize, height: dotSize),
-                            ),
-                          ),
-                        );
-                      }),
-                    ],
+              // Month letters, day numbers and the ring around today: one
+              // layer, so the reveal fades them together; never a tap target.
+              IgnorePointer(
+                child: FadeTransition(
+                  opacity: chrome ?? kAlwaysCompleteAnimation,
+                  child: _GridChrome(
+                    geometry: geometry,
+                    labelSize: labelSize,
+                    today: showToday ? today : null,
                   ),
-                );
-              }),
-            ],
+                ),
               ),
               if (popCenter != null)
                 Positioned(
@@ -251,6 +210,64 @@ class TrackerGrid extends StatelessWidget {
         );
         return anchors == null ? box : MorphAnchor.grid(anchors: anchors, geometry: geometry, child: box);
       },
+    );
+  }
+}
+
+/// The grid's chrome: month letters along the top, day numbers down the
+/// left and the ring around today, laid out from the same geometry as the
+/// dots so each label sits on its row or column.
+class _GridChrome extends StatelessWidget {
+  final TrackerGridGeometry geometry;
+  final double labelSize;
+  final DateTime? today;
+
+  const _GridChrome({required this.geometry, required this.labelSize, required this.today});
+
+  @override
+  Widget build(BuildContext context) {
+    final style = AppFonts.pixel(fontSize: labelSize, color: AppColors.textMuted);
+    final today = this.today;
+    final ring = geometry.dotSize + 4;
+    final todayCenter = today == null ? null : geometry.center(month: today.month, day: today.day);
+    return Stack(
+      children: [
+        Positioned(
+          left: geometry.labelColWidth,
+          top: 0,
+          height: geometry.rowHeight,
+          child: Row(
+            children: [
+              for (final label in TrackerGrid._monthLabels)
+                SizedBox(width: geometry.cellSize, child: Center(child: Text(label, style: style))),
+            ],
+          ),
+        ),
+        Positioned(
+          left: 0,
+          top: geometry.rowHeight,
+          width: geometry.labelColWidth,
+          child: Column(
+            children: [
+              for (var day = 1; day <= 31; day++)
+                SizedBox(height: geometry.rowHeight, child: Center(child: Text('$day', style: style))),
+            ],
+          ),
+        ),
+        if (todayCenter != null)
+          Positioned(
+            left: todayCenter.dx - ring / 2,
+            top: todayCenter.dy - ring / 2,
+            width: ring,
+            height: ring,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.accent, width: 1.5),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
