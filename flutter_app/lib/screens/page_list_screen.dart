@@ -29,12 +29,59 @@ import '../widgets/utf16_length_limit.dart';
 import '../widgets/drag_feedback.dart';
 import '../widgets/keep_trackers_dialog.dart';
 import '../widgets/press_scale.dart';
+import '../theme/motion.dart';
+import '../widgets/appear.dart';
+import '../widgets/morph_anchors.dart';
+
+enum ListEntrance { cascade, none }
+
+/// The cascade: card [index] waits 30 ms per rank; from the 13th on, no animation.
+Duration? entranceDelay(int index) => index < 12 ? Duration(milliseconds: 30 * index) : null;
+
+const double _gridSidePadding = 8;
+const double _gridTopPadding = 8;
+const double _gridSpacing = 12;
+const double _cardAspectRatio = 0.45;
+
+/// Columns and card height for a list [width] px wide, computed the way
+/// `SliverGridDelegateWithMaxCrossAxisExtent` does (180 px cards under 600,
+/// 200 above).
+({int columns, double rowExtent}) gridMetrics(double width) {
+  final maxExtent = width < 600 ? 180.0 : 200.0;
+  final usable = width - 2 * _gridSidePadding;
+  final columns = ((usable + _gridSpacing) / (maxExtent + _gridSpacing)).ceil();
+  final cardWidth = (usable - (columns - 1) * _gridSpacing) / columns;
+  return (columns: columns, rowExtent: cardWidth / _cardAspectRatio);
+}
+
+/// Initial scroll offset that puts the row of card [index] in view: 0 when it
+/// already is, otherwise just enough, with one spacing of breath.
+double revealScrollOffset({
+  required int index,
+  required int columns,
+  required double rowExtent,
+  required double spacing,
+  required double viewportHeight,
+  required double topPadding,
+}) {
+  final row = index ~/ columns;
+  final rowTop = topPadding + row * (rowExtent + spacing);
+  final rowBottom = rowTop + rowExtent;
+  if (rowBottom <= viewportHeight) return 0;
+  return rowBottom - viewportHeight + spacing;
+}
 
 class PageListScreen extends StatefulWidget {
   final void Function(String id, int year) onSelectPage;
   final VoidCallback onOpenSettings;
   final int selectedYear;
   final ValueChanged<int> onYearChanged;
+  /// Keys for the card → tracker morph (null in tests).
+  final MorphAnchors? anchors;
+  /// Cascade on arrival from login / settings; none when coming back from a tracker.
+  final ListEntrance entrance;
+  /// Coming back from this tracker: the grid opens scrolled so its card is in view.
+  final String? revealPageId;
 
   const PageListScreen({
     super.key,
@@ -42,6 +89,9 @@ class PageListScreen extends StatefulWidget {
     required this.onOpenSettings,
     required this.selectedYear,
     required this.onYearChanged,
+    this.anchors,
+    this.entrance = ListEntrance.cascade,
+    this.revealPageId,
   });
 
   @override
@@ -57,16 +107,47 @@ class _PageListScreenState extends State<PageListScreen> {
   // free account is over the limit without a stored choice.
   bool _keepAsked = false;
   bool _bannerVisible = kIsWeb;
+  final DateTime _entranceStart = DateTime.now();
+  /// Decided once per card id on its first build and kept, so a rebuild
+  /// never cuts an entrance short.
+  final Map<String, ({AppearStyle style, Duration delay})> _appearance = {};
+  late final Set<String> _seenIds;
+  bool _firstBuildDone = false;
+  String? _removingId;
+  ScrollController? _scroll;
 
   @override
   void initState() {
     super.initState();
     _selectedYear = widget.selectedYear;
+    _seenIds = context.read<PagesProvider>().pages.map((p) => p.id).toSet();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _firstBuildDone = true);
     // Everything the cards need (pages, legends, this year's cells) comes
     // from the store; this is a no-op when the year is already loaded.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<SyncService>().ensureYear(_selectedYear);
+    });
+  }
+
+  @override
+  void dispose() {
+    _scroll?.dispose();
+    super.dispose();
+  }
+
+  ({AppearStyle style, Duration delay}) _appearanceOf(String id, int index) {
+    return _appearance.putIfAbsent(id, () {
+      if (_firstBuildDone && !_seenIds.contains(id)) {
+        _seenIds.add(id);
+        return (style: AppearStyle.pop, delay: Duration.zero);
+      }
+      final delay = entranceDelay(index);
+      final fresh = DateTime.now().difference(_entranceStart) < const Duration(milliseconds: 600);
+      if (widget.entrance == ListEntrance.cascade && fresh && delay != null) {
+        return (style: AppearStyle.rise, delay: delay);
+      }
+      return (style: AppearStyle.none, delay: Duration.zero);
     });
   }
 
@@ -120,6 +201,13 @@ class _PageListScreenState extends State<PageListScreen> {
     );
 
     if (created != null && mounted) {
+      // The new card is not an "appearance": the morph opens the tracker from
+      // it once it has painted (centred fallback if it is off screen).
+      _seenIds.add(created.id);
+      _appearance[created.id] = (style: AppearStyle.none, delay: Duration.zero);
+      setState(() {});
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
       _openTracker(created);
     }
   }
@@ -157,7 +245,14 @@ class _PageListScreenState extends State<PageListScreen> {
     );
     if (confirmed != true || !mounted) return;
 
+    // Shrink and fade first, then leave the grid.
+    setState(() => _removingId = page.id);
+    await Future<void>.delayed(AppMotion.of(context, AppMotion.quick));
+    if (!mounted) return;
     context.read<PagesProvider>().softDeletePage(page);
+    _appearance.remove(page.id);
+    _seenIds.remove(page.id);
+    setState(() => _removingId = null);
   }
 
   @override
@@ -324,6 +419,22 @@ class _PageListScreenState extends State<PageListScreen> {
                           }
                           return LayoutBuilder(
                             builder: (context, constraints) {
+                              final metrics = gridMetrics(constraints.maxWidth);
+                              final revealIndex = widget.revealPageId == null
+                                  ? -1
+                                  : sortedPages.indexWhere((p) => p.id == widget.revealPageId);
+                              _scroll ??= ScrollController(
+                                initialScrollOffset: revealIndex < 0
+                                    ? 0
+                                    : revealScrollOffset(
+                                        index: revealIndex,
+                                        columns: metrics.columns,
+                                        rowExtent: metrics.rowExtent,
+                                        spacing: _gridSpacing,
+                                        viewportHeight: constraints.maxHeight,
+                                        topPadding: _gridTopPadding,
+                                      ),
+                              );
                               // Responsive: fit 2 cards on phone, more on tablet
                               final maxExtent = constraints.maxWidth < 600
                                   ? 180.0
@@ -334,19 +445,20 @@ class _PageListScreenState extends State<PageListScreen> {
                                 child: KeyedSubtree(
                                   key: ValueKey(_selectedYear),
                                   child: GridView.builder(
+                                controller: _scroll,
                                 padding: EdgeInsets.only(
-                                  left: 8,
-                                  right: 8,
-                                  top: 8,
+                                  left: _gridSidePadding,
+                                  right: _gridSidePadding,
+                                  top: _gridTopPadding,
                                   bottom: _bannerVisible ? 90 : 80,
                                 ),
                                 gridDelegate:
                                     SliverGridDelegateWithMaxCrossAxisExtent(
                                       maxCrossAxisExtent: maxExtent,
-                                      mainAxisSpacing: 12,
-                                      crossAxisSpacing: 12,
+                                      mainAxisSpacing: _gridSpacing,
+                                      crossAxisSpacing: _gridSpacing,
                                       // Grid is 12 wide × 31 tall → ratio ~0.45 with title space
-                                      childAspectRatio: 0.45,
+                                      childAspectRatio: _cardAspectRatio,
                                     ),
                                 itemCount: sortedPages.length,
                                 itemBuilder: (_, index) {
@@ -386,52 +498,69 @@ class _PageListScreenState extends State<PageListScreen> {
                                           ),
                                       builder: (context, candidateData, _) {
                                         final isOver = candidateData.isNotEmpty;
+                                        final appearance = _appearanceOf(page.id, index);
+                                        final removing = _removingId == page.id;
                                         return Stack(
                                           clipBehavior: Clip.none,
                                           children: [
-                                            _PageCard(
-                                              page: page,
-                                              year: _selectedYear,
-                                              cells: previewCells,
-                                              legends: previewLegends,
-                                              onTap: () => _openTracker(page),
-                                              onDelete: () => _deletePage(page),
-                                              isDragGhost:
-                                                  _draggingIndex == index,
-                                              isLocked: lockedIds.contains(
-                                                page.id,
-                                              ),
-                                              dragHandle: Draggable<int>(
-                                                data: index,
-                                                onDragStarted: () => setState(
-                                                  () => _draggingIndex = index,
-                                                ),
-                                                onDragEnd: (_) => setState(
-                                                  () => _draggingIndex = null,
-                                                ),
-                                                // A copy of the card follows the finger.
-                                                feedback: DragFeedback(
-                                                  width: cell.maxWidth,
-                                                  height: cell.maxHeight,
-                                                  radius: 10,
-                                                  child: _PageCard(
+                                            Appear(
+                                              key: ValueKey('appear_${page.id}'),
+                                              style: appearance.style,
+                                              delay: appearance.delay,
+                                              child: AnimatedScale(
+                                                scale: removing ? 0.85 : 1,
+                                                duration: AppMotion.of(context, AppMotion.quick),
+                                                curve: AppMotion.exit,
+                                                child: AnimatedOpacity(
+                                                  opacity: removing ? 0 : 1,
+                                                  duration: AppMotion.of(context, AppMotion.quick),
+                                                  child: PageCard(
+                                                    key: widget.anchors?.cardKey(page.id),
                                                     page: page,
                                                     year: _selectedYear,
                                                     cells: previewCells,
                                                     legends: previewLegends,
-                                                    onTap: () {},
-                                                    onDelete: () {},
-                                                    isLocked: lockedIds
-                                                        .contains(page.id),
-                                                    dragHandle: handleGlyph,
+                                                    onTap: removing ? null : () => _openTracker(page),
+                                                    onDelete: () => _deletePage(page),
+                                                    isDragGhost:
+                                                        _draggingIndex == index,
+                                                    isLocked: lockedIds.contains(
+                                                      page.id,
+                                                    ),
+                                                    dragHandle: Draggable<int>(
+                                                      data: index,
+                                                      onDragStarted: () => setState(
+                                                        () => _draggingIndex = index,
+                                                      ),
+                                                      onDragEnd: (_) => setState(
+                                                        () => _draggingIndex = null,
+                                                      ),
+                                                      // A copy of the card follows the finger.
+                                                      feedback: DragFeedback(
+                                                        width: cell.maxWidth,
+                                                        height: cell.maxHeight,
+                                                        radius: 10,
+                                                        child: PageCard(
+                                                          page: page,
+                                                          year: _selectedYear,
+                                                          cells: previewCells,
+                                                          legends: previewLegends,
+                                                          onTap: () {},
+                                                          onDelete: () {},
+                                                          isLocked: lockedIds
+                                                              .contains(page.id),
+                                                          dragHandle: handleGlyph,
+                                                        ),
+                                                      ),
+                                                      childWhenDragging:
+                                                          const SizedBox(
+                                                            width: 28,
+                                                            height: 28,
+                                                          ),
+                                                      child: handleGlyph,
+                                                    ),
                                                   ),
                                                 ),
-                                                childWhenDragging:
-                                                    const SizedBox(
-                                                      width: 28,
-                                                      height: 28,
-                                                    ),
-                                                child: handleGlyph,
                                               ),
                                             ),
                                             // Drop highlight overlay
@@ -520,18 +649,22 @@ class _PageListScreenState extends State<PageListScreen> {
 }
 
 /// A card displaying a page with a full grid preview, legend dots, and title.
-class _PageCard extends StatelessWidget {
+/// [PageCard.frozen] is the static copy the card → tracker morph stretches:
+/// no handle, no cross, no tap.
+class PageCard extends StatelessWidget {
   final PageModel page;
   final int year;
   final YearCells? cells;
   final List<LegendModel> legends;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final VoidCallback onDelete;
   final bool isDragGhost;
   final bool isLocked;
   final Widget? dragHandle;
+  final bool frozen;
 
-  const _PageCard({
+  const PageCard({
+    super.key,
     required this.page,
     required this.year,
     required this.cells,
@@ -541,7 +674,22 @@ class _PageCard extends StatelessWidget {
     this.isDragGhost = false,
     this.isLocked = false,
     this.dragHandle,
-  });
+  }) : frozen = false;
+
+  const PageCard.frozen({
+    super.key,
+    required this.page,
+    required this.year,
+    required this.cells,
+    required this.legends,
+    required this.isLocked,
+  })  : onTap = null,
+        onDelete = _noop,
+        isDragGhost = false,
+        dragHandle = null,
+        frozen = true;
+
+  static void _noop() {}
 
   @override
   Widget build(BuildContext context) {
@@ -549,7 +697,7 @@ class _PageCard extends StatelessWidget {
     return Opacity(
       opacity: cardOpacity,
       child: GestureDetector(
-        onTap: isDragGhost ? null : onTap,
+        onTap: isDragGhost || frozen ? null : onTap,
         child: Container(
           decoration: BoxDecoration(
             color: AppColors.shell,
@@ -650,7 +798,7 @@ class _PageCard extends StatelessWidget {
                   ),
                 ),
               // Delete button top-right
-              if (!isDragGhost)
+              if (!isDragGhost && !frozen)
                 Positioned(
                   top: 0,
                   right: 0,
