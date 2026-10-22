@@ -61,9 +61,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('box'));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(AppMotion.quick ~/ 2);
     expect(find.text('box'), findsOneWidget);
-    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(AppMotion.quick);
     expect(find.text('box'), findsNothing);
   });
 

@@ -40,11 +40,11 @@ en routes `Navigator`, retours haptiques, sons (lot 2).
 
 ```dart
 class AppMotion {
-  static const press  = Duration(milliseconds: 90);   // bouton sous le doigt
-  static const quick  = Duration(milliseconds: 160);  // sortie de pop-up, fondus courts
-  static const base   = Duration(milliseconds: 220);  // entrée de pop-up, année, cascade
-  static const pop    = Duration(milliseconds: 280);  // point qui se remplit
-  static const screen = Duration(milliseconds: 320);  // ouverture / fermeture du tracker
+  static const press  = Duration(milliseconds: 120);  // bouton sous le doigt
+  static const quick  = Duration(milliseconds: 200);  // sortie de pop-up, fondus courts
+  static const base   = Duration(milliseconds: 300);  // entrée de pop-up, année, cascade
+  static const pop    = Duration(milliseconds: 360);  // point qui se remplit
+  static const screen = Duration(milliseconds: 420);  // ouverture / fermeture du tracker
 
   static const enter = Curves.easeOutCubic;  // ce qui arrive décélère
   static const exit  = Curves.easeInCubic;   // ce qui part accélère
@@ -56,6 +56,9 @@ class AppMotion {
   static bool reduced(BuildContext context) => MediaQuery.disableAnimationsOf(context);
 }
 ```
+
+Valeurs revues après le premier essai sur simulateur (2026-10-22) : les
+premières (90 / 160 / 220 / 280 / 320 ms) passaient trop vite pour être vues.
 
 Règles : une entrée dure plus longtemps que sa sortie ; aucune durée en dur
 ailleurs que dans ce fichier (les 200 ms existants de `AnimatedSwitcher` et
@@ -144,9 +147,11 @@ partir des providers (page, cellules de l'année, légendes).
 1. `_navigate(tracker, pageId)` lit `anchors.cardRect(pageId)` pendant que la
    liste est encore montée et le garde pour la scène.
 2. Frame de mesure : la scène peint la liste normalement et le tracker en
-   `Opacity(0)` sous `IgnorePointer`. Après cette frame elle lit
-   `anchors.shellRect()`.
-3. Sur `screen` (320 ms), avec `t` passé par `enter` :
+   `Opacity(0)` sous `IgnorePointer`. L'animation démarre dès cette frame
+   (la coque reste sur la carte tant que la cible est inconnue) : le tap a sa
+   réponse à la frame suivante, pas après cette frame lourde. Après elle, la
+   scène lit `anchors.shellRect()` et la coque prend sa cible.
+3. Sur `screen` (420 ms), avec `t` passé par `enter` :
    - la liste passe de 1 à 0 d'opacité sur `t ∈ [0 ; 0,6]` ;
    - la coque, `Positioned.fromRect(Rect.lerp(carte, coque, t))`, couleur
      `AppColors.shell`, bordure `shellBorder`, rayon 10 → 14 ;
@@ -170,13 +175,14 @@ derrière eux : ils restent en `fade`.
 Déclenchée par la flèche retour, le retour système et le swipe de bord,
 tous via `_navigate(pageList)`.
 
-1. Frame de mesure : le tracker peint normalement, la liste est construite
-   en `Opacity(0)` avec `revealPageId` : son `GridView` reçoit un
+1. Frame de mesure, l'animation déjà lancée (le rectangle de la coque est
+   lu tout de suite, le tracker étant encore en page) : le tracker peint
+   normalement, la liste est construite en `Opacity(0)` avec `revealPageId` : son `GridView` reçoit un
    `ScrollController` dont l'offset initial met la rangée de la carte dans
    la vue (rangée = index ÷ nombre de colonnes, hauteur de rangée déduite de
    `maxCrossAxisExtent`, du ratio 0,45 et de l'espacement). Après la frame,
    la scène lit `cardRect(pageId)` et `shellRect()`.
-2. Sur `screen`, avec `t` passé par `exit` :
+2. Sur `screen` (420 ms), avec `t` passé par `exit` :
    - le tracker, opacité 1 → 0 sur `t ∈ [0 ; 0,4]` ;
    - la coque va du rectangle de la coque à celui de la carte, rayon
      14 → 10 ;

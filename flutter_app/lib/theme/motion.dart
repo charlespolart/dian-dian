@@ -4,20 +4,21 @@ import 'package:flutter/widgets.dart';
 /// [of], which is zero when the system asks for reduced motion (iOS "Reduce
 /// Motion", Android animator scale 0). An entrance always lasts longer than
 /// its exit; what arrives decelerates ([enter]), what leaves accelerates
-/// ([exit]).
+/// ([exit]). Tune here and nowhere else: the first on-device pass (2026-10-22)
+/// found the initial values (90 / 160 / 220 / 280 / 320 ms) too quick to see.
 class AppMotion {
   AppMotion._();
 
   /// A button under the finger.
-  static const press = Duration(milliseconds: 90);
+  static const press = Duration(milliseconds: 120);
   /// A dialog leaving, short fades.
-  static const quick = Duration(milliseconds: 160);
+  static const quick = Duration(milliseconds: 200);
   /// A dialog arriving, a year change, the list's cascade.
-  static const base = Duration(milliseconds: 220);
+  static const base = Duration(milliseconds: 300);
   /// The dot that fills in.
-  static const pop = Duration(milliseconds: 280);
+  static const pop = Duration(milliseconds: 360);
   /// Opening and closing a tracker.
-  static const screen = Duration(milliseconds: 320);
+  static const screen = Duration(milliseconds: 420);
 
   static const Curve enter = Curves.easeOutCubic;
   static const Curve exit = Curves.easeInCubic;
