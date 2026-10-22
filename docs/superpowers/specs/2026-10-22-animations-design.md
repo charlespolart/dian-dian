@@ -136,65 +136,64 @@ courant à sortant. Avant cette règle, chaque transition ré-instanciait les
 deux écrans (cascade de la liste rejouée, titre en cours d'édition perdu,
 grille posée trois fois).
 
-### Copie de la carte
+### Élément partagé : `MorphLayer` (révision du 2026-10-22, soir)
 
-`_PageCard` devient public `PageCard`, avec un constructeur `PageCard.frozen`
-sans poignée, sans croix, sans tap. `AppShell` la construit pour la coque à
-partir des providers (page, cellules de l'année, légendes).
+Le premier essai sur simulateur a montré qu'une coque qui grandit avec un
+fondu croisé du tracker par-dessus n'est pas un morphing : rien ne relie la
+mini-grille de la carte à la grille du tracker, et le tracker apparaît avant
+que le cadre soit arrivé. La transition est donc entièrement **dessinée par
+la scène** pendant toute sa durée, par un `MorphLayer` (un `CustomPainter`
+plus un titre positionné), à partir de géométries mesurées aux deux bouts :
 
-### Ouverture (`morphOpen`)
+| Élément | Côté carte (ancre) | Côté tracker (ancre) |
+|---|---|---|
+| Cadre | rectangle de la carte, rayon 10, `shell` + `shellBorder` | coque du tracker, rayon 14 |
+| Écran intérieur | conteneur de la mini-grille, rayon 6, `screen` + `screenBorder` | conteneur `screen` du tracker, rayon 10 |
+| Points | mini-grille : `MiniGridGeometry` (marge 3, pas = taille / 12 et / 31, rayon 0,42 du petit pas) | `TrackerGridGeometry` (colonne des jours, ligne des mois, cellule carrée, point 0,78) |
+| Titre | `MarqueeText` de la carte, pixel 11 | titre de la barre du haut, pixel 16 |
+| Points de légende | rangée de 8 px sous le titre | (barre latérale, en fondu) |
 
-1. `_navigate(tracker, pageId)` lit `anchors.cardRect(pageId)` pendant que la
-   liste est encore montée et le garde pour la scène.
-2. Frame de mesure : la scène peint la liste normalement et le tracker en
-   `Opacity(0)` sous `IgnorePointer`. L'animation démarre dès cette frame
-   (la coque reste sur la carte tant que la cible est inconnue) : le tap a sa
-   réponse à la frame suivante, pas après cette frame lourde. Après elle, la
-   scène lit `anchors.shellRect()` et la coque prend sa cible.
-3. Sur `screen` (420 ms), avec `t` passé par `enter` :
-   - la liste passe de 1 à 0 d'opacité sur `t ∈ [0 ; 0,6]` ;
-   - la coque, `Positioned.fromRect(Rect.lerp(carte, coque, t))`, couleur
-     `AppColors.shell`, bordure `shellBorder`, rayon 10 → 14 ;
-   - dedans, la copie de la carte, rendue à la taille de la carte dans un
-     `FittedBox(fit: BoxFit.fitWidth, alignment: topCenter)` sous
-     `ClipRRect`, opacité 1 → 0 sur `t ∈ [0 ; 0,4]` ;
-   - le tracker, par-dessus, opacité 0 → 1 sur `t ∈ [0,4 ; 1]`. Sa propre
-     coque a la même couleur et la même bordure, le raccord ne se voit pas.
-4. Fin : la liste et la coque sont retirées, le tracker reçoit les touches.
+Les deux géométries de grille vivent dans `lib/widgets/grid_geometry.dart`
+et sont **la** source de vérité : `TrackerGrid` et le peintre de la
+mini-grille les utilisent pour se dessiner, le `MorphLayer` pour
+interpoler. L'atterrissage est donc exact par construction.
 
-Replis : `shellRect()` null (le tracker s'est retiré au premier build, page
-disparue ou verrouillée) → `fade`. `cardRect` null (création depuis la boîte
-Nouveau tracker sans que la carte ait peint, voir §7) → la coque part d'un
-rectangle centré de 120 × 260 dp à opacité 0, c'est un zoom-fondu centré.
+`MorphAnchors` devient un registre à clés (`register(key, context)`,
+`rect(key)`, et `registerGrid(key, context, TrackerGridGeometry)` pour la
+grille), toujours par enregistrement au montage via `MorphAnchor(anchors,
+key, child)`. Clés : `card:<id>`, `cardScreen:<id>`, `cardGrid:<id>`,
+`cardTitle:<id>`, `cardLegends:<id>` dans la liste ; `shell`, `screen`,
+`grid`, `barTitle` dans le tracker.
 
-Le premier tracker et la restauration au lancement n'ont pas de liste
-derrière eux : ils restent en `fade`.
+**Progression.** Une seule progression géométrique `g = easeInOutCubic(t)`
+sur `screen` : cadre, écran, points (centre, rayon, couleur ; la bordure des
+points vides apparaît avec `g`) et titre (rectangle interpolé, texte mis à
+l'échelle dedans, couleur `text` → `title`) bougent ensemble. À `t = 0` le
+dessin est identique à la carte, à `t = 1` identique au tracker.
 
-### Fermeture (`morphClose`)
+**Ouverture.** La liste (écran sortant) s'estompe sur `t ∈ [0 ; 0,5]` sous
+le cadre. Les points de légende de la carte s'effacent sur `t ∈ [0 ; 0,25]`.
+Le tracker réel, construit invisible dès la frame de mesure, apparaît sur
+`t ∈ [0,85 ; 1]` pendant que le `MorphLayer` s'efface sur la même fenêtre :
+à ce moment la géométrie est à plus de 98 % de l'arrivée, le fondu croisé
+superpose deux images quasi identiques et fait apparaître ce que seul le
+tracker possède (lettres des mois, numéros des jours, barre latérale, barre
+du haut, bordures en pointillés).
 
-Déclenchée par la flèche retour, le retour système et le swipe de bord,
-tous via `_navigate(pageList)`.
+**Fermeture.** Miroir : le tracker réel s'efface sur `t ∈ [0 ; 0,15]`
+pendant que le `MorphLayer`, identique à lui, prend le relais ; la liste
+apparaît dessous sur `t ∈ [0,5 ; 1]` ; les points de légende de la carte
+reviennent sur `t ∈ [0,75 ; 1]` ; à `t = 1` le calque est retiré, la carte
+réelle est dessous, identique.
 
-1. Frame de mesure, l'animation déjà lancée (le rectangle de la coque est
-   lu tout de suite, le tracker étant encore en page) : le tracker peint
-   normalement, la liste est construite en `Opacity(0)` avec `revealPageId` : son `GridView` reçoit un
-   `ScrollController` dont l'offset initial met la rangée de la carte dans
-   la vue (rangée = index ÷ nombre de colonnes, hauteur de rangée déduite de
-   `maxCrossAxisExtent`, du ratio 0,45 et de l'espacement). Après la frame,
-   la scène lit `cardRect(pageId)` et `shellRect()`.
-2. Sur `screen` (420 ms), avec `t` passé par `exit` :
-   - le tracker, opacité 1 → 0 sur `t ∈ [0 ; 0,4]` ;
-   - la coque va du rectangle de la coque à celui de la carte, rayon
-     14 → 10 ;
-   - la copie de la carte dedans, opacité 0 → 1 sur `t ∈ [0,6 ; 1]` ;
-   - la liste dessous, opacité 0 → 1 sur `t ∈ [0,4 ; 1]`.
-3. Fin : le tracker et la coque sont retirés, la liste reçoit les touches.
-   La liste n'anime pas sa cascade dans ce cas (voir §7).
+**Frame de mesure.** L'animation démarre dès cette frame ; le `MorphLayer`
+n'est dessiné qu'une fois les deux bouts connus (la frame de mesure montre
+l'écran sortant tel quel). Une ancre indispensable manquante (cadre, écran,
+grille d'un côté ou de l'autre) → la transition continue en fondu. Titre ou
+légendes manquants → ces éléments sont simplement omis.
 
-Replis : `cardRect` null (carte supprimée depuis un autre appareil,
-verrouillée, liste vide) → la coque se rétracte vers le rectangle centré de
-120 × 260 dp en passant à opacité 0 sur `t ∈ [0,6 ; 1]`. `shellRect` null
-(ne devrait pas arriver, le tracker vient de peindre) → `fade`.
+**Réglage.** `AppMotion.debugMorphSlowdown` (debug seulement) étire le
+morphing pour le juger ; à remettre à 1 une fois validé.
 
 ### Ce que `AppShell` change
 
