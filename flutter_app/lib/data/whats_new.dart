@@ -39,6 +39,26 @@ const whatsNew = <String, Map<Language, List<String>>>{
 
 List<String>? whatsNewFor(String version, Language lang) => whatsNew[version]?[lang];
 
+/// Debug only (never in a release build): show the box at every launch,
+/// with the newest entry, whatever the running version says. Flip to false
+/// when done looking at it.
+const bool debugAlwaysShowWhatsNew = true;
+
+/// The newest version that has an entry (what the debug flag shows).
+String whatsNewLatestVersion() {
+  final versions = whatsNew.keys.toList()
+    ..sort((a, b) {
+      final pa = a.split('.').map(int.parse).toList();
+      final pb = b.split('.').map(int.parse).toList();
+      for (var i = 0; i < 3; i++) {
+        final c = pa[i].compareTo(pb[i]);
+        if (c != 0) return c;
+      }
+      return 0;
+    });
+  return versions.last;
+}
+
 /// Show the box once after an update: never twice for the same version,
 /// never for a version without notes. With nothing recorded yet, a fresh
 /// install shows nothing (the first-tracker flow has the stage) while an

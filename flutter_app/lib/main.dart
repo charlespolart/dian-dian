@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -261,19 +262,21 @@ class _AppShellState extends State<AppShell> {
   /// has cells but no recorded version came from a version without the box.
   Future<void> _maybeShowWhatsNew({required bool recordOnly}) async {
     final prefs = await SharedPreferences.getInstance();
-    final current = (await PackageInfo.fromPlatform()).version;
+    final forced = kDebugMode && debugAlwaysShowWhatsNew;
+    final current = forced ? whatsNewLatestVersion() : (await PackageInfo.fromPlatform()).version;
     final seen = prefs.getString(_whatsNewSeenKey);
     if (!mounted) return;
     final sync = context.read<SyncService>();
     final existingUser = sync.activated ?? sync.snapshotActivated ?? false;
     final bullets = whatsNewFor(current, context.read<LanguageProvider>().lang);
-    final show = !recordOnly &&
-        shouldShowWhatsNew(
-          seenVersion: seen,
-          currentVersion: current,
-          hasNotes: bullets != null,
-          existingUser: existingUser,
-        );
+    final show = forced && bullets != null ||
+        !recordOnly &&
+            shouldShowWhatsNew(
+              seenVersion: seen,
+              currentVersion: current,
+              hasNotes: bullets != null,
+              existingUser: existingUser,
+            );
     if (show) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) WhatsNewDialog.show(context, version: current, bullets: bullets!);
