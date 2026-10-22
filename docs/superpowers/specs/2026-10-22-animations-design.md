@@ -101,25 +101,37 @@ clavier) saute à la fin. Avec les animations réduites, la scène échange les
 
 ### Ancrages : `MorphAnchors`
 
-Objet détenu par `AppShell` et passé aux deux écrans :
+Objet détenu par `AppShell` et passé aux deux écrans. Les ancrages ne sont
+**pas** des `GlobalKey` : le glissement d'année de la liste (§5) garde deux
+grilles vivantes pendant 220 ms, avec les mêmes cartes dans chacune, ce
+qu'une `GlobalKey` refuse. À la place, un widget `MorphAnchor` enregistre le
+`BuildContext` de son enfant tant qu'il est monté : `MorphAnchor.card(anchors,
+pageId, child)` autour de la carte dans la grille uniquement, jamais autour
+de la copie du glisser-déposer ; `MorphAnchor.shell(anchors, child)` autour
+de la coque du tracker dans `_buildBookShell`, commun au portrait et au
+paysage. Le dernier enregistrement l'emporte (la grille de la nouvelle année
+prend la main), et un enregistrement n'est retiré que par son propriétaire.
 
 ```dart
 class MorphAnchors {
-  final GlobalKey shell = GlobalKey();           // la coque du tracker
-  final Map<String, GlobalKey> cards = {};       // une clé par id de page
-  GlobalKey cardKey(String pageId);              // crée au besoin
-  Rect? cardRect(String pageId);                 // null si pas à l'écran
-  Rect? shellRect();                             // null si le tracker n'a pas peint
+  void registerCard(String pageId, BuildContext context);
+  void unregisterCard(String pageId, BuildContext context);
+  void registerShell(BuildContext context);
+  void unregisterShell(BuildContext context);
+  Rect? cardRect(String pageId, {RenderBox? ancestor});  // null si pas à l'écran
+  Rect? shellRect({RenderBox? ancestor});                // null si le tracker n'a pas peint
 }
 ```
 
-Les rectangles sont en coordonnées de la scène (`localToGlobal` converti par
-le `RenderBox` de la scène). `PageListScreen` pose `anchors.cardKey(id)` sur
-la carte dans la grille uniquement, jamais sur la copie du glisser-déposer.
-`TrackerScreen` pose `anchors.shell` sur le conteneur de la coque dans
-`_buildBookShell`, commun au portrait et au paysage. Une seule liste et un
-seul tracker existent à la fois dans la scène, donc aucune clé n'est portée
-deux fois.
+Les rectangles sont lus en coordonnées de la scène (`localToGlobal` avec le
+`RenderBox` de la scène pour ancêtre).
+
+La scène elle-même garde un seul arbre stable, une pile à enfants clés sous
+un `AnimatedBuilder`, quelle que soit la phase (repos, frame de mesure,
+animation) : un écran conserve son élément et son état quand il passe de
+courant à sortant. Avant cette règle, chaque transition ré-instanciait les
+deux écrans (cascade de la liste rejouée, titre en cours d'édition perdu,
+grille posée trois fois).
 
 ### Copie de la carte
 
@@ -248,9 +260,11 @@ de rangées, **un seul** widget `DotPop` (public, pour les tests) en `Positioned
 cellule (`cellCenter(month, day)`, fonction pure sur `labelColWidth`,
 `cellSize`, `rowHeight`), clé `ValueKey(seq)` :
 
-- remplissage : le point à sa nouvelle couleur, échelle 0,6 → 1,15 → 1 sur
-  `pop` (séquence 60 % en `enter`, 40 % en `exit`), puis il reste posé,
-  identique au point dessous ;
+- remplissage : le point à la couleur **courante** de la case (lue par
+  `getCellColor` à chaque build : une légende recolorée ou une modification
+  venue d'un autre appareil juste après le tap se voit ; une case vidée fait
+  disparaître le pop), échelle 0,6 → 1,15 → 1 sur `pop` (séquence 60 % en
+  `enter`, 40 % en `exit`), puis il reste posé, identique au point dessous ;
 - effacement : le point à son ancienne couleur, échelle 1 → 0 avec fondu,
   sur `quick`.
 
@@ -324,10 +338,16 @@ légendes-pinceaux : leur réponse est déjà immédiate.
   peint, puis enchaîne sur `morphOpen` depuis elle (repli centré si elle
   n'a pas peint, carte hors de la vue par exemple).
 - **Suppression** : après la confirmation, la carte passe en état
-  `_removingId`, se rétracte à 0,85 et s'efface sur `quick`
-  (`AnimatedScale` + `AnimatedOpacity`), puis `softDeletePage` est appelé et
-  elle quitte la grille. Les autres cartes se recalent sans animation ; à
-  revoir si ça saute trop à l'œil.
+  `_removingId` (tap, croix et poignée inertes), se rétracte à 0,85 et
+  s'efface sur `quick` (`AnimatedScale` + `AnimatedOpacity`), puis
+  `softDeletePage` est appelé, que la liste soit encore montée ou non (la
+  suppression est confirmée, elle ne se perd pas), et elle quitte la grille.
+  Les autres cartes se recalent sans animation ; à revoir si ça saute trop à
+  l'œil.
+- **Changement d'année** : la grille de chaque année est un `GridView`
+  neuf sous le `SlideSwitcher` ; une `PageStorageKey` propre à l'instance
+  de l'écran garde l'offset de défilement d'une année à l'autre, et un
+  écran neuf démarre bien sur sa carte de retour (`revealPageId`).
 
 ## 8. Autres écrans
 
