@@ -17,7 +17,7 @@
 - Paysage tablette : la coque en `fitWidth`, le calque suit les ancres mesurées, pas une formule.
 - Un changement d'année pendant que le morph est mesuré : la grille enregistrée est celle de l'année affichée.
 - Thème (couleurs semi-transparentes de `screen`) : le peintre dessine cadre puis écran, comme le tracker, donc même rendu.
-- Case vide / pleine : bordure des vides qui apparaît avec `g`, couleur des pleines interpolée depuis `dotEmpty`.
+- Case vide / pleine : bordure des vides qui apparaît avec `g` ; les pleines gardent leur couleur d'un bout à l'autre (la mini-grille les dessine déjà en couleur).
 
 ### Task 1: `grid_geometry.dart` — géométries partagées (`MiniGridGeometry`, `TrackerGridGeometry`), `TrackerGrid` et la mini-grille s'en servent. Test: `test/grid_geometry_test.dart`.
 ### Task 2: `MorphAnchors` à clés + `MorphAnchor(anchors, key, child)` + `registerGrid` ; ancres posées dans la liste (card, cardScreen, cardGrid, cardTitle, cardLegends) et le tracker (shell, screen, grid, barTitle). Tests: `test/morph_anchors_test.dart` mis à jour.

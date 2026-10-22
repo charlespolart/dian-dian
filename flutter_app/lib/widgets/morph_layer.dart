@@ -100,16 +100,26 @@ class MorphLayer extends StatelessWidget {
             dotBorder: AppColors.dotBorder,
           ),
         ),
+        // The title keeps its glyph size (pixel 11 on the card, 16 in the bar,
+        // by scale) at its natural width, clipped to its rect: a long title
+        // is cut like the real marquee shows it, never squeezed to fit.
         if (cardTitle != null && barTitle != null)
           Positioned.fromRect(
             rect: Rect.lerp(cardTitle, barTitle, g)!,
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.lerp(Alignment.center, Alignment.centerLeft, g)!,
-              child: Text(
-                content.title,
-                maxLines: 1,
-                style: AppFonts.pixel(fontSize: 16, color: Color.lerp(AppColors.text, AppColors.title, g)!),
+            child: ClipRect(
+              child: Align(
+                alignment: Alignment.lerp(Alignment.center, Alignment.centerLeft, g)!,
+                child: Transform.scale(
+                  scale: lerpDouble(11 / 16, 1, g)!,
+                  alignment: Alignment.lerp(Alignment.center, Alignment.centerLeft, g)!,
+                  child: Text(
+                    content.title,
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.visible,
+                    style: AppFonts.pixel(fontSize: 16, color: Color.lerp(AppColors.text, AppColors.title, g)!),
+                  ),
+                ),
               ),
             ),
           ),

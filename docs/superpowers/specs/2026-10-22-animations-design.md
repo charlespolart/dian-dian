@@ -81,7 +81,7 @@ class ScreenStage extends StatefulWidget {
   final StageTransition transition;   // comment on y arrive depuis le précédent
   final MorphAnchors anchors;         // rectangles mesurés (voir plus bas)
   final String? morphPageId;          // carte de départ / d'arrivée du morphing
-  final WidgetBuilder? morphCardCopy; // copie figée de la carte, dans la coque
+  final MorphContent? morphContent;   // titre, cases de l'année, couleurs de légende
   final VoidCallback? onSettled;      // fin de transition
 }
 ```
@@ -104,30 +104,12 @@ clavier) saute à la fin. Avec les animations réduites, la scène échange les
 
 ### Ancrages : `MorphAnchors`
 
-Objet détenu par `AppShell` et passé aux deux écrans. Les ancrages ne sont
-**pas** des `GlobalKey` : le glissement d'année de la liste (§5) garde deux
-grilles vivantes pendant 220 ms, avec les mêmes cartes dans chacune, ce
-qu'une `GlobalKey` refuse. À la place, un widget `MorphAnchor` enregistre le
-`BuildContext` de son enfant tant qu'il est monté : `MorphAnchor.card(anchors,
-pageId, child)` autour de la carte dans la grille uniquement, jamais autour
-de la copie du glisser-déposer ; `MorphAnchor.shell(anchors, child)` autour
-de la coque du tracker dans `_buildBookShell`, commun au portrait et au
-paysage. Le dernier enregistrement l'emporte (la grille de la nouvelle année
-prend la main), et un enregistrement n'est retiré que par son propriétaire.
-
-```dart
-class MorphAnchors {
-  void registerCard(String pageId, BuildContext context);
-  void unregisterCard(String pageId, BuildContext context);
-  void registerShell(BuildContext context);
-  void unregisterShell(BuildContext context);
-  Rect? cardRect(String pageId, {RenderBox? ancestor});  // null si pas à l'écran
-  Rect? shellRect({RenderBox? ancestor});                // null si le tracker n'a pas peint
-}
-```
-
-Les rectangles sont lus en coordonnées de la scène (`localToGlobal` avec le
-`RenderBox` de la scène pour ancêtre).
+Objet détenu par `AppShell` et passé aux deux écrans, décrit en détail sous
+« Élément partagé » : un registre à clés rempli par des widgets `MorphAnchor`
+au montage, jamais des `GlobalKey` (le glissement d'année de la liste garde
+deux grilles vivantes avec les mêmes cartes). Les rectangles sont lus en
+coordonnées de la scène (`localToGlobal` avec le `RenderBox` de la scène
+pour ancêtre).
 
 La scène elle-même garde un seul arbre stable, une pile à enfants clés sous
 un `AnimatedBuilder`, quelle que soit la phase (repos, frame de mesure,
@@ -150,7 +132,7 @@ plus un titre positionné), à partir de géométries mesurées aux deux bouts :
 | Cadre | rectangle de la carte, rayon 10, `shell` + `shellBorder` | coque du tracker, rayon 14 |
 | Écran intérieur | conteneur de la mini-grille, rayon 6, `screen` + `screenBorder` | conteneur `screen` du tracker, rayon 10 |
 | Points | mini-grille : `MiniGridGeometry` (marge 3, pas = taille / 12 et / 31, rayon 0,42 du petit pas) | `TrackerGridGeometry` (colonne des jours, ligne des mois, cellule carrée, point 0,78) |
-| Titre | `MarqueeText` de la carte, pixel 11 | titre de la barre du haut, pixel 16 |
+| Titre | `MarqueeText` de la carte, pixel 11 | titre de la barre du haut, pixel 16 (taille des glyphes par échelle 11 → 16, largeur naturelle, coupé à son rectangle, jamais écrasé) |
 | Points de légende | rangée de 8 px sous le titre | (barre latérale, en fondu) |
 
 Les deux géométries de grille vivent dans `lib/widgets/grid_geometry.dart`
@@ -158,12 +140,16 @@ et sont **la** source de vérité : `TrackerGrid` et le peintre de la
 mini-grille les utilisent pour se dessiner, le `MorphLayer` pour
 interpoler. L'atterrissage est donc exact par construction.
 
-`MorphAnchors` devient un registre à clés (`register(key, context)`,
-`rect(key)`, et `registerGrid(key, context, TrackerGridGeometry)` pour la
-grille), toujours par enregistrement au montage via `MorphAnchor(anchors,
-key, child)`. Clés : `card:<id>`, `cardScreen:<id>`, `cardGrid:<id>`,
-`cardTitle:<id>`, `cardLegends:<id>` dans la liste ; `shell`, `screen`,
-`grid`, `barTitle` dans le tracker.
+`MorphAnchors` est un registre à clés (`register(key, context)` /
+`unregister`, `rect(key, {ancestor})`, et `registerGrid(context,
+TrackerGridGeometry)` pour la grille, dont `gridGeometry` relit la mise en
+page), rempli au montage par `MorphAnchor(anchors: …, anchorKey: …, child:
+…)` et `MorphAnchor.grid(anchors: …, geometry: …, child: …)`. Le dernier
+enregistrement l'emporte, un enregistrement n'est retiré que par son
+propriétaire. Clés : `card:<id>`, `cardScreen:<id>`, `cardGrid:<id>`,
+`cardTitle:<id>`, `cardLegends:<id>` posées par `PageCard` elle-même ;
+`shell`, `screen`, `barTitle` posées par le tracker et `grid` par
+`TrackerGrid`.
 
 **Progression.** Une seule progression géométrique `g = easeInOutCubic(t)`
 sur `screen` : cadre, écran, points (centre, rayon, couleur ; la bordure des

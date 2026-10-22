@@ -40,7 +40,26 @@ void main() {
     ));
     expect(find.byType(MorphLayer), findsOneWidget);
     expect(find.text('Mood'), findsOneWidget);
-    final titleBox = tester.getRect(find.ancestor(of: find.text('Mood'), matching: find.byType(FittedBox)).first);
+    final titleBox = tester.getRect(find.ancestor(of: find.text('Mood'), matching: find.byType(ClipRect)).first);
     expect(titleBox.left, closeTo(Rect.lerp(ends.cardTitle, ends.barTitle, 0.5)!.left, 0.5));
+  });
+
+  testWidgets('a long title keeps its glyph size (11 → 16 px by scale), never squeezed to fit its rect', (tester) async {
+    const long = 'Un titre vraiment très long pour un tracker';
+    const content = MorphContent(title: long, cells: null, year: 2026, legendColors: []);
+    double scaleAt(WidgetTester t) {
+      final transforms = find.ancestor(of: find.text(long), matching: find.byType(Transform));
+      return t.widgetList<Transform>(transforms).map((w) => w.transform.entry(0, 0)).reduce((a, b) => a < b ? a : b);
+    }
+
+    await tester.pumpWidget(const MaterialApp(
+      home: Stack(fit: StackFit.expand, children: [MorphLayer(ends: ends, content: content, g: 0, legendsOpacity: 1)]),
+    ));
+    expect(find.byType(FittedBox), findsNothing);
+    expect(scaleAt(tester), closeTo(11 / 16, 0.001));
+    await tester.pumpWidget(const MaterialApp(
+      home: Stack(fit: StackFit.expand, children: [MorphLayer(ends: ends, content: content, g: 1, legendsOpacity: 0)]),
+    ));
+    expect(scaleAt(tester), closeTo(1, 0.001));
   });
 }

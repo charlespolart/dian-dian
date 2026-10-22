@@ -140,12 +140,6 @@ class _PageListScreenState extends State<PageListScreen> {
     super.dispose();
   }
 
-  /// The card the morph measures, registered while it is in the grid.
-  Widget _anchored(String pageId, Widget card) {
-    final anchors = widget.anchors;
-    return anchors == null ? card : MorphAnchor(anchors: anchors, anchorKey: MorphAnchors.card(pageId), child: card);
-  }
-
   ({AppearStyle style, Duration delay}) _appearanceOf(String id, int index) {
     return _appearance.putIfAbsent(id, () {
       if (_firstBuildDone && !_seenIds.contains(id)) {
@@ -526,9 +520,7 @@ class _PageListScreenState extends State<PageListScreen> {
                                                 child: AnimatedOpacity(
                                                   opacity: removing ? 0 : 1,
                                                   duration: AppMotion.of(context, AppMotion.quick),
-                                                  child: _anchored(
-                                                    page.id,
-                                                    PageCard(
+                                                  child: PageCard(
                                                     anchors: widget.anchors,
                                                     page: page,
                                                     year: _selectedYear,
@@ -576,7 +568,6 @@ class _PageListScreenState extends State<PageListScreen> {
                                                             height: 28,
                                                           ),
                                                       child: handleGlyph,
-                                                    ),
                                                     ),
                                                   ),
                                                 ),
@@ -708,7 +699,9 @@ class PageCard extends StatelessWidget {
       opacity: cardOpacity,
       child: GestureDetector(
         onTap: isDragGhost ? null : onTap,
-        child: Container(
+        child: _anchor(
+          MorphAnchors.card(page.id),
+          Container(
           decoration: BoxDecoration(
             color: AppColors.shell,
             border: Border.all(color: AppColors.shellBorder),
@@ -835,6 +828,7 @@ class PageCard extends StatelessWidget {
                   ),
                 ),
             ],
+          ),
           ),
         ),
       ),
