@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:dian_dian/theme/app_theme.dart';
 import 'package:dian_dian/widgets/grid_geometry.dart';
 import 'package:dian_dian/widgets/morph_layer.dart';
 
@@ -61,5 +63,38 @@ void main() {
       home: Stack(fit: StackFit.expand, children: [MorphLayer(ends: ends, content: content, g: 1, legendsOpacity: 0)]),
     ));
     expect(scaleAt(tester), closeTo(1, 0.001));
+  });
+
+  testWidgets('at g = 0 the glyph run fills the card title rect exactly: a title at its natural width is never cut', (tester) async {
+    const title = 'Lecture du soir';
+    final painter = TextPainter(
+      text: TextSpan(text: title, style: AppFonts.pixel(fontSize: 11)),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    // The card's MarqueeText viewport is exactly the 11 px text when it fits.
+    final cardTitle = Rect.fromLTWH(30, 44, painter.width, painter.height);
+    final atCard = MorphEnds(
+      card: ends.card,
+      cardScreen: ends.cardScreen,
+      cardGrid: ends.cardGrid,
+      cardTitle: cardTitle,
+      cardLegends: ends.cardLegends,
+      shell: ends.shell,
+      screen: ends.screen,
+      grid: ends.grid,
+      gridGeometry: geo,
+      barTitle: ends.barTitle,
+    );
+    const content = MorphContent(title: title, cells: null, year: 2026, legendColors: []);
+    await tester.pumpWidget(MaterialApp(
+      home: Stack(fit: StackFit.expand, children: [MorphLayer(ends: atCard, content: content, g: 0, legendsOpacity: 1)]),
+    ));
+    final run = tester.renderObject<RenderParagraph>(find.text(title));
+    final topLeft = run.localToGlobal(Offset.zero);
+    final bottomRight = run.localToGlobal(Offset(run.textSize.width, run.textSize.height));
+    expect(topLeft.dx, closeTo(cardTitle.left, 0.5));
+    expect(topLeft.dy, closeTo(cardTitle.top, 0.5));
+    expect(bottomRight.dx, closeTo(cardTitle.right, 0.5));
+    expect(bottomRight.dy, closeTo(cardTitle.bottom, 0.5));
   });
 }

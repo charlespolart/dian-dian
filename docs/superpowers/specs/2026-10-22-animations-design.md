@@ -132,7 +132,7 @@ plus un titre positionné), à partir de géométries mesurées aux deux bouts :
 | Cadre | rectangle de la carte, rayon 10, `shell` + `shellBorder` | coque du tracker, rayon 14 |
 | Écran intérieur | conteneur de la mini-grille, rayon 6, `screen` + `screenBorder` | conteneur `screen` du tracker, rayon 10 |
 | Points | mini-grille : `MiniGridGeometry` (marge 3, pas = taille / 12 et / 31, rayon 0,42 du petit pas) | `TrackerGridGeometry` (colonne des jours, ligne des mois, cellule carrée, point 0,78) |
-| Titre | `MarqueeText` de la carte, pixel 11 | titre de la barre du haut, pixel 16 (taille des glyphes par échelle 11 → 16, largeur naturelle, coupé à son rectangle, jamais écrasé) |
+| Titre | `MarqueeText` de la carte, pixel 11 | titre de la barre du haut, pixel 16 (taille des glyphes par échelle 11 → 16 ; texte posé à sa taille naturelle, calé à gauche de son rectangle aux deux bouts comme le fait chaque `MarqueeText`, pivot d'échelle sur ce bord ; coupé à son rectangle, jamais écrasé) |
 | Points de légende | rangée de 8 px sous le titre | (barre latérale, en fondu) |
 
 Les deux géométries de grille vivent dans `lib/widgets/grid_geometry.dart`
@@ -153,8 +153,8 @@ propriétaire. Clés : `card:<id>`, `cardScreen:<id>`, `cardGrid:<id>`,
 
 **Progression.** Une seule progression géométrique `g = easeInOutCubic(t)`
 sur `screen` : cadre, écran, points (centre, rayon, couleur ; la bordure des
-points vides apparaît avec `g`) et titre (rectangle interpolé, texte mis à
-l'échelle dedans, couleur `text` → `title`) bougent ensemble. À `t = 0` le
+points vides apparaît avec `g`) et titre (rectangle interpolé, texte à sa taille
+naturelle calé à gauche et mis à l'échelle depuis ce bord, couleur `text` → `title`) bougent ensemble. À `t = 0` le
 dessin est identique à la carte, à `t = 1` identique au tracker.
 
 **Ouverture.** La liste (écran sortant) s'estompe sur `t ∈ [0 ; 0,5]` sous

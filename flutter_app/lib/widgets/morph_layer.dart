@@ -101,17 +101,27 @@ class MorphLayer extends StatelessWidget {
           ),
         ),
         // The title keeps its glyph size (pixel 11 on the card, 16 in the bar,
-        // by scale) at its natural width, clipped to its rect: a long title
+        // by scale) at its natural size, clipped to its rect: a long title
         // is cut like the real marquee shows it, never squeezed to fit.
+        // Both rects are MarqueeText viewports, which start their text at
+        // their left edge (and are exactly as wide as a title that fits), so
+        // the run is laid out unconstrained and pinned to the left, with the
+        // scale pivoting there too: a bounded box would centre the pivot on
+        // the box, not on the glyphs, and push the end of the run out of the
+        // clip.
         if (cardTitle != null && barTitle != null)
           Positioned.fromRect(
             rect: Rect.lerp(cardTitle, barTitle, g)!,
             child: ClipRect(
-              child: Align(
-                alignment: Alignment.lerp(Alignment.center, Alignment.centerLeft, g)!,
+              child: OverflowBox(
+                alignment: Alignment.centerLeft,
+                minWidth: 0,
+                maxWidth: double.infinity,
+                minHeight: 0,
+                maxHeight: double.infinity,
                 child: Transform.scale(
                   scale: lerpDouble(11 / 16, 1, g)!,
-                  alignment: Alignment.lerp(Alignment.center, Alignment.centerLeft, g)!,
+                  alignment: Alignment.centerLeft,
                   child: Text(
                     content.title,
                     maxLines: 1,
