@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import '../models/cell_change.dart';
 import '../models/cell_model.dart';
 import '../models/year_cells.dart';
 import '../services/api_service.dart';
@@ -27,12 +28,18 @@ class CellsProvider extends ChangeNotifier {
   String? _currentPageId;
   int _currentYear = DateTime.now().year;
   int _mutationEpoch = 0;
+  CellChange? _lastChange;
+  int _changeSeq = 0;
 
   /// Incremented by every store change that did NOT come from a bootstrap
   /// apply (optimistic edits, reverts, WS events). `SyncService` uses it to
   /// decide whether a server body may be skipped or must be (re)applied.
   int get mutationEpoch => _mutationEpoch;
   void _touch() => _mutationEpoch++;
+
+  /// The last cell this device changed (for the grid's pop); null after a
+  /// revert, a clear, or before any local change.
+  CellChange? get lastChange => _lastChange;
 
   CellsProvider({ApiService? api, AudioService? audio})
       : _api = api ?? ApiService(),
@@ -105,6 +112,7 @@ class CellsProvider extends ChangeNotifier {
     _currentPageId = null;
     _currentYear = DateTime.now().year;
     _statsValid = false;
+    _lastChange = null;
     notifyListeners();
   }
 
@@ -173,6 +181,7 @@ class CellsProvider extends ChangeNotifier {
   }
 
   void _revert(String pageId, int year, int month, int day, CellModel? previous) {
+    _lastChange = null;
     final entry = _entry(pageId, year);
     _put(previous != null ? entry.upsert(previous) : entry.remove(month, day));
   }
@@ -195,6 +204,7 @@ class CellsProvider extends ChangeNotifier {
       updatedAt: DateTime.now().toIso8601String(),
     );
     _put(_entry(pageId, year).upsert(optimistic));
+    _lastChange = CellChange(pageId: pageId, year: year, month: month, day: day, color: color, erased: false, seq: ++_changeSeq);
     notifyListeners();
     _audio.playTap();
 
@@ -232,6 +242,7 @@ class CellsProvider extends ChangeNotifier {
     if (previous == null) return;
 
     _put(_entry(pageId, year).remove(month, day));
+    _lastChange = CellChange(pageId: pageId, year: year, month: month, day: day, color: previous.color, erased: true, seq: ++_changeSeq);
     notifyListeners();
     _audio.playErase();
 
@@ -242,11 +253,13 @@ class CellsProvider extends ChangeNotifier {
         body: {'year': year, 'month': month, 'day': day},
       );
       if (response.statusCode != 200 && response.statusCode != 204) {
+        _lastChange = null;
         _put(_entry(pageId, year).upsert(previous));
         notifyListeners();
       }
     } catch (e) {
       debugPrint('CellsProvider: deleteCell failed: $e');
+      _lastChange = null;
       _put(_entry(pageId, year).upsert(previous));
       notifyListeners();
     }

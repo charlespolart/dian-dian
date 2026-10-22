@@ -337,6 +337,8 @@ class _TrackerScreenState extends State<TrackerScreen> {
   }
 
   Widget _buildGrid(CellsProvider cellsProv, List legends) {
+    final change = cellsProv.lastChange;
+    final pop = change != null && change.pageId == _page.id && change.year == _year ? change : null;
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.all(6),
@@ -346,29 +348,30 @@ class _TrackerScreenState extends State<TrackerScreen> {
             child: KeyedSubtree(
               key: ValueKey(_year),
               child: TrackerGrid(
-            year: _year,
-            getCellColor: (month, day) => cellsProv.getCellColor(month, day),
-            onCellPress: (month, day, at) {
-              final existingCell = cellsProv.getCell(month, day);
-              if (existingCell != null) {
-                // Cell is filled → open dialog to view/edit comment
-                CellEditorDialog.show(context, month: month, day: day, year: _year, origin: at);
-              } else if (_selectedLegendId != null) {
-                // Legend selected as brush → fill directly
-                try {
-                  final legend = legends.firstWhere((l) => l.id == _selectedLegendId);
-                  cellsProv.setCell(month, day, legend.color);
-                } catch (_) {
-                  // Legend was deleted, deselect
-                  setState(() => _selectedLegendId = null);
-                }
-              } else {
-                // No brush selected → open dialog
-                CellEditorDialog.show(context, month: month, day: day, year: _year, origin: at);
-              }
-            },
+                year: _year,
+                pop: pop,
+                getCellColor: (month, day) => cellsProv.getCellColor(month, day),
+                onCellPress: (month, day, at) {
+                  final existingCell = cellsProv.getCell(month, day);
+                  if (existingCell != null) {
+                    // Cell is filled → open dialog to view/edit comment
+                    CellEditorDialog.show(context, month: month, day: day, year: _year, origin: at);
+                  } else if (_selectedLegendId != null) {
+                    // Legend selected as brush → fill directly
+                    try {
+                      final legend = legends.firstWhere((l) => l.id == _selectedLegendId);
+                      cellsProv.setCell(month, day, legend.color);
+                    } catch (_) {
+                      // Legend was deleted, deselect
+                      setState(() => _selectedLegendId = null);
+                    }
+                  } else {
+                    // No brush selected → open dialog
+                    CellEditorDialog.show(context, month: month, day: day, year: _year, origin: at);
+                  }
+                },
+              ),
             ),
-          ),
           ),
         ),
       ),

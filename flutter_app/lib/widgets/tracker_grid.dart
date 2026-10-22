@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../models/cell_change.dart';
 import '../theme/app_theme.dart';
+import '../theme/motion.dart';
 
 /// The year grid widget: 12 months x 31 days of colored dots.
 ///
@@ -12,13 +14,28 @@ class TrackerGrid extends StatelessWidget {
   /// Called with the global position of the tap, so the editor can be born
   /// from the dot.
   final void Function(int month, int day, Offset globalPosition) onCellPress;
+  /// The cell that just changed on this device, drawn once as a [DotPop]
+  /// over the grid (null: nothing to pop).
+  final CellChange? pop;
 
   const TrackerGrid({
     super.key,
     required this.year,
     required this.getCellColor,
     required this.onCellPress,
+    this.pop,
   });
+
+  /// Centre of the dot of (month, day) in the grid's own coordinates: one
+  /// label column on the left, one header row on top.
+  static Offset cellCenter({
+    required int month,
+    required int day,
+    required double labelColWidth,
+    required double cellSize,
+    required double rowHeight,
+  }) =>
+      Offset(labelColWidth + cellSize * (month - 1) + cellSize / 2, rowHeight * day + rowHeight / 2);
 
   static const List<String> _monthLabels = [
     'J', 'F', 'M', 'A', 'M', 'J',
@@ -91,10 +108,17 @@ class TrackerGrid extends StatelessWidget {
         final gridW = labelColWidth + cellSize * 12;
         final gridH = rowHeight * _rows;
 
+        final pop = this.pop;
+        final popCenter = pop != null && pop.year == year
+            ? cellCenter(month: pop.month, day: pop.day, labelColWidth: labelColWidth, cellSize: cellSize, rowHeight: rowHeight)
+            : null;
+
         return SizedBox(
           width: gridW,
           height: gridH,
-          child: Column(
+          child: Stack(
+            children: [
+              Column(
             children: [
               // Month headers row
               SizedBox(
@@ -198,7 +222,61 @@ class TrackerGrid extends StatelessWidget {
                 );
               }),
             ],
+              ),
+              if (popCenter != null)
+                Positioned(
+                  left: popCenter.dx - dotSize / 2,
+                  top: popCenter.dy - dotSize / 2,
+                  width: dotSize,
+                  height: dotSize,
+                  child: IgnorePointer(
+                    child: DotPop(
+                      key: ValueKey(pop!.seq),
+                      color: pop.color == null ? AppColors.dotEmpty : _parseColor(pop.color!),
+                      erased: pop.erased,
+                      size: dotSize,
+                    ),
+                  ),
+                ),
+            ],
           ),
+        );
+      },
+    );
+  }
+}
+
+/// The one animated widget of the grid: the dot that just changed, at its
+/// new colour, 0.6 → 1.15 → 1 over [AppMotion.pop]; an erase shrinks the old
+/// colour to nothing over [AppMotion.quick]. Keyed on the change's seq, so a
+/// new change restarts it.
+class DotPop extends StatelessWidget {
+  final Color color;
+  final bool erased;
+  final double size;
+
+  const DotPop({super.key, required this.color, required this.erased, required this.size});
+
+  static final Animatable<double> fillScale = TweenSequence<double>([
+    TweenSequenceItem(tween: Tween(begin: 0.6, end: 1.15).chain(CurveTween(curve: AppMotion.enter)), weight: 60),
+    TweenSequenceItem(tween: Tween(begin: 1.15, end: 1.0).chain(CurveTween(curve: AppMotion.exit)), weight: 40),
+  ]);
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: AppMotion.of(context, erased ? AppMotion.quick : AppMotion.pop),
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+      ),
+      builder: (context, t, child) {
+        final scale = erased ? 1 - AppMotion.exit.transform(t) : fillScale.transform(t);
+        return Opacity(
+          opacity: erased ? 1 - t : 1,
+          child: Transform.scale(scale: scale, child: child),
         );
       },
     );

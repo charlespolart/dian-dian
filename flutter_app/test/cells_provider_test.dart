@@ -208,4 +208,62 @@ void main() {
     expect(p.currentPageId, isNull);
     expect(p.cells, isEmpty);
   });
+
+  group('lastChange', () {
+    CellsProvider withServer({int status = 200}) {
+      final client = MockClient((req) async {
+        if (req.method == 'PUT' && req.url.path.startsWith('/api/cells/')) {
+          return http.Response(
+            '{"pageId":"a","year":2026,"month":1,"day":3,"color":"#111111","updatedAt":""}',
+            status,
+            headers: const {'content-type': 'application/json; charset=utf-8'},
+          );
+        }
+        if (req.method == 'DELETE') return http.Response('', status == 200 ? 204 : status);
+        return http.Response('{}', 404);
+      });
+      final p = CellsProvider(api: ApiService.custom(client: client, tokens: FakeTokens()), audio: AudioService.silent());
+      p.applyBootstrap(2026, {'a': [[1, 1, '#AAAAAA']]});
+      p.setContext(pageId: 'a', year: 2026);
+      return p;
+    }
+
+    test('is null until this device changes a cell, then names the cell and its new colour', () async {
+      final p = withServer();
+      expect(p.lastChange, isNull);
+      await p.setCell(1, 3, '#111111');
+      final c = p.lastChange!;
+      expect((c.pageId, c.year, c.month, c.day, c.color, c.erased), ('a', 2026, 1, 3, '#111111', false));
+    });
+
+    test('seq grows at every change, an erase keeps the old colour', () async {
+      final p = withServer();
+      await p.setCell(1, 3, '#111111');
+      final first = p.lastChange!.seq;
+      await p.deleteCell(1, 1);
+      final c = p.lastChange!;
+      expect(c.seq, greaterThan(first));
+      expect((c.month, c.day, c.color, c.erased), (1, 1, '#AAAAAA', true));
+    });
+
+    test('a refused change is forgotten with the revert', () async {
+      final p = withServer(status: 500);
+      await p.setCell(1, 3, '#111111');
+      expect(p.getCell(1, 3), isNull);
+      expect(p.lastChange, isNull);
+    });
+
+    test('a bootstrap, a WS message or clear() never produce a pop', () async {
+      final p = withServer();
+      p.applyBootstrap(2026, {'a': [[2, 2, '#BBBBBB']]});
+      expect(p.lastChange, isNull);
+      p.debugHandleWs(const WsMessage(event: 'cell:updated', data: {
+        'pageId': 'a', 'year': 2026, 'month': 3, 'day': 3, 'color': '#CCCCCC', 'updatedAt': '',
+      }));
+      expect(p.lastChange, isNull);
+      await p.setCell(1, 3, '#111111');
+      p.clear();
+      expect(p.lastChange, isNull);
+    });
+  });
 }
