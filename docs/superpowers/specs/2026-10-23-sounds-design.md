@@ -64,6 +64,7 @@ reste.
 | `dragHover` | `DragTarget.onWillAcceptWithDetails` quand la cible accepte (elle se surligne) | à chaque entrée sur une cible valable |
 | `dragDrop` | `DragTarget.onAcceptWithDetails` | au dépôt, avant le réordonnancement |
 | `select` | légende prise comme pinceau (barre latérale), légende choisie dans l'éditeur de case, pastille ou couleur choisie dans l'éditeur de légendes | au tap |
+| `dayNext` / `dayPrev` | les flèches de l'éditeur de case (`_navigateDay`) | au pas, selon le sens |
 
 Les points de la grille ne passent pas par `PressScale` : un tap sur une
 case ne fait sonner que `dotFill` ou `dotErase`.
@@ -145,7 +146,7 @@ soft, pop }`.
 **Ajout (2026-10-23, essai 2).** Six moments de plus demandés à l'essai :
 `panelOpen`, `panelClose`, `dragPick`, `dragHover`, `dragDrop`, `select`
 (table du §1). `dragHover` et `select` sont plus discrets (−10 et −6 dBFS).
-Seize fichiers par palette.
+Dix-huit fichiers par palette (`dayNext` / `dayPrev` ajoutés à l'essai 3).
 
 **Essai 2 (2026-10-23).** Dans Soft, le style des bulles des pop-ups plaît ;
 le reste doit être aussi simple, « comme des clics satisfaisants ». Soft

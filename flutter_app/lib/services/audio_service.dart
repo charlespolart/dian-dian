@@ -23,6 +23,8 @@ enum SoundCue {
   dragHover,   // the dragged thing arrives over a place it can take
   dragDrop,    // … and is dropped there
   select,      // a legend or a colour becomes the selection
+  dayNext,     // the cell editor steps to the next day
+  dayPrev,     // … or to the previous one
 }
 
 /// A folder under assets/sounds: several while they are compared, one ships.

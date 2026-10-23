@@ -194,4 +194,18 @@ void main() {
     await tester.pump();
     expect(rec.players.played, [SoundCue.dialogOpen, SoundCue.select]);
   });
+
+  testWidgets('in the cell editor, the day arrows play dayNext and dayPrev', (tester) async {
+    tabletPortrait(tester);
+    final rec = await recordingAudio();
+    await tester.pumpWidget(TrackerHarness(audio: rec.service).widget);
+    await tester.tap(find.descendant(of: find.byType(TrackerGrid), matching: find.byType(GestureDetector)).first);
+    await tester.pumpAndSettle();
+    final nav = find.byType(SwipeNav).last; // the sidebar has the year's, the dialog the day's
+    tester.widget<SwipeNav>(nav).onNext();
+    await tester.pump();
+    tester.widget<SwipeNav>(nav).onPrev();
+    await tester.pump();
+    expect(rec.players.played, [SoundCue.dialogOpen, SoundCue.dayNext, SoundCue.dayPrev]);
+  });
 }

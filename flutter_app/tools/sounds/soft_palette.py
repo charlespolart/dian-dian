@@ -113,4 +113,6 @@ def render(style: Style = SOFT):
         "drag_hover": up(900, 1200, dur=0.05, tau=0.02, gain=0.5),
         "drag_drop": room(mix([(0.0, down(900, 520, dur=0.09, tau=0.04, gain=0.6)), (0.03, thump(freq=180.0, gain=0.6))])),
         "select": up(700, 1150, dur=0.07, tau=0.03, gain=0.7),
+        "day_next": up(560, 840, dur=0.06, tau=0.03, gain=0.6),
+        "day_prev": down(840, 560, dur=0.06, tau=0.03, gain=0.6),
     }

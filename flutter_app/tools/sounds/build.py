@@ -18,7 +18,7 @@ APP = HERE.parent.parent
 OUT = APP / "assets" / "sounds"
 SR = 44100
 MAX_MS = {"tracker_open": 700, "tracker_close": 700, "tracker_create": 700}
-PEAK_DB = {"press": -10.0, "drag_hover": -10.0, "select": -6.0}
+PEAK_DB = {"press": -10.0, "drag_hover": -10.0, "select": -6.0, "day_next": -6.0, "day_prev": -6.0}
 
 sys.path.insert(0, str(HERE))
 from soft_palette import LIGHTER, SOFT, SOFTER, render  # noqa: E402
