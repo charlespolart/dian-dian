@@ -17,6 +17,7 @@ import 'package:dian_dian/services/audio_service.dart';
 import 'package:dian_dian/services/sync_service.dart';
 import 'package:dian_dian/services/ws_service.dart';
 import 'package:dian_dian/theme/motion.dart';
+import 'package:dian_dian/widgets/press_scale.dart';
 import 'package:dian_dian/widgets/swipe_nav.dart';
 import 'package:dian_dian/widgets/tracker_grid.dart';
 
@@ -39,7 +40,10 @@ class TrackerHarness {
         ],
       })
       ..setPageId('p0');
-    final cells = CellsProvider(api: api, audio: AudioService.silent())..applyBootstrap(2026, {'p0': <dynamic>[]});
+    // The same service as the screen's, as the app's singleton is.
+    final cells = CellsProvider(api: api, audio: audio ?? AudioService.silent())
+      ..applyBootstrap(2026, {'p0': <dynamic>[]})
+      ..setContext(pageId: 'p0', year: 2026); // as the shell does before showing a tracker
     final sync = SyncService(
       api: api,
       pages: pages,
@@ -207,5 +211,19 @@ void main() {
     tester.widget<SwipeNav>(nav).onPrev();
     await tester.pump();
     expect(rec.players.played, [SoundCue.dialogOpen, SoundCue.stepNext, SoundCue.stepPrev]);
+  });
+
+  testWidgets('saving a cell from the editor plays the fill, not the close that follows the server', (tester) async {
+    tabletPortrait(tester);
+    final rec = await recordingAudio();
+    await tester.pumpWidget(TrackerHarness(audio: rec.service).widget);
+    await tester.tap(find.descendant(of: find.byType(TrackerGrid), matching: find.byType(GestureDetector)).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sport').last);
+    await tester.pump();
+    await tester.tap(find.widgetWithText(PressScale, 'OK'));
+    await tester.pumpAndSettle();
+    expect(find.text('OK'), findsNothing, reason: 'the editor closed');
+    expect(rec.players.played, [SoundCue.dialogOpen, SoundCue.select, SoundCue.dotFill]);
   });
 }

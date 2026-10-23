@@ -212,12 +212,19 @@ iOS `AVAudioSessionCategory.ambient` (l'interrupteur silence est respecté,
 la musique en cours continue), Android `contentType: sonification`,
 `usageType: assistanceSonification`, `audioFocus: none`.
 
-**Un son par geste.** `play(SoundCue.press)` ne joue pas tout de suite : le
-tic est mis en attente et joué dans une microtâche. Si un autre moment est
-joué d'ici là, dans le même tour d'événement, le tic est abandonné : un
-bouton qui ouvre un pop-up, change l'année ou ouvre un tracker ne fait
-sonner que ça. Un moment qui arrive plus tard (une création après la réponse
-du serveur) sonne en plus du tic : ce sont deux instants.
+**Un son par geste.** Deux moments sont *faibles* : `press` et
+`dialogClose`. Un moment faible ne joue pas tout de suite : il est mis en
+attente et joué dans une microtâche ; si un moment fort est joué d'ici là,
+dans le même tour d'événement, il est abandonné (un bouton qui ouvre un
+pop-up, change l'année ou ouvre un tracker ne fait sonner que ça) ; entre
+deux faibles du même tour, la fermeture l'emporte sur le tic. Et pendant
+250 ms après un moment fort autre que `dialogOpen` (`AudioService.yieldWindow` ;
+ouvrir puis fermer aussitôt reste deux gestes), les faibles sont
+abandonnés : une case remplie puis son éditeur refermé une fois le serveur
+revenu ne fait sonner que le remplissage (révision du 2026-10-23, essai 3,
+où les deux sonnaient ensemble). Un moment fort qui arrive plus tard (une
+création après la réponse du serveur) sonne en plus : ce sont deux
+instants.
 
 **Mode « réduire les animations ».** Sans effet sur les sons : ce n'est pas
 du mouvement. Seul le réglage « Sons » les coupe.

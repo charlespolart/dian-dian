@@ -40,10 +40,46 @@ void main() {
     service.play(SoundCue.dialogOpen);
     await settle();
     expect(players.played, [SoundCue.dialogOpen]);
+    await Future<void>.delayed(AudioService.yieldWindow + const Duration(milliseconds: 30));
     service.play(SoundCue.press);
     service.play(SoundCue.press);
     await settle();
     expect(players.played, [SoundCue.dialogOpen, SoundCue.press]);
+  });
+
+  test('dialogClose outranks press in the same turn, whichever comes first', () async {
+    final (:service, :players) = await recordingAudio();
+    service.play(SoundCue.press);
+    service.play(SoundCue.dialogClose);
+    await settle();
+    expect(players.played, [SoundCue.dialogClose]);
+    service.play(SoundCue.dialogClose);
+    service.play(SoundCue.press);
+    await settle();
+    expect(players.played, [SoundCue.dialogClose, SoundCue.dialogClose]);
+  });
+
+  test('a weak cue soon after a strong one is dropped — the act and the pop of one gesture, even across a server round trip', () async {
+    final (:service, :players) = await recordingAudio();
+    service.play(SoundCue.dotFill);
+    await settle();
+    service.play(SoundCue.dialogClose); // the dialog pops once the server answered
+    service.play(SoundCue.press);
+    await settle();
+    expect(players.played, [SoundCue.dotFill]);
+    await Future<void>.delayed(AudioService.yieldWindow + const Duration(milliseconds: 30));
+    service.play(SoundCue.dialogClose);
+    await settle();
+    expect(players.played, [SoundCue.dotFill, SoundCue.dialogClose]);
+  });
+
+  test('a dialog opened and closed at once sounds both: opening does not arm the yield window', () async {
+    final (:service, :players) = await recordingAudio();
+    service.play(SoundCue.dialogOpen);
+    await settle();
+    service.play(SoundCue.dialogClose);
+    await settle();
+    expect(players.played, [SoundCue.dialogOpen, SoundCue.dialogClose]);
   });
 
   test('setEnabled and setPalette persist; setPalette swaps every player', () async {

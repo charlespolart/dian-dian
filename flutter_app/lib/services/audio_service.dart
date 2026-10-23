@@ -72,7 +72,15 @@ class AudioService extends ChangeNotifier {
   int _generation = 0;
   bool _enabled = true;
   SoundPalette _palette = SoundPalette.soft;
-  bool _pressPending = false;
+
+  /// Weak cues: a button's tic and a dialog's close. They wait one microtask
+  /// and yield to a stronger cue of the same turn; after a strong cue they
+  /// stay silent for [yieldWindow]: the act and the pop of one gesture make
+  /// one sound, even when the pop waits for the server's answer.
+  static const _weak = {SoundCue.press, SoundCue.dialogClose};
+  static const yieldWindow = Duration(milliseconds: 250);
+  SoundCue? _pendingWeak;
+  DateTime? _strongAt;
 
   bool get enabled => _enabled;
   SoundPalette get palette => _palette;
@@ -138,7 +146,7 @@ class AudioService extends ChangeNotifier {
   /// plays on the new palette once it is loaded, and a press pending from
   /// the tap that asked for it is dropped (one sound per gesture).
   Future<void> setPalette(SoundPalette value, {SoundCue? preview}) async {
-    if (preview != null) _pressPending = false;
+    if (preview != null) _pendingWeak = null;
     if (_palette != value) {
       _palette = value;
       notifyListeners();
@@ -157,22 +165,35 @@ class AudioService extends ChangeNotifier {
     }
   }
 
-  /// Fire and forget. [SoundCue.press] waits one microtask and yields to any
-  /// other cue played in the same turn: a button that opens a dialog sounds
-  /// as the dialog, not as a button and then a dialog.
+  /// Fire and forget. One sound per gesture: a weak cue (see [_weak]) waits
+  /// one microtask and yields to a stronger cue of the same turn — a button
+  /// that opens a dialog sounds as the dialog — and is dropped within
+  /// [yieldWindow] of a strong cue — a cell filled then its editor popped
+  /// sounds as the fill. Between two weak cues of a turn, the dialog's close
+  /// outranks the button's tic.
   void play(SoundCue cue) {
-    if (cue == SoundCue.press) {
-      if (_pressPending) return;
-      _pressPending = true;
-      scheduleMicrotask(() {
-        if (!_pressPending) return;
-        _pressPending = false;
-        _playNow(SoundCue.press);
-      });
+    if (_weak.contains(cue)) {
+      final strongAt = _strongAt;
+      if (strongAt != null && DateTime.now().difference(strongAt) < yieldWindow) return;
+      if (_pendingWeak == null) {
+        _pendingWeak = cue;
+        scheduleMicrotask(_flushWeak);
+      } else if (cue == SoundCue.dialogClose) {
+        _pendingWeak = cue;
+      }
       return;
     }
-    _pressPending = false;
+    _pendingWeak = null;
+    // Opening a dialog does not arm the window: opening then closing it at
+    // once is two gestures, and the close must sound.
+    if (cue != SoundCue.dialogOpen) _strongAt = DateTime.now();
     _playNow(cue);
+  }
+
+  void _flushWeak() {
+    final cue = _pendingWeak;
+    _pendingWeak = null;
+    if (cue != null) _playNow(cue);
   }
 
   void _playNow(SoundCue cue) {
