@@ -43,3 +43,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Sound sources downloaded by tools/sounds/build.py
+tools/sounds/cache/
+__pycache__/
