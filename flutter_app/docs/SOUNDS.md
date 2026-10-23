@@ -6,7 +6,7 @@ mono 44,1 kHz, silence de tête rogné, crête à −3 dBFS (−10 pour `press`)
 ≤ 400 ms sauf `tracker_open`, `tracker_close`, `tracker_create` ≤ 700 ms.
 Tout est produit par `python3 tools/sounds/build.py all` (ffmpeg + numpy),
 qui télécharge les sources dans `tools/sounds/cache/` (ignoré par git).
-Trois palettes sont construites pour être comparées sur l'appareil ; une
+Les palettes sont construites pour être comparées sur l'appareil ; une
 seule est livrée (spec `docs/superpowers/specs/2026-10-23-sounds-design.md`).
 
 Titres Mixkit relevés le 2026-10-23 sur `mixkit.co/free-sound-effects/`.
@@ -30,28 +30,31 @@ proposés au téléchargement). https://mixkit.co/license/
 | year_change | 1097 « Turning the newspaper big page » | 380 ms |
 | press | 1125 « Typewriter soft click » | 70 ms, −10 dBFS |
 
-## interface — Kenney, CC0 1.0
+## pop — Mixkit, Sound Effects Free License
 
-Packs *Interface Sounds* et *UI Audio* (https://kenney.nl/assets/interface-sounds,
-https://kenney.nl/assets/ui-audio), domaine public, aucune attribution requise.
+Bulles, pops et petites tonalités de jeu (même licence que `paper`).
 
-| Moment | Fichier | Traitement |
+| Moment | Source Mixkit | Traitement |
 |---|---|---|
-| dot_fill | Interface Sounds `pluck_001.ogg` | 200 ms max |
-| dot_erase | Interface Sounds `drop_001.ogg` | 220 ms max |
-| tracker_open | Interface Sounds `open_001.ogg` | 600 ms max |
-| tracker_close | Interface Sounds `close_001.ogg` | 600 ms max |
-| dialog_open | Interface Sounds `open_002.ogg` | 350 ms max |
-| dialog_close | Interface Sounds `close_002.ogg` | 350 ms max |
-| tracker_create | Interface Sounds `confirmation_001.ogg` | 600 ms max |
-| legend_add | Interface Sounds `glass_001.ogg` | 300 ms max |
-| year_change | Interface Sounds `scroll_001.ogg` | 300 ms max |
-| press | UI Audio `click1.ogg` | 70 ms, −10 dBFS |
+| dot_fill | 731 « Cartoon bubble pop » | 160 ms |
+| dot_erase | 2925 « Soap bubble sound » | 220 ms |
+| tracker_open | 2820 « Magic marimba » | 600 ms max |
+| tracker_close | 2575 « Software interface back » | 500 ms max |
+| dialog_open | 2357 « Bubble pop up alert notification » | 260 ms |
+| dialog_close | 2356 « Dry pop up notification alert » | 260 ms |
+| tracker_create | 3193 « Bubbly achievement tone » | 700 ms max |
+| legend_add | 960 « Tile game reveal » | 350 ms |
+| year_change | 3005 « Explainer video pops whoosh light pop » | 300 ms max |
+| press | 1124 « Plastic bubble click » | 60 ms, −10 dBFS |
 
-## pixel — synthèse, propre à l'app
+## soft — synthèse, propre à l'app
 
-Généré par `tools/sounds/pixel_palette.py` (ondes carrées et triangulaires
-adoucies, enveloppes courtes) : une note pour poser, un glissé descendant
-pour effacer, un arpège montant pour ouvrir et descendant pour fermer, deux
-notes pour les pop-ups et la légende, quatre pour la création, un balayage
-pour l'année, un tic bref pour le bouton. Aucune licence tierce.
+Généré par `tools/sounds/soft_palette.py` : notes de kalimba (quelques
+partiels sinusoïdaux à décroissance douce, attaque de 2 ms, un tic de
+maillet) sur une gamme pentatonique, bulles (sinus dont la hauteur glisse
+en quelques millisecondes), un souffle filtré pour l'année, un tap sourd
+pour le bouton, deux courts échos pour le corps. Aucune licence tierce.
+
+Palettes écartées après le premier essai sur l'appareil (2026-10-23) :
+`interface` (Kenney Interface Sounds + UI Audio, CC0) et `pixel` (ondes
+carrées synthétisées), jugées respectivement quelconque et désagréable.

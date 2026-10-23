@@ -46,8 +46,8 @@ void main() {
     if (!kDebugMode) return;
     await tester.tap(find.widgetWithText(PressScale, 'Palette : paper'));
     await tester.pumpAndSettle();
-    expect(rec.service.palette, SoundPalette.interface);
-    expect(find.text('Palette : interface'), findsOneWidget);
+    expect(rec.service.palette, SoundPalette.soft);
+    expect(find.text('Palette : soft'), findsOneWidget);
     expect(rec.players.played, [SoundCue.trackerOpen]);
   });
 }

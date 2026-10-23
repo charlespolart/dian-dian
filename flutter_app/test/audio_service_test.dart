@@ -16,7 +16,7 @@ void main() {
     expect(service.palette, SoundPalette.paper);
     expect(service.enabled, isTrue);
     expect(SoundCue.dotFill.file, 'dot_fill');
-    expect(SoundCue.trackerCreate.assetIn(SoundPalette.pixel), 'sounds/pixel/tracker_create.wav');
+    expect(SoundCue.trackerCreate.assetIn(SoundPalette.soft), 'sounds/soft/tracker_create.wav');
     expect(players.live.map((p) => p.asset), unorderedEquals([for (final c in SoundCue.values) c.assetIn(SoundPalette.paper)]));
   });
 
@@ -47,24 +47,24 @@ void main() {
   test('setEnabled and setPalette persist; setPalette swaps every player', () async {
     final (:service, :players) = await recordingAudio();
     await service.setEnabled(false);
-    await service.setPalette(SoundPalette.pixel);
+    await service.setPalette(SoundPalette.soft);
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getBool(AudioService.prefEnabled), isFalse);
-    expect(prefs.getString(AudioService.prefPalette), 'pixel');
-    expect(players.live.map((p) => p.asset), everyElement(startsWith('sounds/pixel/')));
+    expect(prefs.getString(AudioService.prefPalette), 'soft');
+    expect(players.live.map((p) => p.asset), everyElement(startsWith('sounds/soft/')));
     expect(players.created.where((p) => p.disposed), hasLength(SoundCue.values.length));
     final again = await recordingAudio();
     expect(again.service.enabled, isFalse);
-    expect(again.service.palette, SoundPalette.pixel);
+    expect(again.service.palette, SoundPalette.soft);
   });
 
   test('setPalette with a preview drops a pending press and plays the preview on the new palette', () async {
     final (:service, :players) = await recordingAudio();
     service.play(SoundCue.press);
-    await service.setPalette(SoundPalette.pixel, preview: SoundCue.trackerOpen);
+    await service.setPalette(SoundPalette.soft, preview: SoundCue.trackerOpen);
     await settle();
     expect(players.played, [SoundCue.trackerOpen]);
-    expect(players.live.where((p) => p.plays > 0).single.asset, 'sounds/pixel/tracker_open.wav');
+    expect(players.live.where((p) => p.plays > 0).single.asset, 'sounds/soft/tracker_open.wav');
   });
 
   test('a player that throws never surfaces', () async {

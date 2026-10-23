@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
-"""Builds assets/sounds/<palette>/<cue>.wav for the three palettes.
+"""Builds assets/sounds/<palette>/<cue>.wav for the palettes under trial.
 
-  python3 tools/sounds/build.py paper|interface|pixel|all
+  python3 tools/sounds/build.py paper|pop|soft|all
 
-paper: Mixkit (Sound Effects Free License), by id; interface: Kenney CC0
-packs, by file; pixel: pixel_palette.py. Every source is trimmed of its
-leading silence, cut to its length with a fade-out, peak-normalised and
-written as 16-bit mono 44.1 kHz wav. Needs ffmpeg and numpy.
-Downloads land in tools/sounds/cache/ (git-ignored)."""
+paper and pop: Mixkit (Sound Effects Free License), by id; soft:
+soft_palette.py. Every source is trimmed of its leading silence, cut to
+its length with a fade-out, peak-normalised and written as 16-bit mono
+44.1 kHz wav. Needs ffmpeg and numpy. Downloads land in
+tools/sounds/cache/ (git-ignored)."""
 import subprocess
 import sys
 import urllib.request
 import wave
-import zipfile
 from pathlib import Path
 
 import numpy as np
@@ -42,22 +41,18 @@ PAPER = {
     "press": (1125, 70, False),            # Typewriter soft click
 }
 
-KENNEY = {
-    "interface-sounds": "https://kenney.nl/media/pages/assets/interface-sounds/fa43c1dd4d-1677589452/kenney_interface-sounds.zip",
-    "ui-audio": "https://kenney.nl/media/pages/assets/ui-audio/490d233f68-1677590494/kenney_ui-audio.zip",
-}
-# cue: (pack, file inside Audio/, max ms)
-INTERFACE = {
-    "dot_fill": ("interface-sounds", "pluck_001.ogg", 200),
-    "dot_erase": ("interface-sounds", "drop_001.ogg", 220),
-    "tracker_open": ("interface-sounds", "open_001.ogg", 600),
-    "tracker_close": ("interface-sounds", "close_001.ogg", 600),
-    "dialog_open": ("interface-sounds", "open_002.ogg", 350),
-    "dialog_close": ("interface-sounds", "close_002.ogg", 350),
-    "tracker_create": ("interface-sounds", "confirmation_001.ogg", 600),
-    "legend_add": ("interface-sounds", "glass_001.ogg", 300),
-    "year_change": ("interface-sounds", "scroll_001.ogg", 300),
-    "press": ("ui-audio", "click1.ogg", 70),
+# cue: (mixkit id, max ms, reverse) — bubbles, pops and little tones
+POP = {
+    "dot_fill": (731, 160, False),          # Cartoon bubble pop
+    "dot_erase": (2925, 220, False),        # Soap bubble sound
+    "tracker_open": (2820, 600, False),     # Magic marimba
+    "tracker_close": (2575, 500, False),    # Software interface back
+    "dialog_open": (2357, 260, False),      # Bubble pop up alert notification
+    "dialog_close": (2356, 260, False),     # Dry pop up notification alert
+    "tracker_create": (3193, 700, False),   # Bubbly achievement tone
+    "legend_add": (960, 350, False),        # Tile game reveal
+    "year_change": (3005, 300, False),      # Explainer video pops whoosh light pop
+    "press": (1124, 60, False),             # Plastic bubble click
 }
 
 
@@ -107,33 +102,25 @@ def write(palette: str, cue: str, x: np.ndarray):
     print(f"{palette}/{cue}.wav  {len(x) * 1000 // SR} ms")
 
 
-def build_paper():
-    for cue, (sid, max_ms, rev) in PAPER.items():
+def build_mixkit(palette, table):
+    for cue, (sid, max_ms, rev) in table.items():
         data = fetch(MIXKIT.format(id=sid), f"mixkit-{sid}.mp3").read_bytes()
-        write("paper", cue, shape(decode(data), cue, max_ms, rev))
+        write(palette, cue, shape(decode(data), cue, max_ms, rev))
 
 
-def build_interface():
-    zips = {pack: zipfile.ZipFile(fetch(url, f"{pack}.zip")) for pack, url in KENNEY.items()}
-    for cue, (pack, name, max_ms) in INTERFACE.items():
-        z = zips[pack]
-        member = next(m for m in z.namelist() if m.endswith("/" + name) or m == name)
-        write("interface", cue, shape(decode(z.read(member)), cue, max_ms))
-
-
-def build_pixel():
+def build_soft():
     sys.path.insert(0, str(HERE))
-    from pixel_palette import render
+    from soft_palette import render
     for cue, x in render().items():
-        write("pixel", cue, shape(x.astype(np.float32), cue, 700))
+        write("soft", cue, shape(x.astype(np.float32), cue, 700))
 
 
 if __name__ == "__main__":
     which = sys.argv[1] if len(sys.argv) > 1 else "all"
-    assert set(PAPER) == set(CUES) == set(INTERFACE)
+    assert set(PAPER) == set(CUES) == set(POP)
     if which in ("paper", "all"):
-        build_paper()
-    if which in ("interface", "all"):
-        build_interface()
-    if which in ("pixel", "all"):
-        build_pixel()
+        build_mixkit("paper", PAPER)
+    if which in ("pop", "all"):
+        build_mixkit("pop", POP)
+    if which in ("soft", "all"):
+        build_soft()

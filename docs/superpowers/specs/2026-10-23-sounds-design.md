@@ -127,6 +127,16 @@ Une palette gagne ; les deux autres dossiers sont supprimés, l'enum garde
 une valeur, `pubspec.yaml` et `SOUNDS.md` suivent. Si Pixel ne gagne pas,
 le script de synthèse est supprimé avec elle.
 
+**Essai 1 (2026-10-23, simulateur).** Aucune des trois ne convient : Pixel
+est écartée (« horrible »), Interface aussi ; Papeterie est la meilleure
+parce que la plus douce et légère, mais « trop papier ». Nouvelle
+direction : des sons simples, légers, satisfaisants, comme dans un jeu
+chill. Deux palettes la remplacent à l'essai, Papeterie restant la
+référence : **Pop** (Mixkit : bulles, pops, petites tonalités de jeu) et
+**Soft** (synthèse `tools/sounds/soft_palette.py` : notes de kalimba
+pentatoniques, bulles, un souffle, rien de carré). `SoundPalette { paper,
+soft, pop }`.
+
 ## 3. Le service : `AudioService`
 
 ```dart
