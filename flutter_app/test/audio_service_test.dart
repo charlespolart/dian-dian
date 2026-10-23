@@ -58,6 +58,15 @@ void main() {
     expect(again.service.palette, SoundPalette.pixel);
   });
 
+  test('setPalette with a preview drops a pending press and plays the preview on the new palette', () async {
+    final (:service, :players) = await recordingAudio();
+    service.play(SoundCue.press);
+    await service.setPalette(SoundPalette.pixel, preview: SoundCue.trackerOpen);
+    await settle();
+    expect(players.played, [SoundCue.trackerOpen]);
+    expect(players.live.where((p) => p.plays > 0).single.asset, 'sounds/pixel/tracker_open.wav');
+  });
+
   test('a player that throws never surfaces', () async {
     final players = FakeSoundPlayers(failing: true);
     final service = AudioService.custom(players: players.call);

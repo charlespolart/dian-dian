@@ -10,6 +10,7 @@ import '../providers/language_provider.dart';
 import '../providers/premium_provider.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/sounds_settings.dart';
 import '../widgets/app_dialog.dart';
 import '../widgets/confirm_dialog.dart';
 import '../providers/theme_provider.dart';
@@ -119,6 +120,11 @@ class SettingsScreen extends StatelessWidget {
                             );
                           },
                         ),
+
+                        const SizedBox(height: 24),
+
+                        // Sounds section
+                        const SoundsSettings(),
 
                         const SizedBox(height: 24),
 

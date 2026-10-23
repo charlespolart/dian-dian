@@ -126,13 +126,19 @@ class AudioService extends ChangeNotifier {
     await _save((prefs) => prefs.setBool(prefEnabled, value));
   }
 
-  Future<void> setPalette(SoundPalette value) async {
-    if (_palette == value) return;
-    _palette = value;
-    notifyListeners();
-    await _save((prefs) => prefs.setString(prefPalette, value.name));
-    _loading = _load();
-    await _loading;
+  /// Switches to [value] and reloads every player. With [preview], that cue
+  /// plays on the new palette once it is loaded, and a press pending from
+  /// the tap that asked for it is dropped (one sound per gesture).
+  Future<void> setPalette(SoundPalette value, {SoundCue? preview}) async {
+    if (preview != null) _pressPending = false;
+    if (_palette != value) {
+      _palette = value;
+      notifyListeners();
+      await _save((prefs) => prefs.setString(prefPalette, value.name));
+      _loading = _load();
+      await _loading;
+    }
+    if (preview != null) _playNow(preview);
   }
 
   Future<void> _save(Future<void> Function(SharedPreferences prefs) write) async {
