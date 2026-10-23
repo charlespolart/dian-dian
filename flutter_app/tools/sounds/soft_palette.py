@@ -1,8 +1,10 @@
-"""The Soft palette: kalimba notes and little bubbles, synthesised.
+"""The Soft palette: little bubbles, synthesised.
 
-Sines with gentle decays, a pentatonic scale, a touch of room — the sounds
-of a chill game, never a square wave. render() returns {cue: float32 mono
-array at 44.1 kHz}. Tune here and run `python3 tools/sounds/build.py soft`."""
+Every cue is a bloop — a sine whose pitch glides up or down in a few
+milliseconds and dies in a few tens — short and clean like a satisfying
+click; the bigger moments are two or three bloops in a row. The button is
+a dry low tap. A touch of room for body. render() returns {cue: float32
+mono array at 44.1 kHz}. Tune here and run `python3 tools/sounds/build.py soft`."""
 import numpy as np
 
 SR = 44100
@@ -28,19 +30,6 @@ def _lowpass(x, cutoff):
     return y
 
 
-def kalimba(freq, dur=0.45, tau=0.12, gain=0.8):
-    """A plucked tine: a few decaying partials, a 2 ms attack, a tiny mallet tick."""
-    t = _t(dur)
-    partials = [(1.0, 1.0, tau), (2.0, 0.30, tau * 0.5), (3.0, 0.10, tau * 0.35), (5.4, 0.04, tau * 0.2)]
-    x = np.zeros_like(t)
-    for ratio, amp, decay in partials:
-        x += amp * np.sin(2 * np.pi * freq * ratio * t) * np.exp(-t / decay)
-    x *= _attack(t)
-    tick = rng.standard_normal(int(SR * 0.003)).astype(np.float32) * 0.06
-    x[: len(tick)] += _lowpass(tick, 4000)
-    return (x * gain).astype(np.float32)
-
-
 def bubble(f0, f1, dur=0.14, tau=0.05, gain=0.7):
     """A sine whose pitch glides f0 → f1 in a few ms: a bloop."""
     t = _t(dur)
@@ -48,15 +37,6 @@ def bubble(f0, f1, dur=0.14, tau=0.05, gain=0.7):
     phase = 2 * np.pi * np.cumsum(f) / SR
     x = np.sin(phase) * np.exp(-t / tau) * _attack(t, 1.5)
     return (x * gain).astype(np.float32)
-
-
-def whoosh(dur=0.16, gain=0.35):
-    """Filtered noise under a soft hump: a page-sized breath of air."""
-    t = _t(dur)
-    n = rng.standard_normal(len(t)).astype(np.float32)
-    x = _lowpass(n, 1800) - _lowpass(n, 350)
-    hump = np.sin(np.pi * t / dur) ** 2
-    return (x * hump * gain).astype(np.float32)
 
 
 def thump(freq=220.0, dur=0.05, tau=0.012, gain=0.9):
@@ -88,20 +68,17 @@ def room(x):
     return out
 
 
-C5, D5, E5, G5, A5 = 523.25, 587.33, 659.25, 783.99, 880.0
-C6, D6, E6, G6, A6 = 1046.5, 1174.7, 1318.5, 1568.0, 1760.0
-
-
 def render():
+    up, down = bubble, bubble
     return {
-        "dot_fill": room(kalimba(C6, tau=0.11)),
-        "dot_erase": room(bubble(700, 420, tau=0.06, gain=0.6)),
-        "tracker_open": room(mix([(0.0, kalimba(G5)), (0.1, kalimba(C6, tau=0.16))])),
-        "tracker_close": room(mix([(0.0, kalimba(C6)), (0.1, kalimba(G5, tau=0.16))])),
-        "dialog_open": room(bubble(520, 940, tau=0.06)),
-        "dialog_close": room(bubble(940, 520, tau=0.05, gain=0.55)),
-        "tracker_create": room(mix([(0.0, kalimba(C5)), (0.08, kalimba(E5)), (0.16, kalimba(G5)), (0.26, kalimba(C6, tau=0.25))])),
-        "legend_add": room(mix([(0.0, kalimba(D6, tau=0.08)), (0.07, kalimba(G6, tau=0.1))])),
-        "year_change": room(mix([(0.0, whoosh()), (0.06, kalimba(G5, tau=0.1, gain=0.3))])),
+        "dot_fill": room(up(620, 1040, dur=0.10, tau=0.04, gain=0.75)),
+        "dot_erase": room(down(760, 430, dur=0.11, tau=0.045, gain=0.6)),
+        "tracker_open": room(mix([(0.0, up(420, 760, dur=0.14, tau=0.06)), (0.09, up(640, 1150, dur=0.14, tau=0.07, gain=0.6))])),
+        "tracker_close": room(mix([(0.0, down(1150, 640, dur=0.14, tau=0.06, gain=0.6)), (0.09, down(760, 420, dur=0.14, tau=0.07))])),
+        "dialog_open": room(up(520, 940, tau=0.06)),
+        "dialog_close": room(down(940, 520, tau=0.05, gain=0.55)),
+        "tracker_create": room(mix([(0.0, up(480, 820, dur=0.12, tau=0.05)), (0.08, up(640, 1100, dur=0.12, tau=0.05)), (0.16, up(820, 1480, dur=0.16, tau=0.08))])),
+        "legend_add": room(up(900, 1500, dur=0.10, tau=0.045, gain=0.65)),
+        "year_change": room(mix([(0.0, down(700, 520, dur=0.07, tau=0.03, gain=0.6)), (0.06, up(560, 760, dur=0.09, tau=0.04, gain=0.7))])),
         "press": thump(),
     }

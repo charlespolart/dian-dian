@@ -49,11 +49,12 @@ Bulles, pops et petites tonalités de jeu (même licence que `paper`).
 
 ## soft — synthèse, propre à l'app
 
-Généré par `tools/sounds/soft_palette.py` : notes de kalimba (quelques
-partiels sinusoïdaux à décroissance douce, attaque de 2 ms, un tic de
-maillet) sur une gamme pentatonique, bulles (sinus dont la hauteur glisse
-en quelques millisecondes), un souffle filtré pour l'année, un tap sourd
-pour le bouton, deux courts échos pour le corps. Aucune licence tierce.
+Généré par `tools/sounds/soft_palette.py` : chaque moment est une bulle,
+un sinus dont la hauteur glisse vers le haut ou vers le bas en quelques
+millisecondes et s'éteint en quelques dizaines, court et net comme un clic ;
+les grands moments en enchaînent deux ou trois ; un tap sourd pour le
+bouton ; deux courts échos pour le corps. Aucune licence tierce. (Première
+version à notes de kalimba, jugée trop musicale le 2026-10-23.)
 
 Palettes écartées après le premier essai sur l'appareil (2026-10-23) :
 `interface` (Kenney Interface Sounds + UI Audio, CC0) et `pixel` (ondes

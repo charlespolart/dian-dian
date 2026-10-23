@@ -137,6 +137,11 @@ référence : **Pop** (Mixkit : bulles, pops, petites tonalités de jeu) et
 pentatoniques, bulles, un souffle, rien de carré). `SoundPalette { paper,
 soft, pop }`.
 
+**Essai 2 (2026-10-23).** Dans Soft, le style des bulles des pop-ups plaît ;
+le reste doit être aussi simple, « comme des clics satisfaisants ». Soft
+devient tout bulles : une par moment, deux ou trois pour le tracker et la
+création, le tap sourd pour le bouton ; les notes de kalimba partent.
+
 ## 3. Le service : `AudioService`
 
 ```dart
