@@ -152,6 +152,14 @@ le reste doit être aussi simple, « comme des clics satisfaisants ». Soft
 devient tout bulles : une par moment, deux ou trois pour le tracker et la
 création, le tap sourd pour le bouton ; les notes de kalimba partent.
 
+**Essai 3 (2026-10-23).** Soft tout bulles plaît (« pas mal ! »). Gardée
+telle quelle, et deux variantes du même script la rejoignent à l'essai,
+« plus soft, plus léger » : **softer** (plus grave, glissés plus étroits,
+attaque plus lente, moins d'écho, −4 dB) et **lighter** (plus aigu, plus
+court, sans écho, −6 dB). Papier et pop sortent. `SoundPalette { soft,
+softer, lighter }` ; `tools/sounds/build.py` ne fait plus que de la
+synthèse (numpy seul), plus aucune source tierce.
+
 ## 3. Le service : `AudioService`
 
 ```dart

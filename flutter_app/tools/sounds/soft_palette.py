@@ -1,21 +1,39 @@
-"""The Soft palette: little bubbles, synthesised.
+"""The bubble palettes, synthesised: soft, softer, lighter.
 
 Every cue is a bloop — a sine whose pitch glides up or down in a few
 milliseconds and dies in a few tens — short and clean like a satisfying
 click; the bigger moments are two or three bloops in a row. The button is
-a dry low tap. A touch of room for body. render() returns {cue: float32
-mono array at 44.1 kHz}. Tune here and run `python3 tools/sounds/build.py soft`."""
+a dry low tap. A Style bends the whole set: pitch, length, decay, glide
+width, attack, room. render(style) returns {cue: float32 mono array at
+44.1 kHz}. Tune here and run `python3 tools/sounds/build.py`."""
+from dataclasses import dataclass
+
 import numpy as np
 
 SR = 44100
 rng = np.random.default_rng(7)
 
 
+@dataclass(frozen=True)
+class Style:
+    pitch: float = 1.0      # every frequency × this
+    length: float = 1.0     # every duration × this
+    decay: float = 1.0      # every decay time × this
+    glide: float = 1.0      # pitch glide width × this (1 = full, 0 = a plain tone)
+    attack_ms: float = 1.5  # how fast a bubble comes in
+    room: float = 1.0       # the two short echoes × this (0 = dry)
+
+
+SOFT = Style()
+SOFTER = Style(pitch=0.85, decay=0.85, glide=0.65, attack_ms=5.0, room=0.7)
+LIGHTER = Style(pitch=1.3, length=0.6, decay=0.6, glide=0.8, room=0.0)
+
+
 def _t(dur):
     return np.arange(int(SR * dur)) / SR
 
 
-def _attack(t, ms=2.0):
+def _attack(t, ms):
     return 1 - np.exp(-t / (ms / 1000))
 
 
@@ -30,46 +48,54 @@ def _lowpass(x, cutoff):
     return y
 
 
-def bubble(f0, f1, dur=0.14, tau=0.05, gain=0.7):
-    """A sine whose pitch glides f0 → f1 in a few ms: a bloop."""
-    t = _t(dur)
-    f = f1 + (f0 - f1) * np.exp(-t / 0.018)
-    phase = 2 * np.pi * np.cumsum(f) / SR
-    x = np.sin(phase) * np.exp(-t / tau) * _attack(t, 1.5)
-    return (x * gain).astype(np.float32)
+class Bubbles:
+    def __init__(self, style: Style):
+        self.s = style
+
+    def bubble(self, f0, f1, dur=0.14, tau=0.05, gain=0.7):
+        """A sine whose pitch glides f0 → f1 in a few ms: a bloop."""
+        s = self.s
+        f1 = f0 + (f1 - f0) * s.glide
+        f0, f1 = f0 * s.pitch, f1 * s.pitch
+        t = _t(dur * s.length)
+        f = f1 + (f0 - f1) * np.exp(-t / 0.018)
+        phase = 2 * np.pi * np.cumsum(f) / SR
+        x = np.sin(phase) * np.exp(-t / (tau * s.decay)) * _attack(t, s.attack_ms)
+        return (x * gain).astype(np.float32)
+
+    def thump(self, freq=220.0, dur=0.05, tau=0.012, gain=0.9):
+        """A low, dry tap for a button under the finger."""
+        s = self.s
+        t = _t(dur * s.length)
+        x = np.sin(2 * np.pi * freq * s.pitch * t) * np.exp(-t / (tau * s.decay)) * _attack(t, 0.8)
+        click = rng.standard_normal(int(SR * 0.0015)).astype(np.float32) * 0.25
+        x[: len(click)] += _lowpass(click, 5000)
+        return (x * gain).astype(np.float32)
+
+    def mix(self, parts, tail=0.05):
+        """parts: [(start_seconds, array)] summed in time; starts scale with length."""
+        s = self.s
+        end = max(int(SR * st * s.length) + len(a) for st, a in parts) + int(SR * tail)
+        out = np.zeros(end, dtype=np.float32)
+        for st, a in parts:
+            i = int(SR * st * s.length)
+            out[i:i + len(a)] += a
+        return out
+
+    def room(self, x):
+        """A touch of body: two short, quiet echoes."""
+        amount = self.s.room
+        out = np.zeros(len(x) + int(SR * 0.045), dtype=np.float32)
+        out[: len(x)] += x
+        for delay, amp in ((0.023, 0.18), (0.041, 0.08)):
+            i = int(SR * delay)
+            out[i:i + len(x)] += x * amp * amount
+        return out
 
 
-def thump(freq=220.0, dur=0.05, tau=0.012, gain=0.9):
-    """A low, dry tap for a button under the finger."""
-    t = _t(dur)
-    x = np.sin(2 * np.pi * freq * t) * np.exp(-t / tau) * _attack(t, 0.8)
-    click = rng.standard_normal(int(SR * 0.0015)).astype(np.float32) * 0.25
-    x[: len(click)] += _lowpass(click, 5000)
-    return (x * gain).astype(np.float32)
-
-
-def mix(parts, tail=0.05):
-    """parts: [(start_seconds, array)] summed in time."""
-    end = max(int(SR * s) + len(a) for s, a in parts) + int(SR * tail)
-    out = np.zeros(end, dtype=np.float32)
-    for s, a in parts:
-        i = int(SR * s)
-        out[i:i + len(a)] += a
-    return out
-
-
-def room(x):
-    """A touch of body: two short, quiet echoes."""
-    out = np.zeros(len(x) + int(SR * 0.045), dtype=np.float32)
-    out[: len(x)] += x
-    for delay, amp in ((0.023, 0.18), (0.041, 0.08)):
-        i = int(SR * delay)
-        out[i:i + len(x)] += x * amp
-    return out
-
-
-def render():
-    up, down = bubble, bubble
+def render(style: Style = SOFT):
+    b = Bubbles(style)
+    up, down, mix, room, thump = b.bubble, b.bubble, b.mix, b.room, b.thump
     return {
         "dot_fill": room(up(620, 1040, dur=0.10, tau=0.04, gain=0.75)),
         "dot_erase": room(down(760, 430, dur=0.11, tau=0.045, gain=0.6)),
