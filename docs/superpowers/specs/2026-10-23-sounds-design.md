@@ -75,14 +75,17 @@ case ne fait sonner que `dotFill` ou `dotErase`.
 
 ```
 assets/sounds/
-  paper/      dot_fill.wav dot_erase.wav tracker_open.wav tracker_close.wav
-              dialog_open.wav dialog_close.wav tracker_create.wav
-              legend_add.wav year_change.wav press.wav
-  interface/  (les dix mêmes noms)
-  pixel/      (les dix mêmes noms)
+  soft/     dot_fill.wav dot_erase.wav tracker_open.wav tracker_close.wav
+            dialog_open.wav dialog_close.wav tracker_create.wav legend_add.wav
+            step_next.wav step_prev.wav press.wav panel_open.wav panel_close.wav
+            drag_pick.wav drag_hover.wav drag_drop.wav select.wav
+  softer/   (les dix-sept mêmes noms)
+  lighter/  (les dix-sept mêmes noms)
 ```
 
-`pubspec.yaml` liste les trois dossiers (`assets/sounds/paper/`, …) : une
+(État à l'essai 3 ; la disposition initiale était `paper/`, `interface/`,
+`pixel/` avec dix noms.) `pubspec.yaml` liste les trois dossiers
+(`assets/sounds/soft/`, …) : une
 entrée de dossier n'inclut pas ses sous-dossiers. L'entrée `assets/sounds/`
 et les deux mp3 disparaissent. Le nom de fichier d'un moment est son nom en
 `snake_case` ; l'identifiant de palette est le nom du dossier
