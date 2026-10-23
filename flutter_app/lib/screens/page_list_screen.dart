@@ -914,14 +914,41 @@ class _CreateTrackerDialogState extends State<_CreateTrackerDialog> {
   static const _spinnerDelay = Duration(milliseconds: 250);
 
   final _controller = TextEditingController();
+  final _focus = FocusNode();
   Timer? _spinnerTimer;
   bool _busy = false;
   bool _showSpinner = false;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _focusOnceSettled());
+  }
+
+  /// The field takes focus once the dialog has fully appeared, not on its
+  /// first frame: the first keyboard of a session is prepared on the
+  /// platform's main thread and would freeze the entrance.
+  void _focusOnceSettled() {
+    if (!mounted) return;
+    final animation = ModalRoute.of(context)?.animation;
+    if (animation == null || animation.isCompleted) {
+      _focus.requestFocus();
+      return;
+    }
+    late final AnimationStatusListener listener;
+    listener = (status) {
+      if (status != AnimationStatus.completed) return;
+      animation.removeStatusListener(listener);
+      if (mounted) _focus.requestFocus();
+    };
+    animation.addStatusListener(listener);
+  }
+
+  @override
   void dispose() {
     _spinnerTimer?.cancel();
     _controller.dispose();
+    _focus.dispose();
     super.dispose();
   }
 
@@ -958,7 +985,7 @@ class _CreateTrackerDialogState extends State<_CreateTrackerDialog> {
             const SizedBox(height: 16),
             TextField(
               controller: _controller,
-              autofocus: true,
+              focusNode: _focus,
               // Server limit, counted the server's way (UTF-16 units, not characters).
               inputFormatters: const [Utf16LengthLimit(35)],
               enabled: !_busy,

@@ -146,4 +146,19 @@ void main() {
     expect(rec.players.played, contains(SoundCue.dragHover));
     expect(rec.players.played.last, SoundCue.dragDrop);
   });
+
+  testWidgets('the new-tracker dialog shows at once and focuses its field only once its entrance is over', (tester) async {
+    phone(tester);
+    final h = ListHarness();
+    await tester.pumpWidget(h.widget);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.add_rounded));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50)); // mid-entrance
+    bool fieldFocused() => tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasFocus;
+    expect(find.byType(TextField), findsOneWidget);
+    expect(fieldFocused(), isFalse, reason: 'the keyboard must not load while the dialog is still appearing');
+    await tester.pumpAndSettle();
+    expect(fieldFocused(), isTrue);
+  });
 }
