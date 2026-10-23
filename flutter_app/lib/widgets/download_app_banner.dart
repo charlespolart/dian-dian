@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../services/store_links.dart';
 import '../theme/app_theme.dart';
+import 'press_scale.dart';
 
 /// Banner shown only on web to invite users to download the native app.
 class DownloadAppBanner extends StatefulWidget {
@@ -36,7 +37,7 @@ class _DownloadAppBannerState extends State<DownloadAppBanner> {
   }
 
   Widget _storeLink(IconData icon, String label, Future<void> Function() onOpen) {
-    return GestureDetector(
+    return PressScale(
       onTap: onOpen,
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -79,7 +80,7 @@ class _DownloadAppBannerState extends State<DownloadAppBanner> {
               ],
             ),
           ),
-          GestureDetector(
+          PressScale(
             onTap: () {
               setState(() => _dismissed = true);
               widget.onDismissed?.call();

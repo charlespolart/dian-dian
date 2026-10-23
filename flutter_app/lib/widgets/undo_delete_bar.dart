@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import 'press_scale.dart';
 
 /// Animated undo bar shown after deleting a tracker.
 class UndoDeleteBar extends StatefulWidget {
@@ -67,7 +68,7 @@ class _UndoDeleteBarState extends State<UndoDeleteBar>
                 ),
               ),
               const SizedBox(width: 12),
-              GestureDetector(
+              PressScale(
                 onTap: widget.onUndo,
                 child: Container(
                   padding: const EdgeInsets.symmetric(

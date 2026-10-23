@@ -69,6 +69,16 @@ reste.
 Les points de la grille ne passent pas par `PressScale` : un tap sur une
 case ne fait sonner que `dotFill` ou `dotErase`.
 
+**Toute interaction sonne (essai 3, 2026-10-23).** Les boutons qui n'étaient
+pas des `PressScale` (flèches de retour, croix des pop-ups, icônes, liens,
+rangées à choisir) le deviennent : même geste, même tic, même rétrécissement
+sous le doigt ; l'œil du champ mot de passe, un `IconButton`, joue le tic
+lui-même. Les choix jouent `select` par-dessus (le tic s'efface) : thème,
+curseur, langue, pastille de l'éditeur de légendes dans ses deux branches.
+Restent sans `PressScale` : la carte de la liste (le morphing la mesure),
+les points de la grille, les flèches de `SwipeNav` (elles jouent déjà le
+pas), la pastille de palette (appui long) et la bannière publicitaire.
+
 ## 2. Palettes et fichiers
 
 ### Disposition

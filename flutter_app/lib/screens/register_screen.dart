@@ -231,7 +231,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 20),
 
               // Switch to login
-              GestureDetector(
+              PressScale(
                 onTap: widget.onSwitchToLogin,
                 child: Text(
                   lang.t('auth.switchToLogin'),

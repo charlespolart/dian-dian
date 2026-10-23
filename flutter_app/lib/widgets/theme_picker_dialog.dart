@@ -7,6 +7,8 @@ import '../providers/theme_provider.dart';
 import '../theme/app_theme.dart';
 import 'app_dialog.dart';
 import 'premium_gate_dialog.dart';
+import 'press_scale.dart';
+import '../services/audio_service.dart';
 
 Future<void> showThemePickerDialog(BuildContext context) {
   return showAppDialog(
@@ -44,13 +46,14 @@ class _ThemePickerDialog extends StatelessWidget {
                 final isActive = themeProv.currentTheme == type;
                 final isLocked = type != AppThemeType.defaultTheme && !premium.isPremium;
 
-                return GestureDetector(
+                return PressScale(
                   onTap: () {
                     if (isLocked) {
                       Navigator.of(context).pop();
                       PremiumGateDialog.show(context, feature: lang.t('premium.feature.themes'), event: 'themes');
                       return;
                     }
+                    context.read<AudioService?>()?.play(SoundCue.select);
                     themeProv.setTheme(type);
                     Navigator.of(context).pop();
                   },

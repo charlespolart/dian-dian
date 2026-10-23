@@ -40,7 +40,7 @@ class PremiumGateDialog extends StatelessWidget {
 
     return AppDialog(
       footer: Center(
-        child: GestureDetector(
+        child: PressScale(
           behavior: HitTestBehavior.opaque,
           onTap: () => Navigator.of(context).pop(false),
           child: Padding(
@@ -96,7 +96,7 @@ class PremiumGateDialog extends StatelessWidget {
               const SizedBox(height: 12),
               Semantics(
                 button: true,
-                child: GestureDetector(
+                child: PressScale(
                   behavior: HitTestBehavior.opaque,
                   onTap: () {
                     final navigator = Navigator.of(context);
@@ -129,7 +129,7 @@ class PremiumGateDialog extends StatelessWidget {
               _UpgradeButton(),
               const SizedBox(height: 12),
 
-              GestureDetector(
+              PressScale(
                 onTap: () async {
                   final premium = context.read<PremiumProvider>();
                   final restored = await premium.restorePurchases();

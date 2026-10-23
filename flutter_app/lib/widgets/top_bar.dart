@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import 'press_scale.dart';
 
 /// Shared top bar with back button and title, used on tracker and settings screens.
 class TopBar extends StatelessWidget {
@@ -21,7 +22,7 @@ class TopBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
       child: Row(
         children: [
-          GestureDetector(
+          PressScale(
             behavior: HitTestBehavior.opaque,
             onTap: onBack,
             child: Padding(

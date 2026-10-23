@@ -158,7 +158,7 @@ class _CustomPaywallDialogState extends State<CustomPaywallDialog> {
         alignment: Alignment.topRight,
         child: Semantics(
           button: true,
-          child: GestureDetector(
+          child: PressScale(
             behavior: HitTestBehavior.opaque,
             onTap: () => Navigator.of(context).pop(false),
             child: Padding(
@@ -206,7 +206,7 @@ class _CustomPaywallDialogState extends State<CustomPaywallDialog> {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
-          GestureDetector(
+          PressScale(
             onTap: () => Navigator.of(context).pop(false),
             child: Text(
               lang.t('common.cancel'),
@@ -357,7 +357,7 @@ class _CustomPaywallDialogState extends State<CustomPaywallDialog> {
   }
 
   Widget _footerLink(String label, VoidCallback onTap) {
-    return GestureDetector(
+    return PressScale(
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),

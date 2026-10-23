@@ -42,7 +42,7 @@ class GlobalStatsDialog extends StatelessWidget {
     return AppDialog(
       maxWidth: 420,
       footer: Center(
-        child: GestureDetector(
+        child: PressScale(
           behavior: HitTestBehavior.opaque,
           onTap: () => Navigator.of(context).pop(),
           child: Padding(

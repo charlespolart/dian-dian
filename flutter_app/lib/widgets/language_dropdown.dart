@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../providers/language_provider.dart';
 import '../theme/app_theme.dart';
 import 'language_picker_dialog.dart';
+import 'press_scale.dart';
 
 /// Compact language button used on auth screens.
 /// Taps opens the shared language picker dialog.
@@ -13,7 +14,7 @@ class LanguageDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return PressScale(
       onTap: () => showLanguagePickerDialog(context, lang),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),

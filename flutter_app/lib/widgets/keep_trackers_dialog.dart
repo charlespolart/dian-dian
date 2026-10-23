@@ -83,7 +83,7 @@ class _KeepTrackersDialogState extends State<KeepTrackersDialog> {
         child: Semantics(
           button: true,
           enabled: ready,
-          child: GestureDetector(
+          child: PressScale(
             onTap: ready ? _confirm : null,
             child: Opacity(
               opacity: ready ? 1 : 0.5,

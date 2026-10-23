@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import 'package:provider/provider.dart';
+import '../services/audio_service.dart';
 
 /// Standard password TextField with an eye toggle to reveal the value.
 class PasswordField extends StatefulWidget {
@@ -44,7 +46,10 @@ class _PasswordFieldState extends State<PasswordField> {
             size: 18,
             color: AppColors.textMuted,
           ),
-          onPressed: () => setState(() => _obscured = !_obscured),
+          onPressed: () {
+            context.read<AudioService?>()?.play(SoundCue.press);
+            setState(() => _obscured = !_obscured);
+          },
         ),
       ),
     );

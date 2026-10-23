@@ -400,7 +400,7 @@ class _FirstTrackerScreenState extends State<FirstTrackerScreen> {
         else
           Semantics(
             button: true,
-            child: GestureDetector(
+            child: PressScale(
               behavior: HitTestBehavior.opaque,
               onTap: _busy ? null : () => _startRename(lang),
               child: Row(
@@ -479,7 +479,7 @@ class _FirstTrackerScreenState extends State<FirstTrackerScreen> {
           Semantics(
             button: true,
             enabled: !_busy,
-            child: GestureDetector(
+            child: PressScale(
               onTap: _busy ? null : _notToday,
               child: Text(
                 lang.t('firstTracker.notToday'),

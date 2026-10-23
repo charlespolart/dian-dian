@@ -262,7 +262,7 @@ class SettingsScreen extends StatelessWidget {
                 style: AppFonts.pixel(fontSize: 13, color: AppColors.accent),
               ),
             ),
-            GestureDetector(
+            PressScale(
               onTap: () {
                 if (kIsWeb) {
                   _openExternal('https://apps.apple.com/account/subscriptions');
@@ -430,7 +430,7 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
       footer: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          GestureDetector(
+          PressScale(
             onTap: () => Navigator.of(context).pop(false),
             child: Text(
               lang.t('common.cancel'),

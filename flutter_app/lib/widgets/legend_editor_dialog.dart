@@ -180,7 +180,7 @@ class _LegendEditorDialogState extends State<LegendEditorDialog> {
     return Center(
       child: Semantics(
         button: true,
-        child: GestureDetector(
+        child: PressScale(
           onTap: _closeEdit,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -331,7 +331,7 @@ class _LegendEditorDialogState extends State<LegendEditorDialog> {
     return Center(
       child: Semantics(
         button: true,
-        child: GestureDetector(
+        child: PressScale(
           behavior: HitTestBehavior.opaque,
           onTap: () => Navigator.of(context).pop(),
           child: Padding(
@@ -351,6 +351,7 @@ class _LegendEditorDialogState extends State<LegendEditorDialog> {
   // ---------------------------------------------------------------------------
 
   void _onPaletteColorTap(String hex, String pos) async {
+    context.read<AudioService?>()?.play(SoundCue.select);
     final legend = _editing;
     if (legend != null) {
       // Recolor the edited legend and its cells; stay on the editor.
@@ -366,7 +367,6 @@ class _LegendEditorDialogState extends State<LegendEditorDialog> {
         _selectedColor = hex;
         _selectedPos = pos;
       });
-      context.read<AudioService?>()?.play(SoundCue.select);
     }
   }
 
@@ -755,7 +755,7 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                GestureDetector(
+                PressScale(
                   onTap: () => Navigator.of(context).pop(),
                   child: Text(
                     context.read<LanguageProvider>().t('common.cancel'),
@@ -961,7 +961,7 @@ class _DraggableLegendTile extends StatelessWidget {
             Expanded(
               child: Semantics(
                 button: true,
-                child: GestureDetector(
+                child: PressScale(
                   behavior: HitTestBehavior.opaque,
                   onTap: ghost ? null : onTap,
                   child: Padding(
@@ -997,7 +997,7 @@ class _DraggableLegendTile extends StatelessWidget {
             ),
             Semantics(
               button: true,
-              child: GestureDetector(
+              child: PressScale(
                 behavior: HitTestBehavior.opaque,
                 onTap: ghost ? null : onDelete,
                 child: Padding(

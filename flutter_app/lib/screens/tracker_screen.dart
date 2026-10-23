@@ -317,7 +317,7 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
         children: [
           FadeTransition(
             opacity: _revealBar,
-            child: GestureDetector(
+            child: PressScale(
               behavior: HitTestBehavior.opaque,
               onTap: widget.onBack,
               child: Padding(
@@ -352,7 +352,7 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
                     onSubmitted: (_) => _saveTitle(),
                     onTapOutside: (_) => _saveTitle(),
                   )
-                : GestureDetector(
+                : PressScale(
                     behavior: HitTestBehavior.opaque,
                     onTap: () => setState(() => _editingTitle = true),
                     // Pencil: the title is renamed by tapping it, which
@@ -386,7 +386,7 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                GestureDetector(
+                PressScale(
                   behavior: HitTestBehavior.opaque,
                   onTap: _showDetailedStats,
                   child: Padding(
@@ -395,7 +395,7 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
                   ),
                 ),
                 Builder(
-                  builder: (ctx) => GestureDetector(
+                  builder: (ctx) => PressScale(
                     behavior: HitTestBehavior.opaque,
                     onTap: () => _exportImage(ctx),
                     child: Padding(
@@ -635,7 +635,7 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
                 // Back button top-left
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: GestureDetector(
+                  child: PressScale(
                     behavior: HitTestBehavior.opaque,
                     onTap: widget.onBack,
                     child: Padding(
@@ -653,7 +653,7 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        GestureDetector(
+                        PressScale(
                           onTap: () => setState(() => _editingTitle = true),
                           child: _editingTitle
                               ? TextField(
@@ -730,7 +730,7 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            GestureDetector(
+                            PressScale(
                               behavior: HitTestBehavior.opaque,
                               onTap: _showDetailedStats,
                               child: Padding(
@@ -740,7 +740,7 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
                             ),
                             const SizedBox(width: 8),
                             Builder(
-                              builder: (ctx) => GestureDetector(
+                              builder: (ctx) => PressScale(
                                 behavior: HitTestBehavior.opaque,
                                 onTap: () => _exportImage(ctx),
                                 child: Padding(
@@ -808,7 +808,7 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
             child: Column(
           children: [
             // Toggle labels button
-            GestureDetector(
+            PressScale(
               behavior: HitTestBehavior.opaque,
               onTap: () {
                 setState(() => _showLegendLabels = !_showLegendLabels);
@@ -893,7 +893,7 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
                       ),
                     ...legends.map<Widget>((legend) {
                       final isSelected = _selectedLegendId == legend.id;
-                      return GestureDetector(
+                      return PressScale(
                         behavior: HitTestBehavior.opaque,
                         onTap: () {
                           setState(() {

@@ -8,6 +8,7 @@ import '../providers/language_provider.dart';
 import '../theme/app_theme.dart';
 import 'tracker_grid.dart';
 import 'app_dialog.dart';
+import 'press_scale.dart';
 
 class StatsDetailDialog extends StatelessWidget {
   final List<CellModel> cells;
@@ -78,7 +79,7 @@ class StatsDetailDialog extends StatelessWidget {
     return AppDialog(
       maxWidth: 420,
       footer: Center(
-        child: GestureDetector(
+        child: PressScale(
           behavior: HitTestBehavior.opaque,
           onTap: () => Navigator.of(context).pop(),
           child: Padding(

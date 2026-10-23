@@ -7,6 +7,8 @@ import '../providers/premium_provider.dart';
 import '../theme/app_theme.dart';
 import 'app_dialog.dart';
 import 'premium_gate_dialog.dart';
+import 'press_scale.dart';
+import '../services/audio_service.dart';
 
 /// Available cursors. Add new entries here when adding new cursor GIFs.
 const cursorOptions = [
@@ -75,8 +77,9 @@ class _CursorPickerDialog extends StatelessWidget {
               alignment: WrapAlignment.center,
               children: visibleCursors.map((option) {
                 final isActive = currentId == option.id;
-                return GestureDetector(
+                return PressScale(
                   onTap: () {
+                    context.read<AudioService?>()?.play(SoundCue.select);
                     if (option.id == 'none') {
                       premium.setCursorEnabled(false);
                     } else {

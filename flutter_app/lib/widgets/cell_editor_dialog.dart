@@ -268,7 +268,7 @@ class _CellEditorDialogState extends State<CellEditorDialog> {
                   ),
                 ),
                 const SizedBox(height: 2),
-                GestureDetector(
+                PressScale(
                   behavior: HitTestBehavior.opaque,
                   onTap: () => setState(() => _editingComment = true),
                   child: Padding(
@@ -279,7 +279,7 @@ class _CellEditorDialogState extends State<CellEditorDialog> {
               ],
             )
           else
-            GestureDetector(
+            PressScale(
               behavior: HitTestBehavior.opaque,
               onTap: () => setState(() => _editingComment = true),
               child: Padding(
@@ -311,7 +311,7 @@ class _CellEditorDialogState extends State<CellEditorDialog> {
       return Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          GestureDetector(
+          PressScale(
             behavior: HitTestBehavior.opaque,
             onTap: () {
               // Reload original comment
@@ -358,7 +358,7 @@ class _CellEditorDialogState extends State<CellEditorDialog> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        GestureDetector(
+        PressScale(
           behavior: HitTestBehavior.opaque,
           onTap: () => Navigator.of(context).pop(),
           child: Padding(
@@ -407,7 +407,7 @@ class _CellEditorDialogState extends State<CellEditorDialog> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        GestureDetector(
+        PressScale(
           behavior: HitTestBehavior.opaque,
           onTap: () => Navigator.of(context).pop(),
           child: Padding(
@@ -499,7 +499,7 @@ class _CellEditorDialogState extends State<CellEditorDialog> {
 
   Widget _buildLegendRow(LegendModel legend) {
     final selected = _selectedLegendId == legend.id;
-    return GestureDetector(
+    return PressScale(
       onTap: () {
         setState(() {
           _selectedColor = legend.color;

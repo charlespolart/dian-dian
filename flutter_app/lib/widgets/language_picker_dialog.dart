@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import '../providers/language_provider.dart';
 import '../theme/app_theme.dart';
 import 'app_dialog.dart';
+import 'press_scale.dart';
+import 'package:provider/provider.dart';
+import '../services/audio_service.dart';
 
 /// Shows a dialog to pick a language. Returns when a language is selected.
 Future<void> showLanguagePickerDialog(BuildContext context, LanguageProvider lang) {
@@ -21,8 +24,9 @@ Future<void> showLanguagePickerDialog(BuildContext context, LanguageProvider lan
             const SizedBox(height: 16),
             ...Language.values.map((language) {
               final isActive = lang.lang == language;
-              return GestureDetector(
+              return PressScale(
                 onTap: () {
+                  ctx.read<AudioService?>()?.play(SoundCue.select);
                   lang.setLang(language);
                   Navigator.of(ctx).pop();
                 },

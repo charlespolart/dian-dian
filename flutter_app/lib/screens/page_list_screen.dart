@@ -337,7 +337,7 @@ class _PageListScreenState extends State<PageListScreen> {
                     ),
                     // Premium button (free users only)
                     if (!context.watch<PremiumProvider>().isPremium)
-                      GestureDetector(
+                      PressScale(
                         behavior: HitTestBehavior.opaque,
                         onTap: () => PremiumGateDialog.show(
                           context,
@@ -357,7 +357,7 @@ class _PageListScreenState extends State<PageListScreen> {
                         ),
                       ),
                     // Global stats button
-                    GestureDetector(
+                    PressScale(
                       behavior: HitTestBehavior.opaque,
                       onTap: () =>
                           GlobalStatsDialog.show(context, year: _selectedYear),
@@ -374,7 +374,7 @@ class _PageListScreenState extends State<PageListScreen> {
                       ),
                     ),
                     // Settings button
-                    GestureDetector(
+                    PressScale(
                       behavior: HitTestBehavior.opaque,
                       onTap: widget.onOpenSettings,
                       child: Padding(
@@ -818,7 +818,7 @@ class PageCard extends StatelessWidget {
                 Positioned(
                   top: 0,
                   right: 0,
-                  child: GestureDetector(
+                  child: PressScale(
                     behavior: HitTestBehavior.opaque,
                     onTap: onDelete,
                     child: Padding(
@@ -978,7 +978,7 @@ class _CreateTrackerDialogState extends State<_CreateTrackerDialog> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                GestureDetector(
+                PressScale(
                   onTap: _busy ? null : () => Navigator.of(context).pop(),
                   child: Text(
                     lang.t('common.cancel'),

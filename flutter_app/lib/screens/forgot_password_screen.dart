@@ -184,7 +184,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 ),
                 if (!_success) ...[
                   const SizedBox(height: 20),
-                  GestureDetector(
+                  PressScale(
                     onTap: widget.onBack,
                     child: Text(
                       lang.t('auth.backToLogin'),

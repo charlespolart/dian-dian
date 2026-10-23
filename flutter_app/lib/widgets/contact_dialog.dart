@@ -136,7 +136,7 @@ class _ContactDialogState extends State<ContactDialog> {
               children: [
                 Semantics(
                   button: true,
-                  child: GestureDetector(
+                  child: PressScale(
                     behavior: HitTestBehavior.opaque,
                     onTap: _busy ? null : () => Navigator.of(context).pop(),
                     child: Padding(

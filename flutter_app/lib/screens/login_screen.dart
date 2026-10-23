@@ -173,7 +173,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     // Forgot password
                     Align(
                       alignment: Alignment.centerRight,
-                      child: GestureDetector(
+                      child: PressScale(
                         onTap: widget.onForgotPassword,
                         child: Text(
                           lang.t('auth.forgotPassword'),
@@ -238,7 +238,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 20),
 
               // Switch to register
-              GestureDetector(
+              PressScale(
                 onTap: widget.onSwitchToRegister,
                 child: Text(
                   lang.t('auth.switchToRegister'),
