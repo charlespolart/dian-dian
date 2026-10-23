@@ -1,4 +1,4 @@
-"""The bubble palettes, synthesised: soft, and gentle (softer still).
+"""The bubble palette, synthesised: gentle (SOFT is the base it is bent from).
 
 Every cue is a bloop — a sine whose pitch glides up or down in a few
 milliseconds and dies in a few tens — short and clean like a satisfying

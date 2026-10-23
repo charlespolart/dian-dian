@@ -44,10 +44,10 @@ void main() {
     final tile = find.textContaining('Palette');
     expect(tile, kDebugMode ? findsOneWidget : findsNothing);
     if (!kDebugMode) return;
-    await tester.tap(find.widgetWithText(PressScale, 'Palette : soft'));
+    await tester.tap(find.widgetWithText(PressScale, 'Palette : gentle'));
     await tester.pumpAndSettle();
-    expect(rec.service.palette, SoundPalette.gentle);
-    expect(find.text('Palette : gentle'), findsOneWidget);
+    expect(rec.service.palette, SoundPalette.cute);
+    expect(find.text('Palette : cute'), findsOneWidget);
     expect(rec.players.played, [SoundCue.trackerOpen]);
   });
 }

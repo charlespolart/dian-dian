@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Builds assets/sounds/<palette>/<cue>.wav for the palettes under trial.
 
-  python3 tools/sounds/build.py [soft|gentle|cute|all]
+  python3 tools/sounds/build.py [gentle|cute|all]
 
-Every palette is synthesised: soft and gentle by soft_palette.py (two
-Styles), cute by cute_palette.py. Each
+Every palette is synthesised: gentle by soft_palette.py (a Style of the
+bubbles), cute by cute_palette.py. Each
 cue is trimmed of its leading silence, cut to its length with a fade-out,
 peak-normalised (per cue, with a per-palette offset) and written as 16-bit
 mono 44.1 kHz wav. Needs numpy only."""
@@ -27,7 +27,6 @@ import soft_palette  # noqa: E402
 
 # palette: (renderer → {cue: array}, level offset in dB)
 PALETTES = {
-    "soft": (lambda: soft_palette.render(soft_palette.SOFT), 0.0),
     "gentle": (lambda: soft_palette.render(soft_palette.GENTLE), -3.0),
     "cute": (cute_palette.render, -2.0),
 }

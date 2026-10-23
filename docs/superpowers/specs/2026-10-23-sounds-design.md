@@ -85,17 +85,16 @@ pas), la pastille de palette (appui long) et la bannière publicitaire.
 
 ```
 assets/sounds/
-  soft/     dot_fill.wav dot_erase.wav tracker_open.wav tracker_close.wav
+  gentle/   dot_fill.wav dot_erase.wav tracker_open.wav tracker_close.wav
             dialog_open.wav dialog_close.wav tracker_create.wav legend_add.wav
             step_next.wav step_prev.wav press.wav panel_open.wav panel_close.wav
             drag_pick.wav drag_hover.wav drag_drop.wav select.wav
-  gentle/   (les dix-sept mêmes noms)
   cute/     (les dix-sept mêmes noms)
 ```
 
-(État à l'essai 4 ; la disposition initiale était `paper/`, `interface/`,
+(État à l'essai 5 ; la disposition initiale était `paper/`, `interface/`,
 `pixel/` avec dix noms.) `pubspec.yaml` liste les trois dossiers
-(`assets/sounds/soft/`, …) : une
+(`assets/sounds/gentle/`, …) : une
 entrée de dossier n'inclut pas ses sous-dossiers. L'entrée `assets/sounds/`
 et les deux mp3 disparaissent. Le nom de fichier d'un moment est son nom en
 `snake_case` ; l'identifiant de palette est le nom du dossier
@@ -181,6 +180,11 @@ passe-bas, moins de glissé et d'écho, −3 dB), et **cute**, une synthèse
 différente « vraiment chill, mini-jeu mignon » (plings d'onde
 triangulaire, motifs pentatoniques, boing et plop,
 `tools/sounds/cute_palette.py`). `SoundPalette { soft, gentle, cute }`.
+
+**Essai 5 (2026-10-23).** Gentle est retenue, soft sort. Cute est à
+retravailler dans l'esprit de Minecraft, Tiny Wings et Stardew Valley :
+clics en bois, pop de ramassage, plop, marimba, ding de cloche
+(`tools/sounds/cute_palette.py`, réécrit). `SoundPalette { gentle, cute }`.
 
 ## 3. Le service : `AudioService`
 

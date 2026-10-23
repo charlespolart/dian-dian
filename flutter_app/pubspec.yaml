@@ -77,7 +77,6 @@ flutter:
 
   assets:
     - assets/images/
-    - assets/sounds/soft/
     - assets/sounds/gentle/
     - assets/sounds/cute/
     - assets/icons/

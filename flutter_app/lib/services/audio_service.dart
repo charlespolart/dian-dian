@@ -27,7 +27,7 @@ enum SoundCue {
 }
 
 /// A folder under assets/sounds: several while they are compared, one ships.
-enum SoundPalette { soft, gentle, cute }
+enum SoundPalette { gentle, cute }
 
 extension SoundCueFile on SoundCue {
   /// The file stem: `dotFill` → `dot_fill`.
@@ -71,7 +71,7 @@ class AudioService extends ChangeNotifier {
   Map<SoundCue, SoundPlayer> _players = const {};
   int _generation = 0;
   bool _enabled = true;
-  SoundPalette _palette = SoundPalette.soft;
+  SoundPalette _palette = SoundPalette.gentle;
 
   /// Weak cues: a button's tic and a dialog's close. They wait one microtask
   /// and yield to a stronger cue of the same turn; after a strong cue they
@@ -93,7 +93,7 @@ class AudioService extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       _enabled = prefs.getBool(prefEnabled) ?? true;
       final name = prefs.getString(prefPalette);
-      _palette = SoundPalette.values.firstWhere((p) => p.name == name, orElse: () => SoundPalette.soft);
+      _palette = SoundPalette.values.firstWhere((p) => p.name == name, orElse: () => SoundPalette.gentle);
     } catch (e) {
       debugPrint('AudioService: prefs unavailable: $e');
     }
