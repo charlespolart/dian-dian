@@ -22,9 +22,10 @@ CACHE = HERE / "cache"
 OUT = APP / "assets" / "sounds"
 SR = 44100
 CUES = ["dot_fill", "dot_erase", "tracker_open", "tracker_close", "dialog_open",
-        "dialog_close", "tracker_create", "legend_add", "year_change", "press"]
+        "dialog_close", "tracker_create", "legend_add", "year_change", "press",
+        "panel_open", "panel_close", "drag_pick", "drag_hover", "drag_drop", "select"]
 MAX_MS = {"tracker_open": 700, "tracker_close": 700, "tracker_create": 700}
-PEAK_DB = {"press": -10.0}
+PEAK_DB = {"press": -10.0, "drag_hover": -10.0, "select": -6.0}
 
 MIXKIT = "https://assets.mixkit.co/active_storage/sfx/{id}/{id}-preview.mp3"
 # cue: (mixkit id, max ms, reverse)
@@ -39,6 +40,12 @@ PAPER = {
     "legend_add": (3102, 300, False),      # Duct tape bandage
     "year_change": (1097, 380, False),     # Turning the newspaper big page
     "press": (1125, 70, False),            # Typewriter soft click
+    "panel_open": (1530, 220, False),      # Paper slide, short
+    "panel_close": (1530, 220, True),      # … back
+    "drag_pick": (2380, 180, False),       # Paper quick movement
+    "drag_hover": (1125, 50, False),       # Typewriter soft click, quieter
+    "drag_drop": (2386, 220, False),       # Pages of paper moving
+    "select": (1125, 70, False),           # Typewriter soft click
 }
 
 # cue: (mixkit id, max ms, reverse) — bubbles, pops and little tones
@@ -53,6 +60,12 @@ POP = {
     "legend_add": (960, 350, False),        # Tile game reveal
     "year_change": (3005, 300, False),      # Explainer video pops whoosh light pop
     "press": (1124, 60, False),             # Plastic bubble click
+    "panel_open": (731, 140, False),        # Cartoon bubble pop
+    "panel_close": (2925, 160, False),      # Soap bubble sound
+    "drag_pick": (3069, 200, False),        # Game balloon or bubble pop
+    "drag_hover": (1124, 50, False),        # Plastic bubble click, quieter
+    "drag_drop": (2356, 220, False),        # Dry pop up notification alert
+    "select": (1124, 70, False),            # Plastic bubble click
 }
 
 

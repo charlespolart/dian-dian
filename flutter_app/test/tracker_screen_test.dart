@@ -18,6 +18,7 @@ import 'package:dian_dian/services/sync_service.dart';
 import 'package:dian_dian/services/ws_service.dart';
 import 'package:dian_dian/theme/motion.dart';
 import 'package:dian_dian/widgets/swipe_nav.dart';
+import 'package:dian_dian/widgets/tracker_grid.dart';
 
 import 'helpers.dart';
 
@@ -31,7 +32,13 @@ class TrackerHarness {
     final api = ApiService.custom(client: client, tokens: FakeTokens());
     final rows = [pageJson('p0', title: 'Mood')];
     final pages = PagesProvider(api: api)..applyBootstrap(rows);
-    final legends = LegendsProvider(api: api)..applyBootstrap({});
+    final legends = LegendsProvider(api: api)
+      ..applyBootstrap({
+        'p0': [
+          {'id': 'l1', 'pageId': 'p0', 'color': '#FFEC99', 'label': 'Sport', 'position': 0, 'createdAt': ''},
+        ],
+      })
+      ..setPageId('p0');
     final cells = CellsProvider(api: api, audio: AudioService.silent())..applyBootstrap(2026, {'p0': <dynamic>[]});
     final sync = SyncService(
       api: api,
@@ -154,5 +161,37 @@ void main() {
     await tester.pump();
     expect(rec.players.played, [SoundCue.yearChange]);
     await tester.pump(AppMotion.base + const Duration(milliseconds: 50));
+  });
+
+  testWidgets('the side panel arrow plays panelClose when folding and panelOpen when unfolding', (tester) async {
+    tabletPortrait(tester);
+    final rec = await recordingAudio();
+    await tester.pumpWidget(TrackerHarness(audio: rec.service).widget);
+    await tester.tap(find.byIcon(Icons.chevron_left));
+    await tester.pumpAndSettle();
+    expect(rec.players.played, [SoundCue.panelClose]);
+    await tester.tap(find.byIcon(Icons.chevron_right));
+    await tester.pumpAndSettle();
+    expect(rec.players.played, [SoundCue.panelClose, SoundCue.panelOpen]);
+  });
+
+  testWidgets('picking a legend as the brush plays select', (tester) async {
+    tabletPortrait(tester);
+    final rec = await recordingAudio();
+    await tester.pumpWidget(TrackerHarness(audio: rec.service).widget);
+    await tester.tap(find.text('Sport'));
+    await tester.pump();
+    expect(rec.players.played, [SoundCue.select]);
+  });
+
+  testWidgets('in the cell editor, choosing a legend plays select after the dialog opened', (tester) async {
+    tabletPortrait(tester);
+    final rec = await recordingAudio();
+    await tester.pumpWidget(TrackerHarness(audio: rec.service).widget);
+    await tester.tap(find.descendant(of: find.byType(TrackerGrid), matching: find.byType(GestureDetector)).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sport').last);
+    await tester.pump();
+    expect(rec.players.played, [SoundCue.dialogOpen, SoundCue.select]);
   });
 }

@@ -31,7 +31,7 @@ class ListHarness {
   final selected = <String>[];
   late final Widget widget;
 
-  ListHarness({int pageCount = 2, bool vip = false, String? revealPageId}) {
+  ListHarness({int pageCount = 2, bool vip = false, String? revealPageId, AudioService? audio}) {
     final client = MockClient((req) async => http.Response('{"error":"x"}', 404));
     final api = ApiService.custom(client: client, tokens: FakeTokens());
     final rows = [for (var i = 0; i < pageCount; i++) pageJson('p$i', position: i, title: 'T$i')];
@@ -58,6 +58,7 @@ class ListHarness {
         ChangeNotifierProvider.value(value: legends),
         ChangeNotifierProvider.value(value: premium),
         Provider<SyncService>.value(value: sync),
+        if (audio != null) ChangeNotifierProvider<AudioService>.value(value: audio),
       ],
       child: MaterialApp(
         home: PageListScreen(
@@ -129,5 +130,20 @@ void main() {
     expect(h.selected, isEmpty);
     expect(h.pages.pages.map((p) => p.id), ['p1']);
     h.pages.undoDeletePage(); // stops the 8 s undo timer before the test ends
+  });
+
+  testWidgets('dragging a card onto another plays dragPick, dragHover and dragDrop', (tester) async {
+    phone(tester);
+    final rec = await recordingAudio();
+    final h = ListHarness(pageCount: 3, audio: rec.service);
+    await tester.pumpWidget(h.widget);
+    await tester.pumpAndSettle();
+    final handle = find.byType(Draggable<int>).first;
+    final target = tester.getCenter(find.byType(PageCard).at(1));
+    await tester.drag(handle, target - tester.getCenter(handle));
+    await tester.pumpAndSettle();
+    expect(rec.players.played.first, SoundCue.dragPick);
+    expect(rec.players.played, contains(SoundCue.dragHover));
+    expect(rec.players.played.last, SoundCue.dragDrop);
   });
 }

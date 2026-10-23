@@ -17,6 +17,12 @@ enum SoundCue {
   legendAdd,
   yearChange,
   press,
+  panelOpen,   // the tracker's side panel unfolds
+  panelClose,  // … and folds back
+  dragPick,    // a card or a legend is picked up
+  dragHover,   // the dragged thing arrives over a place it can take
+  dragDrop,    // … and is dropped there
+  select,      // a legend or a colour becomes the selection
 }
 
 /// A folder under assets/sounds: several while they are compared, one ships.

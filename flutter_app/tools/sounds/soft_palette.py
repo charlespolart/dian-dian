@@ -81,4 +81,10 @@ def render():
         "legend_add": room(up(900, 1500, dur=0.10, tau=0.045, gain=0.65)),
         "year_change": room(mix([(0.0, down(700, 520, dur=0.07, tau=0.03, gain=0.6)), (0.06, up(560, 760, dur=0.09, tau=0.04, gain=0.7))])),
         "press": thump(),
+        "panel_open": room(up(380, 640, dur=0.10, tau=0.04, gain=0.6)),
+        "panel_close": room(down(640, 380, dur=0.10, tau=0.04, gain=0.55)),
+        "drag_pick": room(mix([(0.0, up(420, 700, dur=0.07, tau=0.03, gain=0.6)), (0.05, up(700, 1100, dur=0.09, tau=0.04, gain=0.6))])),
+        "drag_hover": up(900, 1200, dur=0.05, tau=0.02, gain=0.5),
+        "drag_drop": room(mix([(0.0, down(900, 520, dur=0.09, tau=0.04, gain=0.6)), (0.03, thump(freq=180.0, gain=0.6))])),
+        "select": up(700, 1150, dur=0.07, tau=0.03, gain=0.7),
     }

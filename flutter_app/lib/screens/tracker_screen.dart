@@ -810,7 +810,10 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
             // Toggle labels button
             GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onTap: () => setState(() => _showLegendLabels = !_showLegendLabels),
+              onTap: () {
+                setState(() => _showLegendLabels = !_showLegendLabels);
+                context.read<AudioService?>()?.play(_showLegendLabels ? SoundCue.panelOpen : SoundCue.panelClose);
+              },
               child: SizedBox(
                 width: double.infinity,
                 child: Padding(
@@ -896,6 +899,7 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
                           setState(() {
                             _selectedLegendId = isSelected ? null : legend.id;
                           });
+                          context.read<AudioService?>()?.play(SoundCue.select);
                         },
                         child: Padding(
                         padding: const EdgeInsets.only(bottom: 5),

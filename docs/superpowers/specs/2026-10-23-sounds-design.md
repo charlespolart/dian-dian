@@ -59,6 +59,11 @@ reste.
 | `legendAdd` | `LegendsProvider.createLegend`, quand la légende est ajoutée localement | |
 | `yearChange` | `TrackerScreen._changeYear` et `PageListScreen._changeYear` | avec le glissement |
 | `press` | `PressScale`, au tap, avant d'appeler `onTap` / `onTapAt` | voir la règle « un son par geste » |
+| `panelOpen` / `panelClose` | la flèche de la barre latérale du tracker (`_showLegendLabels`) | au tap, selon le nouvel état |
+| `dragPick` | `Draggable.onDragStarted` d'une carte (liste) ou d'une légende (éditeur) | à la prise |
+| `dragHover` | `DragTarget.onWillAcceptWithDetails` quand la cible accepte (elle se surligne) | à chaque entrée sur une cible valable |
+| `dragDrop` | `DragTarget.onAcceptWithDetails` | au dépôt, avant le réordonnancement |
+| `select` | légende prise comme pinceau (barre latérale), légende choisie dans l'éditeur de case, pastille ou couleur choisie dans l'éditeur de légendes | au tap |
 
 Les points de la grille ne passent pas par `PressScale` : un tap sur une
 case ne fait sonner que `dotFill` ou `dotErase`.
@@ -136,6 +141,11 @@ référence : **Pop** (Mixkit : bulles, pops, petites tonalités de jeu) et
 **Soft** (synthèse `tools/sounds/soft_palette.py` : notes de kalimba
 pentatoniques, bulles, un souffle, rien de carré). `SoundPalette { paper,
 soft, pop }`.
+
+**Ajout (2026-10-23, essai 2).** Six moments de plus demandés à l'essai :
+`panelOpen`, `panelClose`, `dragPick`, `dragHover`, `dragDrop`, `select`
+(table du §1). `dragHover` et `select` sont plus discrets (−10 et −6 dBFS).
+Seize fichiers par palette.
 
 **Essai 2 (2026-10-23).** Dans Soft, le style des bulles des pop-ups plaît ;
 le reste doit être aussi simple, « comme des clics satisfaisants ». Soft

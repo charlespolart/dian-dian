@@ -496,14 +496,15 @@ class _PageListScreenState extends State<PageListScreen> {
                                   );
                                   return LayoutBuilder(
                                     builder: (context, cell) => DragTarget<int>(
-                                      onWillAcceptWithDetails: (d) =>
-                                          d.data != index,
-                                      onAcceptWithDetails: (d) =>
-                                          _onReorderPages(
-                                            sortedPages,
-                                            d.data,
-                                            index,
-                                          ),
+                                      onWillAcceptWithDetails: (d) {
+                                        final accepts = d.data != index;
+                                        if (accepts) context.read<AudioService?>()?.play(SoundCue.dragHover);
+                                        return accepts;
+                                      },
+                                      onAcceptWithDetails: (d) {
+                                        context.read<AudioService?>()?.play(SoundCue.dragDrop);
+                                        _onReorderPages(sortedPages, d.data, index);
+                                      },
                                       builder: (context, candidateData, _) {
                                         final isOver = candidateData.isNotEmpty;
                                         final appearance = _appearanceOf(page.id, index);
@@ -541,9 +542,10 @@ class _PageListScreenState extends State<PageListScreen> {
                                                         ? null
                                                         : Draggable<int>(
                                                       data: index,
-                                                      onDragStarted: () => setState(
-                                                        () => _draggingIndex = index,
-                                                      ),
+                                                      onDragStarted: () {
+                                                        context.read<AudioService?>()?.play(SoundCue.dragPick);
+                                                        setState(() => _draggingIndex = index);
+                                                      },
                                                       onDragEnd: (_) => setState(
                                                         () => _draggingIndex = null,
                                                       ),

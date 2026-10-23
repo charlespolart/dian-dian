@@ -25,7 +25,7 @@ class Harness {
   late final CellsProvider cells;
   late final Widget widget;
 
-  Harness() {
+  Harness({AudioService? audio}) {
     final client = MockClient((req) async {
       requests.add(req);
       if (req.method == 'PATCH' && req.url.path.startsWith('/api/legends/')) {
@@ -56,6 +56,7 @@ class Harness {
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
         ChangeNotifierProvider.value(value: legends),
         ChangeNotifierProvider.value(value: cells),
+        if (audio != null) ChangeNotifierProvider<AudioService>.value(value: audio),
       ],
       child: MaterialApp(
         home: Builder(
@@ -215,5 +216,32 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Good'), findsOneWidget);
     expect(opacityOf('Good'), 1.0, reason: 'the ghost style must go away when the drag ends');
+  });
+
+  testWidgets('tapping a palette swatch plays select', (tester) async {
+    final rec = await recordingAudio();
+    final h = Harness(audio: rec.service);
+    await tester.pumpWidget(h.widget);
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('palette.0,3')));
+    await tester.pump();
+    expect(rec.players.played, [SoundCue.dialogOpen, SoundCue.select]);
+  });
+
+  testWidgets('reordering legends by drag plays dragPick, dragHover and dragDrop', (tester) async {
+    final rec = await recordingAudio();
+    final h = Harness(audio: rec.service);
+    await tester.pumpWidget(h.widget);
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    final handle = find.byType(Draggable<int>).first;
+    final target = tester.getCenter(find.text('Good'));
+    await tester.drag(handle, target - tester.getCenter(handle));
+    await tester.pumpAndSettle();
+    final played = rec.players.played.skip(1).toList(); // after dialogOpen
+    expect(played.first, SoundCue.dragPick);
+    expect(played, contains(SoundCue.dragHover));
+    expect(played.last, SoundCue.dragDrop);
   });
 }

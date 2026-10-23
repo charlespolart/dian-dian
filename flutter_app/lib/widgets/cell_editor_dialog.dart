@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../services/audio_service.dart';
 import '../models/legend_model.dart';
 import '../providers/cells_provider.dart';
 import '../providers/language_provider.dart';
@@ -503,6 +504,7 @@ class _CellEditorDialogState extends State<CellEditorDialog> {
           _selectedColor = legend.color;
           _selectedLegendId = legend.id;
         });
+        context.read<AudioService?>()?.play(SoundCue.select);
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 6),

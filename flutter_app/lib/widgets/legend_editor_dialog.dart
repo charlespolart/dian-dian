@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../services/audio_service.dart';
 import '../providers/cells_provider.dart';
 import '../providers/language_provider.dart';
 import '../providers/legends_provider.dart';
@@ -229,9 +230,15 @@ class _LegendEditorDialogState extends State<LegendEditorDialog> {
                 legend: legends[i],
                 isDragging: _draggingIndex == i,
                 parseHex: _parseHex,
-                onDragStarted: () => setState(() => _draggingIndex = i),
+                onDragStarted: () {
+                  context.read<AudioService?>()?.play(SoundCue.dragPick);
+                  setState(() => _draggingIndex = i);
+                },
                 onDragEnd: () => setState(() => _draggingIndex = null),
-                onAccept: (fromIndex) => _onReorder(fromIndex, i),
+                onAccept: (fromIndex) {
+                  context.read<AudioService?>()?.play(SoundCue.dragDrop);
+                  _onReorder(fromIndex, i);
+                },
                 onTap: () => _openEdit(i),
                 onDelete: () async {
                   final confirmed = await ConfirmDialog.show(
@@ -359,6 +366,7 @@ class _LegendEditorDialogState extends State<LegendEditorDialog> {
         _selectedColor = hex;
         _selectedPos = pos;
       });
+      context.read<AudioService?>()?.play(SoundCue.select);
     }
   }
 
@@ -409,6 +417,7 @@ class _LegendEditorDialogState extends State<LegendEditorDialog> {
             _selectedColor = hex;
             _selectedPos = '$rowIdx,$colIdx';
           });
+          context.read<AudioService?>()?.play(SoundCue.select);
         },
       ),
     );
@@ -1011,7 +1020,11 @@ class _DraggableLegendTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) => DragTarget<int>(
-        onWillAcceptWithDetails: (details) => details.data != index,
+        onWillAcceptWithDetails: (details) {
+          final accepts = details.data != index;
+          if (accepts) context.read<AudioService?>()?.play(SoundCue.dragHover);
+          return accepts;
+        },
         onAcceptWithDetails: (details) => onAccept(details.data),
         builder: (context, candidateData, rejectedData) {
           final isOver = candidateData.isNotEmpty;

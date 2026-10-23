@@ -1,8 +1,9 @@
 # Sons de l'app : sources et licences
 
-Dix moments (`SoundCue` dans `lib/services/audio_service.dart`), un fichier
+Seize moments (`SoundCue` dans `lib/services/audio_service.dart`), un fichier
 par moment et par palette dans `assets/sounds/<palette>/`, wav PCM 16 bits
-mono 44,1 kHz, silence de tête rogné, crête à −3 dBFS (−10 pour `press`),
+mono 44,1 kHz, silence de tête rogné, crête à −3 dBFS (−10 pour `press` et
+`drag_hover`, −6 pour `select`),
 ≤ 400 ms sauf `tracker_open`, `tracker_close`, `tracker_create` ≤ 700 ms.
 Tout est produit par `python3 tools/sounds/build.py all` (ffmpeg + numpy),
 qui télécharge les sources dans `tools/sounds/cache/` (ignoré par git).
@@ -29,6 +30,12 @@ proposés au téléchargement). https://mixkit.co/license/
 | legend_add | 3102 « Duct tape bandage » | 300 ms |
 | year_change | 1097 « Turning the newspaper big page » | 380 ms |
 | press | 1125 « Typewriter soft click » | 70 ms, −10 dBFS |
+| panel_open | 1530 « Paper slide » | 220 ms |
+| panel_close | 1530 « Paper slide » | inversé, 220 ms |
+| drag_pick | 2380 « Paper quick movement » | 180 ms |
+| drag_hover | 1125 « Typewriter soft click » | 50 ms, −10 dBFS |
+| drag_drop | 2386 « Pages of paper moving » | 220 ms |
+| select | 1125 « Typewriter soft click » | 70 ms, −6 dBFS |
 
 ## pop — Mixkit, Sound Effects Free License
 
@@ -46,6 +53,12 @@ Bulles, pops et petites tonalités de jeu (même licence que `paper`).
 | legend_add | 960 « Tile game reveal » | 350 ms |
 | year_change | 3005 « Explainer video pops whoosh light pop » | 300 ms max |
 | press | 1124 « Plastic bubble click » | 60 ms, −10 dBFS |
+| panel_open | 731 « Cartoon bubble pop » | 140 ms |
+| panel_close | 2925 « Soap bubble sound » | 160 ms |
+| drag_pick | 3069 « Game balloon or bubble pop » | 200 ms |
+| drag_hover | 1124 « Plastic bubble click » | 50 ms, −10 dBFS |
+| drag_drop | 2356 « Dry pop up notification alert » | 220 ms |
+| select | 1124 « Plastic bubble click » | 70 ms, −6 dBFS |
 
 ## soft — synthèse, propre à l'app
 
