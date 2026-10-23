@@ -89,11 +89,11 @@ assets/sounds/
             dialog_open.wav dialog_close.wav tracker_create.wav legend_add.wav
             step_next.wav step_prev.wav press.wav panel_open.wav panel_close.wav
             drag_pick.wav drag_hover.wav drag_drop.wav select.wav
-  softer/   (les dix-sept mêmes noms)
-  lighter/  (les dix-sept mêmes noms)
+  gentle/   (les dix-sept mêmes noms)
+  cute/     (les dix-sept mêmes noms)
 ```
 
-(État à l'essai 3 ; la disposition initiale était `paper/`, `interface/`,
+(État à l'essai 4 ; la disposition initiale était `paper/`, `interface/`,
 `pixel/` avec dix noms.) `pubspec.yaml` liste les trois dossiers
 (`assets/sounds/soft/`, …) : une
 entrée de dossier n'inclut pas ses sous-dossiers. L'entrée `assets/sounds/`
@@ -173,6 +173,14 @@ attaque plus lente, moins d'écho, −4 dB) et **lighter** (plus aigu, plus
 court, sans écho, −6 dB). Papier et pop sortent. `SoundPalette { soft,
 softer, lighter }` ; `tools/sounds/build.py` ne fait plus que de la
 synthèse (numpy seul), plus aucune source tierce.
+
+**Essai 4 (2026-10-23).** Soft est retenue ; softer et lighter sortent.
+Deux nouvelles à l'essai à côté d'elle : **gentle**, encore plus douce
+que soft mais autrement que softer (mêmes hauteurs, attaque lente,
+passe-bas, moins de glissé et d'écho, −3 dB), et **cute**, une synthèse
+différente « vraiment chill, mini-jeu mignon » (plings d'onde
+triangulaire, motifs pentatoniques, boing et plop,
+`tools/sounds/cute_palette.py`). `SoundPalette { soft, gentle, cute }`.
 
 ## 3. Le service : `AudioService`
 

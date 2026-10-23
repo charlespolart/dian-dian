@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Builds assets/sounds/<palette>/<cue>.wav for the palettes under trial.
 
-  python3 tools/sounds/build.py [soft|softer|lighter|all]
+  python3 tools/sounds/build.py [soft|gentle|cute|all]
 
-Every palette is synthesised by soft_palette.py with its own Style. Each
+Every palette is synthesised: soft and gentle by soft_palette.py (two
+Styles), cute by cute_palette.py. Each
 cue is trimmed of its leading silence, cut to its length with a fade-out,
 peak-normalised (per cue, with a per-palette offset) and written as 16-bit
 mono 44.1 kHz wav. Needs numpy only."""
@@ -21,13 +22,14 @@ MAX_MS = {"tracker_open": 700, "tracker_close": 700, "tracker_create": 700}
 PEAK_DB = {"press": -10.0, "drag_hover": -10.0, "select": -6.0, "step_next": -6.0, "step_prev": -6.0}
 
 sys.path.insert(0, str(HERE))
-from soft_palette import LIGHTER, SOFT, SOFTER, render  # noqa: E402
+import cute_palette  # noqa: E402
+import soft_palette  # noqa: E402
 
-# palette: (style, level offset in dB — softer palettes are also quieter)
+# palette: (renderer → {cue: array}, level offset in dB)
 PALETTES = {
-    "soft": (SOFT, 0.0),
-    "softer": (SOFTER, -4.0),
-    "lighter": (LIGHTER, -6.0),
+    "soft": (lambda: soft_palette.render(soft_palette.SOFT), 0.0),
+    "gentle": (lambda: soft_palette.render(soft_palette.GENTLE), -3.0),
+    "cute": (cute_palette.render, -2.0),
 }
 
 
@@ -59,8 +61,8 @@ def write(palette: str, cue: str, x: np.ndarray):
 
 if __name__ == "__main__":
     which = sys.argv[1] if len(sys.argv) > 1 else "all"
-    for name, (style, level_db) in PALETTES.items():
+    for name, (render, level_db) in PALETTES.items():
         if which not in (name, "all"):
             continue
-        for cue, x in render(style).items():
+        for cue, x in render().items():
             write(name, cue, shape(x.astype(np.float32), cue, level_db))

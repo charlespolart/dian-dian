@@ -1,4 +1,4 @@
-"""The bubble palettes, synthesised: soft, softer, lighter.
+"""The bubble palettes, synthesised: soft, and gentle (softer still).
 
 Every cue is a bloop — a sine whose pitch glides up or down in a few
 milliseconds and dies in a few tens — short and clean like a satisfying
@@ -22,11 +22,14 @@ class Style:
     glide: float = 1.0      # pitch glide width × this (1 = full, 0 = a plain tone)
     attack_ms: float = 1.5  # how fast a bubble comes in
     room: float = 1.0       # the two short echoes × this (0 = dry)
+    lowpass: float = 0.0    # a cutoff in Hz that rounds every bubble (0 = none)
 
 
 SOFT = Style()
-SOFTER = Style(pitch=0.85, decay=0.85, glide=0.65, attack_ms=5.0, room=0.7)
-LIGHTER = Style(pitch=1.3, length=0.6, decay=0.6, glide=0.8, room=0.0)
+# Softer still, but not the way `softer` was (lower and narrower, rejected):
+# the same pitches as soft, a slow attack that erases the onset click, a
+# low-pass that rounds the tone, a little less glide and echo.
+GENTLE = Style(pitch=0.95, decay=0.9, glide=0.6, attack_ms=6.0, room=0.8, lowpass=2600.0)
 
 
 def _t(dur):
@@ -61,6 +64,8 @@ class Bubbles:
         f = f1 + (f0 - f1) * np.exp(-t / 0.018)
         phase = 2 * np.pi * np.cumsum(f) / SR
         x = np.sin(phase) * np.exp(-t / (tau * s.decay)) * _attack(t, s.attack_ms)
+        if s.lowpass:
+            x = _lowpass(x.astype(np.float32), s.lowpass)
         return (x * gain).astype(np.float32)
 
     def thump(self, freq=220.0, dur=0.05, tau=0.012, gain=0.9):

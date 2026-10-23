@@ -18,7 +18,7 @@ void main() {
     expect(service.palette, SoundPalette.soft);
     expect(service.enabled, isTrue);
     expect(SoundCue.dotFill.file, 'dot_fill');
-    expect(SoundCue.trackerCreate.assetIn(SoundPalette.softer), 'sounds/softer/tracker_create.wav');
+    expect(SoundCue.trackerCreate.assetIn(SoundPalette.gentle), 'sounds/gentle/tracker_create.wav');
     expect(players.live.map((p) => p.asset), unorderedEquals([for (final c in SoundCue.values) c.assetIn(SoundPalette.soft)]));
   });
 
@@ -85,24 +85,24 @@ void main() {
   test('setEnabled and setPalette persist; setPalette swaps every player', () async {
     final (:service, :players) = await recordingAudio();
     await service.setEnabled(false);
-    await service.setPalette(SoundPalette.softer);
+    await service.setPalette(SoundPalette.gentle);
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getBool(AudioService.prefEnabled), isFalse);
-    expect(prefs.getString(AudioService.prefPalette), 'softer');
-    expect(players.live.map((p) => p.asset), everyElement(startsWith('sounds/softer/')));
+    expect(prefs.getString(AudioService.prefPalette), 'gentle');
+    expect(players.live.map((p) => p.asset), everyElement(startsWith('sounds/gentle/')));
     expect(players.created.where((p) => p.disposed), hasLength(SoundCue.values.length));
     final again = await recordingAudio();
     expect(again.service.enabled, isFalse);
-    expect(again.service.palette, SoundPalette.softer);
+    expect(again.service.palette, SoundPalette.gentle);
   });
 
   test('setPalette with a preview drops a pending press and plays the preview on the new palette', () async {
     final (:service, :players) = await recordingAudio();
     service.play(SoundCue.press);
-    await service.setPalette(SoundPalette.softer, preview: SoundCue.trackerOpen);
+    await service.setPalette(SoundPalette.gentle, preview: SoundCue.trackerOpen);
     await settle();
     expect(players.played, [SoundCue.trackerOpen]);
-    expect(players.live.where((p) => p.plays > 0).single.asset, 'sounds/softer/tracker_open.wav');
+    expect(players.live.where((p) => p.plays > 0).single.asset, 'sounds/gentle/tracker_open.wav');
   });
 
   test('a palette switch during a load keeps only the new palette; the superseded load is disposed whole', () async {
@@ -110,12 +110,12 @@ void main() {
     final service = AudioService.custom(players: players.call);
     await settle(); // prefs read, the first player waits on the gate
     expect(players.created, hasLength(1));
-    final switching = service.setPalette(SoundPalette.softer);
+    final switching = service.setPalette(SoundPalette.gentle);
     players.gate!.complete();
     await switching;
     await service.ready;
     await settle();
-    expect(players.live.map((p) => p.asset), unorderedEquals([for (final c in SoundCue.values) c.assetIn(SoundPalette.softer)]));
+    expect(players.live.map((p) => p.asset), unorderedEquals([for (final c in SoundCue.values) c.assetIn(SoundPalette.gentle)]));
     final disposed = players.created.where((p) => p.disposed).toList();
     expect(disposed, hasLength(SoundCue.values.length));
     expect(disposed.map((p) => p.asset), everyElement(startsWith('sounds/soft/')), reason: 'the first load stays on the palette it started with');

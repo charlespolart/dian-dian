@@ -27,7 +27,7 @@ enum SoundCue {
 }
 
 /// A folder under assets/sounds: several while they are compared, one ships.
-enum SoundPalette { soft, softer, lighter }
+enum SoundPalette { soft, gentle, cute }
 
 extension SoundCueFile on SoundCue {
   /// The file stem: `dotFill` → `dot_fill`.

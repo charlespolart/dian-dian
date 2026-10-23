@@ -78,8 +78,8 @@ flutter:
   assets:
     - assets/images/
     - assets/sounds/soft/
-    - assets/sounds/softer/
-    - assets/sounds/lighter/
+    - assets/sounds/gentle/
+    - assets/sounds/cute/
     - assets/icons/
     - assets/cursors/
   #   - images/a_dot_ham.jpeg
