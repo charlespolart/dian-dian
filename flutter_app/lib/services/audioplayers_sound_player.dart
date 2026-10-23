@@ -44,11 +44,11 @@ class AudioplayersSoundPlayer implements SoundPlayer {
 
   @override
   Future<void> load(String assetPath) async {
-    // The player creates itself asynchronously; waiting here routes a
-    // creation failure into the caller's catch instead of an unhandled error.
-    await _player.creatingCompleter.future;
-    await _setContext();
+    // The player creates itself asynchronously and every call below waits
+    // for that first: calling one right away routes a creation failure into
+    // the caller's catch instead of an unhandled error.
     await _player.setReleaseMode(ReleaseMode.stop);
+    await _setContext();
     await _player.setPlayerMode(PlayerMode.lowLatency);
     await _player.setSourceAsset(assetPath);
   }
