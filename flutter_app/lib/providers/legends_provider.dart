@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/legend_model.dart';
 import '../services/api_service.dart';
+import '../services/audio_service.dart';
 import '../services/ws_service.dart';
 
 /// Legends of every page, keyed by page id. Lists are copy-on-write
@@ -13,6 +14,7 @@ import '../services/ws_service.dart';
 /// current page is only a pointer, so [setPageId] is synchronous.
 class LegendsProvider extends ChangeNotifier {
   final ApiService _api;
+  final AudioService _audio;
   final WsService _ws = WsService();
   RemoveListener? _removeWsListener;
 
@@ -23,7 +25,9 @@ class LegendsProvider extends ChangeNotifier {
   /// Incremented by every change that did NOT come from a bootstrap apply.
   int get mutationEpoch => _mutationEpoch;
 
-  LegendsProvider({ApiService? api}) : _api = api ?? ApiService() {
+  LegendsProvider({ApiService? api, AudioService? audio})
+      : _api = api ?? ApiService(),
+        _audio = audio ?? AudioService() {
     _removeWsListener = _ws.addListener(_onWsMessage);
   }
 
@@ -152,6 +156,7 @@ class LegendsProvider extends ChangeNotifier {
       if (response.statusCode == 200 || response.statusCode == 201) {
         _add(LegendModel.fromJson(jsonDecode(response.body) as Map<String, dynamic>));
         notifyListeners();
+        _audio.play(SoundCue.legendAdd);
       }
     } catch (e) {
       debugPrint('LegendsProvider: createLegend failed: $e');

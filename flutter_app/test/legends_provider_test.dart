@@ -1,8 +1,17 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:dian_dian/models/legend_model.dart';
 import 'package:dian_dian/providers/legends_provider.dart';
+import 'package:dian_dian/services/api_service.dart';
+import 'package:dian_dian/services/audio_service.dart';
 import 'package:dian_dian/services/ws_service.dart';
+
+import 'helpers.dart';
 
 Map<String, dynamic> legend(String id, String pageId, String color, int pos) =>
     {'id': id, 'pageId': pageId, 'color': color, 'label': id, 'position': pos, 'createdAt': ''};
@@ -123,5 +132,16 @@ void main() {
     p.debugHandleWs(WsMessage(event: 'legend:created', data: legend('l5', 'c', '#FFEC99', 0)));
     p.debugHandleWs(WsMessage(event: 'legend:created', data: legend('l6', 'c', '#FFD43B', 1)));
     expect(p.legendsFor('c').map((l) => l.id), ['l5', 'l6']);
+  });
+
+  test('a created legend plays legendAdd', () async {
+    SharedPreferences.setMockInitialValues({});
+    final rec = await recordingAudio();
+    final client = MockClient((req) async => http.Response(jsonEncode(legend('l9', 'a', '#ff0000', 2)), 201));
+    final p = LegendsProvider(api: ApiService.custom(client: client, tokens: FakeTokens()), audio: rec.service)
+      ..applyBootstrap({'a': <dynamic>[]})
+      ..setPageId('a');
+    await p.createLegend('#ff0000', 'Sport');
+    expect(rec.players.played, [SoundCue.legendAdd]);
   });
 }

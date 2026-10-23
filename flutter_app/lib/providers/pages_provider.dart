@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import '../models/legend_model.dart';
 import '../models/page_model.dart';
 import '../services/api_service.dart';
+import '../services/audio_service.dart';
 import '../services/ws_service.dart';
 
 /// A legend to create along with a page (first-tracker flow).
@@ -21,6 +22,7 @@ class CreatedPage {
 
 class PagesProvider extends ChangeNotifier {
   final ApiService _api;
+  final AudioService _audio;
   final WsService _ws = WsService();
   RemoveListener? _removeWsListener;
 
@@ -38,7 +40,9 @@ class PagesProvider extends ChangeNotifier {
   int get mutationEpoch => _mutationEpoch;
   void _touch() => _mutationEpoch++;
 
-  PagesProvider({ApiService? api}) : _api = api ?? ApiService() {
+  PagesProvider({ApiService? api, AudioService? audio})
+      : _api = api ?? ApiService(),
+        _audio = audio ?? AudioService() {
     _removeWsListener = _ws.addListener(_onWsMessage);
   }
 
@@ -79,6 +83,7 @@ class PagesProvider extends ChangeNotifier {
         final page = PageModel.fromJson(_parsePalette(json));
         if (!_pages.any((p) => p.id == page.id)) {
           _pages.add(page);
+          _audio.play(SoundCue.trackerCreate);
           _touch();
         }
         notifyListeners();
@@ -336,6 +341,7 @@ class PagesProvider extends ChangeNotifier {
         final page = PageModel.fromJson(_parsePalette(json));
         if (!_pages.any((p) => p.id == page.id)) {
           _pages.add(page);
+          _audio.play(SoundCue.trackerCreate);
           _touch();
           notifyListeners();
         }

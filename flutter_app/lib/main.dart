@@ -23,6 +23,7 @@ import 'screens/page_list_screen.dart';
 import 'screens/first_tracker_screen.dart';
 import 'screens/tracker_screen.dart';
 import 'screens/settings_screen.dart';
+import 'services/audio_service.dart';
 import 'services/orientation_policy.dart';
 import 'theme/app_theme.dart';
 import 'widgets/custom_cursor.dart';
@@ -70,6 +71,7 @@ class DianDianApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => LanguageProvider()),
+        ChangeNotifierProvider<AudioService>.value(value: AudioService()),
         ChangeNotifierProvider(create: (_) => PagesProvider()),
         ChangeNotifierProvider(create: (_) => CellsProvider()),
         ChangeNotifierProvider(create: (_) => LegendsProvider()),
@@ -419,6 +421,14 @@ class _AppShellState extends State<AppShell> {
     final from = _screen;
     final leavingPageId = _activePageId;
     final transition = transitionFor(from, screen);
+    switch (transition) {
+      case StageTransition.morphOpen:
+        context.read<AudioService>().play(SoundCue.trackerOpen);
+      case StageTransition.morphClose:
+        context.read<AudioService>().play(SoundCue.trackerClose);
+      default:
+        break;
+    }
     setState(() {
       _transition = transition;
       _morphPageId = switch (transition) {

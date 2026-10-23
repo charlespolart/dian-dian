@@ -3,10 +3,12 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:dian_dian/models/page_model.dart';
 import 'package:dian_dian/providers/pages_provider.dart';
 import 'package:dian_dian/services/api_service.dart';
+import 'package:dian_dian/services/audio_service.dart';
 import 'package:dian_dian/services/ws_service.dart';
 
 import 'helpers.dart';
@@ -188,5 +190,19 @@ void main() {
     expect(sent['clientId'], '11111111-1111-4111-8111-111111111111');
     expect(created!.page.id, 'n');
     expect(p.pages.single.id, 'n');
+  });
+
+  test('a created page plays trackerCreate; a refused one plays nothing', () async {
+    SharedPreferences.setMockInitialValues({});
+    final rec = await recordingAudio();
+    var status = 201;
+    final client = MockClient((req) async => status == 201
+        ? http.Response(jsonEncode(pageJson('n', position: 0, title: 'New')), 201)
+        : http.Response('{"error":"x"}', status));
+    final p = PagesProvider(api: ApiService.custom(client: client, tokens: FakeTokens()), audio: rec.service);
+    expect(await p.createPage('New'), isNotNull);
+    status = 500;
+    expect(await p.createPage('Nope'), isNull);
+    expect(rec.players.played, [SoundCue.trackerCreate]);
   });
 }
