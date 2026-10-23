@@ -95,9 +95,11 @@ fermeture de tous les pop-ups, pop du point qui se remplit, glissement au
 changement d'année, boutons sous le doigt, cascade et apparition /
 suppression des cartes. Ton de référence : la boîte « Nouveautés », léger,
 jamais un spectacle.
-Lot 2, à cadrer juste après par un brainstorm dédié : sons (deux existent,
-point posé et effacé) à d'autres moments, réglage « Sons » pour tout couper,
-sources libres (Kenney, freesound).
+Lot 2, brainstormé et spécifié le 2026-10-23 :
+`docs/superpowers/specs/2026-10-23-sounds-design.md`, plan
+`docs/superpowers/plans/2026-10-23-sounds.md`. Dix moments, trois palettes
+à l'essai sur l'appareil (Papeterie / Mixkit, Interface douce / Kenney CC0,
+Pixel / synthèse), une seule livrée, réglage « Sons » pour tout couper.
 Lot 3, demandé le 2026-10-22, à faire à la suite : un indicateur discret sur
 les points qui portent un commentaire (on ne sait plus lesquels en ont ; le
 cercle du jour est déjà pris, trouver autre chose de léger).
