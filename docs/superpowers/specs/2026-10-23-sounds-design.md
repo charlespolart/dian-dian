@@ -38,7 +38,8 @@ enum SoundCue {
   dialogClose,   // un pop-up se ferme, quelle que soit la façon
   trackerCreate, // une carte de tracker vient d'apparaître
   legendAdd,     // une légende vient d'être ajoutée
-  yearChange,    // la grille glisse vers une autre année
+  stepNext,      // une flèche fait un pas en avant : année (liste, tracker), jour (éditeur de case)
+  stepPrev,      // … ou en arrière
   press,         // un bouton ou un lien sous le doigt (PressScale)
 }
 ```
@@ -57,14 +58,13 @@ reste.
 | `dialogClose` | `AppDialogRoute.didPop` | au départ de la sortie, barrière, croix, bouton ou retour système confondus |
 | `trackerCreate` | `PagesProvider.createPage`, quand la page est ajoutée localement | |
 | `legendAdd` | `LegendsProvider.createLegend`, quand la légende est ajoutée localement | |
-| `yearChange` | `TrackerScreen._changeYear` et `PageListScreen._changeYear` | avec le glissement |
+| `stepNext` / `stepPrev` | `TrackerScreen._changeYear`, `PageListScreen._changeYear`, `CellEditorDialog._navigateDay` | au pas, selon le sens : même geste, même son |
 | `press` | `PressScale`, au tap, avant d'appeler `onTap` / `onTapAt` | voir la règle « un son par geste » |
 | `panelOpen` / `panelClose` | la flèche de la barre latérale du tracker (`_showLegendLabels`) | au tap, selon le nouvel état |
 | `dragPick` | `Draggable.onDragStarted` d'une carte (liste) ou d'une légende (éditeur) | à la prise |
 | `dragHover` | `DragTarget.onWillAcceptWithDetails` quand la cible accepte (elle se surligne) | à chaque entrée sur une cible valable |
 | `dragDrop` | `DragTarget.onAcceptWithDetails` | au dépôt, avant le réordonnancement |
 | `select` | légende prise comme pinceau (barre latérale), légende choisie dans l'éditeur de case, pastille ou couleur choisie dans l'éditeur de légendes | au tap |
-| `dayNext` / `dayPrev` | les flèches de l'éditeur de case (`_navigateDay`) | au pas, selon le sens |
 
 Les points de la grille ne passent pas par `PressScale` : un tap sur une
 case ne fait sonner que `dotFill` ou `dotErase`.
@@ -146,7 +146,7 @@ soft, pop }`.
 **Ajout (2026-10-23, essai 2).** Six moments de plus demandés à l'essai :
 `panelOpen`, `panelClose`, `dragPick`, `dragHover`, `dragDrop`, `select`
 (table du §1). `dragHover` et `select` sont plus discrets (−10 et −6 dBFS).
-Dix-huit fichiers par palette (`dayNext` / `dayPrev` ajoutés à l'essai 3).
+Dix-sept fichiers par palette (les pas d'année et de jour fusionnés en `stepNext` / `stepPrev` à l'essai 3 : même geste, même son).
 
 **Essai 2 (2026-10-23).** Dans Soft, le style des bulles des pop-ups plaît ;
 le reste doit être aussi simple, « comme des clics satisfaisants ». Soft

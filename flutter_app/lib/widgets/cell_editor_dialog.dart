@@ -128,7 +128,7 @@ class _CellEditorDialogState extends State<CellEditorDialog> {
   }
 
   void _navigateDay(int delta) {
-    context.read<AudioService?>()?.play(delta > 0 ? SoundCue.dayNext : SoundCue.dayPrev);
+    context.read<AudioService?>()?.play(delta > 0 ? SoundCue.stepNext : SoundCue.stepPrev);
     setState(() {
       _day += delta;
       if (_day < 1) {

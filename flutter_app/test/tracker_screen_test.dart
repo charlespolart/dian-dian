@@ -153,13 +153,13 @@ void main() {
     expect(opacityOver(tester, grid), 1);
   });
 
-  testWidgets('a year change plays yearChange', (tester) async {
+  testWidgets('a year change plays stepNext', (tester) async {
     tabletPortrait(tester);
     final rec = await recordingAudio();
     await tester.pumpWidget(TrackerHarness(audio: rec.service).widget);
     tester.widget<SwipeNav>(find.byType(SwipeNav).first).onNext();
     await tester.pump();
-    expect(rec.players.played, [SoundCue.yearChange]);
+    expect(rec.players.played, [SoundCue.stepNext]);
     await tester.pump(AppMotion.base + const Duration(milliseconds: 50));
   });
 
@@ -195,7 +195,7 @@ void main() {
     expect(rec.players.played, [SoundCue.dialogOpen, SoundCue.select]);
   });
 
-  testWidgets('in the cell editor, the day arrows play dayNext and dayPrev', (tester) async {
+  testWidgets('in the cell editor, the day arrows play stepNext and stepPrev, like the year arrows', (tester) async {
     tabletPortrait(tester);
     final rec = await recordingAudio();
     await tester.pumpWidget(TrackerHarness(audio: rec.service).widget);
@@ -206,6 +206,6 @@ void main() {
     await tester.pump();
     tester.widget<SwipeNav>(nav).onPrev();
     await tester.pump();
-    expect(rec.players.played, [SoundCue.dialogOpen, SoundCue.dayNext, SoundCue.dayPrev]);
+    expect(rec.players.played, [SoundCue.dialogOpen, SoundCue.stepNext, SoundCue.stepPrev]);
   });
 }

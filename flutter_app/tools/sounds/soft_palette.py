@@ -105,7 +105,6 @@ def render(style: Style = SOFT):
         "dialog_close": room(down(940, 520, tau=0.05, gain=0.55)),
         "tracker_create": room(mix([(0.0, up(480, 820, dur=0.12, tau=0.05)), (0.08, up(640, 1100, dur=0.12, tau=0.05)), (0.16, up(820, 1480, dur=0.16, tau=0.08))])),
         "legend_add": room(up(900, 1500, dur=0.10, tau=0.045, gain=0.65)),
-        "year_change": room(mix([(0.0, down(700, 520, dur=0.07, tau=0.03, gain=0.6)), (0.06, up(560, 760, dur=0.09, tau=0.04, gain=0.7))])),
         "press": thump(),
         "panel_open": room(up(380, 640, dur=0.10, tau=0.04, gain=0.6)),
         "panel_close": room(down(640, 380, dur=0.10, tau=0.04, gain=0.55)),
@@ -113,6 +112,6 @@ def render(style: Style = SOFT):
         "drag_hover": up(900, 1200, dur=0.05, tau=0.02, gain=0.5),
         "drag_drop": room(mix([(0.0, down(900, 520, dur=0.09, tau=0.04, gain=0.6)), (0.03, thump(freq=180.0, gain=0.6))])),
         "select": up(700, 1150, dur=0.07, tau=0.03, gain=0.7),
-        "day_next": up(560, 840, dur=0.06, tau=0.03, gain=0.6),
-        "day_prev": down(840, 560, dur=0.06, tau=0.03, gain=0.6),
+        "step_next": up(560, 840, dur=0.06, tau=0.03, gain=0.6),
+        "step_prev": down(840, 560, dur=0.06, tau=0.03, gain=0.6),
     }

@@ -157,7 +157,7 @@ class _PageListScreenState extends State<PageListScreen> {
   }
 
   void _changeYear(int delta) {
-    context.read<AudioService?>()?.play(SoundCue.yearChange);
+    context.read<AudioService?>()?.play(delta > 0 ? SoundCue.stepNext : SoundCue.stepPrev);
     setState(() {
       _yearDirection = delta.sign;
       _selectedYear += delta;

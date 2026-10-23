@@ -126,7 +126,7 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
   }
 
   void _changeYear(int delta) {
-    context.read<AudioService?>()?.play(SoundCue.yearChange);
+    context.read<AudioService?>()?.play(delta > 0 ? SoundCue.stepNext : SoundCue.stepPrev);
     final newYear = _year + delta;
     setState(() {
       _yearDirection = delta.sign;

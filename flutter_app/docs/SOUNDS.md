@@ -1,9 +1,9 @@
 # Sons de l'app : sources et licences
 
-Dix-huit moments (`SoundCue` dans `lib/services/audio_service.dart`), un fichier
+Dix-sept moments (`SoundCue` dans `lib/services/audio_service.dart`), un fichier
 par moment et par palette dans `assets/sounds/<palette>/`, wav PCM 16 bits
 mono 44,1 kHz, silence de tête rogné, crête à −3 dBFS (−10 pour `press` et
-`drag_hover`, −6 pour `select`, `day_next` et `day_prev`, plus un décalage par palette), ≤ 400 ms sauf
+`drag_hover`, −6 pour `select`, `step_next` et `step_prev`, plus un décalage par palette), ≤ 400 ms sauf
 `tracker_open`, `tracker_close`, `tracker_create` ≤ 700 ms. Tout est produit
 par `python3 tools/sounds/build.py` (numpy seulement). Les palettes sont
 construites pour être comparées sur l'appareil ; une seule est livrée (spec

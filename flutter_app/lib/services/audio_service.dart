@@ -15,7 +15,8 @@ enum SoundCue {
   dialogClose,
   trackerCreate,
   legendAdd,
-  yearChange,
+  stepNext,    // an arrow steps forward: next year (list, tracker), next day (cell editor)
+  stepPrev,    // … or back
   press,
   panelOpen,   // the tracker's side panel unfolds
   panelClose,  // … and folds back
@@ -23,8 +24,6 @@ enum SoundCue {
   dragHover,   // the dragged thing arrives over a place it can take
   dragDrop,    // … and is dropped there
   select,      // a legend or a colour becomes the selection
-  dayNext,     // the cell editor steps to the next day
-  dayPrev,     // … or to the previous one
 }
 
 /// A folder under assets/sounds: several while they are compared, one ships.
