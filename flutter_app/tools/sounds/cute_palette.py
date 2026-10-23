@@ -3,7 +3,8 @@
 In the spirit of Minecraft, Tiny Wings and Stardew Valley — organic, warm,
 a bit wooden: wooden knocks (a filtered burst of noise with a low body) for
 buttons, steps, hovers and choices; the pickup "pop" (a sine that bends up
-fast) for a dot filled; a dull "plop" for an erase or a drop; little
+fast) for a dot filled; a dull "plop" for an erase or a drop; a breath of air, brighter or darker,
+for the side panel; little
 marimba notes alone for opening and closing (no knock there: the knock
 is the steps' and the buttons' voice); a bell "ding", like an experience
 orb, for a creation or a legend. render() returns {cue: float32 mono array
@@ -89,10 +90,11 @@ def ding(freq, dur=0.5, tau=0.22, gain=0.6):
     return (x * gain).astype(np.float32)
 
 
-def whoosh(dur=0.14, gain=0.35):
+def whoosh(dur=0.14, low=350.0, high=1800.0, gain=0.35):
+    """A breath of air under a soft hump; lower bounds make it darker."""
     t = _t(dur)
     n = _noise(dur)
-    x = _lowpass(n, 1800) - _lowpass(n, 350)
+    x = _lowpass(n, high) - _lowpass(n, low)
     return (x * np.sin(np.pi * t / dur) ** 2 * gain).astype(np.float32)
 
 
@@ -130,10 +132,10 @@ def render():
         "step_next": knock(2000.0, gain=0.7),
         "step_prev": knock(1500.0, gain=0.7),
         "press": knock(1600.0),
-        "panel_open": room(mix([(0.0, whoosh()), (0.04, knock(1700.0, gain=0.5))])),
-        "panel_close": room(mix([(0.0, whoosh()), (0.04, knock(1200.0, gain=0.5))])),
+        "panel_open": room(whoosh()),
+        "panel_close": room(whoosh(low=250.0, high=1100.0)),
         "drag_pick": room(pop(380.0, 760.0, dur=0.12, tau=0.045)),
         "drag_hover": knock(2400.0, dur=0.025, gain=0.6),
-        "drag_drop": room(mix([(0.0, plop(380.0, 160.0)), (0.0, knock(1100.0, gain=0.4))])),
+        "drag_drop": room(plop(380.0, 160.0)),
         "select": knock(1900.0, gain=0.75),
     }

@@ -19,7 +19,9 @@ coup grave, une bouffée de bruit) pour l'effacement et le dépôt ; des notes
 de marimba (fondamentale, anche au quadruple, coup de maillet), seules,
 pour l'ouverture, la fermeture et les pop-ups ; un « ding » de cloche à
 partiels inharmoniques, façon orbe d'expérience, pour la création et la
-légende ; un souffle pour le panneau. Aucune licence tierce.
+légende ; un souffle, plus clair à l'ouverture et plus sombre à la fermeture,
+pour le panneau. Un seul son par moment, jamais deux superposés. Aucune
+licence tierce.
 
 ## Écartées (essais sur l'appareil, 2026-10-23)
 
