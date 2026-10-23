@@ -140,11 +140,18 @@ class FakeSoundPlayers {
       log.map((a) => SoundCue.values.firstWhere((c) => a.endsWith('/${c.file}.wav'))).toList();
 }
 
+/// A [HapticSink] that records what it was asked to feel.
+class FakeHaptics implements HapticSink {
+  final felt = <Haptic>[];
+  @override
+  Future<void> feel(Haptic haptic) async => felt.add(haptic);
+}
+
 /// An [AudioService] on fakes, loaded. `SharedPreferences.setMockInitialValues`
-/// must have run.
-Future<({AudioService service, FakeSoundPlayers players})> recordingAudio() async {
+/// must have run. Pass [haptics] to read the vibrations back.
+Future<({AudioService service, FakeSoundPlayers players})> recordingAudio({FakeHaptics? haptics}) async {
   final players = FakeSoundPlayers();
-  final service = AudioService.custom(players: players.call);
+  final service = AudioService.custom(players: players.call, haptics: haptics ?? FakeHaptics());
   await service.ready;
   return (service: service, players: players);
 }

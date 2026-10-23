@@ -148,6 +148,62 @@ void main() {
     expect(service.enabled, isTrue);
   });
 
+  group('haptics', () {
+    test('each cue has its vibration: light for a dot, medium for a pick, a selection click for a step, none for a button', () {
+      expect(SoundCue.dotFill.haptic, Haptic.light);
+      expect(SoundCue.dotErase.haptic, Haptic.light);
+      expect(SoundCue.panelOpen.haptic, Haptic.light);
+      expect(SoundCue.dragPick.haptic, Haptic.medium);
+      expect(SoundCue.dragDrop.haptic, Haptic.medium);
+      expect(SoundCue.trackerCreate.haptic, Haptic.medium);
+      expect(SoundCue.stepNext.haptic, Haptic.selection);
+      expect(SoundCue.select.haptic, Haptic.selection);
+      expect(SoundCue.dragHover.haptic, Haptic.selection);
+      for (final c in [SoundCue.press, SoundCue.dialogOpen, SoundCue.dialogClose, SoundCue.trackerOpen, SoundCue.trackerClose, SoundCue.legendAdd]) {
+        expect(c.haptic, Haptic.none, reason: c.name);
+      }
+    });
+
+    test('a cue is felt with its sound, under the same gesture rules', () async {
+      final haptics = FakeHaptics();
+      final (:service, :players) = await recordingAudio(haptics: haptics);
+      service.play(SoundCue.press);
+      service.play(SoundCue.dotFill);
+      await settle();
+      expect(haptics.felt, [Haptic.light]);
+      expect(players.played, [SoundCue.dotFill]);
+    });
+
+    test('vibrations and sounds switch independently, each persisted', () async {
+      final haptics = FakeHaptics();
+      final (:service, :players) = await recordingAudio(haptics: haptics);
+      await service.setEnabled(false);
+      service.play(SoundCue.dragPick);
+      await settle();
+      expect(players.played, isEmpty);
+      expect(haptics.felt, [Haptic.medium]);
+      await service.setHapticsEnabled(false);
+      service.play(SoundCue.dragPick);
+      await settle();
+      expect(haptics.felt, [Haptic.medium]);
+      expect((await SharedPreferences.getInstance()).getBool(AudioService.prefHaptics), isFalse);
+      final again = await recordingAudio();
+      expect(again.service.hapticsEnabled, isFalse);
+    });
+
+    test('feel() previews a vibration on demand, only while enabled', () async {
+      final haptics = FakeHaptics();
+      final (:service, :players) = await recordingAudio(haptics: haptics);
+      service.feel(Haptic.light);
+      await settle();
+      expect(haptics.felt, [Haptic.light]);
+      await service.setHapticsEnabled(false);
+      service.feel(Haptic.light);
+      await settle();
+      expect(haptics.felt, [Haptic.light]);
+    });
+  });
+
   test('silent: nothing loads, nothing plays, the switch still works', () async {
     final service = AudioService.silent();
     await service.ready;

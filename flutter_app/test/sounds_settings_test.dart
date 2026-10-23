@@ -24,22 +24,40 @@ void main() {
   testWidgets('the tile shows the state, flips it on tap, persists, and plays press when turning on', (tester) async {
     final rec = await recordingAudio();
     await tester.pumpWidget(host(rec.service));
-    expect(find.text('On'), findsOneWidget);
-    await tester.tap(find.widgetWithText(PressScale, 'On'));
+    final tile = find.byKey(const Key('settings.sounds'));
+    expect(find.descendant(of: tile, matching: find.text('On')), findsOneWidget);
+    await tester.tap(tile);
     await tester.pumpAndSettle();
-    expect(find.text('Off'), findsOneWidget);
+    expect(find.descendant(of: tile, matching: find.text('Off')), findsOneWidget);
     expect((await SharedPreferences.getInstance()).getBool(AudioService.prefEnabled), isFalse);
     // Turning off is silent: the tap's press is dropped once disabled.
     expect(rec.players.played, isEmpty);
-    await tester.tap(find.widgetWithText(PressScale, 'Off'));
+    await tester.tap(tile);
     await tester.pumpAndSettle();
-    expect(find.text('On'), findsOneWidget);
+    expect(find.descendant(of: tile, matching: find.text('On')), findsOneWidget);
     expect(rec.players.played, [SoundCue.press]);
   });
   testWidgets('there is no palette to choose: one sound set, one switch', (tester) async {
     final rec = await recordingAudio();
     await tester.pumpWidget(host(rec.service));
     expect(find.textContaining('Palette'), findsNothing);
-    expect(find.byType(PressScale), findsOneWidget);
+    expect(find.byType(PressScale), findsNWidgets(2)); // sounds, vibrations
+  });
+
+  testWidgets('the vibrations tile flips its own switch, persists, and previews a light one when turning on', (tester) async {
+    final haptics = FakeHaptics();
+    final rec = await recordingAudio(haptics: haptics);
+    await tester.pumpWidget(host(rec.service));
+    final tile = find.byKey(const Key('settings.haptics'));
+    expect(find.descendant(of: tile, matching: find.text('On')), findsOneWidget);
+    await tester.tap(tile);
+    await tester.pumpAndSettle();
+    expect(find.descendant(of: tile, matching: find.text('Off')), findsOneWidget);
+    expect(rec.service.enabled, isTrue, reason: 'sounds untouched');
+    expect((await SharedPreferences.getInstance()).getBool(AudioService.prefHaptics), isFalse);
+    expect(haptics.felt, isEmpty);
+    await tester.tap(tile);
+    await tester.pumpAndSettle();
+    expect(haptics.felt, [Haptic.light]);
   });
 }

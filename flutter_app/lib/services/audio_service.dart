@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'audioplayers_sound_player.dart';
+import 'flutter_haptics.dart';
 
 /// The moments that sound (spec §1): one wav each under assets/sounds.
 enum SoundCue {
@@ -26,12 +27,37 @@ enum SoundCue {
   select,      // a legend or a colour becomes the selection
 }
 
+/// What a moment feels like under the finger (spec §3, « Haptique »).
+enum Haptic { none, light, medium, selection }
+
 extension SoundCueFile on SoundCue {
   /// The file stem: `dotFill` → `dot_fill`.
   String get file => name.replaceAllMapped(RegExp('[A-Z]'), (m) => '_${m[0]!.toLowerCase()}');
 
   /// The asset path audioplayers wants (relative to `assets/`).
   String get asset => 'sounds/$file.wav';
+
+  /// The vibration that goes with the cue: for what changes something (a
+  /// dot, a drag, a choice, a step, the panel, a creation), nothing for a
+  /// plain button, a dialog or the tracker opening.
+  Haptic get haptic => switch (this) {
+        SoundCue.dotFill || SoundCue.dotErase || SoundCue.panelOpen || SoundCue.panelClose => Haptic.light,
+        SoundCue.dragPick || SoundCue.dragDrop || SoundCue.trackerCreate => Haptic.medium,
+        SoundCue.select || SoundCue.stepNext || SoundCue.stepPrev || SoundCue.dragHover => Haptic.selection,
+        SoundCue.press ||
+        SoundCue.dialogOpen ||
+        SoundCue.dialogClose ||
+        SoundCue.trackerOpen ||
+        SoundCue.trackerClose ||
+        SoundCue.legendAdd =>
+          Haptic.none,
+      };
+}
+
+/// Where vibrations go. The real one is Flutter's `HapticFeedback`; tests
+/// inject a fake that records.
+abstract class HapticSink {
+  Future<void> feel(Haptic haptic);
 }
 
 /// One preloaded sound, replayable from its start. The real one wraps an
@@ -42,30 +68,38 @@ abstract class SoundPlayer {
   Future<void> dispose();
 }
 
-/// The app's sounds: one player per cue, preloaded; the "Sons" switch
-/// persisted on the device. [play] never throws and never waits — a sound
-/// that fails is a debug line, never an error out of a tap.
+/// The app's sounds and vibrations: one player per cue, preloaded, a
+/// haptic per cue; the "Sons" and "Vibrations" switches persisted on the
+/// device, independent of each other. [play] never throws and never waits
+/// — a sound that fails is a debug line, never an error out of a tap.
 class AudioService extends ChangeNotifier {
   static const prefEnabled = 'sounds_enabled';
+  static const prefHaptics = 'haptics_enabled';
 
   static AudioService? _instance;
 
-  /// The app's one service, on real players.
+  /// The app's one service, on real players and real haptics.
   factory AudioService() => _instance ??= AudioService.custom(players: AudioplayersSoundPlayer.new);
 
-  /// A service on the players [players] makes (tests: fakes).
-  AudioService.custom({required SoundPlayer Function() players}) : _makePlayer = players {
+  /// A service on the players [players] makes and on [haptics] (tests: fakes).
+  AudioService.custom({required SoundPlayer Function() players, HapticSink? haptics})
+      : _makePlayer = players,
+        _haptics = haptics ?? FlutterHaptics() {
     _loading = _init();
   }
 
-  /// Nothing loads, nothing plays (headless tests).
-  AudioService.silent() : _makePlayer = null;
+  /// Nothing loads, nothing plays, nothing vibrates (headless tests).
+  AudioService.silent()
+      : _makePlayer = null,
+        _haptics = null;
 
   final SoundPlayer Function()? _makePlayer;
+  final HapticSink? _haptics;
   Future<void> _loading = Future.value();
   Map<SoundCue, SoundPlayer> _players = const {};
   int _generation = 0;
   bool _enabled = true;
+  bool _hapticsEnabled = true;
 
   /// Weak cues: a button's tic and a dialog's close. They wait one microtask
   /// and yield to a stronger cue of the same turn; after a strong cue they
@@ -77,6 +111,7 @@ class AudioService extends ChangeNotifier {
   DateTime? _strongAt;
 
   bool get enabled => _enabled;
+  bool get hapticsEnabled => _hapticsEnabled;
 
   /// Done once the players are loaded.
   Future<void> get ready => _loading;
@@ -85,6 +120,7 @@ class AudioService extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       _enabled = prefs.getBool(prefEnabled) ?? true;
+      _hapticsEnabled = prefs.getBool(prefHaptics) ?? true;
     } catch (e) {
       debugPrint('AudioService: prefs unavailable: $e');
     }
@@ -129,10 +165,32 @@ class AudioService extends ChangeNotifier {
     if (_enabled == value) return;
     _enabled = value;
     notifyListeners();
+    await _save(prefEnabled, value);
+  }
+
+  Future<void> setHapticsEnabled(bool value) async {
+    if (_hapticsEnabled == value) return;
+    _hapticsEnabled = value;
+    notifyListeners();
+    await _save(prefHaptics, value);
+  }
+
+  Future<void> _save(String key, bool value) async {
     try {
-      await (await SharedPreferences.getInstance()).setBool(prefEnabled, value);
+      await (await SharedPreferences.getInstance()).setBool(key, value);
     } catch (e) {
       debugPrint('AudioService: prefs write failed: $e');
+    }
+  }
+
+  /// A vibration on its own (a preview from the settings), while enabled.
+  void feel(Haptic haptic) {
+    final sink = _haptics;
+    if (!_hapticsEnabled || sink == null || haptic == Haptic.none) return;
+    try {
+      unawaited(sink.feel(haptic).catchError((Object e) => debugPrint('AudioService: haptic failed: $e')));
+    } catch (e) {
+      debugPrint('AudioService: haptic failed: $e');
     }
   }
 
@@ -168,6 +226,7 @@ class AudioService extends ChangeNotifier {
   }
 
   void _playNow(SoundCue cue) {
+    feel(cue.haptic);
     if (!_enabled) return;
     final player = _players[cue];
     if (player == null) return;

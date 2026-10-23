@@ -254,6 +254,28 @@ où les deux sonnaient ensemble). Un moment fort qui arrive plus tard (une
 création après la réponse du serveur) sonne en plus : ce sont deux
 instants.
 
+**Haptique (2026-10-23).** Chaque moment porte une vibration ou aucune,
+déclenchée avec le son par le même `play`, soumise aux mêmes règles d'un
+seul retour par geste, et coupée par son propre réglage (`haptics_enabled`,
+défaut `true`), indépendant du réglage « Sons ». Retenu « ciblé » : vibrer
+pour ce qui change quelque chose, rien pour un simple bouton, un pop-up ou
+l'ouverture du tracker.
+
+| Vibration | Moments |
+|---|---|
+| impact léger | `dotFill`, `dotErase`, `panelOpen`, `panelClose` |
+| impact moyen | `dragPick`, `dragDrop`, `trackerCreate` |
+| clic de sélection | `select`, `stepNext`, `stepPrev`, `dragHover` |
+| aucune | `press`, `dialogOpen`, `dialogClose`, `trackerOpen`, `trackerClose`, `legendAdd` |
+
+Mise en œuvre : `HapticFeedback` de Flutter (`lib/services/flutter_haptics.dart`),
+sans dépendance. iPhone : Taptic Engine (impact léger / moyen, clic de
+sélection des molettes). Android : les constantes haptiques du système, qui
+suivent le réglage « vibration au toucher » du téléphone et dont le rendu
+dépend du moteur ; un appareil sans moteur ne sent rien et rien ne casse.
+Un `HapticSink` injectable (fausse en test). `AudioService.feel(haptic)`
+pour un aperçu seul.
+
 **Mode « réduire les animations ».** Sans effet sur les sons : ce n'est pas
 du mouvement. Seul le réglage « Sons » les coupe.
 
@@ -273,10 +295,13 @@ le modèle des sections existantes (`_buildSectionTitle` + `_buildLinkTile`) :
 - une tuile dont le libellé est `settings.soundsOn` ou `settings.soundsOff`
   selon l'état ; un tap bascule `setEnabled`, et joue `press` quand on
   réactive, comme aperçu ;
-- en debug seulement (`kDebugMode`) et tant que l'enum a plus d'une valeur,
-  une tuile « Palette : paper / interface / pixel » qui passe à la suivante
-  au tap et joue `trackerOpen` en aperçu. Libellé en dur, pas de
-  traduction.
+- (le sélecteur de palette, debug seulement, a existé le temps des essais et
+  a été retiré avec le choix d'un seul jeu de sons) ;
+- une section « Vibrations » juste dessous, même tuile, `settings.haptics` /
+  `settings.hapticsOn` / `settings.hapticsOff` (fr « Vibrations » / « Activées »
+  / « Coupées », en « Vibrations » / « On » / « Off », zh « 震动 » / « 开启 » /
+  « 关闭 », zh-Hant « 震動 » / « 開啟 » / « 關閉 ») ; un tap bascule
+  `setHapticsEnabled` et fait sentir un impact léger quand on réactive.
 
 Clés de traduction, dans les quatre locales de `LanguageProvider` (fr, en,
 zh simplifié, zh traditionnel) : `settings.sounds` (« Sons » / « Sounds » /
