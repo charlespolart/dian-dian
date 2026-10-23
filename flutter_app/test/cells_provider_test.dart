@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:dian_dian/providers/cells_provider.dart';
 import 'package:dian_dian/services/api_service.dart';
@@ -187,6 +188,19 @@ void main() {
     await p.recolorCells({'#AAAAAA': '#111111'});
     expect(p.cellsFor('a', 2026)!.get(1, 1)!.color, '#AAAAAA');
     expect(p.cellsFor('a', 2025)!.get(2, 2)!.color, '#AAAAAA');
+  });
+
+  test('a fill plays dotFill, an erase plays dotErase', () async {
+    SharedPreferences.setMockInitialValues({});
+    final rec = await recordingAudio();
+    final client = MockClient((req) async => http.Response('{"ok":true}', 200));
+    final api = ApiService.custom(client: client, tokens: FakeTokens());
+    final p = CellsProvider(api: api, audio: rec.service);
+    p.applyBootstrap(2026, {'a': <dynamic>[]});
+    p.setContext(pageId: 'a', year: 2026);
+    await p.setCell(1, 1, '#AAAAAA');
+    await p.deleteCell(1, 1);
+    expect(rec.players.played, [SoundCue.dotFill, SoundCue.dotErase]);
   });
 
   test('recolorCells keeps the new colors when the server accepts', () async {

@@ -206,7 +206,7 @@ class CellsProvider extends ChangeNotifier {
     _put(_entry(pageId, year).upsert(optimistic));
     _lastChange = CellChange(pageId: pageId, year: year, month: month, day: day, color: color, erased: false, seq: ++_changeSeq);
     notifyListeners();
-    _audio.playTap();
+    _audio.play(SoundCue.dotFill);
 
     try {
       final response = await _api.apiFetch(
@@ -244,7 +244,7 @@ class CellsProvider extends ChangeNotifier {
     _put(_entry(pageId, year).remove(month, day));
     _lastChange = CellChange(pageId: pageId, year: year, month: month, day: day, color: previous.color, erased: true, seq: ++_changeSeq);
     notifyListeners();
-    _audio.playErase();
+    _audio.play(SoundCue.dotErase);
 
     try {
       final response = await _api.apiFetch(

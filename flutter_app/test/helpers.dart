@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart' show Size;
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:dian_dian/services/audio_service.dart';
 import 'package:dian_dian/services/snapshot_store.dart';
 import 'package:dian_dian/services/token_store.dart';
 
@@ -86,4 +87,55 @@ void tabletPortrait(WidgetTester tester) {
   tester.view.physicalSize = const Size(1800, 2700);
   tester.view.devicePixelRatio = 3.0;
   addTearDown(tester.view.reset);
+}
+
+/// A [SoundPlayer] that records instead of playing.
+class FakeSoundPlayer implements SoundPlayer {
+  String? asset;
+  int plays = 0;
+  bool disposed = false;
+  final bool failing;
+  final List<String> log;
+  FakeSoundPlayer({this.failing = false, required this.log});
+
+  @override
+  Future<void> load(String assetPath) async => asset = assetPath;
+  @override
+  Future<void> play() async {
+    if (failing) throw StateError('player broken');
+    plays++;
+    log.add(asset!);
+  }
+  @override
+  Future<void> dispose() async => disposed = true;
+}
+
+/// Makes [FakeSoundPlayer]s for `AudioService.custom(players: fakes.call)`
+/// and reads them back: [played] is every cue played, in order.
+class FakeSoundPlayers {
+  final created = <FakeSoundPlayer>[];
+  final log = <String>[];
+  final bool failing;
+  final bool unconstructible;
+  FakeSoundPlayers({this.failing = false, this.unconstructible = false});
+
+  SoundPlayer call() {
+    if (unconstructible) throw StateError('no audio plugin');
+    final p = FakeSoundPlayer(failing: failing, log: log);
+    created.add(p);
+    return p;
+  }
+
+  List<FakeSoundPlayer> get live => created.where((p) => !p.disposed).toList();
+  List<SoundCue> get played =>
+      log.map((a) => SoundCue.values.firstWhere((c) => a.endsWith('/${c.file}.wav'))).toList();
+}
+
+/// An [AudioService] on fakes, loaded. `SharedPreferences.setMockInitialValues`
+/// must have run.
+Future<({AudioService service, FakeSoundPlayers players})> recordingAudio() async {
+  final players = FakeSoundPlayers();
+  final service = AudioService.custom(players: players.call);
+  await service.ready;
+  return (service: service, players: players);
 }
