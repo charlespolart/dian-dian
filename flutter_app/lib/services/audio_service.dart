@@ -92,6 +92,7 @@ class AudioService extends ChangeNotifier {
     final make = _makePlayer;
     if (make == null) return;
     final generation = ++_generation;
+    final palette = _palette; // this load stays on the palette it started with
     _disposeAll(_players);
     _players = const {};
     final loaded = <SoundCue, SoundPlayer>{};
@@ -99,7 +100,7 @@ class AudioService extends ChangeNotifier {
       SoundPlayer? player;
       try {
         player = make();
-        await player.load(cue.assetIn(_palette));
+        await player.load(cue.assetIn(palette));
         loaded[cue] = player;
       } catch (e) {
         debugPrint('AudioService: ${cue.name} failed to load: $e');

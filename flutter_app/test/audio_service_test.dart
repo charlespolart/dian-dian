@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -65,6 +67,34 @@ void main() {
     await settle();
     expect(players.played, [SoundCue.trackerOpen]);
     expect(players.live.where((p) => p.plays > 0).single.asset, 'sounds/soft/tracker_open.wav');
+  });
+
+  test('a palette switch during a load keeps only the new palette; the superseded load is disposed whole', () async {
+    final players = FakeSoundPlayers(gate: Completer<void>());
+    final service = AudioService.custom(players: players.call);
+    await settle(); // prefs read, the first paper player waits on the gate
+    expect(players.created, hasLength(1));
+    final switching = service.setPalette(SoundPalette.soft);
+    players.gate!.complete();
+    await switching;
+    await service.ready;
+    await settle();
+    expect(players.live.map((p) => p.asset), unorderedEquals([for (final c in SoundCue.values) c.assetIn(SoundPalette.soft)]));
+    final disposed = players.created.where((p) => p.disposed).toList();
+    expect(disposed, hasLength(SoundCue.values.length));
+    expect(disposed.map((p) => p.asset), everyElement(startsWith('sounds/paper/')), reason: 'the first load stays on the palette it started with');
+  });
+
+  test('disposing the service during a load disposes everything that load produces', () async {
+    final players = FakeSoundPlayers(gate: Completer<void>());
+    final service = AudioService.custom(players: players.call);
+    await settle();
+    service.dispose();
+    players.gate!.complete();
+    await service.ready;
+    await settle();
+    expect(players.created, hasLength(SoundCue.values.length));
+    expect(players.live, isEmpty);
   });
 
   test('a player that throws never surfaces', () async {

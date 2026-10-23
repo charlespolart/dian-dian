@@ -15,11 +15,10 @@ import 'audio_service.dart';
 /// constructor throws, the service catches it and stays mute.
 class AudioplayersSoundPlayer implements SoundPlayer {
   static Future<void>? _context;
-  late final AudioPlayer _player;
+  AudioPlayer? _player;
 
   AudioplayersSoundPlayer() {
     if (!_hasBinding) throw StateError('no Flutter binding, no audio');
-    _player = AudioPlayer();
   }
 
   static bool get _hasBinding {
@@ -44,21 +43,27 @@ class AudioplayersSoundPlayer implements SoundPlayer {
 
   @override
   Future<void> load(String assetPath) async {
+    // The context first: on Android a player copies the global context at
+    // its creation, so a player created before it would keep the plugin
+    // default (media, audio focus) for good.
+    await _setContext();
+    final player = _player = AudioPlayer();
     // The player creates itself asynchronously and every call below waits
     // for that first: calling one right away routes a creation failure into
     // the caller's catch instead of an unhandled error.
-    await _player.setReleaseMode(ReleaseMode.stop);
-    await _setContext();
-    await _player.setPlayerMode(PlayerMode.lowLatency);
-    await _player.setSourceAsset(assetPath);
+    await player.setReleaseMode(ReleaseMode.stop);
+    await player.setPlayerMode(PlayerMode.lowLatency);
+    await player.setSourceAsset(assetPath);
   }
 
   @override
   Future<void> play() async {
-    await _player.stop();
-    await _player.resume();
+    final player = _player;
+    if (player == null) return;
+    await player.stop();
+    await player.resume();
   }
 
   @override
-  Future<void> dispose() => _player.dispose();
+  Future<void> dispose() => _player?.dispose() ?? Future.value();
 }

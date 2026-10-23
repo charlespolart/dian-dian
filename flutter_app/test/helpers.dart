@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart' show Size;
 import 'package:flutter_test/flutter_test.dart';
 
@@ -96,10 +98,14 @@ class FakeSoundPlayer implements SoundPlayer {
   bool disposed = false;
   final bool failing;
   final List<String> log;
-  FakeSoundPlayer({this.failing = false, required this.log});
+  final Completer<void>? gate;
+  FakeSoundPlayer({this.failing = false, required this.log, this.gate});
 
   @override
-  Future<void> load(String assetPath) async => asset = assetPath;
+  Future<void> load(String assetPath) async {
+    asset = assetPath;
+    await gate?.future;
+  }
   @override
   Future<void> play() async {
     if (failing) throw StateError('player broken');
@@ -117,11 +123,14 @@ class FakeSoundPlayers {
   final log = <String>[];
   final bool failing;
   final bool unconstructible;
-  FakeSoundPlayers({this.failing = false, this.unconstructible = false});
+  /// When set, every load waits on it: a palette stays "loading" until the
+  /// test completes the gate.
+  final Completer<void>? gate;
+  FakeSoundPlayers({this.failing = false, this.unconstructible = false, this.gate});
 
   SoundPlayer call() {
     if (unconstructible) throw StateError('no audio plugin');
-    final p = FakeSoundPlayer(failing: failing, log: log);
+    final p = FakeSoundPlayer(failing: failing, log: log, gate: gate);
     created.add(p);
     return p;
   }

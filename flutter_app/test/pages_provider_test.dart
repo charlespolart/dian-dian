@@ -205,4 +205,17 @@ void main() {
     expect(await p.createPage('Nope'), isNull);
     expect(rec.players.played, [SoundCue.trackerCreate]);
   });
+
+  test('the first tracker plays trackerCreate too; a page created on another device plays nothing', () async {
+    SharedPreferences.setMockInitialValues({});
+    final rec = await recordingAudio();
+    final client = MockClient((req) async =>
+        http.Response(jsonEncode({...pageJson('n', position: 0), 'legends': <dynamic>[], 'replaced': null}), 201));
+    final p = PagesProvider(api: ApiService.custom(client: client, tokens: FakeTokens()), audio: rec.service);
+    expect(await p.createFirstTracker(title: 'X', legends: const []), isNotNull);
+    expect(rec.players.played, [SoundCue.trackerCreate]);
+    p.debugHandleWs(WsMessage(event: 'page:created', data: pageJson('c', position: 2)));
+    await Future<void>.delayed(Duration.zero);
+    expect(rec.players.played, [SoundCue.trackerCreate], reason: 'a remote creation is not this user\'s gesture');
+  });
 }

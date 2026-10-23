@@ -150,6 +150,7 @@ class PagesProvider extends ChangeNotifier {
       }
       _touch();
       notifyListeners();
+      _audio.play(SoundCue.trackerCreate);
       return CreatedPage(page: page, legends: legendRows);
     } catch (e) {
       debugPrint('PagesProvider: createFirstTracker failed: $e');
@@ -339,9 +340,9 @@ class PagesProvider extends ChangeNotifier {
       case 'page:created':
         final json = message.data as Map<String, dynamic>;
         final page = PageModel.fromJson(_parsePalette(json));
+        // Created on another device: not this user's gesture, no sound.
         if (!_pages.any((p) => p.id == page.id)) {
           _pages.add(page);
-          _audio.play(SoundCue.trackerCreate);
           _touch();
           notifyListeners();
         }
