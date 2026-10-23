@@ -26,8 +26,8 @@ sur un corps grave) pour le bouton, les pas, le survol et la sélection ; le
 « pop » de ramassage (un sinus qui monte très vite, un grain de bruit) pour
 le point posé ; un « plop » sourd (sinus qui descend dans un coup grave, une
 bouffée de bruit) pour l'effacement et le dépôt ; des notes de marimba
-(fondamentale, anche au quadruple, coup de maillet) pour l'ouverture, la
-fermeture et les pop-ups ; un « ding » de cloche à partiels inharmoniques,
+(fondamentale, anche au quadruple, coup de maillet), seules, pour
+l'ouverture, la fermeture et les pop-ups ; un « ding » de cloche à partiels inharmoniques,
 façon orbe d'expérience, pour la création et la légende ; un souffle pour
 le panneau. Niveau −2 dB. Aucune licence tierce.
 

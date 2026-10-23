@@ -4,7 +4,8 @@ In the spirit of Minecraft, Tiny Wings and Stardew Valley — organic, warm,
 a bit wooden: wooden knocks (a filtered burst of noise with a low body) for
 buttons, steps, hovers and choices; the pickup "pop" (a sine that bends up
 fast) for a dot filled; a dull "plop" for an erase or a drop; little
-marimba notes for opening and closing; a bell "ding", like an experience
+marimba notes alone for opening and closing (no knock there: the knock
+is the steps' and the buttons' voice); a bell "ding", like an experience
 orb, for a creation or a legend. render() returns {cue: float32 mono array
 at 44.1 kHz}. Tune here and run `python3 tools/sounds/build.py cute`."""
 import numpy as np
@@ -122,8 +123,8 @@ def render():
         "dot_erase": room(plop()),
         "tracker_open": room(mix([(0.0, marimba(C5)), (0.09, marimba(E5)), (0.18, marimba(G5, tau=0.16))])),
         "tracker_close": room(mix([(0.0, marimba(G5)), (0.09, marimba(E5)), (0.18, marimba(C5, tau=0.16))])),
-        "dialog_open": room(mix([(0.0, knock(1600.0, gain=0.6)), (0.01, marimba(G5, tau=0.09, gain=0.5))])),
-        "dialog_close": room(mix([(0.0, knock(1300.0, gain=0.55)), (0.01, marimba(E5, tau=0.08, gain=0.4))])),
+        "dialog_open": room(marimba(G5, tau=0.09, gain=0.5)),
+        "dialog_close": room(marimba(E5, tau=0.08, gain=0.4)),
         "tracker_create": room(mix([(0.0, marimba(C5)), (0.08, marimba(E5)), (0.16, marimba(G5)), (0.27, ding(C6))])),
         "legend_add": room(mix([(0.0, ding(E6, dur=0.3, tau=0.12, gain=0.5)), (0.07, ding(B6, dur=0.35, tau=0.14, gain=0.45))])),
         "step_next": knock(2000.0, gain=0.7),
