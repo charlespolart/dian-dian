@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:dian_dian/services/audio_service.dart';
 import 'package:dian_dian/theme/motion.dart';
 import 'package:dian_dian/widgets/app_dialog.dart';
+
+import 'helpers.dart';
 
 void main() {
   group('originAlignment', () {
@@ -17,21 +22,24 @@ void main() {
     });
   });
 
-  Widget host({Offset? origin, bool reduced = false}) => MediaQuery(
-        data: MediaQueryData(disableAnimations: reduced),
-        child: MaterialApp(
-          home: Builder(
-            builder: (context) => TextButton(
-              onPressed: () => showAppDialog<void>(
-                context: context,
-                origin: origin,
-                builder: (ctx) => TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('box')),
-              ),
-              child: const Text('open'),
+  Widget host({Offset? origin, bool reduced = false, AudioService? audio}) {
+    final app = MediaQuery(
+      data: MediaQueryData(disableAnimations: reduced),
+      child: MaterialApp(
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => showAppDialog<void>(
+              context: context,
+              origin: origin,
+              builder: (ctx) => TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('box')),
             ),
+            child: const Text('open'),
           ),
         ),
-      );
+      ),
+    );
+    return audio == null ? app : ChangeNotifierProvider<AudioService>.value(value: audio, child: app);
+  }
 
   /// Smallest scale among the Transforms above the dialog's text (1 when settled).
   double scaleAbove(WidgetTester tester, String text) {
@@ -88,5 +96,22 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(find.text('box'), findsNothing);
+  });
+
+  testWidgets('a dialog plays dialogOpen when shown and dialogClose once, whether the barrier or a pop closes it', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final rec = await recordingAudio();
+    await tester.pumpWidget(host(audio: rec.service));
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    expect(rec.players.played, [SoundCue.dialogOpen]);
+    await tester.tapAt(const Offset(5, 5)); // the barrier
+    await tester.pumpAndSettle();
+    expect(rec.players.played, [SoundCue.dialogOpen, SoundCue.dialogClose]);
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('box'));
+    await tester.pumpAndSettle();
+    expect(rec.players.played, [SoundCue.dialogOpen, SoundCue.dialogClose, SoundCue.dialogOpen, SoundCue.dialogClose]);
   });
 }

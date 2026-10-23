@@ -1,7 +1,9 @@
 import 'dart:ui' show SemanticsHitTestBehavior, lerpDouble;
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../services/audio_service.dart';
 import '../theme/app_theme.dart';
 import '../theme/motion.dart';
 
@@ -15,7 +17,8 @@ Alignment originAlignment(Offset origin, Size size) => Alignment(
 /// The app's `showDialog`: same shape, plus the entrance (scale 0.92 → 1,
 /// fade, 8 px rise over [AppMotion.base]) and the exit (scale 1 → 0.96 and
 /// fade over [AppMotion.quick]). [origin], a global position, makes the box
-/// seem to come from the tap. Always on the root navigator.
+/// seem to come from the tap. Always on the root navigator. Plays
+/// `dialogOpen` now and `dialogClose` when the route pops, however it does.
 Future<T?> showAppDialog<T>({
   required BuildContext context,
   required WidgetBuilder builder,
@@ -23,6 +26,8 @@ Future<T?> showAppDialog<T>({
   Offset? origin,
 }) {
   final navigator = Navigator.of(context, rootNavigator: true);
+  final audio = context.read<AudioService?>();
+  audio?.play(SoundCue.dialogOpen);
   return navigator.push<T>(AppDialogRoute<T>(
     context: context,
     builder: builder,
@@ -30,12 +35,14 @@ Future<T?> showAppDialog<T>({
     barrierDismissible: barrierDismissible,
     origin: origin,
     reduced: AppMotion.reduced(context),
+    audio: audio,
   ));
 }
 
 class AppDialogRoute<T> extends RawDialogRoute<T> {
   final Offset? origin;
   final bool reduced;
+  final AudioService? audio;
 
   AppDialogRoute({
     required BuildContext context,
@@ -43,6 +50,7 @@ class AppDialogRoute<T> extends RawDialogRoute<T> {
     required CapturedThemes themes,
     required this.origin,
     required this.reduced,
+    this.audio,
     super.barrierDismissible,
   }) : super(
           barrierColor: Colors.black54,
@@ -60,6 +68,12 @@ class AppDialogRoute<T> extends RawDialogRoute<T> {
 
   @override
   Duration get reverseTransitionDuration => reduced ? Duration.zero : AppMotion.quick;
+
+  @override
+  bool didPop(T? result) {
+    audio?.play(SoundCue.dialogClose);
+    return super.didPop(result);
+  }
 
   @override
   Widget buildTransitions(

@@ -14,6 +14,7 @@ import '../providers/language_provider.dart';
 import '../providers/legends_provider.dart';
 import '../providers/pages_provider.dart';
 import '../providers/premium_provider.dart';
+import '../services/audio_service.dart';
 import '../services/sync_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_dialog.dart';
@@ -156,6 +157,7 @@ class _PageListScreenState extends State<PageListScreen> {
   }
 
   void _changeYear(int delta) {
+    context.read<AudioService?>()?.play(SoundCue.yearChange);
     setState(() {
       _yearDirection = delta.sign;
       _selectedYear += delta;

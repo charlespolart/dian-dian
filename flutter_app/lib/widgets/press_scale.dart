@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../services/audio_service.dart';
 import '../theme/motion.dart';
 
 /// Press feedback for the app's hand-drawn buttons: the child shrinks to
@@ -7,7 +9,8 @@ import '../theme/motion.dart';
 /// replaces the `GestureDetector(onTap:)` that wrapped the button; any
 /// `Semantics(button: true)` stays outside. [onTapAt] receives the global
 /// position of the release, for a dialog that should be born there. With
-/// neither callback the widget is inert.
+/// neither callback the widget is inert. A tap plays `press` when an
+/// [AudioService] is provided (it yields to any cue the tap itself raises).
 class PressScale extends StatefulWidget {
   final VoidCallback? onTap;
   final ValueChanged<Offset>? onTapAt;
@@ -37,6 +40,8 @@ class _PressScaleState extends State<PressScale> {
     if (_pressed != pressed && mounted) setState(() => _pressed = pressed);
   }
 
+  void _sound() => context.read<AudioService?>()?.play(SoundCue.press);
+
   @override
   Widget build(BuildContext context) {
     final enabled = widget.enabled;
@@ -46,11 +51,18 @@ class _PressScaleState extends State<PressScale> {
       onTapUp: enabled
           ? (details) {
               _set(false);
+              // The sound goes with whichever callback this widget has.
+              if (widget.onTap == null) _sound();
               widget.onTapAt?.call(details.globalPosition);
             }
           : null,
       onTapCancel: enabled ? () => _set(false) : null,
-      onTap: widget.onTap,
+      onTap: widget.onTap == null
+          ? null
+          : () {
+              _sound();
+              widget.onTap!();
+            },
       child: AnimatedScale(
         scale: _pressed ? PressScale.scale : 1,
         duration: AppMotion.of(context, AppMotion.press),

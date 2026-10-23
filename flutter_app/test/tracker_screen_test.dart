@@ -14,6 +14,7 @@ import 'package:dian_dian/screens/tracker_screen.dart';
 import 'package:dian_dian/services/ad_service.dart';
 import 'package:dian_dian/services/api_service.dart';
 import 'package:dian_dian/services/audio_service.dart';
+import 'package:dian_dian/services/audio_service.dart';
 import 'package:dian_dian/services/sync_service.dart';
 import 'package:dian_dian/services/ws_service.dart';
 import 'package:dian_dian/theme/motion.dart';
@@ -26,7 +27,7 @@ import 'helpers.dart';
 class TrackerHarness {
   late final Widget widget;
 
-  TrackerHarness({TrackerEntrance entrance = TrackerEntrance.none}) {
+  TrackerHarness({TrackerEntrance entrance = TrackerEntrance.none, AudioService? audio}) {
     final client = MockClient((req) async => http.Response('{"error":"x"}', 404));
     final api = ApiService.custom(client: client, tokens: FakeTokens());
     final rows = [pageJson('p0', title: 'Mood')];
@@ -50,6 +51,7 @@ class TrackerHarness {
         ChangeNotifierProvider.value(value: legends),
         ChangeNotifierProvider(create: (_) => PremiumProvider()),
         Provider<SyncService>.value(value: sync),
+        if (audio != null) ChangeNotifierProvider<AudioService>.value(value: audio),
       ],
       child: MaterialApp(
         home: TrackerScreen(pageId: 'p0', initialYear: 2026, onBack: () {}, onOpenSettings: () {}, entrance: entrance),
@@ -143,5 +145,15 @@ void main() {
     await tester.pump(AppMotion.base + const Duration(milliseconds: 50));
     expect(find.text('2027'), findsOneWidget);
     expect(opacityOver(tester, grid), 1);
+  });
+
+  testWidgets('a year change plays yearChange', (tester) async {
+    tabletPortrait(tester);
+    final rec = await recordingAudio();
+    await tester.pumpWidget(TrackerHarness(audio: rec.service).widget);
+    tester.widget<SwipeNav>(find.byType(SwipeNav).first).onNext();
+    await tester.pump();
+    expect(rec.players.played, [SoundCue.yearChange]);
+    await tester.pump(AppMotion.base + const Duration(milliseconds: 50));
   });
 }

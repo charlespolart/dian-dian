@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:dian_dian/services/audio_service.dart';
 import 'package:dian_dian/widgets/press_scale.dart';
+
+import 'helpers.dart';
 
 void main() {
   double scaleOf(WidgetTester tester) => tester.widget<AnimatedScale>(find.byType(AnimatedScale)).scale;
@@ -56,5 +61,21 @@ void main() {
     await tester.pump(const Duration(milliseconds: 150));
     expect(scaleOf(tester), 1);
     await gesture.up();
+  });
+
+  testWidgets('a tap plays press; without a service it just taps', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final rec = await recordingAudio();
+    await tester.pumpWidget(ChangeNotifierProvider<AudioService>.value(
+      value: rec.service,
+      child: MaterialApp(home: Center(child: PressScale(onTap: () {}, child: const SizedBox(width: 80, height: 40)))),
+    ));
+    await tester.tap(find.byType(PressScale));
+    await tester.pumpAndSettle();
+    expect(rec.players.played, [SoundCue.press]);
+    var taps = 0;
+    await tester.pumpWidget(MaterialApp(home: Center(child: PressScale(onTap: () => taps++, child: const SizedBox(width: 80, height: 40)))));
+    await tester.tap(find.byType(PressScale));
+    expect(taps, 1);
   });
 }
