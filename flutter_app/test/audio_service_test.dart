@@ -96,6 +96,16 @@ void main() {
     expect(players.played, isEmpty);
   });
 
+  test('the real service in a headless test is mute, never an unhandled error', () async {
+    // No Flutter binding here, like the pure-Dart provider tests that build
+    // providers without injecting a service.
+    final service = AudioService();
+    await service.ready;
+    service.play(SoundCue.dotFill);
+    await settle();
+    expect(service.enabled, isTrue);
+  });
+
   test('silent: nothing loads, nothing plays, the switch still works', () async {
     final service = AudioService.silent();
     await service.ready;
