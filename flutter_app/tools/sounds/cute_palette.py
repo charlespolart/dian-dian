@@ -1,4 +1,4 @@
-"""The Cute palette: a cozy little game, synthesised.
+"""The app's sounds: a cozy little game, synthesised.
 
 In the spirit of Minecraft, Tiny Wings and Stardew Valley — organic, warm,
 a bit wooden: wooden knocks (a filtered burst of noise with a low body) for
@@ -7,7 +7,7 @@ fast) for a dot filled; a dull "plop" for an erase or a drop; little
 marimba notes alone for opening and closing (no knock there: the knock
 is the steps' and the buttons' voice); a bell "ding", like an experience
 orb, for a creation or a legend. render() returns {cue: float32 mono array
-at 44.1 kHz}. Tune here and run `python3 tools/sounds/build.py cute`."""
+at 44.1 kHz}. Tune here and run `python3 tools/sounds/build.py`."""
 import numpy as np
 
 SR = 44100

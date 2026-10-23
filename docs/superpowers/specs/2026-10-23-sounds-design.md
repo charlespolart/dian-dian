@@ -186,6 +186,12 @@ retravailler dans l'esprit de Minecraft, Tiny Wings et Stardew Valley :
 clics en bois, pop de ramassage, plop, marimba, ding de cloche
 (`tools/sounds/cute_palette.py`, réécrit). `SoundPalette { gentle, cute }`.
 
+**Essai 6 (2026-10-23) — choix.** Cute, sans le clic sous le marimba des
+pop-ups, est retenue (« magnifique »). Il n'y aura qu'un seul jeu de sons :
+`SoundPalette` et le sélecteur de debug disparaissent, les fichiers vivent
+à plat dans `assets/sounds/`, `tools/sounds/build.py` ne construit que
+`cute_palette.py`. Le réglage « Sons » reste.
+
 ## 3. Le service : `AudioService`
 
 ```dart

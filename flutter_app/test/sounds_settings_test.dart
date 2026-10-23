@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -37,17 +36,10 @@ void main() {
     expect(find.text('On'), findsOneWidget);
     expect(rec.players.played, [SoundCue.press]);
   });
-
-  testWidgets('in debug, a palette tile cycles the palettes and previews trackerOpen', (tester) async {
+  testWidgets('there is no palette to choose: one sound set, one switch', (tester) async {
     final rec = await recordingAudio();
     await tester.pumpWidget(host(rec.service));
-    final tile = find.textContaining('Palette');
-    expect(tile, kDebugMode ? findsOneWidget : findsNothing);
-    if (!kDebugMode) return;
-    await tester.tap(find.widgetWithText(PressScale, 'Palette : gentle'));
-    await tester.pumpAndSettle();
-    expect(rec.service.palette, SoundPalette.cute);
-    expect(find.text('Palette : cute'), findsOneWidget);
-    expect(rec.players.played, [SoundCue.trackerOpen]);
+    expect(find.textContaining('Palette'), findsNothing);
+    expect(find.byType(PressScale), findsOneWidget);
   });
 }

@@ -77,8 +77,7 @@ flutter:
 
   assets:
     - assets/images/
-    - assets/sounds/gentle/
-    - assets/sounds/cute/
+    - assets/sounds/
     - assets/icons/
     - assets/cursors/
   #   - images/a_dot_ham.jpeg

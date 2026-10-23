@@ -7,19 +7,18 @@ import 'package:dian_dian/services/audio_service.dart';
 
 import 'helpers.dart';
 
-/// Lets the press microtask and any play future run.
+/// Lets the weak-cue microtask and any play future run.
 Future<void> settle() => Future<void>.delayed(Duration.zero);
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  test('one player per cue, loaded from the palette folder, paper by default', () async {
+  test('one player per cue, loaded from assets/sounds', () async {
     final (:service, :players) = await recordingAudio();
-    expect(service.palette, SoundPalette.gentle);
     expect(service.enabled, isTrue);
     expect(SoundCue.dotFill.file, 'dot_fill');
-    expect(SoundCue.trackerCreate.assetIn(SoundPalette.cute), 'sounds/cute/tracker_create.wav');
-    expect(players.live.map((p) => p.asset), unorderedEquals([for (final c in SoundCue.values) c.assetIn(SoundPalette.gentle)]));
+    expect(SoundCue.trackerCreate.asset, 'sounds/tracker_create.wav');
+    expect(players.live.map((p) => p.asset), unorderedEquals([for (final c in SoundCue.values) c.asset]));
   });
 
   test('play plays that cue; nothing once disabled', () async {
@@ -82,43 +81,13 @@ void main() {
     expect(players.played, [SoundCue.dialogOpen, SoundCue.dialogClose]);
   });
 
-  test('setEnabled and setPalette persist; setPalette swaps every player', () async {
+  test('setEnabled persists, and a new service reads it back', () async {
     final (:service, :players) = await recordingAudio();
     await service.setEnabled(false);
-    await service.setPalette(SoundPalette.cute);
-    final prefs = await SharedPreferences.getInstance();
-    expect(prefs.getBool(AudioService.prefEnabled), isFalse);
-    expect(prefs.getString(AudioService.prefPalette), 'cute');
-    expect(players.live.map((p) => p.asset), everyElement(startsWith('sounds/cute/')));
-    expect(players.created.where((p) => p.disposed), hasLength(SoundCue.values.length));
+    expect((await SharedPreferences.getInstance()).getBool(AudioService.prefEnabled), isFalse);
     final again = await recordingAudio();
     expect(again.service.enabled, isFalse);
-    expect(again.service.palette, SoundPalette.cute);
-  });
-
-  test('setPalette with a preview drops a pending press and plays the preview on the new palette', () async {
-    final (:service, :players) = await recordingAudio();
-    service.play(SoundCue.press);
-    await service.setPalette(SoundPalette.cute, preview: SoundCue.trackerOpen);
-    await settle();
-    expect(players.played, [SoundCue.trackerOpen]);
-    expect(players.live.where((p) => p.plays > 0).single.asset, 'sounds/cute/tracker_open.wav');
-  });
-
-  test('a palette switch during a load keeps only the new palette; the superseded load is disposed whole', () async {
-    final players = FakeSoundPlayers(gate: Completer<void>());
-    final service = AudioService.custom(players: players.call);
-    await settle(); // prefs read, the first player waits on the gate
-    expect(players.created, hasLength(1));
-    final switching = service.setPalette(SoundPalette.cute);
-    players.gate!.complete();
-    await switching;
-    await service.ready;
-    await settle();
-    expect(players.live.map((p) => p.asset), unorderedEquals([for (final c in SoundCue.values) c.assetIn(SoundPalette.cute)]));
-    final disposed = players.created.where((p) => p.disposed).toList();
-    expect(disposed, hasLength(SoundCue.values.length));
-    expect(disposed.map((p) => p.asset), everyElement(startsWith('sounds/gentle/')), reason: 'the first load stays on the palette it started with');
+    expect(players.live, hasLength(SoundCue.values.length));
   });
 
   test('disposing the service during a load disposes everything that load produces', () async {
@@ -162,7 +131,7 @@ void main() {
     expect(service.enabled, isTrue);
   });
 
-  test('a play before the palette is loaded is dropped', () async {
+  test('a play before the sounds are loaded is dropped', () async {
     final players = FakeSoundPlayers();
     final service = AudioService.custom(players: players.call);
     service.play(SoundCue.dotFill);
@@ -172,8 +141,6 @@ void main() {
   });
 
   test('the real service in a headless test is mute, never an unhandled error', () async {
-    // No Flutter binding here, like the pure-Dart provider tests that build
-    // providers without injecting a service.
     final service = AudioService();
     await service.ready;
     service.play(SoundCue.dotFill);

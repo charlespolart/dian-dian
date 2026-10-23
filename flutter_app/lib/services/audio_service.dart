@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'audioplayers_sound_player.dart';
 
-/// The moments that sound (spec §1). Each palette has one file per cue.
+/// The moments that sound (spec §1): one wav each under assets/sounds.
 enum SoundCue {
   dotFill,
   dotErase,
@@ -26,15 +26,12 @@ enum SoundCue {
   select,      // a legend or a colour becomes the selection
 }
 
-/// A folder under assets/sounds: several while they are compared, one ships.
-enum SoundPalette { gentle, cute }
-
 extension SoundCueFile on SoundCue {
   /// The file stem: `dotFill` → `dot_fill`.
   String get file => name.replaceAllMapped(RegExp('[A-Z]'), (m) => '_${m[0]!.toLowerCase()}');
 
   /// The asset path audioplayers wants (relative to `assets/`).
-  String assetIn(SoundPalette palette) => 'sounds/${palette.name}/$file.wav';
+  String get asset => 'sounds/$file.wav';
 }
 
 /// One preloaded sound, replayable from its start. The real one wraps an
@@ -45,13 +42,11 @@ abstract class SoundPlayer {
   Future<void> dispose();
 }
 
-/// The app's sounds: one player per cue, preloaded for the current palette;
-/// the "Sons" switch and the palette persisted on the device. [play] never
-/// throws and never waits — a sound that fails is a debug line, never an
-/// error out of a tap.
+/// The app's sounds: one player per cue, preloaded; the "Sons" switch
+/// persisted on the device. [play] never throws and never waits — a sound
+/// that fails is a debug line, never an error out of a tap.
 class AudioService extends ChangeNotifier {
   static const prefEnabled = 'sounds_enabled';
-  static const prefPalette = 'sounds_palette';
 
   static AudioService? _instance;
 
@@ -71,7 +66,6 @@ class AudioService extends ChangeNotifier {
   Map<SoundCue, SoundPlayer> _players = const {};
   int _generation = 0;
   bool _enabled = true;
-  SoundPalette _palette = SoundPalette.gentle;
 
   /// Weak cues: a button's tic and a dialog's close. They wait one microtask
   /// and yield to a stronger cue of the same turn; after a strong cue they
@@ -83,17 +77,14 @@ class AudioService extends ChangeNotifier {
   DateTime? _strongAt;
 
   bool get enabled => _enabled;
-  SoundPalette get palette => _palette;
 
-  /// Done once the current palette's players are loaded.
+  /// Done once the players are loaded.
   Future<void> get ready => _loading;
 
   Future<void> _init() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       _enabled = prefs.getBool(prefEnabled) ?? true;
-      final name = prefs.getString(prefPalette);
-      _palette = SoundPalette.values.firstWhere((p) => p.name == name, orElse: () => SoundPalette.gentle);
     } catch (e) {
       debugPrint('AudioService: prefs unavailable: $e');
     }
@@ -101,13 +92,12 @@ class AudioService extends ChangeNotifier {
     await _load();
   }
 
-  /// Loads one player per cue for [_palette]; the previous set is disposed.
-  /// A newer generation started meanwhile wins: this one is thrown away.
+  /// Loads one player per cue. A newer generation started meanwhile (a
+  /// dispose) wins: this one is thrown away.
   Future<void> _load() async {
     final make = _makePlayer;
     if (make == null) return;
     final generation = ++_generation;
-    final palette = _palette; // this load stays on the palette it started with
     _disposeAll(_players);
     _players = const {};
     final loaded = <SoundCue, SoundPlayer>{};
@@ -115,7 +105,7 @@ class AudioService extends ChangeNotifier {
       SoundPlayer? player;
       try {
         player = make();
-        await player.load(cue.assetIn(palette));
+        await player.load(cue.asset);
         loaded[cue] = player;
       } catch (e) {
         debugPrint('AudioService: ${cue.name} failed to load: $e');
@@ -139,27 +129,8 @@ class AudioService extends ChangeNotifier {
     if (_enabled == value) return;
     _enabled = value;
     notifyListeners();
-    await _save((prefs) => prefs.setBool(prefEnabled, value));
-  }
-
-  /// Switches to [value] and reloads every player. With [preview], that cue
-  /// plays on the new palette once it is loaded, and a press pending from
-  /// the tap that asked for it is dropped (one sound per gesture).
-  Future<void> setPalette(SoundPalette value, {SoundCue? preview}) async {
-    if (preview != null) _pendingWeak = null;
-    if (_palette != value) {
-      _palette = value;
-      notifyListeners();
-      await _save((prefs) => prefs.setString(prefPalette, value.name));
-      _loading = _load();
-      await _loading;
-    }
-    if (preview != null) _playNow(preview);
-  }
-
-  Future<void> _save(Future<void> Function(SharedPreferences prefs) write) async {
     try {
-      await write(await SharedPreferences.getInstance());
+      await (await SharedPreferences.getInstance()).setBool(prefEnabled, value);
     } catch (e) {
       debugPrint('AudioService: prefs write failed: $e');
     }
