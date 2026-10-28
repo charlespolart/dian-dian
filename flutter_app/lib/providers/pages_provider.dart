@@ -83,9 +83,11 @@ class PagesProvider extends ChangeNotifier {
         final page = PageModel.fromJson(_parsePalette(json));
         if (!_pages.any((p) => p.id == page.id)) {
           _pages.add(page);
-          _audio.play(SoundCue.trackerCreate);
           _touch();
         }
+        // This user's gesture, whether or not the socket's page:created got
+        // here before the answer and inserted the page already.
+        _audio.play(SoundCue.trackerCreate);
         notifyListeners();
         return page;
       }

@@ -36,7 +36,7 @@ class SoundsSettings extends StatelessWidget {
           onTap: () async {
             final turningOn = !audio.hapticsEnabled;
             await audio.setHapticsEnabled(turningOn);
-            if (turningOn) audio.feel(Haptic.light);
+            if (turningOn) audio.feel(Haptic.medium);
           },
         ),
       ],

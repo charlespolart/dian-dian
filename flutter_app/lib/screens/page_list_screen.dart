@@ -248,6 +248,7 @@ class _PageListScreenState extends State<PageListScreen> {
       confirmLabel: lang.t('common.delete'),
       cancelLabel: lang.t('common.cancel'),
       destructive: true,
+      confirmSound: SoundCue.trackerDelete,
     );
     if (confirmed != true || !mounted) return;
 

@@ -7,7 +7,7 @@ fast) for a dot filled; a dull "plop" for an erase or a drop; a breath of air, b
 for the side panel; little
 marimba notes alone for opening and closing (no knock there: the knock
 is the steps' and the buttons' voice); a bell "ding", like an experience
-orb, for a creation or a legend. render() returns {cue: float32 mono array
+orb, for a creation or a legend; a dark puff and a low plop for a deletion. render() returns {cue: float32 mono array
 at 44.1 kHz}. Tune here and run `python3 tools/sounds/build.py`."""
 import numpy as np
 
@@ -123,11 +123,11 @@ def render():
     return {
         "dot_fill": room(pop()),
         "dot_erase": room(plop()),
-        "tracker_open": room(mix([(0.0, marimba(C5)), (0.09, marimba(E5)), (0.18, marimba(G5, tau=0.16))])),
-        "tracker_close": room(mix([(0.0, marimba(G5)), (0.09, marimba(E5)), (0.18, marimba(C5, tau=0.16))])),
+        "tracker_open": room(mix([(0.0, marimba(C5, tau=0.10)), (0.07, marimba(E5, tau=0.10)), (0.14, marimba(G5, tau=0.13))])),
+        "tracker_close": room(mix([(0.0, marimba(G5, tau=0.10)), (0.07, marimba(E5, tau=0.10)), (0.14, marimba(C5, tau=0.13))])),
         "dialog_open": room(marimba(G5, tau=0.09, gain=0.5)),
         "dialog_close": room(marimba(E5, tau=0.08, gain=0.4)),
-        "tracker_create": room(mix([(0.0, marimba(C5)), (0.08, marimba(E5)), (0.16, marimba(G5)), (0.27, ding(C6))])),
+        "tracker_create": room(mix([(0.0, marimba(C5, tau=0.10)), (0.07, marimba(E5, tau=0.10)), (0.14, marimba(G5, tau=0.10)), (0.24, ding(C6))])),
         "legend_add": room(mix([(0.0, ding(E6, dur=0.3, tau=0.12, gain=0.5)), (0.07, ding(B6, dur=0.35, tau=0.14, gain=0.45))])),
         "step_next": knock(2000.0, gain=0.7),
         "step_prev": knock(1500.0, gain=0.7),
@@ -138,4 +138,8 @@ def render():
         "drag_hover": knock(2400.0, dur=0.025, gain=0.6),
         "drag_drop": room(plop(380.0, 160.0)),
         "select": knock(1900.0, gain=0.75),
+        # Gone in a puff: a dark breath of air and a low plop. Last on purpose:
+        # the noise generator is shared, a new cue added earlier would shift
+        # every file after it.
+        "tracker_delete": room(mix([(0.0, whoosh(dur=0.16, low=160.0, high=900.0, gain=0.32)), (0.02, plop(f0=300.0, f1=110.0, dur=0.16, tau=0.055, gain=0.7))])),
     }

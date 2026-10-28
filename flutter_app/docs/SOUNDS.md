@@ -1,10 +1,10 @@
 # Sons de l'app : source et licence
 
-Dix-sept moments (`SoundCue` dans `lib/services/audio_service.dart`), un
+Dix-huit moments (`SoundCue` dans `lib/services/audio_service.dart`), un
 fichier par moment dans `assets/sounds/`, wav PCM 16 bits mono 44,1 kHz,
 silence de tête rogné, crête à −3 dBFS (−10 pour `press` et `drag_hover`,
 −6 pour `select`, `step_next` et `step_prev`, le tout −2 dB), ≤ 400 ms sauf
-`tracker_open`, `tracker_close`, `tracker_create` ≤ 700 ms. Tout est
+`tracker_open` et `tracker_close` ≤ 520 ms, `tracker_create` ≤ 650 ms. Tout est
 produit par `python3 tools/sounds/build.py` (numpy seulement).
 
 ## Synthèse, propre à l'app
@@ -20,7 +20,8 @@ de marimba (fondamentale, anche au quadruple, coup de maillet), seules,
 pour l'ouverture, la fermeture et les pop-ups ; un « ding » de cloche à
 partiels inharmoniques, façon orbe d'expérience, pour la création et la
 légende ; un souffle, plus clair à l'ouverture et plus sombre à la fermeture,
-pour le panneau. Un seul son par moment, jamais deux superposés. Aucune
+pour le panneau ; une bouffée sombre et un plop grave pour la suppression
+d'un tracker. Un seul son par moment, jamais deux superposés. Aucune
 licence tierce.
 
 ## Écartées (essais sur l'appareil, 2026-10-23)

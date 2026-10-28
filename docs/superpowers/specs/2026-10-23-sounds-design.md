@@ -37,6 +37,7 @@ enum SoundCue {
   dialogOpen,    // un pop-up s'ouvre (showAppDialog)
   dialogClose,   // un pop-up se ferme, quelle que soit la façon
   trackerCreate, // une carte de tracker vient d'apparaître
+  trackerDelete, // l'utilisateur a confirmé la suppression d'un tracker
   legendAdd,     // une légende vient d'être ajoutée
   stepNext,      // une flèche fait un pas en avant : année (liste, tracker), jour (éditeur de case)
   stepPrev,      // … ou en arrière
@@ -56,7 +57,8 @@ reste.
 | `trackerOpen` / `trackerClose` | `AppShell._navigate`, quand `transitionFor` rend `morphOpen` / `morphClose` | au départ de la scène (le repli en fondu sonne pareil : même geste) |
 | `dialogOpen` | `showAppDialog`, juste avant `navigator.push` | au départ de l'entrée |
 | `dialogClose` | `AppDialogRoute.didPop` | au départ de la sortie, barrière, croix, bouton ou retour système confondus |
-| `trackerCreate` | `PagesProvider.createPage`, quand la page est ajoutée localement | |
+| `trackerCreate` | `PagesProvider.createPage`, à la réponse du serveur, même si le socket a inséré la page avant | le morphing qui suit dans les 250 ms se tait (`trackerOpen` cède à une création récente) |
+| `trackerDelete` | `ConfirmDialog` de la liste, au tap « Supprimer » (`confirmSound`), avant la rétraction de la carte | la fermeture du pop-up se tait ; une suppression venue d'un autre appareil est muette |
 | `legendAdd` | `LegendsProvider.createLegend`, quand la légende est ajoutée localement | |
 | `stepNext` / `stepPrev` | `TrackerScreen._changeYear`, `PageListScreen._changeYear`, `CellEditorDialog._navigateDay` | au pas, selon le sens : même geste, même son |
 | `press` | `PressScale`, au tap, avant d'appeler `onTap` / `onTapAt` | voir la règle « un son par geste » |
@@ -263,10 +265,16 @@ l'ouverture du tracker.
 
 | Vibration | Moments |
 |---|---|
-| impact léger | `dotFill`, `dotErase`, `panelOpen`, `panelClose` |
-| impact moyen | `dragPick`, `dragDrop`, `trackerCreate` |
-| clic de sélection | `select`, `stepNext`, `stepPrev`, `dragHover` |
+| impact moyen | `dotFill`, `dotErase`, `panelOpen`, `panelClose` |
+| impact fort | `dragPick`, `dragDrop`, `trackerCreate`, `trackerDelete` |
+| impact léger | `select`, `stepNext`, `stepPrev` |
+| clic de sélection | `dragHover` |
 | aucune | `press`, `dialogOpen`, `dialogClose`, `trackerOpen`, `trackerClose`, `legendAdd` |
+
+Révision du 2026-10-28 (premier passage sur l'iPhone) : « un tout petit peu
+trop léger », tout monte d'un cran (léger → moyen, moyen → fort, le clic de
+sélection → léger, sauf le survol qui reste un clic puisqu'il se répète à
+chaque case). L'aperçu du réglage sent l'impact moyen, celui d'un point.
 
 Mise en œuvre : `HapticFeedback` de Flutter (`lib/services/flutter_haptics.dart`),
 sans dépendance. iPhone : Taptic Engine (impact léger / moyen, clic de
@@ -339,3 +347,21 @@ sons, réglage « Sons »), `docs/changelogs/1.5.0.md` en quatre langues,
 entrée `whats_new.dart`. Pas de changement backend. Avant de taguer : une
 seule palette dans `assets/sounds`, `SOUNDS.md` à jour, tuile de debug sans
 objet.
+
+## Essai 7 (2026-10-28, iPhone)
+
+- `trackerDelete`, nouveau moment : une bouffée sombre et un plop grave,
+  joué au tap « Supprimer » du pop-up de confirmation (`ConfirmDialog.show(
+  confirmSound:)`), avant la rétraction de la carte ; la fermeture du pop-up
+  se tait. Avant, seule la fermeture du pop-up sonnait.
+- Création : le son jouait selon une course entre la réponse HTTP et le
+  `page:created` du socket (si le socket insérait la page d'abord, rien, et
+  la fermeture du pop-up sonnait) ; puis le morphing jouait `trackerOpen`
+  par-dessus. Désormais `trackerCreate` sonne toujours à la réponse, et un
+  `trackerOpen` dans les 250 ms d'une création se tait : un seul son, celui
+  de la création (l'arpège de l'ouverture plus un ding).
+- `trackerOpen` / `trackerClose` « un petit peu longs » : notes espacées de
+  70 ms au lieu de 90, queues plus courtes (τ 0,10 / 0,13 s), fichiers
+  ≤ 520 ms (`trackerCreate` ≤ 650 ms).
+- `press` : le clic en bois ne plaît pas ; candidats envoyés à l'écoute
+  (tic, tape sourde, bulle, petite note de bois), choix en attente.

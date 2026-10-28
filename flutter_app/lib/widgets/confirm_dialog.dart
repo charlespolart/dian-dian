@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../services/audio_service.dart';
 import '../theme/app_theme.dart';
 import 'app_dialog.dart';
 import 'press_scale.dart';
@@ -14,6 +16,11 @@ class ConfirmDialog extends StatelessWidget {
   final String cancelLabel;
   final bool destructive;
 
+  /// The moment the confirmation starts (a tracker's deletion, say): played
+  /// on the confirm tap, before the pop, so the dialog's own close stays
+  /// silent and the gesture sounds once.
+  final SoundCue? confirmSound;
+
   const ConfirmDialog({
     super.key,
     required this.title,
@@ -21,6 +28,7 @@ class ConfirmDialog extends StatelessWidget {
     required this.confirmLabel,
     required this.cancelLabel,
     this.destructive = false,
+    this.confirmSound,
   });
 
   /// Convenience helper to show the dialog and return the result.
@@ -31,6 +39,7 @@ class ConfirmDialog extends StatelessWidget {
     required String confirmLabel,
     required String cancelLabel,
     bool destructive = false,
+    SoundCue? confirmSound,
   }) {
     return showAppDialog<bool>(
       context: context,
@@ -40,6 +49,7 @@ class ConfirmDialog extends StatelessWidget {
         confirmLabel: confirmLabel,
         cancelLabel: cancelLabel,
         destructive: destructive,
+        confirmSound: confirmSound,
       ),
     );
   }
@@ -65,7 +75,11 @@ class ConfirmDialog extends StatelessWidget {
             bgColor: destructive ? AppColors.btnReset : AppColors.btnAdd,
             borderColor: destructive ? AppColors.btnResetBorder : AppColors.btnAddBorder,
             textColor: destructive ? AppColors.btnResetText : AppColors.btnAddText,
-            onTap: () => Navigator.of(context).pop(true),
+            onTap: () {
+              final sound = confirmSound;
+              if (sound != null) context.read<AudioService?>()?.play(sound);
+              Navigator.of(context).pop(true);
+            },
           ),
         ],
       ),

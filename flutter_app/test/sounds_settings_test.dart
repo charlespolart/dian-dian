@@ -44,7 +44,7 @@ void main() {
     expect(find.byType(PressScale), findsNWidgets(2)); // sounds, vibrations
   });
 
-  testWidgets('the vibrations tile flips its own switch, persists, and previews a light one when turning on', (tester) async {
+  testWidgets('the vibrations tile flips its own switch, persists, and previews a medium one, the one a dot gives, when turning on', (tester) async {
     final haptics = FakeHaptics();
     final rec = await recordingAudio(haptics: haptics);
     await tester.pumpWidget(host(rec.service));
@@ -58,6 +58,6 @@ void main() {
     expect(haptics.felt, isEmpty);
     await tester.tap(tile);
     await tester.pumpAndSettle();
-    expect(haptics.felt, [Haptic.light]);
+    expect(haptics.felt, [Haptic.medium]);
   });
 }

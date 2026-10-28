@@ -148,16 +148,35 @@ void main() {
     expect(service.enabled, isTrue);
   });
 
+  test('a tracker opening right after its creation is silent: the creation already sounded', () async {
+    final (:service, :players) = await recordingAudio();
+    service.play(SoundCue.trackerCreate);
+    service.play(SoundCue.dialogClose); // the new-tracker dialog closing
+    service.play(SoundCue.trackerOpen); // the morph that follows
+    await settle();
+    expect(players.played, [SoundCue.trackerCreate]);
+  });
+
+  test('a tracker opening long after a creation sounds', () async {
+    final (:service, :players) = await recordingAudio();
+    service.play(SoundCue.trackerCreate);
+    await Future<void>.delayed(AudioService.yieldWindow + const Duration(milliseconds: 20));
+    service.play(SoundCue.trackerOpen);
+    await settle();
+    expect(players.played, [SoundCue.trackerCreate, SoundCue.trackerOpen]);
+  });
+
   group('haptics', () {
-    test('each cue has its vibration: light for a dot, medium for a pick, a selection click for a step, none for a button', () {
-      expect(SoundCue.dotFill.haptic, Haptic.light);
-      expect(SoundCue.dotErase.haptic, Haptic.light);
-      expect(SoundCue.panelOpen.haptic, Haptic.light);
-      expect(SoundCue.dragPick.haptic, Haptic.medium);
-      expect(SoundCue.dragDrop.haptic, Haptic.medium);
-      expect(SoundCue.trackerCreate.haptic, Haptic.medium);
-      expect(SoundCue.stepNext.haptic, Haptic.selection);
-      expect(SoundCue.select.haptic, Haptic.selection);
+    test('each cue has its vibration: medium for a dot, heavy for a pick or a creation, light for a step or a choice, a selection click for a hover, none for a button', () {
+      expect(SoundCue.dotFill.haptic, Haptic.medium);
+      expect(SoundCue.dotErase.haptic, Haptic.medium);
+      expect(SoundCue.panelOpen.haptic, Haptic.medium);
+      expect(SoundCue.dragPick.haptic, Haptic.heavy);
+      expect(SoundCue.dragDrop.haptic, Haptic.heavy);
+      expect(SoundCue.trackerCreate.haptic, Haptic.heavy);
+      expect(SoundCue.trackerDelete.haptic, Haptic.heavy);
+      expect(SoundCue.stepNext.haptic, Haptic.light);
+      expect(SoundCue.select.haptic, Haptic.light);
       expect(SoundCue.dragHover.haptic, Haptic.selection);
       for (final c in [SoundCue.press, SoundCue.dialogOpen, SoundCue.dialogClose, SoundCue.trackerOpen, SoundCue.trackerClose, SoundCue.legendAdd]) {
         expect(c.haptic, Haptic.none, reason: c.name);
@@ -170,7 +189,7 @@ void main() {
       service.play(SoundCue.press);
       service.play(SoundCue.dotFill);
       await settle();
-      expect(haptics.felt, [Haptic.light]);
+      expect(haptics.felt, [Haptic.medium]);
       expect(players.played, [SoundCue.dotFill]);
     });
 
@@ -181,11 +200,11 @@ void main() {
       service.play(SoundCue.dragPick);
       await settle();
       expect(players.played, isEmpty);
-      expect(haptics.felt, [Haptic.medium]);
+      expect(haptics.felt, [Haptic.heavy]);
       await service.setHapticsEnabled(false);
       service.play(SoundCue.dragPick);
       await settle();
-      expect(haptics.felt, [Haptic.medium]);
+      expect(haptics.felt, [Haptic.heavy]);
       expect((await SharedPreferences.getInstance()).getBool(AudioService.prefHaptics), isFalse);
       final again = await recordingAudio();
       expect(again.service.hapticsEnabled, isFalse);

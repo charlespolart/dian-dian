@@ -15,6 +15,7 @@ enum SoundCue {
   dialogOpen,
   dialogClose,
   trackerCreate,
+  trackerDelete, // the user confirmed a tracker's deletion
   legendAdd,
   stepNext,    // an arrow steps forward: next year (list, tracker), next day (cell editor)
   stepPrev,    // … or back
@@ -28,7 +29,7 @@ enum SoundCue {
 }
 
 /// What a moment feels like under the finger (spec §3, « Haptique »).
-enum Haptic { none, light, medium, selection }
+enum Haptic { none, light, medium, heavy, selection }
 
 extension SoundCueFile on SoundCue {
   /// The file stem: `dotFill` → `dot_fill`.
@@ -38,12 +39,14 @@ extension SoundCueFile on SoundCue {
   String get asset => 'sounds/$file.wav';
 
   /// The vibration that goes with the cue: for what changes something (a
-  /// dot, a drag, a choice, a step, the panel, a creation), nothing for a
-  /// plain button, a dialog or the tracker opening.
+  /// dot, a drag, a choice, a step, the panel, a creation, a deletion),
+  /// nothing for a plain button, a dialog or the tracker opening. One notch
+  /// up from the first pass, which felt a touch too light on the iPhone.
   Haptic get haptic => switch (this) {
-        SoundCue.dotFill || SoundCue.dotErase || SoundCue.panelOpen || SoundCue.panelClose => Haptic.light,
-        SoundCue.dragPick || SoundCue.dragDrop || SoundCue.trackerCreate => Haptic.medium,
-        SoundCue.select || SoundCue.stepNext || SoundCue.stepPrev || SoundCue.dragHover => Haptic.selection,
+        SoundCue.dotFill || SoundCue.dotErase || SoundCue.panelOpen || SoundCue.panelClose => Haptic.medium,
+        SoundCue.dragPick || SoundCue.dragDrop || SoundCue.trackerCreate || SoundCue.trackerDelete => Haptic.heavy,
+        SoundCue.select || SoundCue.stepNext || SoundCue.stepPrev => Haptic.light,
+        SoundCue.dragHover => Haptic.selection,
         SoundCue.press ||
         SoundCue.dialogOpen ||
         SoundCue.dialogClose ||
@@ -109,6 +112,7 @@ class AudioService extends ChangeNotifier {
   static const yieldWindow = Duration(milliseconds: 250);
   SoundCue? _pendingWeak;
   DateTime? _strongAt;
+  SoundCue? _lastStrong;
 
   bool get enabled => _enabled;
   bool get hapticsEnabled => _hapticsEnabled;
@@ -212,10 +216,22 @@ class AudioService extends ChangeNotifier {
       }
       return;
     }
+    // A tracker opening right after its creation is the same gesture: the
+    // creation sounded (its arpeggio is the opening's, plus a ding), the
+    // morph that follows stays silent.
+    if (cue == SoundCue.trackerOpen &&
+        _lastStrong == SoundCue.trackerCreate &&
+        _strongAt != null &&
+        DateTime.now().difference(_strongAt!) < yieldWindow) {
+      return;
+    }
     _pendingWeak = null;
     // Opening a dialog does not arm the window: opening then closing it at
     // once is two gestures, and the close must sound.
-    if (cue != SoundCue.dialogOpen) _strongAt = DateTime.now();
+    if (cue != SoundCue.dialogOpen) {
+      _strongAt = DateTime.now();
+      _lastStrong = cue;
+    }
     _playNow(cue);
   }
 

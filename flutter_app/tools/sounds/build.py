@@ -16,7 +16,7 @@ HERE = Path(__file__).resolve().parent
 APP = HERE.parent.parent
 OUT = APP / "assets" / "sounds"
 SR = 44100
-MAX_MS = {"tracker_open": 700, "tracker_close": 700, "tracker_create": 700}
+MAX_MS = {"tracker_open": 520, "tracker_close": 520, "tracker_create": 650}
 PEAK_DB = {"press": -10.0, "drag_hover": -10.0, "select": -6.0, "step_next": -6.0, "step_prev": -6.0}
 LEVEL_DB = -2.0  # the whole set, under the per-cue peaks
 

@@ -206,6 +206,21 @@ void main() {
     expect(rec.players.played, [SoundCue.trackerCreate]);
   });
 
+  test('a creation the socket inserted first still sounds once: it is this user\'s gesture', () async {
+    SharedPreferences.setMockInitialValues({});
+    final rec = await recordingAudio();
+    late PagesProvider p;
+    final client = MockClient((req) async {
+      // The server broadcasts page:created to this device before answering.
+      p.debugHandleWs(WsMessage(event: 'page:created', data: pageJson('n', position: 0, title: 'New')));
+      return http.Response(jsonEncode(pageJson('n', position: 0, title: 'New')), 201);
+    });
+    p = PagesProvider(api: ApiService.custom(client: client, tokens: FakeTokens()), audio: rec.service);
+    expect(await p.createPage('New'), isNotNull);
+    expect(p.pages.map((x) => x.id), ['n'], reason: 'inserted once');
+    expect(rec.players.played, [SoundCue.trackerCreate]);
+  });
+
   test('the first tracker plays trackerCreate too; a page created on another device plays nothing', () async {
     SharedPreferences.setMockInitialValues({});
     final rec = await recordingAudio();

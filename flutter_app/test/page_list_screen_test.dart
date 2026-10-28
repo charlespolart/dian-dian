@@ -132,6 +132,20 @@ void main() {
     h.pages.undoDeletePage(); // stops the 8 s undo timer before the test ends
   });
 
+  testWidgets('confirming a deletion plays trackerDelete alone: not the dialog\'s close, not the button\'s tic', (tester) async {
+    final rec = await recordingAudio();
+    final h = ListHarness(audio: rec.service);
+    await tester.pumpWidget(h.widget);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.close).first);
+    await tester.pumpAndSettle();
+    expect(rec.players.played, [SoundCue.dialogOpen]);
+    await tester.tap(find.widgetWithText(PressScale, 'Delete'));
+    await tester.pumpAndSettle();
+    expect(rec.players.played, [SoundCue.dialogOpen, SoundCue.trackerDelete]);
+    h.pages.undoDeletePage(); // stops the 8 s undo timer before the test ends
+  });
+
   testWidgets('dragging a card onto another plays dragPick, dragHover and dragDrop', (tester) async {
     phone(tester);
     final rec = await recordingAudio();
