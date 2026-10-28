@@ -153,10 +153,15 @@ Lot 3, fait le 2026-10-28 : un point qui porte un commentaire est un anneau
 (un trou de la couleur de l'écran au centre, un tiers du point), choisi sur
 maquettes contre une pastille, une queue de bulle et un trait ; le morphing
 fait apparaître le trou avec les points ; rien sur les cartes ni l'export.
-Petits points restants avant la sortie, un par un et après vérification par
-Charles du comportement actuel : titre de la carte en paysage sur tablette,
-titre long qui défile pendant le morphing, encart Nouveautés et pop du point
-sous « Réduire les animations ». Écarté le 2026-10-29 : avaler le retour
+Petits points clos le 2026-10-29 : le titre voyage aussi en paysage (ancre
+du panneau avec sa taille, centré ; un titre replié se fond dans le bloc),
+le crayon du titre en paysage sur sa ligne et à l'échelle ; « Réduire les
+animations » marche enfin sur iOS (Flutter livre Reduce Motion comme
+`reduceMotion`, jamais dans MediaQuery) et l'encart Nouveautés comme le pop
+du point sont instantanés sous l'option ; l'anneau de commentaire a un
+liseré accent pour rester visible sur un point de la couleur de l'écran ;
+titre long qui défile pendant le morphing : jugé invisible, laissé. Écarté
+le 2026-10-29 : avaler le retour
 système pendant la fermeture du tracker (deux retours rapides fermaient
 l'app sur Android) — décision de Charles, deux appuis rapides sont une
 intention de sortir, le correctif a été annulé.
