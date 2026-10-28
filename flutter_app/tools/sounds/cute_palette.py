@@ -7,7 +7,7 @@ fast) for a dot filled; a dull "plop" for an erase or a drop; a breath of air, b
 for the side panel; little
 marimba notes alone for opening and closing (no knock there: the knock
 is the steps' and the buttons' voice); a bell "ding", like an experience
-orb, for a creation or a legend; a dark puff and a low plop for a deletion. render() returns {cue: float32 mono array
+orb, for a creation or a legend; the plop again, lower and heavier, for a deletion. render() returns {cue: float32 mono array
 at 44.1 kHz}. Tune here and run `python3 tools/sounds/build.py`."""
 import numpy as np
 
@@ -138,8 +138,9 @@ def render():
         "drag_hover": knock(2400.0, dur=0.025, gain=0.6),
         "drag_drop": room(plop(380.0, 160.0)),
         "select": knock(1900.0, gain=0.75),
-        # Gone in a puff: a dark breath of air and a low plop. Last on purpose:
-        # the noise generator is shared, a new cue added earlier would shift
-        # every file after it.
-        "tracker_delete": room(mix([(0.0, whoosh(dur=0.16, low=160.0, high=900.0, gain=0.32)), (0.02, plop(f0=300.0, f1=110.0, dur=0.16, tau=0.055, gain=0.7))])),
+        # The erase's plop, lower and heavier: a whole tracker goes, in the
+        # same family as a dot (erase 420→190, drop 380→160, this 330→120).
+        # Last on purpose: the noise generator is shared, a new cue added
+        # earlier would shift every file after it.
+        "tracker_delete": room(plop(f0=330.0, f1=120.0, dur=0.15, tau=0.06, gain=0.85)),
     }

@@ -350,7 +350,9 @@ objet.
 
 ## Essai 7 (2026-10-28, iPhone)
 
-- `trackerDelete`, nouveau moment : une bouffée sombre et un plop grave,
+- `trackerDelete`, nouveau moment : le plop de l'effacement, plus grave et
+  plus lourd (330 → 120 Hz ; l'utilisateur a refusé une bouffée d'air, « trop
+  différent » du point effacé, il faut rester dans la même famille),
   joué au tap « Supprimer » du pop-up de confirmation (`ConfirmDialog.show(
   confirmSound:)`), avant la rétraction de la carte ; la fermeture du pop-up
   se tait. Avant, seule la fermeture du pop-up sonnait.

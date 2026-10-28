@@ -20,7 +20,7 @@ de marimba (fondamentale, anche au quadruple, coup de maillet), seules,
 pour l'ouverture, la fermeture et les pop-ups ; un « ding » de cloche à
 partiels inharmoniques, façon orbe d'expérience, pour la création et la
 légende ; un souffle, plus clair à l'ouverture et plus sombre à la fermeture,
-pour le panneau ; une bouffée sombre et un plop grave pour la suppression
+pour le panneau ; le même plop, plus grave et plus lourd, pour la suppression
 d'un tracker. Un seul son par moment, jamais deux superposés. Aucune
 licence tierce.
 
