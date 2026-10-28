@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Builds assets/sounds/<cue>.wav from cute_palette.py.
+"""Builds assets/sounds/<cue>.wav from a palette module.
 
-  python3 tools/sounds/build.py
+  python3 tools/sounds/build.py                 # bubble_palette, the set under trial
+  python3 tools/sounds/build.py cute_palette    # the previous set (kept in tools/sounds/aside/cute)
 
 Each cue is trimmed of its leading silence, cut to its length with a
 fade-out, peak-normalised and written as 16-bit mono 44.1 kHz wav. Needs
@@ -21,7 +22,9 @@ PEAK_DB = {"press": -10.0, "drag_hover": -10.0, "select": -6.0, "step_next": -6.
 LEVEL_DB = -2.0  # the whole set, under the per-cue peaks
 
 sys.path.insert(0, str(HERE))
-import cute_palette  # noqa: E402
+import importlib  # noqa: E402
+
+PALETTE = importlib.import_module(sys.argv[1] if len(sys.argv) > 1 else "bubble_palette")
 
 
 def shape(x: np.ndarray, cue: str) -> np.ndarray:
@@ -50,5 +53,5 @@ def write(cue: str, x: np.ndarray):
 
 
 if __name__ == "__main__":
-    for cue, x in cute_palette.render().items():
+    for cue, x in PALETTE.render().items():
         write(cue, shape(x.astype(np.float32), cue))
