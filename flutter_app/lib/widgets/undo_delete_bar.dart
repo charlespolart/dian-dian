@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../providers/language_provider.dart';
 import '../theme/app_theme.dart';
 import 'press_scale.dart';
 
@@ -41,6 +43,7 @@ class _UndoDeleteBarState extends State<UndoDeleteBar>
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageProvider>();
     // The bar sits beside the screens in the shell's Stack, under no
     // Scaffold: without a Material of its own its texts would inherit
     // MaterialApp's fallback style (a yellow double underline).
@@ -67,7 +70,7 @@ class _UndoDeleteBarState extends State<UndoDeleteBar>
             children: [
               Expanded(
                 child: Text(
-                  '"${widget.pageName}" deleted',
+                  lang.t('tracker.deleted').replaceAll('{name}', widget.pageName),
                   style: AppFonts.dot(fontSize: 12, color: AppColors.text),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -85,7 +88,7 @@ class _UndoDeleteBarState extends State<UndoDeleteBar>
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    'Undo',
+                    lang.t('common.undo'),
                     style: AppFonts.pixel(
                       fontSize: 11,
                       color: AppColors.accent,

@@ -237,6 +237,8 @@ class LanguageProvider extends ChangeNotifier {
       // Common
       'common.cancel': 'Annuler',
       'common.delete': 'Supprimer',
+      'common.undo': 'Annuler',
+      'tracker.deleted': '« {name} » supprimé',
       'common.yes': 'Oui',
       'common.erase': 'Effacer',
       'common.add': '+ Ajouter',
@@ -476,6 +478,8 @@ class LanguageProvider extends ChangeNotifier {
       // Common
       'common.cancel': 'Cancel',
       'common.delete': 'Delete',
+      'common.undo': 'Undo',
+      'tracker.deleted': '"{name}" deleted',
       'common.yes': 'Yes',
       'common.erase': 'Erase',
       'common.add': '+ Add',
@@ -711,6 +715,8 @@ class LanguageProvider extends ChangeNotifier {
       // Common
       'common.cancel': '取消',
       'common.delete': '删除',
+      'common.undo': '撤销',
+      'tracker.deleted': '已删除「{name}」',
       'common.yes': '确定',
       'common.erase': '清除',
       'common.add': '+ 添加',
@@ -946,6 +952,8 @@ class LanguageProvider extends ChangeNotifier {
       // Common
       'common.cancel': '取消',
       'common.delete': '刪除',
+      'common.undo': '復原',
+      'tracker.deleted': '已刪除「{name}」',
       'common.yes': '確定',
       'common.erase': '清除',
       'common.add': '+ 新增',
