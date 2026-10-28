@@ -85,7 +85,7 @@ Remarques Play Console : bannière AdMob sous la navigation 3 boutons à
 vérifier, puis AGP 9 / Gradle 9.1 / Kotlin 2.3 + R8 dans une release
 dédiée testée sur appareil. Détail : `ANDROID_RELEASE_PLAN.md` §8.
 
-### 7. Esthétique : animations, puis sons — en cours
+### 7. Esthétique : animations, sons, vibrations, écran de lancement — fusionné sur master le 2026-10-28
 Brainstormé et spécifié le 2026-10-22 :
 `docs/superpowers/specs/2026-10-22-animations-design.md`, branche
 `feat/animations`, livraison en app 1.5.0 après la 1.4.0. Une seule règle de
@@ -100,6 +100,16 @@ Lot 2, brainstormé et spécifié le 2026-10-23 :
 `docs/superpowers/plans/2026-10-23-sounds.md`. Dix moments, trois palettes
 à l'essai sur l'appareil (Papeterie / Mixkit, Interface douce / Kenney CC0,
 Pixel / synthèse), une seule livrée, réglage « Sons » pour tout couper.
+Validé sur l'iPhone et fusionné le 2026-10-28 (70 commits) : morphing,
+reveal, dix-huit sons synthétisés (`tools/sounds/cute_palette.py`, famille
+bulles / plops / marimba / ding / souffle, plus aucun clic en bois),
+réglages « Sons » et « Vibrations », vibrations ciblées, écran de lancement
+natif (titre et points, `tools/launch/render.py`). Reste pour la sortie :
+notes de version 1.5.0 (CHANGELOG, `flutter_app/docs/changelogs/1.5.0.md`
+en quatre langues, encart Nouveautés) **une fois la 1.4.0 taguée** — master
+contient maintenant la 1.4.0 non sortie et tout ceci ; pour sortir la 1.4.0
+seule, taguer `949e164` (master avant la fusion). Passe Android encore à
+faire (sons, vibrations, écran de lancement sur Android 11 et moins).
 Lot 3, demandé le 2026-10-22, à faire à la suite : un indicateur discret sur
 les points qui portent un commentaire (on ne sait plus lesquels en ont ; le
 cercle du jour est déjà pris, trouver autre chose de léger).
