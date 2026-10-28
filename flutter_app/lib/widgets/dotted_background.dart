@@ -28,18 +28,19 @@ class _DottedPainter extends CustomPainter {
       Paint()..color = AppColors.bg,
     );
 
-    // Dots — centered so margins are equal on both sides
+    // Dots — a dot at the centre of the screen and the grid growing from it,
+    // so margins are equal on both sides and the native launch screens, which
+    // draw the same grid centred the same way, hand over without a jump.
     final dotPaint = Paint()..color = AppColors.bgDot;
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final cols = (cx / _spacing).floor();
+    final rows = (cy / _spacing).floor();
 
-    final colCount = (size.width / _spacing).floor();
-    final rowCount = (size.height / _spacing).floor();
-    final offsetX = (size.width - (colCount - 1) * _spacing) / 2;
-    final offsetY = (size.height - (rowCount - 1) * _spacing) / 2;
-
-    for (int c = 0; c < colCount; c++) {
-      final x = offsetX + c * _spacing;
-      for (int r = 0; r < rowCount; r++) {
-        final y = offsetY + r * _spacing;
+    for (int c = -cols; c <= cols; c++) {
+      final x = cx + c * _spacing;
+      for (int r = -rows; r <= rows; r++) {
+        final y = cy + r * _spacing;
         canvas.drawCircle(Offset(x, y), _radius, dotPaint);
       }
     }

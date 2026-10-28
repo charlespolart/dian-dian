@@ -16,12 +16,19 @@
                     <view key="view" contentMode="scaleToFill" id="Ze5-6b-2t3">
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
+                            <!-- The dotted background of the app, a square far larger than any screen, centred and cropped: the grid lands where Flutter draws it. -->
+                            <imageView opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" image="LaunchDots" translatesAutoresizingMaskIntoConstraints="NO" id="Dts-8f-2kQ">
+                            </imageView>
                             <!-- The title block of the Flutter loading screen (点点 / Dian Dian), centred like it, so the handover is invisible. -->
                             <imageView opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" image="LaunchImage" translatesAutoresizingMaskIntoConstraints="NO" id="YRO-k0-Ey4">
                             </imageView>
                         </subviews>
                         <color key="backgroundColor" red="0.96078431372549022" green="0.94117647058823528" blue="0.81568627450980391" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <constraints>
+                            <constraint firstItem="Dts-8f-2kQ" firstAttribute="top" secondItem="Ze5-6b-2t3" secondAttribute="top" id="Dt1-top-001"/>
+                            <constraint firstItem="Dts-8f-2kQ" firstAttribute="bottom" secondItem="Ze5-6b-2t3" secondAttribute="bottom" id="Dt2-bot-002"/>
+                            <constraint firstItem="Dts-8f-2kQ" firstAttribute="leading" secondItem="Ze5-6b-2t3" secondAttribute="leading" id="Dt3-lea-003"/>
+                            <constraint firstItem="Dts-8f-2kQ" firstAttribute="trailing" secondItem="Ze5-6b-2t3" secondAttribute="trailing" id="Dt4-tra-004"/>
                             <constraint firstItem="YRO-k0-Ey4" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="1a2-6s-vTC"/>
                             <constraint firstItem="YRO-k0-Ey4" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" id="4X2-HB-R7a"/>
                         </constraints>
@@ -33,6 +40,7 @@
         </scene>
     </scenes>
     <resources>
+        <image name="LaunchDots" width="1392" height="1392"/>
         <image name="LaunchImage" width="200" height="124"/>
     </resources>
 </document>

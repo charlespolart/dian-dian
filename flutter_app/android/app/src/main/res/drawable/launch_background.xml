@@ -5,6 +5,14 @@
      (icon on the cream of values-v31) instead. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@color/launch_background" />
+    <!-- The app's dotted background, tiled from the window's corner: its
+         phase can differ from Flutter's centred grid by up to half a step. -->
+    <item>
+        <bitmap
+            android:gravity="fill"
+            android:tileMode="repeat"
+            android:src="@drawable/launch_dots" />
+    </item>
     <item>
         <bitmap
             android:gravity="center"
