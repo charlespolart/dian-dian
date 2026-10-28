@@ -109,26 +109,41 @@ class MorphLayer extends StatelessWidget {
         // scale pivoting there too: a bounded box would centre the pivot on
         // the box, not on the glyphs, and push the end of the run out of the
         // clip.
+        // The layer is a sibling of the screens, under no Scaffold: without a
+        // Material of its own the title would inherit MaterialApp's fallback
+        // style (a yellow double underline). The transparent Material gives it
+        // what the real titles inherit from theirs (the theme's bodyMedium:
+        // line height, letter spacing). Letter spacing is absolute, so the
+        // scaled run would drift from the 11 px one by a fraction of a pixel
+        // per glyph: it is divided by the scale to land exactly at both ends.
         if (cardTitle != null && barTitle != null)
           Positioned.fromRect(
             rect: Rect.lerp(cardTitle, barTitle, g)!,
-            child: ClipRect(
-              child: OverflowBox(
-                alignment: Alignment.centerLeft,
-                minWidth: 0,
-                maxWidth: double.infinity,
-                minHeight: 0,
-                maxHeight: double.infinity,
-                child: Transform.scale(
-                  scale: lerpDouble(11 / 16, 1, g)!,
+            child: Material(
+              type: MaterialType.transparency,
+              child: ClipRect(
+                child: OverflowBox(
                   alignment: Alignment.centerLeft,
-                  child: Text(
-                    content.title,
-                    maxLines: 1,
-                    softWrap: false,
-                    overflow: TextOverflow.visible,
-                    style: AppFonts.pixel(fontSize: 16, color: Color.lerp(AppColors.text, AppColors.title, g)!),
-                  ),
+                  minWidth: 0,
+                  maxWidth: double.infinity,
+                  minHeight: 0,
+                  maxHeight: double.infinity,
+                  child: Builder(builder: (context) {
+                    final scale = lerpDouble(11 / 16, 1, g)!;
+                    final inherited = DefaultTextStyle.of(context).style;
+                    return Transform.scale(
+                      scale: scale,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        content.title,
+                        maxLines: 1,
+                        softWrap: false,
+                        overflow: TextOverflow.visible,
+                        style: AppFonts.pixel(fontSize: 16, color: Color.lerp(AppColors.text, AppColors.title, g)!)
+                            .copyWith(letterSpacing: (inherited.letterSpacing ?? 0) / scale),
+                      ),
+                    );
+                  }),
                 ),
               ),
             ),

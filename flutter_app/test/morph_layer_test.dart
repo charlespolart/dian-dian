@@ -46,6 +46,19 @@ void main() {
     expect(titleBox.left, closeTo(Rect.lerp(ends.cardTitle, ends.barTitle, 0.5)!.left, 0.5));
   });
 
+  testWidgets('the title inherits a real text style, never the MaterialApp fallback (the yellow double underline outside a Scaffold)', (tester) async {
+    const content = MorphContent(title: 'Mood', cells: null, year: 2026, legendColors: []);
+    // The real tree: the layer is a sibling of the screens in the stage's
+    // Stack, under MaterialApp but under no Scaffold or Material.
+    await tester.pumpWidget(const MaterialApp(
+      home: Stack(fit: StackFit.expand, children: [MorphLayer(ends: ends, content: content, g: 0.5, legendsOpacity: 1)]),
+    ));
+    final rich = tester.widget<RichText>(find.descendant(of: find.byType(MorphLayer), matching: find.byType(RichText)));
+    final style = rich.text.style!;
+    expect(style.decoration, TextDecoration.none);
+    expect(style.debugLabel ?? '', isNot(contains('fallback')));
+  });
+
   testWidgets('a long title keeps its glyph size (11 → 16 px by scale), never squeezed to fit its rect', (tester) async {
     const long = 'Un titre vraiment très long pour un tracker';
     const content = MorphContent(title: long, cells: null, year: 2026, legendColors: []);
@@ -67,11 +80,18 @@ void main() {
 
   testWidgets('at g = 0 the glyph run fills the card title rect exactly: a title at its natural width is never cut', (tester) async {
     const title = 'Lecture du soir';
+    // The card's MarqueeText is laid out under its Scaffold's Material: the
+    // theme's bodyMedium (line height, letter spacing) merged with the 11 px
+    // pixel style. Its viewport is exactly that run when it fits.
+    late TextStyle inherited;
+    await tester.pumpWidget(MaterialApp(home: Scaffold(body: Builder(builder: (context) {
+      inherited = DefaultTextStyle.of(context).style;
+      return const SizedBox();
+    }))));
     final painter = TextPainter(
-      text: TextSpan(text: title, style: AppFonts.pixel(fontSize: 11)),
+      text: TextSpan(text: title, style: inherited.merge(AppFonts.pixel(fontSize: 11))),
       textDirection: TextDirection.ltr,
     )..layout();
-    // The card's MarqueeText viewport is exactly the 11 px text when it fits.
     final cardTitle = Rect.fromLTWH(30, 44, painter.width, painter.height);
     final atCard = MorphEnds(
       card: ends.card,
