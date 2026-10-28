@@ -61,8 +61,12 @@ class TrackerScreen extends StatefulWidget {
 }
 
 class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProviderStateMixin {
-  /// Width the landscape title's pencil takes beside the text (gap + icon).
-  static const double _pencilRoom = 20;
+  /// Width the landscape title's pencil can take beside the text (gap + the
+  /// largest pencil): the font fit leaves it out of the text's width.
+  static const double _pencilRoom = 28;
+
+  /// The landscape pencil grows with the title: 14 px was lost next to 36 px.
+  static double _pencilSize(double fontSize) => (fontSize * 0.55).clamp(14.0, 22.0);
 
   static const _sidebarExpandedLandscape = 150.0;
   static const _sidebarExpandedPortrait = 90.0;
@@ -716,7 +720,7 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
                                           ),
                                         ),
                                         const SizedBox(width: 6),
-                                        Icon(Icons.edit, size: 14, color: AppColors.accent),
+                                        Icon(Icons.edit, size: _pencilSize(fontSize), color: AppColors.accent),
                                       ],
                                     );
                                   },

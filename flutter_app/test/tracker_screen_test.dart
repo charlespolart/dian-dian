@@ -125,15 +125,17 @@ void main() {
     }
   });
 
-  testWidgets('in landscape, the title\'s pencil sits on the title\'s line, to its right, not under it', (tester) async {
+  testWidgets('in landscape, the title\'s pencil sits on the title\'s line, to its right, and grows with the title', (tester) async {
     landscape(tester);
     ignoreOverflowUnderTestFont(tester);
     await tester.pumpWidget(TrackerHarness().widget);
     await tester.pumpAndSettle();
     final title = tester.getRect(find.text('Mood').first);
-    final pencil = find.byWidgetPredicate((w) => w is Icon && w.icon == Icons.edit && w.size == 14);
+    // The title's pencil is the only one beside a 36 px title: it grows with it.
+    final pencil = find.byWidgetPredicate((w) => w is Icon && w.icon == Icons.edit && (w.size ?? 0) >= 18);
     expect(pencil, findsOneWidget);
     final p = tester.getRect(pencil);
+    expect(p.height, closeTo(36 * 0.55, 0.5), reason: 'about half the title');
     expect(p.left, greaterThanOrEqualTo(title.right), reason: 'to the right of the title');
     expect((p.center.dy - title.center.dy).abs(), lessThan(title.height / 2), reason: 'on the title\'s line');
   });
