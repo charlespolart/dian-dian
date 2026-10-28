@@ -164,6 +164,42 @@ void main() {
     expect(anchors.titleEnd!.wraps, isTrue);
   });
 
+  testWidgets('arriving by the morph in landscape, the title never fades (it is the morph\'s landing) and the panel comes in by steps: back, year, stars, actions', (tester) async {
+    landscape(tester);
+    ignoreOverflowUnderTestFont(tester);
+    var elapsed = Duration.zero;
+    Future<void> pumpTo(Duration target) async {
+      await tester.pump(target - elapsed);
+      elapsed = target;
+    }
+
+    Iterable<double> fadesOver(Finder of) =>
+        tester.widgetList<FadeTransition>(find.ancestor(of: of.first, matching: find.byType(FadeTransition))).map((f) => f.opacity.value);
+    final handover = AppMotion.screen * AppMotion.morphHandover;
+    const frame = Duration(milliseconds: 16);
+    final title = find.text('Mood');
+    final back = find.text('<');
+    final year = find.text('~ 2026 ~');
+    final stars = find.byIcon(Icons.star_border);
+    final actions = find.byIcon(Icons.bar_chart);
+    await tester.pumpWidget(TrackerHarness(entrance: TrackerEntrance.morph).widget);
+    expect(fadesOver(title).where((o) => o < 1), isEmpty, reason: 'the title is there from the first frame, under the layer');
+    for (final f in [back, year, stars, actions]) {
+      expect(opacityOver(tester, f), 0, reason: 'the rest waits for the handover');
+    }
+    // Three staggers past the handover plus a frame: the back button is on its
+    // way, the year has just started, the stars and the actions have not.
+    await pumpTo(handover + AppMotion.stagger * 3 + frame);
+    expect(opacityOver(tester, back), greaterThan(opacityOver(tester, year)));
+    expect(opacityOver(tester, year), greaterThan(0));
+    expect(opacityOver(tester, stars), 0);
+    expect(opacityOver(tester, actions), 0);
+    await pumpTo(handover + AppMotion.stagger * 5 + AppMotion.quick + frame);
+    for (final f in [back, year, stars, actions]) {
+      expect(opacityOver(tester, f), 1, reason: 'all in once the reveal is over');
+    }
+  });
+
   testWidgets('without the morph, the chrome is there on the first frame', (tester) async {
     tabletPortrait(tester);
     await tester.pumpWidget(TrackerHarness().widget);

@@ -92,12 +92,16 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
   late final Animation<double> _revealGrid;
   late final Animation<double> _revealSidebar;
   late final Animation<double> _revealBar;
+  // Landscape only: the left panel comes in by steps after its back button.
+  late final Animation<double> _revealYear;
+  late final Animation<double> _revealStars;
+  late final Animation<double> _revealActions;
   bool _revealArmed = false;
 
   /// From the start of the open morph to where the real tracker takes over.
   static Duration get revealDelay => AppMotion.screen * AppMotion.debugMorphSlowdown * AppMotion.morphHandover;
   /// From the start of the open morph to the end of the last group's entrance.
-  static Duration get revealTotal => revealDelay + AppMotion.stagger * 2 + AppMotion.quick;
+  static Duration get revealTotal => revealDelay + AppMotion.stagger * 5 + AppMotion.quick;
 
   Animation<double> _revealSlice(int group) {
     final total = revealTotal.inMicroseconds.toDouble();
@@ -136,6 +140,9 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
     _revealGrid = _revealSlice(0);
     _revealSidebar = _revealSlice(1);
     _revealBar = _revealSlice(2);
+    _revealYear = _revealSlice(3);
+    _revealStars = _revealSlice(4);
+    _revealActions = _revealSlice(5);
   }
 
   void _changeYear(int delta) {
@@ -639,15 +646,15 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Left panel: back, title, year, stars — the bar's group of the reveal.
-          FadeTransition(
-            opacity: _revealBar,
-            child: SizedBox(
+          // Left panel. The title is the morph's landing and never fades (the
+          // layer hands over to it); the rest comes in by steps: back button
+          // with the bar's group, then the year, the stars, the actions.
+          SizedBox(
             width: 240,
             child: Column(
               children: [
                 // Back button top-left
-                Align(
+FadeTransition(opacity: _revealBar, child:                 Align(
                   alignment: Alignment.centerLeft,
                   child: PressScale(
                     behavior: HitTestBehavior.opaque,
@@ -660,7 +667,7 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
                       ),
                     ),
                   ),
-                ),
+                )),
                 // Centered content
                 Expanded(
                   child: Center(
@@ -732,27 +739,30 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
                                           ),
                                         ),
                                         const SizedBox(width: 6),
-                                        Icon(Icons.edit, size: _pencilSize(fontSize), color: AppColors.accent),
+                                        FadeTransition(
+                                          opacity: _revealBar,
+                                          child: Icon(Icons.edit, size: _pencilSize(fontSize), color: AppColors.accent),
+                                        ),
                                       ],
                                     );
                                   },
                                 ),
                         ),
                         const SizedBox(height: 12),
-                        Text(
+FadeTransition(opacity: _revealYear, child:                         Text(
                           '~ $_year ~',
                           style: AppFonts.dot(fontSize: 24, color: AppColors.subtitle, fontWeight: FontWeight.w500).copyWith(letterSpacing: 3),
-                        ),
+                        )),
                         const SizedBox(height: 8),
-                        Row(
+FadeTransition(opacity: _revealStars, child:                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: List.generate(5, (_) => Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 5),
                             child: Icon(Icons.star_border, size: 26, color: AppColors.star),
                           )),
-                        ),
+                        )),
                         const SizedBox(height: 16),
-                        Row(
+FadeTransition(opacity: _revealActions, child:                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             PressScale(
@@ -775,14 +785,13 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
                               ),
                             ),
                           ],
-                        ),
+                        )),
                       ],
                     ),
                   ),
                 ),
               ],
             ),
-          ),
           ),
           // Grid shell — sized to fit
           _buildBookShell(
