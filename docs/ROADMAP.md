@@ -104,6 +104,25 @@ Lot 3, demandé le 2026-10-22, à faire à la suite : un indicateur discret sur
 les points qui portent un commentaire (on ne sait plus lesquels en ont ; le
 cercle du jour est déjà pris, trouver autre chose de léger).
 
+### 8. Prix : étude de marché avant de retoucher l'offre (demandé le 2026-10-28)
+Intuition de départ : les prix actuels (mensuel / annuel / à vie, via
+RevenueCat ; les montants vivent dans App Store Connect et la Play Console,
+pas dans le code) ne sont « pas forcément adaptés ». Avant d'y toucher, une
+recherche approfondie : études déjà publiées sur ce que les gens acceptent de
+payer pour un suivi d'habitudes / d'humeur / « année en pixels », abonnement
+contre achat unique (part des utilisateurs qui refusent l'abonnement, prix
+d'ancrage d'un achat à vie, conversion et rétention typiques des apps de
+suivi), benchmarks de prix de l'existant (à lire avec prudence : peu de
+téléchargements sur cette catégorie, donc peu probant), et tout ce qui
+existe sur le sujet (rapports RevenueCat « State of Subscription Apps »,
+Sensor Tower / data.ai, forums d'indés, enquêtes de disposition à payer).
+Croiser avec nos propres chiffres : murs premium affichés (point 2,
+`backend/scripts/prod-events.sql`) et ventes réelles. Livrable : une note
+`docs/PRICING.md` avec les sources, une fourchette recommandée par formule
+(mensuel, annuel, à vie), et la question abonnement seul / achat unique seul
+/ les deux tranchée avec ses raisons. Ne rien changer dans les stores avant
+cette note.
+
 ## Fait récemment
 - 2026-10-14 : backend 1.1.0 en prod (bootstrap en une requête, store
   client, snapshot disque, fixes décembre / déconnexions / sync légendes),
