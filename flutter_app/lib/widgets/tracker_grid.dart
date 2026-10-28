@@ -176,14 +176,7 @@ class TrackerGrid extends StatelessWidget {
                                                   : null,
                                             ),
                                             child: color != null && hasComment(month, day)
-                                                ? Center(
-                                                    child: Container(
-                                                      key: const Key('dot.comment'),
-                                                      width: dotSize * 0.34,
-                                                      height: dotSize * 0.34,
-                                                      decoration: BoxDecoration(shape: BoxShape.circle, color: holeColor),
-                                                    ),
-                                                  )
+                                                ? Center(child: _commentHole(dotSize, holeColor))
                                                 : null,
                                           )
                                         : SizedBox(width: dotSize, height: dotSize),
@@ -315,24 +308,19 @@ class DotPop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dot = Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+      child: hole != null && !erased ? Center(child: _commentHole(size, hole!)) : null,
+    );
+    // Reduced motion: the final state at once (a TweenAnimationBuilder would
+    // still paint its first frame at 0.6).
+    if (AppMotion.reduced(context)) return erased ? const SizedBox.shrink() : dot;
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
       duration: AppMotion.of(context, erased ? AppMotion.quick : AppMotion.pop),
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(shape: BoxShape.circle, color: color),
-        child: hole != null && !erased
-            ? Center(
-                child: Container(
-                  key: const Key('dot.comment'),
-                  width: size * 0.34,
-                  height: size * 0.34,
-                  decoration: BoxDecoration(shape: BoxShape.circle, color: hole),
-                ),
-              )
-            : null,
-      ),
+      child: dot,
       builder: (context, t, child) {
         final scale = erased ? 1 - AppMotion.exit.transform(t) : fillScale.transform(t);
         return Opacity(
@@ -343,3 +331,17 @@ class DotPop extends StatelessWidget {
     );
   }
 }
+
+/// The comment ring's centre: a hole of the screen's colour, a third of the
+/// dot, with a 1 px line in the accent (the today ring's colour) just outside
+/// it, so the ring reads on a dot of the screen's own colour too.
+Widget _commentHole(double dotSize, Color hole) => Container(
+      key: const Key('dot.comment'),
+      width: dotSize * 0.34 + 2,
+      height: dotSize * 0.34 + 2,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: hole,
+        border: Border.all(color: AppColors.accent, width: 1),
+      ),
+    );

@@ -127,12 +127,20 @@ void main() {
     ]);
     final content = MorphContent(title: 'Mood', cells: cells, year: 2026, legendColors: const []);
     final hole = Color.alphaBlend(AppColors.screen, AppColors.shell).toARGB32();
+    final accent = AppColors.accent.toARGB32();
     PaintPattern ringAt(double g, {required int month, required int day}) {
       final centre = MorphLayer.dotCenter(ends, month: month, day: day, g: g);
       final r = MorphLayer.dotRadius(ends, g: g) * 0.34;
+      // The hole, then its 1 px accent line just outside it.
       return paints
         ..something((m, a) =>
-            m == #drawCircle && a[0] == centre && ((a[1] as double) - r).abs() < 0.01 && (a[2] as Paint).color.toARGB32() == hole);
+            m == #drawCircle && a[0] == centre && ((a[1] as double) - r).abs() < 0.01 && (a[2] as Paint).color.toARGB32() == hole)
+        ..something((m, a) =>
+            m == #drawCircle &&
+            a[0] == centre &&
+            ((a[1] as double) - (r + 0.5)).abs() < 0.01 &&
+            (a[2] as Paint).style == PaintingStyle.stroke &&
+            (a[2] as Paint).color.toARGB32() == accent);
     }
 
     await tester.pumpWidget(MaterialApp(

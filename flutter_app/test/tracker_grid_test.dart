@@ -84,11 +84,14 @@ void main() {
     final holes = find.byKey(const Key('dot.comment'));
     expect(holes, findsOneWidget, reason: 'one commented cell, one hole');
     final dot = find.ancestor(of: holes, matching: find.byType(Container)).first;
-    expect(tester.getSize(holes).width, closeTo(tester.getSize(dot).width * 0.34, 0.01));
+    // The hole is a third of the dot, ringed by a 1 px line in the accent (the
+    // today ring's colour) so it reads on a dot of the screen's own colour.
+    expect(tester.getSize(holes).width, closeTo(tester.getSize(dot).width * 0.34 + 2, 0.01));
     expect(tester.getCenter(holes), tester.getCenter(dot));
     final deco = tester.widget<Container>(holes).decoration! as BoxDecoration;
     expect(deco.shape, BoxShape.circle);
     expect(deco.color, Color.alphaBlend(AppColors.screen, AppColors.shell), reason: 'the hole shows the screen behind the dot');
+    expect(deco.border, Border.all(color: AppColors.accent, width: 1), reason: 'a second colour, whatever the dot');
   });
 
   // The popped cell is filled (a fill pop over an empty cell draws nothing).
@@ -142,6 +145,18 @@ void main() {
     await tester.pumpWidget(host(commented: false));
     await tester.pumpAndSettle();
     expect(popHole, findsNothing);
+  });
+
+  testWidgets('under reduced motion the pop is the plain dot at once: no bounce, no first frame at 60 %', (tester) async {
+    const pop = CellChange(pageId: 'a', year: 2026, month: 2, day: 5, color: '#FF0000', erased: false, seq: 1);
+    await tester.pumpWidget(MediaQuery(
+      data: const MediaQueryData(disableAnimations: true),
+      child: popHost(pop),
+    ));
+    await tester.pump();
+    expect(find.byType(DotPop), findsOneWidget);
+    expect(find.descendant(of: find.byType(DotPop), matching: find.byType(TweenAnimationBuilder<double>)), findsNothing);
+    expect(find.descendant(of: find.byType(DotPop), matching: find.byType(Transform)), findsNothing);
   });
 
   testWidgets('a change on another year draws nothing', (tester) async {

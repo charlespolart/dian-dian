@@ -99,6 +99,7 @@ class MorphLayer extends StatelessWidget {
             dotEmpty: AppColors.dotEmpty,
             dotBorder: AppColors.dotBorder,
             hole: Color.alphaBlend(AppColors.screen, AppColors.shell),
+            ring: AppColors.accent,
           ),
         ),
         // The title keeps its glyph size (pixel 11 on the card, 16 in the bar,
@@ -166,6 +167,7 @@ class _MorphPainter extends CustomPainter {
   final Color dotEmpty;
   final Color dotBorder;
   final Color hole;
+  final Color ring;
 
   const _MorphPainter({
     required this.ends,
@@ -179,6 +181,7 @@ class _MorphPainter extends CustomPainter {
     required this.dotEmpty,
     required this.dotBorder,
     required this.hole,
+    required this.ring,
   });
 
   static Color _hex(String hex) => Color(int.parse('FF${hex.replaceFirst('#', '')}', radix: 16));
@@ -223,6 +226,14 @@ class _MorphPainter extends CustomPainter {
           // card: the hole fades in with g.
           if (g > 0 && (cell.comment ?? '').isNotEmpty) {
             canvas.drawCircle(c, radius * 0.34, Paint()..color = hole.withValues(alpha: hole.a * g));
+            canvas.drawCircle(
+              c,
+              radius * 0.34 + 0.5,
+              Paint()
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = 1
+                ..color = ring.withValues(alpha: ring.a * g),
+            );
           }
         } else {
           canvas.drawCircle(c, radius, emptyFill);
