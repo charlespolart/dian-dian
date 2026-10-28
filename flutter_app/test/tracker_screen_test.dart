@@ -125,6 +125,19 @@ void main() {
     }
   });
 
+  testWidgets('in landscape, the title\'s pencil sits on the title\'s line, to its right, not under it', (tester) async {
+    landscape(tester);
+    ignoreOverflowUnderTestFont(tester);
+    await tester.pumpWidget(TrackerHarness().widget);
+    await tester.pumpAndSettle();
+    final title = tester.getRect(find.text('Mood').first);
+    final pencil = find.byWidgetPredicate((w) => w is Icon && w.icon == Icons.edit && w.size == 14);
+    expect(pencil, findsOneWidget);
+    final p = tester.getRect(pencil);
+    expect(p.left, greaterThanOrEqualTo(title.right), reason: 'to the right of the title');
+    expect((p.center.dy - title.center.dy).abs(), lessThan(title.height / 2), reason: 'on the title\'s line');
+  });
+
   testWidgets('without the morph, the chrome is there on the first frame', (tester) async {
     tabletPortrait(tester);
     await tester.pumpWidget(TrackerHarness().widget);

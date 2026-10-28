@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/widgets.dart' show Size;
+import 'package:flutter/widgets.dart' show FlutterError, Size;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:dian_dian/services/audio_service.dart';
@@ -89,6 +89,27 @@ void tabletPortrait(WidgetTester tester) {
   tester.view.physicalSize = const Size(1800, 2700);
   tester.view.devicePixelRatio = 3.0;
   addTearDown(tester.view.reset);
+}
+
+/// A 900 × 600 logical surface, landscape: the tracker's wide layout with
+/// its left panel.
+void landscape(WidgetTester tester) {
+  tester.view.physicalSize = const Size(2700, 1800);
+  tester.view.devicePixelRatio = 3.0;
+  addTearDown(tester.view.reset);
+}
+
+/// Lets a test pass over RenderFlex overflows: the test font draws every
+/// glyph as a square, wider than the app's pixel fonts, so a row sized for
+/// the real font (the landscape sidebar's stats, 150 px) can spill by a few
+/// pixels here and nowhere else. Every other error still fails the test.
+void ignoreOverflowUnderTestFont(WidgetTester tester) {
+  final original = FlutterError.onError;
+  FlutterError.onError = (details) {
+    if (details.exceptionAsString().contains('overflowed')) return;
+    original?.call(details);
+  };
+  addTearDown(() => FlutterError.onError = original);
 }
 
 /// A [SoundPlayer] that records instead of playing.

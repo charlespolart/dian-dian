@@ -61,6 +61,9 @@ class TrackerScreen extends StatefulWidget {
 }
 
 class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProviderStateMixin {
+  /// Width the landscape title's pencil takes beside the text (gap + icon).
+  static const double _pencilRoom = 20;
+
   static const _sidebarExpandedLandscape = 150.0;
   static const _sidebarExpandedPortrait = 90.0;
   static const _sidebarExpandedTabletPortrait = 140.0;
@@ -688,26 +691,31 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
                                         textAlign: TextAlign.center,
                                         maxLines: maxLines,
                                         textScaler: scaler,
-                                      )..layout(maxWidth: constraints.maxWidth);
+                                      )..layout(maxWidth: constraints.maxWidth - _pencilRoom);
                                       if (!painter.didExceedMaxLines) {
                                         fontSize = size;
                                         break;
                                       }
                                     }
 
-                                    return Column(
+                                    // Pencil on the title's line, to its right: the
+                                    // title is renamed by tapping it. The fit above
+                                    // keeps the pencil's room out of the text's width.
+                                    return Row(
                                       mainAxisSize: MainAxisSize.min,
+                                      mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
-                                        Text(
-                                          _page.title,
-                                          style: AppFonts.pixel(fontSize: fontSize, color: AppColors.title).copyWith(letterSpacing: 2),
-                                          textAlign: TextAlign.center,
-                                          softWrap: true,
-                                          maxLines: maxLines,
-                                          overflow: TextOverflow.ellipsis,
+                                        Flexible(
+                                          child: Text(
+                                            _page.title,
+                                            style: AppFonts.pixel(fontSize: fontSize, color: AppColors.title).copyWith(letterSpacing: 2),
+                                            textAlign: TextAlign.center,
+                                            softWrap: true,
+                                            maxLines: maxLines,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
                                         ),
-                                        const SizedBox(height: 6),
-                                        // Pencil: the title is renamed by tapping it.
+                                        const SizedBox(width: 6),
                                         Icon(Icons.edit, size: 14, color: AppColors.accent),
                                       ],
                                     );
