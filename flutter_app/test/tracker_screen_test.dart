@@ -213,6 +213,15 @@ void main() {
     }
   });
 
+  testWidgets('Today sits a little higher: closer to the legend tools, with more room before the Stats title', (tester) async {
+    tabletPortrait(tester);
+    await tester.pumpWidget(TrackerHarness().widget);
+    await tester.pumpAndSettle();
+    final today = tester.getRect(find.text('Today'));
+    final stats = tester.getRect(find.text('Stats'));
+    expect(stats.top - today.bottom, greaterThanOrEqualTo(20));
+  });
+
   testWidgets('without the morph, the chrome is there on the first frame', (tester) async {
     tabletPortrait(tester);
     await tester.pumpWidget(TrackerHarness().widget);
