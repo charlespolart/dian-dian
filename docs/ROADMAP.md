@@ -82,8 +82,17 @@ devenir anxiogène (ton cozy / pixel-art). À reprendre par un spec
   de chat (skins), personnels, hors premium.
 - **Série (streak).** Règle énoncée par Charles le 2026-10-28 : utiliser
   l'app cinq jours d'affilée = série de 5 ; un jour sans, ça repart à zéro.
-  La « vie » hebdomadaire proposée le 14 (un jour manqué pardonné) reste une
-  option à trancher au spec. Deux séries distinctes : la série **globale**
+  **Rattrapage** (idée du 2026-10-28, à discuter au spec) : plutôt qu'une
+  remise à zéro sèche, un système de « sauvetage » — quand la série casse, un
+  bouton pour la sauver et la continuer, limité par un stock de rattrapages
+  (crédits), qui pourrait être plus petit en gratuit, ou conditionné à une
+  pub vidéo de 30 s en gratuit ; en premium, sans pub (jamais de pub en
+  premium) et peut-être plus de rattrapages. Point d'attention : la règle
+  « récompenses purement symboliques » (pas de valeur économique) tient
+  toujours, le rattrapage est une tolérance, pas une monnaie ; et une pub
+  récompensée est un nouveau format AdMob à intégrer. La « vie »
+  hebdomadaire proposée le 14 (un jour manqué pardonné) est une variante
+  plus simple du même besoin. Deux séries distinctes : la série **globale**
   d'engagement (jour où l'utilisateur a saisi quelque chose, quelle que soit
   la date coloriée) et les séries **par tracker**, calendaires, qui existent
   déjà côté client. La série globale doit être **serveur** (multi-appareils,
