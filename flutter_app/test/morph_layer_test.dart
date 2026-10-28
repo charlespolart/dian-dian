@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:dian_dian/models/cell_model.dart';
+import 'package:dian_dian/models/year_cells.dart';
 import 'package:dian_dian/theme/app_theme.dart';
 import 'package:dian_dian/widgets/grid_geometry.dart';
 import 'package:dian_dian/widgets/morph_layer.dart';
@@ -116,5 +118,32 @@ void main() {
     expect(topLeft.dy, closeTo(cardTitle.top, 0.5));
     expect(bottomRight.dx, closeTo(cardTitle.right, 0.5));
     expect(bottomRight.dy, closeTo(cardTitle.bottom, 0.5));
+  });
+
+  testWidgets('a commented cell is painted as a ring once the dots have landed (g = 1), plain on the card (g = 0)', (tester) async {
+    final cells = YearCells.fromList('p', 2026, const [
+      CellModel(pageId: 'p', year: 2026, month: 2, day: 5, color: '#FF0000', comment: 'note', updatedAt: ''),
+      CellModel(pageId: 'p', year: 2026, month: 3, day: 1, color: '#00FF00', updatedAt: ''),
+    ]);
+    final content = MorphContent(title: 'Mood', cells: cells, year: 2026, legendColors: const []);
+    final hole = Color.alphaBlend(AppColors.screen, AppColors.shell).toARGB32();
+    PaintPattern ringAt(double g, {required int month, required int day}) {
+      final centre = MorphLayer.dotCenter(ends, month: month, day: day, g: g);
+      final r = MorphLayer.dotRadius(ends, g: g) * 0.34;
+      return paints
+        ..something((m, a) =>
+            m == #drawCircle && a[0] == centre && ((a[1] as double) - r).abs() < 0.01 && (a[2] as Paint).color.toARGB32() == hole);
+    }
+
+    await tester.pumpWidget(MaterialApp(
+      home: Stack(fit: StackFit.expand, children: [MorphLayer(ends: ends, content: content, g: 1, legendsOpacity: 0)]),
+    ));
+    final landed = tester.renderObject(find.byType(CustomPaint).first);
+    expect(landed, ringAt(1, month: 2, day: 5));
+    expect(landed, isNot(ringAt(1, month: 3, day: 1)), reason: 'no comment, no hole');
+    await tester.pumpWidget(MaterialApp(
+      home: Stack(fit: StackFit.expand, children: [MorphLayer(ends: ends, content: content, g: 0, legendsOpacity: 1)]),
+    ));
+    expect(tester.renderObject(find.byType(CustomPaint).first), isNot(ringAt(0, month: 2, day: 5)), reason: 'the card preview shows no comments');
   });
 }

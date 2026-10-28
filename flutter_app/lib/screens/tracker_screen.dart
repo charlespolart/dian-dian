@@ -429,6 +429,7 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
                 year: _year,
                 pop: pop,
                 getCellColor: (month, day) => cellsProv.getCellColor(month, day),
+                hasComment: (month, day) => (cellsProv.getCell(month, day)?.comment ?? '').isNotEmpty,
                 onCellPress: (month, day, at) {
                   final existingCell = cellsProv.getCell(month, day);
                   if (existingCell != null) {

@@ -13,6 +13,11 @@ import 'morph_anchors.dart';
 class TrackerGrid extends StatelessWidget {
   final int year;
   final String? Function(int month, int day) getCellColor;
+
+  /// Whether the cell carries a comment: such a dot is drawn as a ring (a
+  /// hole of the screen's colour at its centre, a third of the dot), the
+  /// hint that there is something to read behind it.
+  final bool Function(int month, int day) hasComment;
   /// Called with the global position of the tap, so the editor can be born
   /// from the dot.
   final void Function(int month, int day, Offset globalPosition) onCellPress;
@@ -29,11 +34,14 @@ class TrackerGrid extends StatelessWidget {
     super.key,
     required this.year,
     required this.getCellColor,
+    this.hasComment = _never,
     required this.onCellPress,
     this.pop,
     this.anchors,
     this.chrome,
   });
+
+  static bool _never(int month, int day) => false;
 
   /// Centre of the dot of (month, day) in the grid's own coordinates: one
   /// label column on the left, one header row on top.
@@ -112,6 +120,8 @@ class TrackerGrid extends StatelessWidget {
           dotSize: cellSize * 0.78,
         );
         final dotSize = geometry.dotSize;
+        // The hole shows what lies behind the dot: the screen over the shell.
+        final holeColor = Color.alphaBlend(AppColors.screen, AppColors.shell);
         final gridW = geometry.size.width;
         final gridH = geometry.size.height;
 
@@ -165,6 +175,16 @@ class TrackerGrid extends StatelessWidget {
                                                   ? Border.all(color: AppColors.dotBorder, width: 0.5)
                                                   : null,
                                             ),
+                                            child: color != null && hasComment(month, day)
+                                                ? Center(
+                                                    child: Container(
+                                                      key: const Key('dot.comment'),
+                                                      width: dotSize * 0.34,
+                                                      height: dotSize * 0.34,
+                                                      decoration: BoxDecoration(shape: BoxShape.circle, color: holeColor),
+                                                    ),
+                                                  )
+                                                : null,
                                           )
                                         : SizedBox(width: dotSize, height: dotSize),
                                   ),

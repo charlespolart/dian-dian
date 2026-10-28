@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:dian_dian/models/cell_change.dart';
+import 'package:dian_dian/theme/app_theme.dart';
 import 'package:dian_dian/widgets/tracker_grid.dart';
 
 void main() {
@@ -63,6 +64,31 @@ void main() {
       expect(TrackerGrid.cellCenter(month: 12, day: 31, labelColWidth: c.labelColWidth, cellSize: c.cellSize, rowHeight: c.rowHeight),
           const Offset(20 + 18 * 11 + 9, 18 * 31 + 9));
     });
+  });
+
+  testWidgets('a commented cell is drawn as a ring: a hole of the screen colour at its centre, a third of the dot; plain cells have none', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: Center(
+        child: SizedBox(
+          width: 260,
+          height: 640,
+          child: TrackerGrid(
+            year: 2026,
+            getCellColor: (m, d) => (m == 2 && d == 5) || (m == 3 && d == 1) ? '#FF0000' : null,
+            hasComment: (m, d) => m == 2 && d == 5,
+            onCellPress: (_, _, _) {},
+          ),
+        ),
+      ),
+    ));
+    final holes = find.byKey(const Key('dot.comment'));
+    expect(holes, findsOneWidget, reason: 'one commented cell, one hole');
+    final dot = find.ancestor(of: holes, matching: find.byType(Container)).first;
+    expect(tester.getSize(holes).width, closeTo(tester.getSize(dot).width * 0.34, 0.01));
+    expect(tester.getCenter(holes), tester.getCenter(dot));
+    final deco = tester.widget<Container>(holes).decoration! as BoxDecoration;
+    expect(deco.shape, BoxShape.circle);
+    expect(deco.color, Color.alphaBlend(AppColors.screen, AppColors.shell), reason: 'the hole shows the screen behind the dot');
   });
 
   // The popped cell is filled (a fill pop over an empty cell draws nothing).
