@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#FEF3E5</color>
+    <!-- AppColors.bg of the default theme, the cream behind the launch screen -->
+    <color name="launch_background">#F5F0D0</color>
 </resources>
