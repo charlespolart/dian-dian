@@ -1127,7 +1127,7 @@ FadeTransition(opacity: _revealActions, child:                         Row(
           borderRadius: 6,
           dashLength: 3,
           gapLength: 2,
-          padding: EdgeInsets.fromLTRB(showLabel ? 8 : 4, 2, showLabel ? 8 : 4, 6),
+          padding: EdgeInsets.symmetric(horizontal: showLabel ? 8 : 4, vertical: 4),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [

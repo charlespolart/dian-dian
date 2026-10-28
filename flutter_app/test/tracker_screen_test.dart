@@ -11,6 +11,7 @@ import 'package:dian_dian/providers/legends_provider.dart';
 import 'package:dian_dian/providers/pages_provider.dart';
 import 'package:dian_dian/providers/premium_provider.dart';
 import 'package:dian_dian/screens/tracker_screen.dart';
+import 'package:dian_dian/widgets/dashed_border.dart';
 import 'package:dian_dian/widgets/morph_anchors.dart';
 import 'package:dian_dian/services/ad_service.dart';
 import 'package:dian_dian/services/api_service.dart';
@@ -219,7 +220,11 @@ void main() {
     await tester.pumpAndSettle();
     final today = tester.getRect(find.text('Today'));
     final stats = tester.getRect(find.text('Stats'));
-    expect(stats.top - today.bottom, greaterThanOrEqualTo(26));
+    expect(stats.top - today.bottom, greaterThanOrEqualTo(24));
+    // The dashed frame stays centred on its content: same padding above and below.
+    final frame = tester.getRect(find.ancestor(of: find.text('Today'), matching: find.byType(DashedBorder)).first);
+    final dot = tester.getRect(find.ancestor(of: find.text('Today'), matching: find.byType(Column)).first);
+    expect(dot.top - frame.top, closeTo(frame.bottom - dot.bottom, 0.5));
   });
 
   testWidgets('without the morph, the chrome is there on the first frame', (tester) async {
