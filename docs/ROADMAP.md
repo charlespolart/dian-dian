@@ -154,10 +154,12 @@ Lot 3, fait le 2026-10-28 : un point qui porte un commentaire est un anneau
 maquettes contre une pastille, une queue de bulle et un trait ; le morphing
 fait apparaître le trou avec les points ; rien sur les cartes ni l'export.
 Petits points restants avant la sortie, un par un et après vérification par
-Charles du comportement actuel : double retour système pendant la fermeture
-du tracker (peut quitter l'app sur Android), titre de la carte en paysage
-sur tablette, titre long qui défile pendant le morphing, encart Nouveautés
-et pop du point sous « Réduire les animations ».
+Charles du comportement actuel : titre de la carte en paysage sur tablette,
+titre long qui défile pendant le morphing, encart Nouveautés et pop du point
+sous « Réduire les animations ». Écarté le 2026-10-29 : avaler le retour
+système pendant la fermeture du tracker (deux retours rapides fermaient
+l'app sur Android) — décision de Charles, deux appuis rapides sont une
+intention de sortir, le correctif a été annulé.
 
 ### 8. Prix : étude de marché avant de retoucher l'offre (demandé le 2026-10-28)
 Intuition de départ : les prix actuels (mensuel / annuel / à vie, via
