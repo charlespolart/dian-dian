@@ -7,23 +7,6 @@ import 'package:dian_dian/widgets/back_swipe.dart';
 import 'package:dian_dian/widgets/screen_stage.dart';
 
 void main() {
-  group('systemBack', () {
-    test('while the stage animates, the system back is swallowed on every screen (a second back during the close morph used to close the app)', () {
-      for (final s in AppScreen.values) {
-        final back = systemBack(s, stageBusy: true);
-        expect(back.canPop, isFalse, reason: s.name);
-        expect(back.target, isNull, reason: s.name);
-      }
-    });
-
-    test('once settled, a root may pop and the others go to their target', () {
-      expect(systemBack(AppScreen.pageList, stageBusy: false), (canPop: true, target: null));
-      expect(systemBack(AppScreen.login, stageBusy: false), (canPop: true, target: null));
-      expect(systemBack(AppScreen.tracker, stageBusy: false), (canPop: false, target: AppScreen.pageList));
-      expect(systemBack(AppScreen.register, stageBusy: false), (canPop: false, target: AppScreen.login));
-    });
-  });
-
   group('systemBackTarget', () {
     test('tracker and settings go back to the page list', () {
       expect(systemBackTarget(AppScreen.tracker), AppScreen.pageList);

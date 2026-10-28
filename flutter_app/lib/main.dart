@@ -143,16 +143,6 @@ AppScreen? systemBackTarget(AppScreen screen) => switch (screen) {
   AppScreen.login || AppScreen.pageList || AppScreen.firstTracker => null,
 };
 
-/// What the system back does. Nothing while the stage animates: a second
-/// back during the tracker's close morph found the list, a root, and closed
-/// the app on Android. Once settled: a root may pop, the others go to their
-/// target.
-({bool canPop, AppScreen? target}) systemBack(AppScreen screen, {required bool stageBusy}) {
-  if (stageBusy) return (canPop: false, target: null);
-  final target = systemBackTarget(screen);
-  return (canPop: target == null, target: target);
-}
-
 /// How the stage goes from [from] to [to]: the tracker morphs out of and
 /// back into its card, the settings slide in and out, everything else fades.
 /// The tracker reveals its chrome after the open morph only; any other way
@@ -427,21 +417,10 @@ class _AppShellState extends State<AppShell> {
     }
   }
 
-  /// True from a navigation until the stage reports it has settled; the
-  /// system back is swallowed meanwhile (see [systemBack]).
-  bool _stageBusy = false;
-
-  void _stageSettled() {
-    if (mounted && _stageBusy) setState(() => _stageBusy = false);
-  }
-
   void _navigate(AppScreen screen, {String? pageId}) {
     final from = _screen;
     final leavingPageId = _activePageId;
     final transition = transitionFor(from, screen);
-    // Only a navigation that changes the stage's child animates (and settles):
-    // the same screen again would leave the flag armed for good.
-    final animates = screen != from || (pageId != null && pageId != _activePageId);
     switch (transition) {
       case StageTransition.morphOpen:
         context.read<AudioService>().play(SoundCue.trackerOpen);
@@ -463,7 +442,6 @@ class _AppShellState extends State<AppShell> {
       _trackerEntrance = trackerEntranceFor(transition);
       _screen = screen;
       if (pageId != null) _activePageId = pageId;
-      if (animates) _stageBusy = true;
     });
     if (screen == AppScreen.tracker && pageId != null) {
       _saveLastTracker(pageId, _selectedYear);
@@ -484,12 +462,11 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     // The screens are swapped by hand (no route per screen), so the system
     // back must be routed here or it would close the app from any screen.
-    final back = systemBack(_screen, stageBusy: _stageBusy);
     return PopScope(
-      canPop: back.canPop,
+      canPop: systemBackTarget(_screen) == null,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
-        final target = back.target;
+        final target = systemBackTarget(_screen);
         if (target != null) _navigate(target);
       },
       child: DottedBackground(
@@ -506,7 +483,6 @@ class _AppShellState extends State<AppShell> {
               return ScreenStage(
                 transition: StageTransition.fade,
                 anchors: _anchors,
-                onSettled: _stageSettled,
                 child: _buildAuthScreen(),
               );
             }
@@ -516,7 +492,6 @@ class _AppShellState extends State<AppShell> {
                 ScreenStage(
                   transition: _transition,
                   anchors: _anchors,
-                  onSettled: _stageSettled,
                   morphPageId: _morphPageId,
                   morphContent: _morphPageId == null ? null : _morphContentFor(context, _morphPageId!),
                   child: _buildAppScreen(),
