@@ -11,6 +11,7 @@ import 'package:dian_dian/providers/legends_provider.dart';
 import 'package:dian_dian/providers/pages_provider.dart';
 import 'package:dian_dian/providers/premium_provider.dart';
 import 'package:dian_dian/screens/tracker_screen.dart';
+import 'package:dian_dian/widgets/morph_anchors.dart';
 import 'package:dian_dian/services/ad_service.dart';
 import 'package:dian_dian/services/api_service.dart';
 import 'package:dian_dian/services/audio_service.dart';
@@ -28,10 +29,10 @@ import 'helpers.dart';
 class TrackerHarness {
   late final Widget widget;
 
-  TrackerHarness({TrackerEntrance entrance = TrackerEntrance.none, AudioService? audio}) {
+  TrackerHarness({TrackerEntrance entrance = TrackerEntrance.none, AudioService? audio, MorphAnchors? anchors, String title = 'Mood'}) {
     final client = MockClient((req) async => http.Response('{"error":"x"}', 404));
     final api = ApiService.custom(client: client, tokens: FakeTokens());
-    final rows = [pageJson('p0', title: 'Mood')];
+    final rows = [pageJson('p0', title: title)];
     final pages = PagesProvider(api: api)..applyBootstrap(rows);
     final legends = LegendsProvider(api: api)
       ..applyBootstrap({
@@ -64,7 +65,7 @@ class TrackerHarness {
         if (audio != null) ChangeNotifierProvider<AudioService>.value(value: audio),
       ],
       child: MaterialApp(
-        home: TrackerScreen(pageId: 'p0', initialYear: 2026, onBack: () {}, onOpenSettings: () {}, entrance: entrance),
+        home: TrackerScreen(anchors: anchors, pageId: 'p0', initialYear: 2026, onBack: () {}, onOpenSettings: () {}, entrance: entrance),
       ),
     );
   }
@@ -138,6 +139,29 @@ void main() {
     expect(p.height, closeTo(36 * 0.55, 0.5), reason: 'about half the title');
     expect(p.left, greaterThanOrEqualTo(title.right), reason: 'to the right of the title');
     expect((p.center.dy - title.center.dy).abs(), lessThan(title.height / 2), reason: 'on the title\'s line');
+  });
+
+  testWidgets('in landscape the title registers its morph anchor: the glyph block, with its fitted size, centred, one line for a short title', (tester) async {
+    landscape(tester);
+    ignoreOverflowUnderTestFont(tester);
+    final anchors = MorphAnchors();
+    await tester.pumpWidget(TrackerHarness(anchors: anchors).widget);
+    await tester.pumpAndSettle();
+    expect(anchors.rect(MorphAnchors.barTitle), tester.getRect(find.text('Mood').first));
+    final end = anchors.titleEnd!;
+    expect(end.fontSize, 36);
+    expect(end.letterSpacing, 2);
+    expect(end.centred, isTrue);
+    expect(end.wraps, isFalse);
+  });
+
+  testWidgets('in landscape a long title says it wraps: the morph will dissolve its one-line run into the block', (tester) async {
+    landscape(tester);
+    ignoreOverflowUnderTestFont(tester);
+    final anchors = MorphAnchors();
+    await tester.pumpWidget(TrackerHarness(anchors: anchors, title: 'Un titre vraiment très long pour un tracker').widget);
+    await tester.pumpAndSettle();
+    expect(anchors.titleEnd!.wraps, isTrue);
   });
 
   testWidgets('without the morph, the chrome is there on the first frame', (tester) async {

@@ -6,6 +6,7 @@ import 'package:dian_dian/models/cell_model.dart';
 import 'package:dian_dian/models/year_cells.dart';
 import 'package:dian_dian/theme/app_theme.dart';
 import 'package:dian_dian/widgets/grid_geometry.dart';
+import 'package:dian_dian/widgets/morph_anchors.dart';
 import 'package:dian_dian/widgets/morph_layer.dart';
 
 void main() {
@@ -153,5 +154,45 @@ void main() {
       home: Stack(fit: StackFit.expand, children: [MorphLayer(ends: ends, content: content, g: 0, legendsOpacity: 1)]),
     ));
     expect(tester.renderObject(find.byType(CustomPaint).first), isNot(ringAt(0, month: 2, day: 5)), reason: 'the card preview shows no comments');
+  });
+
+  testWidgets('towards the landscape panel (a centred 36 px title), at g = 1 the glyph run fills the title rect at 36 px, letter spacing 2, centred', (tester) async {
+    const title = 'Lecture du soir';
+    late TextStyle inherited;
+    await tester.pumpWidget(MaterialApp(home: Scaffold(body: Builder(builder: (context) {
+      inherited = DefaultTextStyle.of(context).style;
+      return const SizedBox();
+    }))));
+    // The panel's title as the real screen lays it out: the theme's bodyMedium
+    // merged with the 36 px pixel style and its letter spacing of 2.
+    final painter = TextPainter(
+      text: TextSpan(text: title, style: inherited.merge(AppFonts.pixel(fontSize: 36).copyWith(letterSpacing: 2))),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    final barTitle = Rect.fromLTWH(60, 120, painter.width, painter.height);
+    final atPanel = MorphEnds(
+      card: ends.card,
+      cardScreen: ends.cardScreen,
+      cardGrid: ends.cardGrid,
+      cardTitle: ends.cardTitle,
+      cardLegends: ends.cardLegends,
+      shell: ends.shell,
+      screen: ends.screen,
+      grid: ends.grid,
+      gridGeometry: geo,
+      barTitle: barTitle,
+      barTitleEnd: const MorphTitleEnd(fontSize: 36, letterSpacing: 2, centred: true, wraps: false),
+    );
+    const content = MorphContent(title: title, cells: null, year: 2026, legendColors: []);
+    await tester.pumpWidget(MaterialApp(
+      home: Stack(fit: StackFit.expand, children: [MorphLayer(ends: atPanel, content: content, g: 1, legendsOpacity: 0)]),
+    ));
+    final run = tester.renderObject<RenderParagraph>(find.text(title));
+    final topLeft = run.localToGlobal(Offset.zero);
+    final bottomRight = run.localToGlobal(Offset(run.textSize.width, run.textSize.height));
+    expect(topLeft.dx, closeTo(barTitle.left, 0.5));
+    expect(topLeft.dy, closeTo(barTitle.top, 0.5));
+    expect(bottomRight.dx, closeTo(barTitle.right, 0.5));
+    expect(bottomRight.dy, closeTo(barTitle.bottom, 0.5));
   });
 }

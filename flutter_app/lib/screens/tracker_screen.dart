@@ -114,6 +114,12 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
     return anchors == null ? child : MorphAnchor(anchors: anchors, anchorKey: key, child: child);
   }
 
+  /// The landscape title's anchor, with how it is set.
+  Widget _anchorTitle(MorphTitleEnd end, Widget child) {
+    final anchors = widget.anchors;
+    return anchors == null ? child : MorphAnchor.title(anchors: anchors, end: end, child: child);
+  }
+
   PageModel get _page {
     final pages = context.read<PagesProvider>().pages;
     return pages.firstWhere((p) => p.id == widget.pageId);
@@ -685,8 +691,9 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
                                     const sizes = [36.0, 30.0, 24.0, 20.0, 16.0];
                                     final scaler = MediaQuery.textScalerOf(context);
 
-                                    // Pick the largest font size that fits in 3 lines.
+                                    // Pick the largest font size that fits in [maxLines].
                                     double fontSize = sizes.last;
+                                    var lines = 1;
                                     for (final size in sizes) {
                                       final style = AppFonts.pixel(fontSize: size, color: AppColors.title).copyWith(letterSpacing: 2);
                                       final painter = TextPainter(
@@ -696,11 +703,13 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
                                         maxLines: maxLines,
                                         textScaler: scaler,
                                       )..layout(maxWidth: constraints.maxWidth - _pencilRoom);
-                                      if (!painter.didExceedMaxLines) {
-                                        fontSize = size;
-                                        break;
-                                      }
+                                      fontSize = size;
+                                      lines = painter.computeLineMetrics().length;
+                                      if (!painter.didExceedMaxLines) break;
                                     }
+                                    // The morph's title lands here: this size, centred, and
+                                    // whether it wraps (then the run dissolves into it).
+                                    final titleEnd = MorphTitleEnd(fontSize: fontSize, letterSpacing: 2, centred: true, wraps: lines > 1);
 
                                     // Pencil on the title's line, to its right: the
                                     // title is renamed by tapping it. The fit above
@@ -710,13 +719,16 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
                                         Flexible(
-                                          child: Text(
-                                            _page.title,
-                                            style: AppFonts.pixel(fontSize: fontSize, color: AppColors.title).copyWith(letterSpacing: 2),
-                                            textAlign: TextAlign.center,
-                                            softWrap: true,
-                                            maxLines: maxLines,
-                                            overflow: TextOverflow.ellipsis,
+                                          child: _anchorTitle(
+                                            titleEnd,
+                                            Text(
+                                              _page.title,
+                                              style: AppFonts.pixel(fontSize: fontSize, color: AppColors.title).copyWith(letterSpacing: 2),
+                                              textAlign: TextAlign.center,
+                                              softWrap: true,
+                                              maxLines: maxLines,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
                                           ),
                                         ),
                                         const SizedBox(width: 6),

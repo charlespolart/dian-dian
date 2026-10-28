@@ -19,7 +19,7 @@ enum StageTransition {
 }
 
 typedef _CardSide = ({Rect card, Rect screen, Rect grid, Rect? title, Rect? legends});
-typedef _TrackerSide = ({Rect shell, Rect screen, Rect grid, TrackerGridGeometry geometry, Rect? title});
+typedef _TrackerSide = ({Rect shell, Rect screen, Rect grid, TrackerGridGeometry geometry, Rect? title, MorphTitleEnd titleEnd});
 
 /// The app's screen switcher: the previous screen leaves while the new one
 /// arrives, the way [transition] says. The two morphs are a shared element:
@@ -138,7 +138,14 @@ class _ScreenStageState extends State<ScreenStage> with SingleTickerProviderStat
     final grid = a.rect(MorphAnchors.grid, ancestor: _box);
     final geometry = a.gridGeometry;
     if (shell == null || screen == null || grid == null || geometry == null) return null;
-    return (shell: shell, screen: screen, grid: grid, geometry: geometry, title: a.rect(MorphAnchors.barTitle, ancestor: _box));
+    return (
+      shell: shell,
+      screen: screen,
+      grid: grid,
+      geometry: geometry,
+      title: a.rect(MorphAnchors.barTitle, ancestor: _box),
+      titleEnd: a.titleEnd ?? MorphTitleEnd.bar,
+    );
   }
 
   void _afterMeasure() {
@@ -168,6 +175,7 @@ class _ScreenStageState extends State<ScreenStage> with SingleTickerProviderStat
         grid: tr.grid,
         gridGeometry: tr.geometry,
         barTitle: tr.title,
+        barTitleEnd: tr.titleEnd,
       );
     }
     setState(() {});

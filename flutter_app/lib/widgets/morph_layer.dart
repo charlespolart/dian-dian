@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../models/year_cells.dart';
 import '../theme/app_theme.dart';
 import 'grid_geometry.dart';
+import 'morph_anchors.dart';
 
 /// The two ends of the card → tracker morph, in the stage's coordinates:
 /// the card's frame, preview frame, preview grid, title and legend dots;
@@ -21,6 +22,10 @@ class MorphEnds {
   final TrackerGridGeometry gridGeometry;
   final Rect? barTitle;
 
+  /// How the title is set at [barTitle]: the portrait bar unless the
+  /// landscape panel registered its own.
+  final MorphTitleEnd barTitleEnd;
+
   const MorphEnds({
     required this.card,
     required this.cardScreen,
@@ -32,6 +37,7 @@ class MorphEnds {
     required this.grid,
     required this.gridGeometry,
     required this.barTitle,
+    this.barTitleEnd = MorphTitleEnd.bar,
   });
 
   MiniGridGeometry get miniGeometry => MiniGridGeometry.of(cardGrid.size);
@@ -118,35 +124,44 @@ class MorphLayer extends StatelessWidget {
         // line height, letter spacing). Letter spacing is absolute, so the
         // scaled run would drift from the 11 px one by a fraction of a pixel
         // per glyph: it is divided by the scale to land exactly at both ends.
+        // The tracker end ([MorphEnds.barTitleEnd]) is the portrait bar, or the
+        // landscape panel's title: a bigger size, its own letter spacing, and
+        // centred, so the pivot slides from the left edge to the centre on the
+        // way. A title the panel wraps over several lines cannot be landed on
+        // by a one-line run: the run keeps growing, clipped to the block, and
+        // the stage's cross-fade dissolves it into the real title.
         if (cardTitle != null && barTitle != null)
           Positioned.fromRect(
             rect: Rect.lerp(cardTitle, barTitle, g)!,
             child: Material(
               type: MaterialType.transparency,
               child: ClipRect(
-                child: OverflowBox(
-                  alignment: Alignment.centerLeft,
-                  minWidth: 0,
-                  maxWidth: double.infinity,
-                  minHeight: 0,
-                  maxHeight: double.infinity,
-                  child: Builder(builder: (context) {
-                    final scale = lerpDouble(11 / 16, 1, g)!;
-                    final inherited = DefaultTextStyle.of(context).style;
-                    return Transform.scale(
+                child: Builder(builder: (context) {
+                  final end = ends.barTitleEnd;
+                  final align = Alignment.lerp(Alignment.centerLeft, end.centred ? Alignment.center : Alignment.centerLeft, g)!;
+                  final scale = lerpDouble(11 / 16, end.fontSize / 16, g)!;
+                  final inherited = DefaultTextStyle.of(context).style.letterSpacing ?? 0;
+                  final spacing = lerpDouble(inherited, end.letterSpacing ?? inherited, g)! / scale;
+                  return OverflowBox(
+                    alignment: align,
+                    minWidth: 0,
+                    maxWidth: double.infinity,
+                    minHeight: 0,
+                    maxHeight: double.infinity,
+                    child: Transform.scale(
                       scale: scale,
-                      alignment: Alignment.centerLeft,
+                      alignment: align,
                       child: Text(
                         content.title,
                         maxLines: 1,
                         softWrap: false,
                         overflow: TextOverflow.visible,
                         style: AppFonts.pixel(fontSize: 16, color: Color.lerp(AppColors.text, AppColors.title, g)!)
-                            .copyWith(letterSpacing: (inherited.letterSpacing ?? 0) / scale),
+                            .copyWith(letterSpacing: spacing),
                       ),
-                    );
-                  }),
-                ),
+                    ),
+                  );
+                }),
               ),
             ),
           ),
