@@ -52,6 +52,30 @@ void main() {
     });
   });
 
+  testWidgets('under reduced motion the bullets are all there on the first frame, with no rise or fade', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    await tester.pumpWidget(ChangeNotifierProvider(
+      create: (_) => LanguageProvider(),
+      child: MaterialApp(
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => WhatsNewDialog.show(context, version: '1.4.0', bullets: const ['First bullet', 'Second bullet']),
+            child: const Text('open'),
+          ),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('open'));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Second bullet'), findsOneWidget);
+    expect(find.byType(TweenAnimationBuilder<double>), findsNothing);
+    final fades = tester.widgetList<Opacity>(find.ancestor(of: find.text('Second bullet'), matching: find.byType(Opacity)));
+    expect(fades.where((o) => o.opacity < 1), isEmpty, reason: 'nothing dims the bullets');
+  });
+
   testWidgets('the dialog shows the version, the bullets, and closes on OK', (tester) async {
     SharedPreferences.setMockInitialValues({});
     await tester.pumpWidget(ChangeNotifierProvider(

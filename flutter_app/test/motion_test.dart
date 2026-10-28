@@ -25,6 +25,22 @@ void main() {
     expect(reduced, Duration.zero);
   });
 
+  testWidgets('iOS "Reduce Motion" counts too: Flutter reports it as reduceMotion, not disableAnimations', (tester) async {
+    tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    late bool reduced;
+    late Duration d;
+    await tester.pumpWidget(MaterialApp(
+      home: Builder(builder: (context) {
+        reduced = AppMotion.reduced(context);
+        d = AppMotion.of(context, AppMotion.base);
+        return const SizedBox();
+      }),
+    ));
+    expect(reduced, isTrue);
+    expect(d, Duration.zero);
+  });
+
   test('an entrance lasts longer than its exit', () {
     expect(AppMotion.base > AppMotion.quick, isTrue);
     expect(AppMotion.screen > AppMotion.base, isTrue);

@@ -37,7 +37,11 @@ class AppMotion {
   static const Curve morph = Curves.easeInOutCubic;
   static const Curve exit = Curves.easeInCubic;
 
-  static bool reduced(BuildContext context) => MediaQuery.disableAnimationsOf(context);
+  /// Android's "animator duration scale 0" arrives as `disableAnimations`;
+  /// iOS "Reduce Motion" arrives as the platform's `reduceMotion` flag, which
+  /// Flutter deliberately keeps out of MediaQuery. Both mean the same here.
+  static bool reduced(BuildContext context) =>
+      MediaQuery.disableAnimationsOf(context) || View.of(context).platformDispatcher.accessibilityFeatures.reduceMotion;
 
   /// [d], or zero under reduced motion.
   static Duration of(BuildContext context, Duration d) => reduced(context) ? Duration.zero : d;
