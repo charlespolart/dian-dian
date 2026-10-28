@@ -365,5 +365,9 @@ objet.
 - `trackerOpen` / `trackerClose` « un petit peu longs » : notes espacées de
   70 ms au lieu de 90, queues plus courtes (τ 0,10 / 0,13 s), fichiers
   ≤ 520 ms (`trackerCreate` ≤ 650 ms).
-- `press` : le clic en bois ne plaît pas ; candidats envoyés à l'écoute
-  (tic, tape sourde, bulle, petite note de bois), choix en attente.
+- `press` : le clic en bois ne plaît pas (« le clic de base, par exemple
+  l'icône des réglages ») ; quatre candidats rendus (tic, tape sourde, bulle,
+  note de bois), la bulle (`pop` 700 → 1150 Hz, 50 ms, −12 dBFS) retenue par
+  défaut : la plus légère, et la famille des bulles avait déjà plu lors de
+  l'essai 3. Le script ressème le bruit par moment, pour qu'un moment édité ne
+  change plus les fichiers des autres.

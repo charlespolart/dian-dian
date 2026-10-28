@@ -2,7 +2,7 @@
 
 In the spirit of Minecraft, Tiny Wings and Stardew Valley — organic, warm,
 a bit wooden: wooden knocks (a filtered burst of noise with a low body) for
-buttons, steps, hovers and choices; the pickup "pop" (a sine that bends up
+steps, hovers and choices, a tiny bubble for a plain button; the pickup "pop" (a sine that bends up
 fast) for a dot filled; a dull "plop" for an erase or a drop; a breath of air, brighter or darker,
 for the side panel; little
 marimba notes alone for opening and closing (no knock there: the knock
@@ -120,27 +120,37 @@ C5, E5, G5, C6, E6, B6 = 523.25, 659.25, 783.99, 1046.5, 1318.5, 1975.5
 
 
 def render():
+    """One array per cue. The noise generator is reseeded from each cue's name
+    first, so editing or adding a cue never changes another cue's file."""
+    out = {}
+    for name, make in _voices().items():
+        global rng
+        rng = np.random.default_rng(sum(ord(ch) for ch in name) * 7919 + 11)
+        out[name] = make()
+    return out
+
+
+def _voices():
     return {
-        "dot_fill": room(pop()),
-        "dot_erase": room(plop()),
-        "tracker_open": room(mix([(0.0, marimba(C5, tau=0.10)), (0.07, marimba(E5, tau=0.10)), (0.14, marimba(G5, tau=0.13))])),
-        "tracker_close": room(mix([(0.0, marimba(G5, tau=0.10)), (0.07, marimba(E5, tau=0.10)), (0.14, marimba(C5, tau=0.13))])),
-        "dialog_open": room(marimba(G5, tau=0.09, gain=0.5)),
-        "dialog_close": room(marimba(E5, tau=0.08, gain=0.4)),
-        "tracker_create": room(mix([(0.0, marimba(C5, tau=0.10)), (0.07, marimba(E5, tau=0.10)), (0.14, marimba(G5, tau=0.10)), (0.24, ding(C6))])),
-        "legend_add": room(mix([(0.0, ding(E6, dur=0.3, tau=0.12, gain=0.5)), (0.07, ding(B6, dur=0.35, tau=0.14, gain=0.45))])),
-        "step_next": knock(2000.0, gain=0.7),
-        "step_prev": knock(1500.0, gain=0.7),
-        "press": knock(1600.0),
-        "panel_open": room(whoosh()),
-        "panel_close": room(whoosh(low=250.0, high=1100.0)),
-        "drag_pick": room(pop(380.0, 760.0, dur=0.12, tau=0.045)),
-        "drag_hover": knock(2400.0, dur=0.025, gain=0.6),
-        "drag_drop": room(plop(380.0, 160.0)),
-        "select": knock(1900.0, gain=0.75),
+        "dot_fill": lambda: room(pop()),
+        "dot_erase": lambda: room(plop()),
+        "tracker_open": lambda: room(mix([(0.0, marimba(C5, tau=0.10)), (0.07, marimba(E5, tau=0.10)), (0.14, marimba(G5, tau=0.13))])),
+        "tracker_close": lambda: room(mix([(0.0, marimba(G5, tau=0.10)), (0.07, marimba(E5, tau=0.10)), (0.14, marimba(C5, tau=0.13))])),
+        "dialog_open": lambda: room(marimba(G5, tau=0.09, gain=0.5)),
+        "dialog_close": lambda: room(marimba(E5, tau=0.08, gain=0.4)),
+        "tracker_create": lambda: room(mix([(0.0, marimba(C5, tau=0.10)), (0.07, marimba(E5, tau=0.10)), (0.14, marimba(G5, tau=0.10)), (0.24, ding(C6))])),
+        "legend_add": lambda: room(mix([(0.0, ding(E6, dur=0.3, tau=0.12, gain=0.5)), (0.07, ding(B6, dur=0.35, tau=0.14, gain=0.45))])),
+        "step_next": lambda: knock(2000.0, gain=0.7),
+        "step_prev": lambda: knock(1500.0, gain=0.7),
+        # The plain button: a tiny bubble, lighter and rounder than the wooden knock the user disliked.
+        "press": lambda: pop(f0=700.0, f1=1150.0, dur=0.05, tau=0.018, gain=0.6),
+        "panel_open": lambda: room(whoosh()),
+        "panel_close": lambda: room(whoosh(low=250.0, high=1100.0)),
+        "drag_pick": lambda: room(pop(380.0, 760.0, dur=0.12, tau=0.045)),
+        "drag_hover": lambda: knock(2400.0, dur=0.025, gain=0.6),
+        "drag_drop": lambda: room(plop(380.0, 160.0)),
+        "select": lambda: knock(1900.0, gain=0.75),
         # The erase's plop, lower and heavier: a whole tracker goes, in the
         # same family as a dot (erase 420→190, drop 380→160, this 330→120).
-        # Last on purpose: the noise generator is shared, a new cue added
-        # earlier would shift every file after it.
-        "tracker_delete": room(plop(f0=330.0, f1=120.0, dur=0.15, tau=0.06, gain=0.85)),
+        "tracker_delete": lambda: room(plop(f0=330.0, f1=120.0, dur=0.15, tau=0.06, gain=0.85)),
     }
