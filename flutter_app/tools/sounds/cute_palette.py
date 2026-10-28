@@ -1,13 +1,14 @@
 """The app's sounds: a cozy little game, synthesised.
 
 In the spirit of Minecraft, Tiny Wings and Stardew Valley — organic, warm,
-a bit wooden: wooden knocks (a filtered burst of noise with a low body) for
-steps, hovers and choices, a tiny bubble for a plain button; the pickup "pop" (a sine that bends up
-fast) for a dot filled; a dull "plop" for an erase or a drop; a breath of air, brighter or darker,
-for the side panel; little
-marimba notes alone for opening and closing (no knock there: the knock
-is the steps' and the buttons' voice); a bell "ding", like an experience
-orb, for a creation or a legend; the plop again, lower and heavier, for a deletion. render() returns {cue: float32 mono array
+a bit wooden: bubbles (a sine that bends in a few ms, a grain of noise) for
+the button, a choice, a step (up for next, down for back) and the hover of a
+drag, the bigger pickup "pop" of the same voice for a dot filled or a drag
+picked up; a dull "plop" for an erase or a drop, lower and heavier for a
+deletion; a breath of air, brighter or darker, for the side panel; little
+marimba notes alone for opening and closing and the dialogs; a bell "ding",
+like an experience orb, for a creation or a legend. The wooden knock of the
+first cut is gone: the user found it ugly wherever it played. render() returns {cue: float32 mono array
 at 44.1 kHz}. Tune here and run `python3 tools/sounds/build.py`."""
 import numpy as np
 
@@ -37,15 +38,6 @@ def _lowpass(x, cutoff):
 def _noise(dur):
     return rng.standard_normal(int(SR * dur)).astype(np.float32)
 
-
-def knock(tone=1800.0, dur=0.045, body=420.0, gain=0.8):
-    """A wooden click: a band of noise that dies in a few ms, over a low body."""
-    t = _t(dur)
-    n = _noise(dur)
-    band = _lowpass(n, tone * 2.2) - _lowpass(n, tone * 0.5)
-    x = band * np.exp(-t / 0.007)
-    x += 0.7 * np.sin(2 * np.pi * body * t) * np.exp(-t / 0.012)
-    return (x / (np.max(np.abs(x)) or 1.0) * gain).astype(np.float32)
 
 
 def pop(f0=520.0, f1=1040.0, dur=0.09, tau=0.035, gain=0.75):
@@ -140,16 +132,19 @@ def _voices():
         "dialog_close": lambda: room(marimba(E5, tau=0.08, gain=0.4)),
         "tracker_create": lambda: room(mix([(0.0, marimba(C5, tau=0.10)), (0.07, marimba(E5, tau=0.10)), (0.14, marimba(G5, tau=0.10)), (0.24, ding(C6))])),
         "legend_add": lambda: room(mix([(0.0, ding(E6, dur=0.3, tau=0.12, gain=0.5)), (0.07, ding(B6, dur=0.35, tau=0.14, gain=0.45))])),
-        "step_next": lambda: knock(2000.0, gain=0.7),
-        "step_prev": lambda: knock(1500.0, gain=0.7),
-        # The plain button: a tiny bubble, lighter and rounder than the wooden knock the user disliked.
+        # Steps are bubbles too, bending up for next and down for back.
+        "step_next": lambda: pop(f0=650.0, f1=1150.0, dur=0.06, tau=0.02, gain=0.65),
+        "step_prev": lambda: pop(f0=1150.0, f1=650.0, dur=0.06, tau=0.02, gain=0.65),
+        # The plain button: a tiny bubble.
         "press": lambda: pop(f0=700.0, f1=1150.0, dur=0.05, tau=0.018, gain=0.6),
         "panel_open": lambda: room(whoosh()),
         "panel_close": lambda: room(whoosh(low=250.0, high=1100.0)),
         "drag_pick": lambda: room(pop(380.0, 760.0, dur=0.12, tau=0.045)),
-        "drag_hover": lambda: knock(2400.0, dur=0.025, gain=0.6),
+        # The hover during a drag: the smallest bubble, high and very short.
+        "drag_hover": lambda: pop(f0=900.0, f1=1400.0, dur=0.035, tau=0.012, gain=0.5),
         "drag_drop": lambda: room(plop(380.0, 160.0)),
-        "select": lambda: knock(1900.0, gain=0.75),
+        # A choice (colour, theme, cursor, language): a rounder bubble than the button.
+        "select": lambda: pop(f0=560.0, f1=980.0, dur=0.065, tau=0.024, gain=0.65),
         # The erase's plop, lower and heavier: a whole tracker goes, in the
         # same family as a dot (erase 420→190, drop 380→160, this 330→120).
         "tracker_delete": lambda: room(plop(f0=330.0, f1=120.0, dur=0.15, tau=0.06, gain=0.85)),

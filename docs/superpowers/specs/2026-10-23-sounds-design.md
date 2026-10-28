@@ -370,4 +370,9 @@ objet.
   note de bois), la bulle (`pop` 700 → 1150 Hz, 50 ms, −12 dBFS) retenue par
   défaut : la plus légère, et la famille des bulles avait déjà plu lors de
   l'essai 3. Le script ressème le bruit par moment, pour qu'un moment édité ne
-  change plus les fichiers des autres.
+  change plus les fichiers des autres. La bulle plaît ; le clic en bois restait
+  sur le survol d'un glisser, la sélection et les flèches (« le bruit moche »)
+  : ces quatre moments sont des bulles aussi (survol : la plus petite et la
+  plus aiguë ; sélection : plus ronde que le bouton ; flèches : montante vers
+  l'avant, descendante vers l'arrière) et la voix `knock` est supprimée du
+  script, elle ne peut plus revenir.

@@ -10,11 +10,12 @@ produit par `python3 tools/sounds/build.py` (numpy seulement).
 ## Synthèse, propre à l'app
 
 `tools/sounds/cute_palette.py`, dans l'esprit de Minecraft, Tiny Wings et
-Stardew Valley : organique, chaud, un peu boisé. Des clics en bois (une
-bande de bruit qui meurt en quelques millisecondes sur un corps grave) pour
-les pas, le survol et la sélection, une petite bulle pour le bouton ; le « pop » de ramassage (un
-sinus qui monte très vite, un grain de bruit) pour le point posé et, plus
-grave, la prise d'un glisser ; un « plop » sourd (sinus qui descend dans un
+Stardew Valley : organique, chaud, un peu boisé. Des bulles (un sinus qui
+glisse en quelques millisecondes, un grain de bruit) pour le bouton, la
+sélection, les pas (qui montent vers l'avant, descendent vers l'arrière) et
+le survol d'un glisser ; le « pop » de ramassage, la
+même voix en plus grand, pour le point posé et, plus grave, la prise d'un
+glisser ; un « plop » sourd (sinus qui descend dans un
 coup grave, une bouffée de bruit) pour l'effacement et le dépôt ; des notes
 de marimba (fondamentale, anche au quadruple, coup de maillet), seules,
 pour l'ouverture, la fermeture et les pop-ups ; un « ding » de cloche à
