@@ -989,6 +989,9 @@ class _DraggableLegendTile extends StatelessWidget {
                             ),
                           ),
                         ),
+                        const SizedBox(width: 8),
+                        // The hint that the row opens its editor.
+                        Icon(Icons.edit, size: 12, color: AppColors.accent),
                       ],
                     ),
                   ),

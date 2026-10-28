@@ -91,6 +91,13 @@ void main() {
     expect(find.byKey(const Key('legend.editLabel')), findsNothing);
   });
 
+  testWidgets('every legend row carries a small pencil: a hint that the row opens its editor', (tester) async {
+    await open(tester);
+    expect(find.byIcon(Icons.edit), findsNWidgets(2), reason: 'one per legend, Great and Good');
+    final pencil = tester.widget<Icon>(find.byIcon(Icons.edit).first);
+    expect(pencil.size, 12);
+  });
+
   testWidgets('tapping a legend shows only its label field and the picker', (tester) async {
     final h = await open(tester);
     await tester.tap(find.text('Great'));
