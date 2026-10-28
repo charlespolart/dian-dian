@@ -1152,7 +1152,7 @@ FadeTransition(opacity: _revealActions, child:                         Row(
       padding: const EdgeInsets.only(bottom: 6),
       child: Column(
         children: [
-          if (expanded)
+          if (expanded) ...[
             Text(
               label,
               style: AppFonts.pixel(
@@ -1160,6 +1160,15 @@ FadeTransition(opacity: _revealActions, child:                         Row(
                 color: AppColors.textMuted,
               ),
             ),
+            const SizedBox(height: 3),
+            FractionallySizedBox(
+              widthFactor: 0.5,
+              child: CustomPaint(
+                size: const Size(double.infinity, 1),
+                painter: _DashedLinePainter(color: AppColors.screenBorder),
+              ),
+            ),
+          ],
         ],
       ),
     );

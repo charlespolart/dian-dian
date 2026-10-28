@@ -200,12 +200,17 @@ void main() {
     }
   });
 
-  testWidgets('the expanded sidebar draws no dashed separator under Today or under a section title', (tester) async {
+  testWidgets('the expanded sidebar keeps a dashed line under each section title (Legend, Stats) and none under Today', (tester) async {
     tabletPortrait(tester);
     await tester.pumpWidget(TrackerHarness().widget);
     await tester.pumpAndSettle();
     final dashed = find.byWidgetPredicate((w) => w is CustomPaint && w.painter.runtimeType.toString() == '_DashedLinePainter');
-    expect(dashed, findsNothing);
+    expect(dashed, findsNWidgets(2), reason: 'one per section title');
+    final today = tester.getRect(find.text('Today'));
+    final stats = tester.getRect(find.text('Stats'));
+    for (final r in dashed.evaluate().map((e) => tester.getRect(find.byWidget(e.widget)))) {
+      expect(r.top > today.bottom && r.top < stats.top, isFalse, reason: 'no line between Today and the Stats title');
+    }
   });
 
   testWidgets('without the morph, the chrome is there on the first frame', (tester) async {
