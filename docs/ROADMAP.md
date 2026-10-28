@@ -68,12 +68,42 @@ Pinterest Analytics et App Store Connect → Sources vers le 29 octobre, lot 2
 épinglable dans l'app (1.3.x). Ensuite : vidéo courte (TikTok / Reels /
 Shorts) avec des outils IA pour éviter le montage.
 
-### 4. Engagement (récompenses · notifications · avatars · widgets)
-Brainstorm du 2026-10-14, en pause, approche proposée non encore validée :
-série d'engagement serveur + pixels + succès, notifications locales,
-avatars de chat, widgets. À reprendre par un spec (`docs/superpowers/specs/`)
-une fois le point 1 livré. Détail des décisions et idées dans la note de
-reprise (mémoire de session) ; à recopier ici au moment du spec.
+### 4. Engagement : succès, série, notifications (puis avatars, widgets)
+Brainstorm du 2026-10-14, en pause ; rappel et précisions du 2026-10-28. But :
+faire revenir les gens tous les jours, de façon un peu plus ludique, sans
+devenir anxiogène (ton cozy / pixel-art). À reprendre par un spec
+(`docs/superpowers/specs/`), aucun code avant.
+
+- **Collection et succès.** Des icônes à collectionner, des succès nommés
+  (premier point, une semaine, un mois sans trou, 100 jours, année pleine,
+  5 trackers, 50 commentaires, 8 couleurs, saisie après minuit, 1er janvier…).
+  Purement symboliques : pas de jours premium gagnés, pas de thèmes vendus
+  en premium débloqués (décidé le 14). Couche cosmétique à part : avatars
+  de chat (skins), personnels, hors premium.
+- **Série (streak).** Règle énoncée par Charles le 2026-10-28 : utiliser
+  l'app cinq jours d'affilée = série de 5 ; un jour sans, ça repart à zéro.
+  La « vie » hebdomadaire proposée le 14 (un jour manqué pardonné) reste une
+  option à trancher au spec. Deux séries distinctes : la série **globale**
+  d'engagement (jour où l'utilisateur a saisi quelque chose, quelle que soit
+  la date coloriée) et les séries **par tracker**, calendaires, qui existent
+  déjà côté client. La série globale doit être **serveur** (multi-appareils,
+  widgets, notifications) ; il faut stocker le fuseau horaire de
+  l'utilisateur (aucun aujourd'hui, sinon ça casse à minuit UTC). Des
+  « pixels » (+1 par jour saisi, bonus aux paliers, ne baissent jamais)
+  amortissent la casse d'une série ; pas de niveaux ni d'XP.
+- **Notifications.** Locales d'abord (pas Firebase), opt-in, à heure choisie,
+  pour rappeler de remplir ses trackers. À brainstormer : **par tracker
+  plutôt que globale**, car certains trackers ne se remplissent pas tous les
+  jours (les règles, par exemple : on ne doit jamais rappeler ceux-là), avec
+  un choix simple et intuitif de quels trackers rappellent ; et **jamais dix
+  notifications pour dix trackers** : une seule, groupée, par jour, qui
+  liste ce qui reste à remplir. Plus « série en danger » le soir et « succès
+  débloqué ». Maximum une par jour.
+- **Widgets** (iOS WidgetKit, Android) en dernier : point du jour, série,
+  mini-grille du mois, avatar.
+
+Détail des décisions et du catalogue dans la note de reprise (mémoire de
+session, `handoff_engagement_roadmap`) ; à finir de recopier ici au spec.
 
 ### 5. Grille du tracker en CustomPainter (phase 2 perf)
 Un seul paint au lieu de ~2000 widgets par tap. Gain réel sur les
