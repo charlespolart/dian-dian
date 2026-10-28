@@ -222,6 +222,7 @@ class TrackerGrid extends StatelessWidget {
                       color: popColor == null ? AppColors.dotEmpty : _parseColor(popColor),
                       erased: pop.erased,
                       size: dotSize,
+                      hole: popColor != null && hasComment(pop.month, pop.day) ? holeColor : null,
                     ),
                   ),
                 ),
@@ -301,7 +302,11 @@ class DotPop extends StatelessWidget {
   final bool erased;
   final double size;
 
-  const DotPop({super.key, required this.color, required this.erased, required this.size});
+  /// The colour of the hole when the cell carries a comment: the pop stays
+  /// over the dot after its bounce, so it must look exactly like it.
+  final Color? hole;
+
+  const DotPop({super.key, required this.color, required this.erased, required this.size, this.hole});
 
   static final Animatable<double> fillScale = TweenSequence<double>([
     TweenSequenceItem(tween: Tween(begin: 0.6, end: 1.15).chain(CurveTween(curve: AppMotion.enter)), weight: 60),
@@ -317,6 +322,16 @@ class DotPop extends StatelessWidget {
         width: size,
         height: size,
         decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+        child: hole != null && !erased
+            ? Center(
+                child: Container(
+                  key: const Key('dot.comment'),
+                  width: size * 0.34,
+                  height: size * 0.34,
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: hole),
+                ),
+              )
+            : null,
       ),
       builder: (context, t, child) {
         final scale = erased ? 1 - AppMotion.exit.transform(t) : fillScale.transform(t);

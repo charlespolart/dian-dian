@@ -117,6 +117,33 @@ void main() {
     expect(find.byType(DotPop), findsOneWidget);
   });
 
+  testWidgets('the pop over a commented cell carries the hole too: it stays over the dot after its bounce and must not hide the ring', (tester) async {
+    const pop = CellChange(pageId: 'a', year: 2026, month: 2, day: 5, color: '#FF0000', erased: false, seq: 1);
+    Widget host({required bool commented}) => MaterialApp(
+          home: Center(
+            child: SizedBox(
+              width: 260,
+              height: 640,
+              child: TrackerGrid(
+                year: 2026,
+                getCellColor: (m, d) => m == 2 && d == 5 ? '#FF0000' : null,
+                hasComment: (m, d) => commented && m == 2 && d == 5,
+                onCellPress: (_, _, _) {},
+                pop: pop,
+              ),
+            ),
+          ),
+        );
+    final popHole = find.descendant(of: find.byType(DotPop), matching: find.byKey(const Key('dot.comment')));
+    await tester.pumpWidget(host(commented: true));
+    await tester.pumpAndSettle();
+    expect(find.byType(DotPop), findsOneWidget);
+    expect(popHole, findsOneWidget, reason: 'the pop is drawn like the dot it covers');
+    await tester.pumpWidget(host(commented: false));
+    await tester.pumpAndSettle();
+    expect(popHole, findsNothing);
+  });
+
   testWidgets('a change on another year draws nothing', (tester) async {
     await tester.pumpWidget(popHost(const CellChange(pageId: 'a', year: 2025, month: 2, day: 5, color: '#FF0000', erased: false, seq: 1)));
     expect(find.byType(DotPop), findsNothing);
