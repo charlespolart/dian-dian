@@ -11,8 +11,12 @@ PROD_HEALTH := https://diandian.overridedev.com/api/health
 VERSION      := $(shell sed -nE 's/^version: ([0-9]+\.[0-9]+\.[0-9]+)$$/\1/p' flutter_app/pubspec.yaml)
 BUILD_NUMBER := $(shell git rev-list --count HEAD)
 
-run:            ## Run the app on a device/simulator (local API in debug)
-	cd flutter_app && flutter run
+ADB      := $(HOME)/Library/Android/sdk/platform-tools/adb
+API_PORT := 3001
+
+run:            ## Run the app in debug on a device/simulator (local API: Android through adb reverse, iPhone through the Mac's Bonjour name; `make run d=<device id>` to pick one)
+	-@[ -x "$(ADB)" ] && for s in $$("$(ADB)" devices | awk 'NR>1 && $$2=="device"{print $$1}'); do "$(ADB)" -s $$s reverse tcp:$(API_PORT) tcp:$(API_PORT) >/dev/null && echo "adb reverse: $$s:localhost:$(API_PORT) → this Mac"; done; true
+	cd flutter_app && flutter run --dart-define=API_HOST=$$(scutil --get LocalHostName).local $(if $(d),-d $(d),)
 
 back:           ## Run the backend (tsx watch, native)
 	cd backend && npm run dev

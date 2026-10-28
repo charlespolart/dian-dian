@@ -88,5 +88,13 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- A debug build reaches the development server on the Mac by its Bonjour name (see Makefile `run`): plain HTTP on the local network, and the local-network prompt iOS shows once. Release builds never use either. -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Only a debug build uses the local network, to reach a development server on your own computer.</string>
 </dict>
 </plist>

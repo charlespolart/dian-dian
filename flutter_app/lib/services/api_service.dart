@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -6,6 +7,7 @@ import 'package:http/http.dart' as http;
 
 import 'storage_service.dart';
 import 'token_store.dart';
+import 'dev_host.dart';
 
 /// What a refresh attempt concluded about the stored session.
 ///
@@ -54,7 +56,7 @@ class ApiService {
   void Function(Map<String, dynamic> profile)? onTokensRefreshed;
 
   static String get baseUrl =>
-      kDebugMode ? 'http://localhost:3001' : 'https://diandian.overridedev.com';
+      kDebugMode ? 'http://${devApiHost(android: Platform.isAndroid)}:3001' : 'https://diandian.overridedev.com';
 
   String? get accessToken => _accessToken;
 

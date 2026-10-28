@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'api_service.dart';
+import 'dev_host.dart';
 
 /// Payload delivered to every registered WebSocket listener.
 class WsMessage {
@@ -40,7 +42,7 @@ class WsService {
   final List<WsListener> _listeners = [];
 
   static String get _baseWsUrl =>
-      kDebugMode ? 'ws://localhost:3001' : 'wss://diandian.overridedev.com';
+      kDebugMode ? 'ws://${devApiHost(android: Platform.isAndroid)}:3001' : 'wss://diandian.overridedev.com';
 
   bool get isConnected => _channel != null;
 
