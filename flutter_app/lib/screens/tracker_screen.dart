@@ -1036,10 +1036,9 @@ FadeTransition(opacity: _revealActions, child:                         Row(
             // Today's dot: the daily action, apart from the legend tools.
             // Empty (dashed, "+") until the day is set, then in its color
             // with the grid's "today" ring. Tap = editor on today's date.
-            // A touch closer to the legend tools, further from the stats.
-            const SizedBox(height: 2),
+            // Right under the legend tools, well apart from the stats.
             _todayDot(label: lang.t('tracker.today'), showLabel: showLabels, fontSize: editFs, dotSize: dotSize),
-            const SizedBox(height: 14),
+            const SizedBox(height: 20),
 
             // Stats at bottom
             _buildSectionHeader(lang.t('tracker.stats'), showLabels, sectionFs),
@@ -1128,7 +1127,7 @@ FadeTransition(opacity: _revealActions, child:                         Row(
           borderRadius: 6,
           dashLength: 3,
           gapLength: 2,
-          padding: EdgeInsets.symmetric(horizontal: showLabel ? 8 : 4, vertical: 6),
+          padding: EdgeInsets.fromLTRB(showLabel ? 8 : 4, 2, showLabel ? 8 : 4, 6),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [

@@ -219,7 +219,7 @@ void main() {
     await tester.pumpAndSettle();
     final today = tester.getRect(find.text('Today'));
     final stats = tester.getRect(find.text('Stats'));
-    expect(stats.top - today.bottom, greaterThanOrEqualTo(20));
+    expect(stats.top - today.bottom, greaterThanOrEqualTo(26));
   });
 
   testWidgets('without the morph, the chrome is there on the first frame', (tester) async {
