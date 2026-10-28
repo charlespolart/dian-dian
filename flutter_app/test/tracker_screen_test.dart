@@ -200,6 +200,14 @@ void main() {
     }
   });
 
+  testWidgets('the expanded sidebar draws no dashed separator under Today or under a section title', (tester) async {
+    tabletPortrait(tester);
+    await tester.pumpWidget(TrackerHarness().widget);
+    await tester.pumpAndSettle();
+    final dashed = find.byWidgetPredicate((w) => w is CustomPaint && w.painter.runtimeType.toString() == '_DashedLinePainter');
+    expect(dashed, findsNothing);
+  });
+
   testWidgets('without the morph, the chrome is there on the first frame', (tester) async {
     tabletPortrait(tester);
     await tester.pumpWidget(TrackerHarness().widget);

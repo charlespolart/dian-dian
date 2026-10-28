@@ -1038,15 +1038,7 @@ FadeTransition(opacity: _revealActions, child:                         Row(
             // with the grid's "today" ring. Tap = editor on today's date.
             const SizedBox(height: 6),
             _todayDot(label: lang.t('tracker.today'), showLabel: showLabels, fontSize: editFs, dotSize: dotSize),
-            const SizedBox(height: 6),
-            FractionallySizedBox(
-              widthFactor: 0.7,
-              child: CustomPaint(
-                size: const Size(double.infinity, 1),
-                painter: _DashedLinePainter(color: AppColors.screenBorder),
-              ),
-            ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
 
             // Stats at bottom
             _buildSectionHeader(lang.t('tracker.stats'), showLabels, sectionFs),
@@ -1160,7 +1152,7 @@ FadeTransition(opacity: _revealActions, child:                         Row(
       padding: const EdgeInsets.only(bottom: 6),
       child: Column(
         children: [
-          if (expanded) ...[
+          if (expanded)
             Text(
               label,
               style: AppFonts.pixel(
@@ -1168,15 +1160,6 @@ FadeTransition(opacity: _revealActions, child:                         Row(
                 color: AppColors.textMuted,
               ),
             ),
-            const SizedBox(height: 3),
-            FractionallySizedBox(
-              widthFactor: 0.5,
-              child: CustomPaint(
-                size: const Size(double.infinity, 1),
-                painter: _DashedLinePainter(color: AppColors.screenBorder),
-              ),
-            ),
-          ],
         ],
       ),
     );
