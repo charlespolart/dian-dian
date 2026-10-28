@@ -41,7 +41,12 @@ class _UndoDeleteBarState extends State<UndoDeleteBar>
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    // The bar sits beside the screens in the shell's Stack, under no
+    // Scaffold: without a Material of its own its texts would inherit
+    // MaterialApp's fallback style (a yellow double underline).
+    return Material(
+      type: MaterialType.transparency,
+      child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: AppColors.shell,
@@ -106,6 +111,7 @@ class _UndoDeleteBarState extends State<UndoDeleteBar>
             },
           ),
         ],
+      ),
       ),
     );
   }
