@@ -3,9 +3,8 @@
 One family only — the water bubble: a sine that bends up in a few
 milliseconds with a soft attack and a round octave under it. Bending down it
 is a "blub" (an erase, a drop, a close); ringing a little longer and higher
-it is a "droplet" (a creation, a legend); a handful of tiny ones scattered
-over a tenth of a second is a "fizz" (the side panel, rising when it opens,
-falling when it folds). Three bubbles rising open a tracker, three falling
+it is a "droplet" (a creation, a legend); the side panel is one low, round
+bubble unfolding and a low blub folding. Three bubbles rising open a tracker, three falling
 close it. No knock, no marimba, no breath of air. render() returns
 {cue: float32 mono array at 44.1 kHz}; the noise generator is reseeded from
 each cue's name so editing one never changes another's file. Tune here and
@@ -113,9 +112,10 @@ def _voices():
         "step_prev": lambda: bubble(1150.0, 650.0, dur=0.06, tau=0.02, gain=0.65),
         # The plain button: the tiniest bubble.
         "press": lambda: bubble(700.0, 1150.0, dur=0.05, tau=0.018, gain=0.6),
-        # The side panel: a fizz of tiny bubbles, rising as it unfolds, falling as it folds.
-        "panel_open": lambda: fizz(rising=True),
-        "panel_close": lambda: fizz(rising=False),
+        # The side panel: one low, round bubble as it unfolds, a low blub as it folds
+        # (the fizz of tiny bubbles was tried and disliked).
+        "panel_open": lambda: room(bubble(300.0, 620.0, dur=0.11, tau=0.045, gain=0.6, attack_ms=2.5)),
+        "panel_close": lambda: room(blub(420.0, 200.0, dur=0.11, tau=0.045, gain=0.55)),
         "drag_pick": lambda: room(bubble(380.0, 760.0, dur=0.12, tau=0.045)),
         "drag_hover": lambda: bubble(900.0, 1400.0, dur=0.035, tau=0.012, gain=0.5),
         "drag_drop": lambda: room(blub(380.0, 160.0)),
