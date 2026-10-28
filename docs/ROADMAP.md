@@ -149,9 +149,15 @@ en quatre langues, encart Nouveautés) **une fois la 1.4.0 taguée** — master
 contient maintenant la 1.4.0 non sortie et tout ceci ; pour sortir la 1.4.0
 seule, taguer `949e164` (master avant la fusion). Passe Android encore à
 faire (sons, vibrations, écran de lancement sur Android 11 et moins).
-Lot 3, demandé le 2026-10-22, à faire à la suite : un indicateur discret sur
-les points qui portent un commentaire (on ne sait plus lesquels en ont ; le
-cercle du jour est déjà pris, trouver autre chose de léger).
+Lot 3, fait le 2026-10-28 : un point qui porte un commentaire est un anneau
+(un trou de la couleur de l'écran au centre, un tiers du point), choisi sur
+maquettes contre une pastille, une queue de bulle et un trait ; le morphing
+fait apparaître le trou avec les points ; rien sur les cartes ni l'export.
+Petits points restants avant la sortie, un par un et après vérification par
+Charles du comportement actuel : double retour système pendant la fermeture
+du tracker (peut quitter l'app sur Android), titre de la carte en paysage
+sur tablette, titre long qui défile pendant le morphing, encart Nouveautés
+et pop du point sous « Réduire les animations ».
 
 ### 8. Prix : étude de marché avant de retoucher l'offre (demandé le 2026-10-28)
 Intuition de départ : les prix actuels (mensuel / annuel / à vie, via
