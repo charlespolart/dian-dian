@@ -221,10 +221,13 @@ void main() {
     final today = tester.getRect(find.text('Today'));
     final stats = tester.getRect(find.text('Stats'));
     expect(stats.top - today.bottom, greaterThanOrEqualTo(24));
-    // The dashed frame stays centred on its content: same padding above and below.
+    // The dashed frame breathes the same on its four sides.
     final frame = tester.getRect(find.ancestor(of: find.text('Today'), matching: find.byType(DashedBorder)).first);
-    final dot = tester.getRect(find.ancestor(of: find.text('Today'), matching: find.byType(Column)).first);
-    expect(dot.top - frame.top, closeTo(frame.bottom - dot.bottom, 0.5));
+    final content = tester.getRect(find.ancestor(of: find.text('Today'), matching: find.byType(Column)).first);
+    final gaps = [content.top - frame.top, frame.bottom - content.bottom, content.left - frame.left, frame.right - content.right];
+    for (final gap in gaps) {
+      expect(gap, closeTo(8, 0.5), reason: 'gaps: $gaps');
+    }
   });
 
   testWidgets('without the morph, the chrome is there on the first frame', (tester) async {

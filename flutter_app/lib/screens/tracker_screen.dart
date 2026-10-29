@@ -1127,7 +1127,8 @@ FadeTransition(opacity: _revealActions, child:                         Row(
           borderRadius: 6,
           dashLength: 3,
           gapLength: 2,
-          padding: EdgeInsets.symmetric(horizontal: showLabel ? 8 : 4, vertical: 4),
+          // The same breath on all four sides of the frame.
+          padding: EdgeInsets.all(showLabel ? 8 : 5),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1136,7 +1137,9 @@ FadeTransition(opacity: _revealActions, child:                         Row(
                 const SizedBox(height: 4),
                 Text(
                   label,
-                  style: AppFonts.pixel(fontSize: fontSize, color: AppColors.accent),
+                  // A tight line box, or the theme's line height would leave
+                  // more room under the glyphs than above the dot.
+                  style: AppFonts.pixel(fontSize: fontSize, color: AppColors.accent).copyWith(height: 1.0),
                   maxLines: 1,
                 ),
               ],
