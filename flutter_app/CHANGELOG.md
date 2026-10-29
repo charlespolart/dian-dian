@@ -12,6 +12,8 @@ count of the tagged commit (same on iOS and Android).
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-10-29
+
 Requires backend ≥ 1.2.0.
 
 ### Added
