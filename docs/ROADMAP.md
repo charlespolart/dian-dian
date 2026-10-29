@@ -143,11 +143,10 @@ Validé sur l'iPhone et fusionné le 2026-10-28 (70 commits) : morphing,
 reveal, dix-huit sons synthétisés (`tools/sounds/cute_palette.py`, famille
 bulles / plops / marimba / ding / souffle, plus aucun clic en bois),
 réglages « Sons » et « Vibrations », vibrations ciblées, écran de lancement
-natif (titre et points, `tools/launch/render.py`). Reste pour la sortie :
-notes de version 1.5.0 (CHANGELOG, `flutter_app/docs/changelogs/1.5.0.md`
-en quatre langues, encart Nouveautés) **une fois la 1.4.0 taguée** — master
-contient maintenant la 1.4.0 non sortie et tout ceci ; pour sortir la 1.4.0
-seule, taguer `949e164` (master avant la fusion). Passe Android encore à
+natif (titre et points, `tools/launch/render.py`). Décidé le 2026-10-29 :
+tout sort en **une seule version, la 1.4.0** (jamais publiée) ; ses notes
+(CHANGELOG, `docs/changelogs/1.4.0.md`, encart Nouveautés) couvrent
+l'activation et tout ceci. Backend 1.2.0 à déployer avant l'app. Passe Android encore à
 faire (sons, vibrations, écran de lancement sur Android 11 et moins).
 Lot 3, fait le 2026-10-28 : un point qui porte un commentaire est un anneau
 (un trou de la couleur de l'écran au centre, un tiers du point), choisi sur
