@@ -221,13 +221,14 @@ void main() {
     final today = tester.getRect(find.text('Today'));
     final stats = tester.getRect(find.text('Stats'));
     expect(stats.top - today.bottom, greaterThanOrEqualTo(24));
-    // The dashed frame breathes the same on its four sides.
+    // The dashed frame breathes the same on top, left and right, and a hair
+    // more at the bottom against the optical weight of the label.
     final frame = tester.getRect(find.ancestor(of: find.text('Today'), matching: find.byType(DashedBorder)).first);
     final content = tester.getRect(find.ancestor(of: find.text('Today'), matching: find.byType(Column)).first);
-    final gaps = [content.top - frame.top, frame.bottom - content.bottom, content.left - frame.left, frame.right - content.right];
-    for (final gap in gaps) {
-      expect(gap, closeTo(8, 0.5), reason: 'gaps: $gaps');
-    }
+    expect(content.top - frame.top, closeTo(8, 0.5));
+    expect(content.left - frame.left, closeTo(8, 0.5));
+    expect(frame.right - content.right, closeTo(8, 0.5));
+    expect(frame.bottom - content.bottom, closeTo(10, 0.5));
   });
 
   testWidgets('without the morph, the chrome is there on the first frame', (tester) async {

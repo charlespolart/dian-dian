@@ -1127,8 +1127,9 @@ FadeTransition(opacity: _revealActions, child:                         Row(
           borderRadius: 6,
           dashLength: 3,
           gapLength: 2,
-          // The same breath on all four sides of the frame.
-          padding: EdgeInsets.all(showLabel ? 8 : 5),
+          // The same breath on all sides, plus a hair at the bottom: text under a
+          // dot reads as sitting low, the eye wants a touch more below it.
+          padding: showLabel ? const EdgeInsets.fromLTRB(8, 8, 8, 10) : const EdgeInsets.all(5),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
