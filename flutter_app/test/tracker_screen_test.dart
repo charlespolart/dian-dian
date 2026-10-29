@@ -11,6 +11,7 @@ import 'package:dian_dian/providers/legends_provider.dart';
 import 'package:dian_dian/providers/pages_provider.dart';
 import 'package:dian_dian/providers/premium_provider.dart';
 import 'package:dian_dian/screens/tracker_screen.dart';
+import 'package:dian_dian/widgets/ad_banner.dart';
 import 'package:dian_dian/widgets/dashed_border.dart';
 import 'package:dian_dian/widgets/morph_anchors.dart';
 import 'package:dian_dian/services/ad_service.dart';
@@ -229,6 +230,20 @@ void main() {
     expect(content.left - frame.left, closeTo(8, 0.5));
     expect(frame.right - content.right, closeTo(8, 0.5));
     expect(frame.bottom - content.bottom, closeTo(10, 0.5));
+  });
+
+  testWidgets('in landscape the ad banner spans the space left of the shell, centred there, and asks for a banner as wide as that space', (tester) async {
+    landscape(tester);
+    ignoreOverflowUnderTestFont(tester);
+    final anchors = MorphAnchors();
+    await tester.pumpWidget(TrackerHarness(anchors: anchors).widget);
+    await tester.pumpAndSettle();
+    await tester.pump(); // the shell's edge is measured after the first layout
+    final shellLeft = anchors.rect(MorphAnchors.shell)!.left;
+    final slot = tester.widget<Positioned>(find.ancestor(of: find.byType(AdBannerWidget), matching: find.byType(Positioned)).first);
+    expect(slot.left, 0);
+    expect(slot.right, closeTo(900 - shellLeft, 0.5), reason: 'the slot ends at the shell');
+    expect(tester.widget<AdBannerWidget>(find.byType(AdBannerWidget)).width, closeTo(shellLeft, 0.5));
   });
 
   testWidgets('without the morph, the chrome is there on the first frame', (tester) async {

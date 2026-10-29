@@ -88,6 +88,10 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
   // that landing, not a second act), a stagger apart, the first starting
   // where the stage hands over to the real tracker. The clock belongs to
   // the screen, so a year change (a new grid) never replays it.
+  /// Landscape: the shell's left edge in this screen's coordinates, measured
+  /// after layout; the ad banner's slot ends there.
+  double? _shellLeft;
+
   late final AnimationController _reveal;
   late final Animation<double> _revealGrid;
   late final Animation<double> _revealSidebar;
@@ -303,6 +307,19 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
 
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
     final useWideLayout = isLandscape;
+    // Landscape: the banner lives in the space left of the shell, centred
+    // there and as wide as it; the shell's edge comes from its anchor once
+    // laid out (one frame late, well before any ad loads).
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    if (useWideLayout) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final box = context.findRenderObject();
+        final shell = widget.anchors?.rect(MorphAnchors.shell, ancestor: box is RenderBox ? box : null);
+        final left = shell?.left;
+        if (left != _shellLeft) setState(() => _shellLeft = left);
+      });
+    }
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -320,9 +337,9 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
           ),
           Positioned(
             left: 0,
-            right: useWideLayout ? null : 0,
+            right: useWideLayout ? (_shellLeft == null ? null : screenWidth - _shellLeft!) : 0,
             bottom: 0,
-            child: const AdBannerWidget(),
+            child: AdBannerWidget(width: useWideLayout ? _shellLeft : null),
           ),
         ],
       ),

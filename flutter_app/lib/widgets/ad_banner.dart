@@ -9,9 +9,14 @@ import '../services/ad_service.dart';
 import '../theme/app_theme.dart';
 import 'premium_gate_dialog.dart';
 
-/// A banner ad shown only for free users on mobile.
+/// A banner ad shown only for free users on mobile. With a [width] (the
+/// space it may fill, landscape tablets), the banner is the anchored
+/// adaptive size for that width — wider and taller than the 320 × 50 one —
+/// and reloads when the width changes (a rotation).
 class AdBannerWidget extends StatefulWidget {
-  const AdBannerWidget({super.key});
+  final double? width;
+
+  const AdBannerWidget({super.key, this.width});
 
   @override
   State<AdBannerWidget> createState() => _AdBannerWidgetState();
@@ -28,13 +33,31 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
     if (_bannerAd == null) _loadAd();
   }
 
-  void _loadAd() {
+  @override
+  void didUpdateWidget(AdBannerWidget old) {
+    super.didUpdateWidget(old);
+    final was = old.width, now = widget.width;
+    if (was == now || (was != null && now != null && (was - now).abs() < 1)) return;
+    _bannerAd?.dispose();
+    _bannerAd = null;
+    _isLoaded = false;
+    if (!kIsWeb && !AdService().isDisabled) _loadAd();
+  }
+
+  Future<void> _loadAd() async {
     final adUnitId = AdService.bannerAdUnitId;
     if (adUnitId.isEmpty) return;
 
+    final width = widget.width;
+    AdSize size = AdSize.banner;
+    if (width != null && width >= AdSize.banner.width) {
+      size = await AdSize.getLargeAnchoredAdaptiveBannerAdSizeWithOrientation(Orientation.landscape, width.truncate()) ??
+          AdSize.banner;
+      if (!mounted || _bannerAd != null) return;
+    }
     _bannerAd = BannerAd(
       adUnitId: adUnitId,
-      size: AdSize.banner,
+      size: size,
       request: const AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (_) {
