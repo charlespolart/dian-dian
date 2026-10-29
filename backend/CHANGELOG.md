@@ -10,6 +10,8 @@ working against the new backend.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-29
+
 ### Added
 - `POST /api/pages` accepts `legends: [{color, label}]` (≤ 12, created in the same transaction, positions in array order) and `replaces: <pageId>` (an empty page of the account — no legend, no cell — deleted in that transaction, the new page taking its position; 404 if it is not the caller's, 409 if it is not empty, nothing written in both cases). The response and the `page:created` WebSocket event carry `legends` and `replaced`; `page:deleted` is sent for the replaced page, then one `legend:created` per legend so apps ≤ 1.3.0 see them too. The page being replaced is row-locked (`FOR UPDATE`) so the emptiness check and the delete are atomic.
 - `GET /api/bootstrap` returns `activated`: the account has at least one cell, on any page, any year.
