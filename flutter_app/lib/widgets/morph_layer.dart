@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/material.dart';
@@ -104,8 +105,7 @@ class MorphLayer extends StatelessWidget {
             screenBorder: AppColors.screenBorder,
             dotEmpty: AppColors.dotEmpty,
             dotBorder: AppColors.dotBorder,
-            hole: Color.alphaBlend(AppColors.screen, AppColors.shell),
-            ring: AppColors.accent,
+            backdrop: Color.alphaBlend(AppColors.screen, AppColors.shell),
           ),
         ),
         // The title keeps its glyph size (pixel 11 on the card, 16 in the bar,
@@ -181,8 +181,8 @@ class _MorphPainter extends CustomPainter {
   final Color screenBorder;
   final Color dotEmpty;
   final Color dotBorder;
-  final Color hole;
-  final Color ring;
+  /// The screen over the shell, as the grid shows it behind the dots.
+  final Color backdrop;
 
   const _MorphPainter({
     required this.ends,
@@ -195,8 +195,7 @@ class _MorphPainter extends CustomPainter {
     required this.screenBorder,
     required this.dotEmpty,
     required this.dotBorder,
-    required this.hole,
-    required this.ring,
+    required this.backdrop,
   });
 
   static Color _hex(String hex) => Color(int.parse('FF${hex.replaceFirst('#', '')}', radix: 16));
@@ -236,18 +235,25 @@ class _MorphPainter extends CustomPainter {
         final c = MorphLayer.dotCenter(ends, month: month, day: day, g: g);
         final cell = cells?.get(month, day);
         if (cell != null) {
-          canvas.drawCircle(c, radius, Paint()..color = _hex(cell.color));
-          // A commented cell is a ring in the tracker, a plain dot on the
-          // card: the hole fades in with g.
+          final dot = _hex(cell.color);
+          canvas.drawCircle(c, radius, Paint()..color = dot);
+          // A commented cell wears its badge in the tracker, none on the
+          // card: the badge fades in with g, its fill and its ring side by
+          // side (the ring stroked around the fill, not under it).
           if (g > 0 && (cell.comment ?? '').isNotEmpty) {
-            canvas.drawCircle(c, radius * 0.34, Paint()..color = hole.withValues(alpha: hole.a * g));
+            final d = radius * 2;
+            final at = c + CommentBadge.offset(d);
+            final outer = CommentBadge.size(d) / 2;
+            final ring = math.min(CommentBadge.ring(d), outer);
+            final fill = CommentBadge.fill(dot, backdrop);
+            canvas.drawCircle(at, outer - ring, Paint()..color = fill.withValues(alpha: fill.a * g));
             canvas.drawCircle(
-              c,
-              radius * 0.34 + 0.5,
+              at,
+              outer - ring / 2,
               Paint()
                 ..style = PaintingStyle.stroke
-                ..strokeWidth = 1
-                ..color = ring.withValues(alpha: ring.a * g),
+                ..strokeWidth = ring
+                ..color = backdrop.withValues(alpha: backdrop.a * g),
             );
           }
         } else {

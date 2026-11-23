@@ -61,3 +61,24 @@ class TrackerGridGeometry {
   Offset center({required int month, required int day}) =>
       Offset(labelColWidth + cellSize * (month - 1) + cellSize / 2, rowHeight * day + rowHeight / 2);
 }
+
+/// The badge of a dot that carries a comment, for a dot of `dotSize`: a small
+/// disc astride the dot's top-right edge, filled with the dot's own colour
+/// 45 % of the way to the screen behind it, ringed by that screen colour so
+/// it stands off the dot. Tone on tone and drawn from the theme, so it stays
+/// quieter than the dot on light and dark themes alike. It pokes 0.12 dot
+/// past the dot's box, inside the cell's margin (0.14 dot). The one spec for
+/// `TrackerGrid`, its pop and the card → tracker morph.
+abstract final class CommentBadge {
+  /// Diameter, ring included.
+  static double size(double dotSize) => dotSize * 0.42;
+
+  /// From the dot's centre to the badge's: up and to the right.
+  static Offset offset(double dotSize) => Offset(dotSize * 0.41, -dotSize * 0.41);
+
+  /// Width of the ring, inside the diameter.
+  static double ring(double dotSize) => math.max(1.0, dotSize / 15);
+
+  /// The fill: the dot's colour mixed 45 % into [backdrop], the screen's.
+  static Color fill(Color dot, Color backdrop) => Color.lerp(dot, backdrop, 0.45)!;
+}
