@@ -92,6 +92,19 @@ Shorts) avec des outils IA pour éviter le montage.
 Lot 1 lu le 2026-11-22 : l'anglais fait ≈ 93 % des clics ; meilleures
 épingles Mood (2,3 k impressions, 54 clics) et Sleep (1,2 k, 58 clics) ;
 lot 2 surtout en anglais, thème 2027.
+**Attribution App Store, à corriger (noté le 2026-11-23)** : aucune ligne
+Pinterest n'apparaît dans App Store Connect › Acquisition › Campagnes. La
+landing (`storeLinks()` dans `backend/src/routes/landing.ts`) fait
+`ct = <source>-<campagne>`, soit un nom par épingle (`pinterest-mood-en`,
+`pinterest-sleep-fr`…), et Apple n'affiche un nom qu'à partir de 5 premiers
+téléchargements dans les 24 h du clic : les téléchargements Pinterest sont
+éparpillés sous le seuil. À faire avec Fable : un `ct` par source (`pinterest`)
+ou par source et langue (`pinterest-en`), le détail par épingle restant dans
+le referrer Play. En face, ChatGPT cite la landing avec
+`utm_source=chatgpt.com`, sans campagne : une seule ligne `chatgptcom`, 34
+vues de la page App Store et 10 téléchargements entre mi-octobre et le
+22 novembre. La landing n'a pas de journal de visites (Caddy sans log
+d'accès) : ses visites ne se comptent pas.
 Images App Store (iOS 27), refaites le 2026-11-23 : en-tête de page produit
 = le titre 点点 / Dian Dian avec une semaine de points
 (`marketing/header_page.py`, une image pour toutes les langues) ; image des
