@@ -31,9 +31,10 @@ Charles : « pour les 4 points, fais comme tu recommandes ».
    (270–360 Mo, fuites signalées) ; et aucun outil qui tient ne nomme les
    robots (Umami, Plausible, GoatCounter, Liwan les jettent), donc la table
    des robots serait à écrire de toute façon.
-2. **Sources : lecture stricte de la CNIL**, détail par source et par épingle
-   lu côté stores et Pinterest ; une option de repli écrite mais éteinte
-   (voir « Sources et CNIL »).
+2. **Sources : lecture stricte de la CNIL, plus l'option de repli activée**
+   (Charles, le même jour, une fois établi que les apps ChatGPT envoient
+   rarement un `Referer`) ; le détail par épingle se lit côté stores et
+   Pinterest (voir « Sources et CNIL »).
 3. **Pas d'interface.** Les chiffres sont lus par Claude Code ou par des
    scripts automatiques, jamais par Charles sur le serveur : un script SQL en
    lecture seule suffit, pas de page d'admin ni de tableau de bord.
@@ -53,7 +54,8 @@ Charles : « pour les 4 points, fais comme tu recommandes ».
   page).
 
 **Non-objectifs**
-- Savoir qui est le visiteur, ou relier une visite à un compte.
+- Savoir qui est le visiteur, ou relier une visite ou une installation à un
+  compte.
 - Compter par épingle ou par campagne sur le site (fait par Pinterest
   Analytics, App Store Connect et la Play Console).
 - Un écran.
@@ -113,13 +115,17 @@ collecte … d'UTM ou d'identifiant de campagne dans les URLs ». Compter par
   source, point 3 de la feuille de route) et la Play Console (dimensions UTM
   source / campaign). Le site continue de relayer `utm_*` vers les liens
   stores sans rien stocker.
-- **Option de repli, écrite mais éteinte** (réglage, désactivé par défaut) :
-  quand le `Referer` manque, traduire `utm_source` en un nom de site d'une
-  liste fermée (`pinterest.com`, `chatgpt.com`, `instagram.com`…), jamais
-  `utm_campaign`. À décider après 4 à 6 semaines : si une grosse part des
-  visites « lien marqué » arrive sans site d'origine ni navigateur intégré,
-  l'activer en écrivant le risque résiduel au registre ; sinon la laisser
-  éteinte.
+- **Option de repli, activée dès le départ** (Charles, 2026-11-23) : quand
+  le `Referer` manque, traduire `utm_source` en un nom de site d'une liste
+  fermée (`pinterest.com`, `chatgpt.com`, `instagram.com`…), jamais
+  `utm_campaign` ; une valeur hors liste n'est pas gardée (seul le drapeau
+  « lien marqué » reste). Raison : les apps ChatGPT n'envoient presque
+  jamais de `Referer` (voir plus bas), et sans repli ces visites n'auraient
+  pas de source. Le risque résiduel (la CNIL exclut la mesure des canaux
+  d'acquisition) est écrit au registre avec cette justification : la valeur
+  gardée n'en dit pas plus qu'un nom de domaine d'origine. Le site d'origine
+  enregistré dit d'où il vient (`Referer` ou repli), pour mesurer la part du
+  repli. Réglage gardé pour pouvoir l'éteindre.
 
 ## Visiteurs uniques
 
@@ -190,7 +196,7 @@ Conservation : lignes du jour 25 mois au plus, puis totaux mensuels.
 | Finalité | Statistiques du site pour le seul compte de Dian Dian ; jamais reliées à un compte, à l'Install Referrer ou à un tiers |
 | Opposition | Lien dans la politique de confidentialité, cookie d'opposition respecté par le compteur ; respecter aussi Global Privacy Control et Do Not Track |
 | Information | Section dédiée dans la politique de confidentialité, en quatre langues (`legal.ts`, qui dit aujourd'hui que les cookies ne servent qu'à la connexion) ; mention du cookie d'opposition ; lien DB-IP ; ligne en pied de page du site |
-| Registre | Une entrée « Mesure d'audience du site » dans le modèle simplifié de la CNIL |
+| Registre | Une entrée « Mesure d'audience du site » dans le modèle simplifié de la CNIL, avec le risque résiduel de l'option de repli et sa justification |
 | IP | Jamais dans les journaux du backend ni de Caddy |
 | Hébergement | VPS Vultr à **Paris** (Charles, 2026-11-23) : les données restent en France. Vultr étant américain, demander son avenant de traitement (DPA, signé électroniquement sur demande par ticket, d'après sa documentation) et le citer au registre |
 | Communication | Ne jamais écrire « validé par la CNIL » |
@@ -200,10 +206,10 @@ Conservation : lignes du jour 25 mois au plus, puis totaux mensuels.
 - **iOS** : App Store Connect seulement, avec le `ct` regroupé par source
   (même lot, même fichier). Aucun rapprochement visite-installation :
   Apple l'interdit (empreinte).
-- **Android** : la Play Console d'abord. Lire l'Install Referrer et
-  l'enregistrer avec le compte devient un traitement **séparé**, plus tard :
-  après la montée à Dart 3.12 (`play_install_referrer` 0.6.0) et une réponse
-  sur l'article 82. Pas dans ce lot.
+- **Android** : la Play Console seulement. Enregistrer la source de
+  l'installation avec le compte (Install Referrer) est **abandonné**
+  (Charles, 2026-11-23) : peu d'installations Android, rien sur iPhone, et
+  une question juridique (article 82) pour un gain faible.
 
 ## Réutilisation
 
@@ -251,18 +257,20 @@ Conservation : lignes du jour 25 mois au plus, puis totaux mensuels.
   propre. En lecture stricte, ces visites seront « lien marqué, sans
   source » : c'est le cas que l'option de repli couvrirait. Les
   téléchargements restent visibles côté App Store (campagne `chatgptcom`).
-- **Pinterest et l'App Store** : aucune source sur l'ouverture des liens
-  App Store depuis le navigateur de Pinterest (pour Instagram, un fil du
-  forum Apple de juillet-août 2026 signale des liens App Store qui ne font
-  rien). À tester sur un iPhone : ouvrir une épingle, toucher le lien, puis
-  le bouton App Store ; la colonne « navigateur intégré » des clics le
-  montrera ensuite en continu.
+- **Pinterest et l'App Store** : une épingle ouvre le site (Charles), pas
+  l'App Store. Le site montrait les deux boutons sur iPhone : corrigé le
+  2026-11-23 hors de ce lot (branche `feat/landing-store-by-platform`,
+  `backend/src/lib/storePlatform.ts`) : App Store seul sur iPhone, Google
+  Play seul sur Android, les deux quand l'appareil ne se reconnaît pas.
+  Reste à observer si le bouton App Store s'ouvre depuis le navigateur de
+  Pinterest (pour Instagram, un fil du forum Apple de juillet-août 2026
+  signale des liens App Store qui ne font rien) : la colonne « navigateur
+  intégré » des clics le montrera.
 
 ## Questions ouvertes
 
 - Le relais des `utm_*` vers les liens stores, en production depuis le
   15 octobre, demande-t-il un avis ?
-- Le test de l'App Store depuis le navigateur de Pinterest.
 
 ## Laissé au constructeur
 

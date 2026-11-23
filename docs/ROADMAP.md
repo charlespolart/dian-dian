@@ -114,14 +114,18 @@ d'origine, navigateur intégré, appareil, pays (DB-IP Lite), clics vers
 chaque store par `/go/apple` et `/go/play`, robots nommés par famille et
 vérifiés par les listes d'IP des opérateurs. Pas de valeur `utm_*` stockée
 (la grille CNIL de juillet 2025 exclut la mesure des canaux d'acquisition) :
-le détail par source et par épingle se lit dans Pinterest Analytics, App
-Store Connect et la Play Console ; une option de repli reste écrite mais
-éteinte. Pas d'écran : lecture par `prod-landing.sql` (Claude Code ou
+le détail par épingle se lit dans Pinterest Analytics, App Store Connect et
+la Play Console ; option de repli activée (quand le `Referer` manque,
+`utm_source` traduit en nom de site d'une liste fermée), car les apps
+ChatGPT n'en envoient presque jamais. Pas d'écran : lecture par `prod-landing.sql` (Claude Code ou
 scripts). Module autonome ; Fable écrira la fiche du playbook
 (`~/Documents/Coding/playbook`). Volet légal : section de la politique de
 confidentialité, lien d'opposition, registre. Environ 3 à 4 jours, dans le
 même lot que le regroupement du `ct` Apple. L'Install Referrer Android lié
-au compte devient un traitement séparé, plus tard.
+au compte est abandonné (2026-11-23). Fait hors lot le 2026-11-23 (branche
+`feat/landing-store-by-platform`, à publier avec le backend) : le site ne
+montre plus que l'App Store sur iPhone et Google Play sur Android, les deux
+quand l'appareil ne se reconnaît pas.
 Images App Store (iOS 27), refaites le 2026-11-23 : en-tête de page produit
 = le titre 点点 / Dian Dian avec une semaine de points
 (`marketing/header_page.py`, une image pour toutes les langues) ; image des
