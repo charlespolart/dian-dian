@@ -192,7 +192,7 @@ Conservation : lignes du jour 25 mois au plus, puis totaux mensuels.
 | Information | Section dédiée dans la politique de confidentialité, en quatre langues (`legal.ts`, qui dit aujourd'hui que les cookies ne servent qu'à la connexion) ; mention du cookie d'opposition ; lien DB-IP ; ligne en pied de page du site |
 | Registre | Une entrée « Mesure d'audience du site » dans le modèle simplifié de la CNIL |
 | IP | Jamais dans les journaux du backend ni de Caddy |
-| Hébergement | Vérifier la région du VPS Vultr et son avenant de traitement des données |
+| Hébergement | VPS Vultr à **Paris** (Charles, 2026-11-23) : les données restent en France. Vultr étant américain, demander son avenant de traitement (DPA, signé électroniquement sur demande par ticket, d'après sa documentation) et le citer au registre |
 | Communication | Ne jamais écrire « validé par la CNIL » |
 
 ## Attribution des installations
@@ -234,15 +234,35 @@ Conservation : lignes du jour 25 mois au plus, puis totaux mensuels.
 | Module autonome et playbook | ½ jour |
 | **Total** | **3 à 4 jours** |
 
+## Ce qu'on sait des sources sans `Referer` (recherche du 2026-11-23)
+
+- **Pinterest** : sur iPhone, le navigateur intégré de l'app envoie souvent
+  la visite sans `Referer` (rapports d'éditeurs, forum Pinterest Business) ;
+  le web Pinterest, lui, envoie `pinterest.com`. Le navigateur intégré se
+  reconnaît à son `User-Agent`, donc la colonne « navigateur intégré »
+  rattrape ces visites. Piège : certaines listes de robots confondent ce
+  navigateur avec le robot de Pinterest (arcjet/well-known-bots, issue
+  n° 84, novembre 2026) ; le classifieur doit séparer `Pinterest/0.2` (robot)
+  du navigateur de l'app.
+- **ChatGPT** : sur ordinateur, le `Referer` `chatgpt.com` arrive en général ;
+  depuis les apps iOS et Android, il manque le plus souvent (≈ 70 % du trafic
+  venu des IA arrive sans référent selon deux éditeurs d'outils, chiffres
+  invérifiés), et l'app ouvre les liens dans une vue Safari sans jeton
+  propre. En lecture stricte, ces visites seront « lien marqué, sans
+  source » : c'est le cas que l'option de repli couvrirait. Les
+  téléchargements restent visibles côté App Store (campagne `chatgptcom`).
+- **Pinterest et l'App Store** : aucune source sur l'ouverture des liens
+  App Store depuis le navigateur de Pinterest (pour Instagram, un fil du
+  forum Apple de juillet-août 2026 signale des liens App Store qui ne font
+  rien). À tester sur un iPhone : ouvrir une épingle, toucher le lien, puis
+  le bouton App Store ; la colonne « navigateur intégré » des clics le
+  montrera ensuite en continu.
+
 ## Questions ouvertes
 
-- Le navigateur intégré de Pinterest envoie-t-il un `Referer` et un jeton
-  reconnaissable ? Ouvre-t-il l'App Store ?
-- ChatGPT envoie-t-il un `Referer` aujourd'hui (un bug d'octobre 2026 a
-  supprimé UTM et référent quelques jours) ?
 - Le relais des `utm_*` vers les liens stores, en production depuis le
   15 octobre, demande-t-il un avis ?
-- Région du VPS Vultr et avenant de traitement.
+- Le test de l'App Store depuis le navigateur de Pinterest.
 
 ## Laissé au constructeur
 
