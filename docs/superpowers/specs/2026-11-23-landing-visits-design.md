@@ -281,3 +281,29 @@ Conservation : lignes du jour 25 mois au plus, puis totaux mensuels.
 - Les tâches planifiées (DB-IP mensuel, listes d'IP quotidiennes, purge à
   25 mois).
 - Les tests de `/go/apple` et `/go/play` dans `backend/scripts/smoke.ts`.
+
+## Relecture du 2026-11-23
+
+1. **Origine des clics store.** `/go/apple` et `/go/play` ne reçoivent
+   jamais de `Referer`. *Mon choix* : un clic garde la même origine que la
+   visite par l'option de repli (`utm_source` relayé, traduit par la liste
+   fermée) ; un clic sans étiquette n'a pas d'origine. Pas de domaine
+   d'origine recopié dans l'URL.
+2. **Vraie adresse IP.** Vérifié le 2026-11-23 : le domaine n'a pas
+   d'adresse IPv6 (pas d'enregistrement AAAA), seulement l'IPv4 du VPS ;
+   la publication des ports de Docker garde l'IP source en IPv4. Le
+   constructeur vérifie une fois, en dev puis en prod, que `req.ip` (avec
+   `trust proxy 1` derrière Caddy) donne bien l'IP du visiteur.
+3. **`Referrer-Policy`.** helmet envoie `no-referrer` partout : App Store
+   Connect ne voit donc jamais la landing comme « Web referrer ». *Mon
+   choix* : `strict-origin-when-cross-origin` sur `/` et `/go/*` seulement
+   (seule l'origine `https://diandian.overridedev.com` part vers les
+   stores) ; ailleurs, rien ne change.
+4. **Registre.** *Mon choix* : la ligne « Mesure d'audience du site » dans
+   ce lot ; le registre complet du projet (comptes, RevenueCat, Resend,
+   événements produit, AdMob, sauvegardes R2, journaux) est un petit lot à
+   part, avec la politique de confidentialité (voir la base légale des
+   événements dans `docs/PRICING.md`). « IP jamais dans les journaux » vise
+   les visites de la landing ; les journaux de sécurité (échecs de
+   connexion, jetons refusés) gardent l'IP, avec leur propre ligne au
+   registre.

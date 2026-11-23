@@ -189,3 +189,26 @@ Charles : « selon tes recommandations », et oui au teaser.
 3. L'aperçu **dévoile une vraie stat** gratuitement ; les plus
    intéressantes restent premium.
 4. Fenêtre de fin d'année : *mon choix*, du 26 décembre au 7 janvier.
+
+## Relecture du 2026-11-23
+
+1. **Ordre.** La pop-up se construit après le chantier des stats
+   (`docs/FABLE.md`) : les aperçus des jalons `days_7` et `days_30`
+   montrent une stat choisie par la spec des stats. *Mon choix* : à défaut,
+   « la couleur la plus fréquente de la semaine / du mois » du tracker
+   qu'on vient de remplir, calculable aujourd'hui.
+2. **Déclencheur `trackers`.** *Mon choix* : 3 trackers possédés (la limite)
+   et au moins 5 dates coloriées sur les 14 derniers jours, tous trackers
+   confondus, rattrapages compris, calculé dans l'app. Le texte ne dit plus
+   « vos 3 trackers sont bien remplis » (faux pour la plupart) : « Vous
+   avez vos 3 trackers. Avec Premium, ajoutez-en autant que vous voulez —
+   pour toujours avec l'achat unique. »
+3. **Comptes existants.** *Mon choix* : un jalon de jours ne se déclenche
+   que s'il est franchi après la mise à jour, jamais rétroactivement (pas de
+   « 7 jours remplis ! » à quelqu'un qui en a 150).
+4. **`year_end`.** *Mon choix* : une fois par an (événement nommé avec
+   l'année). Texte aligné sur la recherche des stats, où la carte de bilan
+   est gratuite : « Votre année 2026 est prête — le bilan complet et l'image
+   en haute définition avec Premium. » **À trancher par Charles** : faut-il
+   ce jalon dès le Nouvel An 2026, ce qui ferait passer la pop-up avant les
+   rappels ?

@@ -289,6 +289,11 @@ la cadence est synchronisée.
 - Exclusion du nom tracker par tracker (suggérée par la recherche) : laissée
   en option, aucun modèle actuel n'étant sensible.
 
+**À trancher (relecture du 2026-11-23)** : le masquage du système ne cache
+les noms que si la personne a déjà choisi de masquer le contenu des
+notifications. Par défaut, Android montre tout sur l'écran verrouillé. Voir
+« Relecture du 2026-11-23 ».
+
 ### Rappel de fin d'essai : abandonné
 
 **Décidé le 2026-11-23** : ni sur Android ni sur iOS. Charles ne le voulait
@@ -345,3 +350,27 @@ brouillées par Pinterest et janvier ; un ordre de grandeur seulement.
 3. Rappel de fin d'essai : **abandonné**, sur Android comme sur iOS.
 4. Textes chinois : écrits directement en chinois ; relecture native si
    possible (voir « Laissé au constructeur »).
+
+## Relecture du 2026-11-23
+
+Une relecture « comme un constructeur » a trouvé trois trous.
+
+1. **Trackers abandonnés.** Tous les trackers existants deviennent
+   quotidiens ; un tracker qu'on ne remplit plus déclencherait le rappel
+   chaque soir, même chez les plus réguliers (54 % des trackers gratuits
+   n'ont jamais été remplis ; les payants ont 6,5 trackers en moyenne).
+   *Mon choix* : un tracker quotidien sans aucun point depuis 14 jours ne
+   déclenche pas le rappel et n'y est pas nommé (`lastCellAt` du
+   `PageModel`) ; il redevient actif à son prochain point. À tester dans la
+   fonction de cycle.
+2. **Noms sur l'écran verrouillé : à trancher par Charles.** Le masquage du
+   système (Android `private`, aperçus masqués d'iOS) ne s'applique que si
+   la personne a déjà choisi de masquer le contenu ; par défaut, Android
+   affiche « Humeur, Anxiété… » sur l'écran verrouillé, ce que l'objectif de
+   vie privée interdit. Le code natif n'y change rien. Choix : accepter les
+   noms ; « Nommer mes trackers » désactivé par défaut ; ou visibilité
+   `secret` sur Android (rappel invisible sur l'écran verrouillé).
+3. **Deux appareils.** Accord et interrupteur par appareil : quelqu'un qui a
+   dit oui sur un iPhone et un iPad reçoit deux rappels. *Mon choix* :
+   accepté (accord donné sur chaque appareil, cas rare) ; pas de champ
+   serveur en plus.

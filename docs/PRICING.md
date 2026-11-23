@@ -187,6 +187,24 @@ dans `storeProduct.introductoryPrice` (`_introTrial`).
 Mesure : les événements du parcours d'achat manquent (voir l'audit, « Trous
 de mesure ») ; les ajouter avec cette refonte.
 
+### Relecture du 2026-11-23
+
+- **Mur des 3 trackers** : *mon choix*, le paywall s'y ouvre sur le
+  lifetime, en premier **et présélectionné** (les 3 acheteurs du lifetime
+  sont passés par ce mur) ; ailleurs, l'annuel reste présélectionné. Un mode
+  « lifetime d'abord » de `CustomPaywallDialog`, repris par le déclencheur
+  `trackers` de la pop-up.
+- **Annuel affiché** : *mon choix*, le prix facturé en premier sur iOS
+  (« 14,99 $ par an, soit 1,25 $ par mois ») : Apple refuse les paywalls où
+  le prix mensuel ressort plus que le prix réellement facturé.
+- **Lifetime pour les abonnés et les essais : à trancher par Charles.**
+  Aujourd'hui un premium, essai compris, n'atteint jamais le paywall ; le
+  point 5 (aide à la résiliation) ne servirait que dans des cas limites.
+- **Base légale des événements du parcours d'achat : à trancher par
+  Charles.** Ils sont liés au compte (`events.user_id`), et la politique de
+  confidentialité (`legal.ts`) ne mentionne aucun événement, pas même les
+  `paywall.*` d'aujourd'hui ; elle dit « pas d'analytics ».
+
 ## Message à la résiliation (App Store)
 
 App Store Connect → abonnements → « Messages de fidélisation » : un message

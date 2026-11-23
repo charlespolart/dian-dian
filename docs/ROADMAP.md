@@ -8,6 +8,8 @@ mesures qui la justifient. Les plans détaillés vivent à part
 **Phase actuelle (décidée le 2026-11-23)** : recherche, audits et specs
 seulement. Rien n'est codé avant une passe de confirmation avec Fable 5 ;
 c'est Fable qui codera ensuite. Les recherches vivent dans `docs/research/`.
+Point d'entrée pour Fable : `docs/FABLE.md` (ordre des chantiers, branches,
+règles du projet, questions ouvertes).
 
 ## Audit de conversion (prod, 2026-11-22)
 
