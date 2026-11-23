@@ -257,8 +257,9 @@ gardé ; mêmes prix sur Android ; abonnés actuels protégés ; changement le
 `monthly-free-trial` / `yearly-free-trial` créées le 2026-11-23. Message de
 résiliation App Store rédigé (quatre langues). Promotions saisonnières en
 pause. Reste : changer les prix le 1er décembre (Charles), vérifications Android,
-refonte du paywall (annuel par mois, mensuel en lien, lifetime visible, mur
-des 3 trackers centré sur le lifetime).
+refonte du paywall (annuel présélectionné partout, prix facturé d'abord,
+mensuel en lien, lifetime visible ; mur des 3 trackers sur « trackers
+illimités », décidé le 2026-11-23).
 
 Demande d'origine (2026-10-28) :
 Intuition de départ : les prix actuels (mensuel / annuel / à vie, via

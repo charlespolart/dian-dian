@@ -175,9 +175,10 @@ dans `storeProduct.introductoryPrice` (`_introTrial`).
 3. **Mensuel en lien discret** sous les cartes : « ou 2,99 $ par mois ». Il
    continue de justifier le pourcentage d'économie.
 4. **Mur des 3 trackers** (`PremiumGateDialog`, événement `tracker_limit`) :
-   commencer par « trackers illimités, pour toujours » et proposer le
-   lifetime en premier. Les 3 acheteurs du lifetime sont tous passés par la
-   limite des 3 trackers pour en créer d'autres.
+   commencer par « trackers illimités » et montrer les deux façons de les
+   avoir ; l'annuel reste présélectionné (voir « Relecture »). Les 3
+   acheteurs du lifetime sont tous passés par la limite des 3 trackers pour
+   en créer d'autres.
 5. **Aide à la résiliation après un achat lifetime** : si un abonnement est
    encore actif, dire de le résilier (Customer Center RevenueCat), pour ne
    pas payer deux fois.
@@ -189,21 +190,32 @@ de mesure ») ; les ajouter avec cette refonte.
 
 ### Relecture du 2026-11-23
 
-- **Mur des 3 trackers** : *mon choix*, le paywall s'y ouvre sur le
-  lifetime, en premier **et présélectionné** (les 3 acheteurs du lifetime
-  sont passés par ce mur) ; ailleurs, l'annuel reste présélectionné. Un mode
-  « lifetime d'abord » de `CustomPaywallDialog`, repris par le déclencheur
-  `trackers` de la pop-up.
+- **Mur des 3 trackers — décidé le 2026-11-23 : l'annuel reste
+  présélectionné partout**, ce mur compris ; le lifetime reste visible en
+  deuxième carte. Charles : trois acheteurs ne suffisent pas à changer
+  l'ordre, et on préfère les abonnements. Le calcul le confirme à peu près :
+  un annuel à 14,99 $ ne dépasse le lifetime à 29,99 $ qu'à partir de sa
+  deuxième année (2 annuités = 29,98 $), et la recherche situe la valeur
+  moyenne d'un abonné annuel entre 2 et 3,5 annuités ; les deux se valent,
+  donc on garde l'ordre habituel et on relit en mars avec les événements du
+  parcours d'achat. Première proposition, écartée : lifetime en premier et
+  présélectionné sur ce mur.
 - **Annuel affiché** : *mon choix*, le prix facturé en premier sur iOS
   (« 14,99 $ par an, soit 1,25 $ par mois ») : Apple refuse les paywalls où
   le prix mensuel ressort plus que le prix réellement facturé.
-- **Lifetime pour les abonnés et les essais : à trancher par Charles.**
-  Aujourd'hui un premium, essai compris, n'atteint jamais le paywall ; le
-  point 5 (aide à la résiliation) ne servirait que dans des cas limites.
-- **Base légale des événements du parcours d'achat : à trancher par
-  Charles.** Ils sont liés au compte (`events.user_id`), et la politique de
-  confidentialité (`legal.ts`) ne mentionne aucun événement, pas même les
-  `paywall.*` d'aujourd'hui ; elle dit « pas d'analytics ».
+- **Lifetime pour les abonnés et les essais — décidé le 2026-11-23 : non
+  pour l'instant.** Un premium, essai compris, n'atteint jamais le paywall,
+  et ça reste ainsi. Le point 5 se réduit à un contrôle après un achat
+  lifetime et au lancement : si un abonnement est encore actif (deuxième
+  compte, paiement en reprise), dire de le résilier.
+- **Base légale des événements du parcours d'achat — décidé le
+  2026-11-23 : intérêt légitime.** Ils restent liés au compte
+  (`events.user_id`), comme les `paywall.*` d'aujourd'hui. À faire : une
+  section dans la politique de confidentialité (`legal.ts`, quatre langues,
+  qui dit aujourd'hui « pas d'analytics » et ne mentionne aucun événement),
+  conservation 13 mois, aucun partage ; Charles met à jour les étiquettes de
+  confidentialité de l'App Store et la section « sécurité des données » de
+  Google Play avant la sortie. Même lot que le registre RGPD.
 
 ## Message à la résiliation (App Store)
 

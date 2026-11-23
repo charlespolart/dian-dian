@@ -276,9 +276,11 @@ la cadence est synchronisée.
 
 ### Vie privée
 
-- Réglage global « Nommer mes trackers dans le rappel ». **Décidé** :
-  activé par défaut (nommer aide), avec une version générique sur l'écran
-  verrouillé. Vérifié le 2026-11-23 : le plugin ne donne sur Android que la
+- Réglage global « Nommer mes trackers dans le rappel ». **Décidé le
+  2026-11-23 après relecture : désactivé par défaut** (voir « Relecture »),
+  l'interrupteur étant montré sur l'écran qui propose les rappels pour
+  l'activer d'un geste. Première version, remplacée : activé par défaut,
+  avec une version générique sur l'écran verrouillé. Vérifié le 2026-11-23 : le plugin ne donne sur Android que la
   visibilité privée (pas de version publique) et sur iOS aucun texte de
   remplacement, alors que les deux API natives existent (`setPublicVersion`,
   `hiddenPreviewsBodyPlaceholder`). *Mon choix* : s'en tenir au masquage du
@@ -289,10 +291,11 @@ la cadence est synchronisée.
 - Exclusion du nom tracker par tracker (suggérée par la recherche) : laissée
   en option, aucun modèle actuel n'étant sensible.
 
-**À trancher (relecture du 2026-11-23)** : le masquage du système ne cache
-les noms que si la personne a déjà choisi de masquer le contenu des
-notifications. Par défaut, Android montre tout sur l'écran verrouillé. Voir
-« Relecture du 2026-11-23 ».
+**Tranché (relecture du 2026-11-23)** : le masquage du système ne cache les
+noms que si la personne a déjà choisi de masquer le contenu des
+notifications, et par défaut Android montre tout sur l'écran verrouillé ;
+« Nommer mes trackers » est donc désactivé par défaut. Voir « Relecture du
+2026-11-23 ».
 
 ### Rappel de fin d'essai : abandonné
 
@@ -345,8 +348,8 @@ brouillées par Pinterest et janvier ; un ordre de grandeur seulement.
 
 1. **Ordre de sortie** : montée en AGP 9 d'abord, plugin le plus récent ;
    pas de version ancienne compatible AGP 8.
-2. « Nommer mes trackers » **activé par défaut**, avec la version générique
-   sur l'écran verrouillé.
+2. « Nommer mes trackers » : d'abord activé par défaut, puis **désactivé
+   par défaut** après relecture (voir « Relecture du 2026-11-23 »).
 3. Rappel de fin d'essai : **abandonné**, sur Android comme sur iOS.
 4. Textes chinois : écrits directement en chinois ; relecture native si
    possible (voir « Laissé au constructeur »).
@@ -363,7 +366,10 @@ Une relecture « comme un constructeur » a trouvé trois trous.
    déclenche pas le rappel et n'y est pas nommé (`lastCellAt` du
    `PageModel`) ; il redevient actif à son prochain point. À tester dans la
    fonction de cycle.
-2. **Noms sur l'écran verrouillé : à trancher par Charles.** Le masquage du
+2. **Noms sur l'écran verrouillé — décidé (Charles, 2026-11-23) :
+   « Nommer mes trackers » désactivé par défaut**, l'interrupteur affiché
+   sur l'écran de l'app qui propose les rappels (un geste pour l'activer) et
+   dans la section Rappels. Le constat : Le masquage du
    système (Android `private`, aperçus masqués d'iOS) ne s'applique que si
    la personne a déjà choisi de masquer le contenu ; par défaut, Android
    affiche « Humeur, Anxiété… » sur l'écran verrouillé, ce que l'objectif de

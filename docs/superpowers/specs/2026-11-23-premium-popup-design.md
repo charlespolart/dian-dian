@@ -78,7 +78,7 @@ points sont saisis plus d'une semaine après leur date).
 
 | Déclencheur | Condition | Message (idée) | Ouvre |
 |---|---|---|---|
-| `trackers` | 3 trackers (la limite) et un usage régulier : au moins 5 jours avec des points sur les 14 derniers (décidé) | « Vos 3 trackers sont bien remplis. Avec Premium, ajoutez-en autant que vous voulez — pour toujours avec l'achat unique. » | paywall, lifetime mis en avant |
+| `trackers` | 3 trackers (la limite) et un usage régulier : au moins 5 jours avec des points sur les 14 derniers (décidé) | « Vos 3 trackers sont bien remplis. Avec Premium, ajoutez-en autant que vous voulez — pour toujours avec l'achat unique. » | paywall (annuel présélectionné, lifetime visible) |
 | `days_7` | 7e jour rempli | aperçu des stats sur ses données : « Cette semaine, votre humeur la plus fréquente : ■ Calme. Premium vous montre toutes vos stats. » | paywall des stats |
 | `days_30` | 30e jour rempli | aperçu plus riche (le mois écoulé) | paywall des stats |
 | `year_end` | fin décembre / début janvier, avec assez de jours remplis dans l'année (*mon choix* : 30) | « Votre année 2026 est complète — exportez-la en image. » (l'export est premium) | paywall de l'export |
@@ -153,8 +153,9 @@ fait presque toujours refuser, le couper à distance.
 
 Indépendant de la pop-up, plus simple, et dicté par le profil des acheteurs
 du lifetime : sur `PremiumGateDialog` pour `tracker_limit` (et
-`locked_tracker`), commencer par « Trackers illimités, pour toujours » et
-proposer le lifetime en premier. Voir `docs/PRICING.md`, « Le paywall ».
+`locked_tracker`), commencer par « Trackers illimités » et montrer les deux
+façons de les avoir (abonnement ou achat unique), l'annuel restant
+présélectionné (décidé le 2026-11-23, voir `docs/PRICING.md`, « Relecture »).
 
 ## Pop-up promo — en pause
 
@@ -209,6 +210,7 @@ Charles : « selon tes recommandations », et oui au teaser.
 4. **`year_end`.** *Mon choix* : une fois par an (événement nommé avec
    l'année). Texte aligné sur la recherche des stats, où la carte de bilan
    est gratuite : « Votre année 2026 est prête — le bilan complet et l'image
-   en haute définition avec Premium. » **À trancher par Charles** : faut-il
-   ce jalon dès le Nouvel An 2026, ce qui ferait passer la pop-up avant les
-   rappels ?
+   en haute définition avec Premium. » **Décidé (Charles, 2026-11-23)** :
+   pas de jalon ni de bilan pour le Nouvel An 2026 ; avant le Nouvel An, le
+   compteur de visites et la refonte du paywall ; les rappels en janvier ;
+   `year_end` à partir de fin 2027.

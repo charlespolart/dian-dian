@@ -57,8 +57,10 @@ trouvés en la relisant comme un constructeur, réglés ou laissés à Charles.
 
 Calendrier à garder en tête : les prix changent le **1er décembre** ; le pic
 de l'année est le **Nouvel An** (une année en pixels commence le 1er
-janvier) ; la recherche sur les stats propose un bilan de fin d'année
-« votre année jusqu'ici » dès le 1er décembre.
+janvier). Décidé le 2026-11-23 : **avant le Nouvel An**, le compteur de
+visites (1), le registre et la politique de confidentialité, puis la
+refonte du paywall (2) ; **en janvier**, l'outillage Android (3) puis les
+rappels (4) ; pas de bilan de fin d'année en 2026.
 
 ## Règles du projet
 
@@ -108,16 +110,18 @@ janvier) ; la recherche sur les stats propose un bilan de fin d'année
   renommer « Dian Dian Premium », délai de grâce, packages RevenueCat.
 - Demander à Vultr son avenant de traitement des données (DPA).
 - Tester le bouton App Store depuis une épingle Pinterest sur iPhone.
+- Avant la sortie du paywall refait : mettre à jour les étiquettes de
+  confidentialité de l'App Store et la sécurité des données de Google Play
+  (événements du parcours d'achat liés au compte).
 
 ## Questions encore ouvertes
 
 - Les stats à retenir (chantier 5).
 - Le relais des `utm_*` vers les liens stores (en production depuis le
   15 octobre) demande-t-il un avis juridique ? (spec du compteur)
-- Noms des trackers sur l'écran verrouillé (spec des rappels, « Relecture »).
-- Jalon de fin d'année dès le Nouvel An 2026, avant les rappels ? (spec de
-  la pop-up, « Relecture »)
-- Le lifetime proposé aux abonnés et aux essais ? (`docs/PRICING.md`,
-  « Relecture »)
-- Base légale des événements du parcours d'achat, liés au compte ?
-  (`docs/PRICING.md`, « Relecture »)
+
+Tranché le 2026-11-23 après les relectures (détail dans chaque spec) :
+« Nommer mes trackers » désactivé par défaut ; pas de bilan ni de jalon de
+fin d'année pour le Nouvel An 2026 ; pas de lifetime pour les abonnés ni les
+essais ; événements du parcours d'achat sous intérêt légitime, avec la
+politique de confidentialité ; l'annuel reste présélectionné partout.
