@@ -105,6 +105,15 @@ le referrer Play. En face, ChatGPT cite la landing avec
 vues de la page App Store et 10 téléchargements entre mi-octobre et le
 22 novembre. La landing n'a pas de journal de visites (Caddy sans log
 d'accès) : ses visites ne se comptent pas.
+**Compteur de visites du site — spécifié le 2026-11-23** :
+`docs/superpowers/specs/2026-11-23-landing-visits-design.md`. Compteur maison
+dans le backend, sans cookie ni IP gardée : visites et visiteurs uniques par
+jour, source, épingle, site d'origine, appareil, navigateur intégré, langue
+et pays ; clics vers chaque store par une redirection `/go/apple`, `/go/play` ;
+robots séparés et nommés (IA à la demande, recherche, entraînement, moteurs,
+aperçus de lien) ; lecture par `backend/scripts/prod-landing.sql`. Bonus
+Android : la source de l'installation enregistrée avec le compte. À faire
+dans le même lot que le regroupement du `ct` Apple.
 Images App Store (iOS 27), refaites le 2026-11-23 : en-tête de page produit
 = le titre 点点 / Dian Dian avec une semaine de points
 (`marketing/header_page.py`, une image pour toutes les langues) ; image des
