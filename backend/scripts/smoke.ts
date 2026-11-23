@@ -147,6 +147,16 @@ async function main() {
     assert.ok(html.includes('referrer=utm_source%3Dpinterest%26utm_campaign%3Dmood-en'), 'Play link carries the campaign referrer');
     const plain = await (await fetch(`${BASE}/`)).text();
     assert.ok(!plain.includes('referrer='), 'no referrer without a campaign');
+    // One store per platform; both when the device can't be told.
+    const iphone = await (await fetch(`${BASE}/`, {
+      headers: { 'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148' },
+    })).text();
+    assert.ok(iphone.includes('apps.apple.com') && !iphone.includes('play.google.com'), 'an iPhone sees the App Store only');
+    const android = await (await fetch(`${BASE}/`, {
+      headers: { 'user-agent': 'Mozilla/5.0 (Linux; Android 15; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Mobile Safari/537.36' },
+    })).text();
+    assert.ok(android.includes('play.google.com') && !android.includes('apps.apple.com'), 'an Android device sees Google Play only');
+    assert.ok(plain.includes('apps.apple.com') && plain.includes('play.google.com'), 'an unknown device sees both stores');
     // The website's contact page is a real form posting to /api/contact.
     const contact = await (await fetch(`${BASE}/contact?lang=fr`)).text();
     assert.ok(contact.includes('id="contact-form"') && contact.includes('/api/contact'), 'contact page has the form');

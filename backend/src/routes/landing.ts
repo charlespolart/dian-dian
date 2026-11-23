@@ -1,4 +1,5 @@
 import { Router, Request } from 'express';
+import { storePlatform, type StorePlatform } from '../lib/storePlatform.js';
 
 const router = Router();
 
@@ -200,9 +201,15 @@ const APPLE_GLYPH =
 const PLAY_GLYPH =
   '<svg viewBox="0 0 512 512" aria-hidden="true"><path d="M325.3 234.3L104.6 13l280.8 161.2-60.1 60.1zM47 0C34 6.8 25.3 19.2 25.3 35.3v441.3c0 16.1 8.7 28.5 21.7 35.3l256.6-256L47 0zm425.2 225.6l-58.9-34.1-65.7 64.5 65.7 64.5 60.1-34.1c18-14.3 18-46.5-1.2-60.8zM104.6 499l280.8-161.2-60.1-60.1L104.6 499z"/></svg>';
 
-function storeButton(c: Copy, links: StoreLinks): string {
-  return `<a class="btn-store" href="${links.apple}" target="_blank" rel="noopener">${APPLE_GLYPH}<span>${c.cta}</span></a>
-          <a class="btn-store" href="${links.play}" target="_blank" rel="noopener">${PLAY_GLYPH}<span>${c.ctaPlay}</span></a>`;
+// The store buttons for the visitor's platform: the App Store on an iPhone,
+// Google Play on Android, both when it can't be told (see storePlatform).
+function storeButton(c: Copy, links: StoreLinks, platform: StorePlatform): string {
+  const apple = `<a class="btn-store" href="${links.apple}" target="_blank" rel="noopener">${APPLE_GLYPH}<span>${c.cta}</span></a>`;
+  const play = `<a class="btn-store" href="${links.play}" target="_blank" rel="noopener">${PLAY_GLYPH}<span>${c.ctaPlay}</span></a>`;
+  if (platform === 'ios') return apple;
+  if (platform === 'android') return play;
+  return `${apple}
+          ${play}`;
 }
 
 const LANG_LABELS: Record<Lang, string> = { en: 'EN', fr: 'FR', 'zh-CN': '简', 'zh-TW': '繁' };
@@ -227,7 +234,7 @@ function langPicker(lang: Lang): string {
       </div>`;
 }
 
-function page(lang: Lang, links: StoreLinks = DEFAULT_LINKS): string {
+function page(lang: Lang, links: StoreLinks = DEFAULT_LINKS, platform: StorePlatform = 'unknown'): string {
   const c = t[lang];
 
   const heroDots = CHIP_HUES.concat(['--p-pink', '--p-green'])
@@ -403,7 +410,7 @@ function page(lang: Lang, links: StoreLinks = DEFAULT_LINKS): string {
         <h1>${c.h1}</h1>
         <p class="sub">${c.sub}</p>
         <div class="cta-row">
-          ${storeButton(c, links)}
+          ${storeButton(c, links, platform)}
           <span class="note">${c.note}</span>
         </div>
         <div class="dots" aria-hidden="true">${heroDots}</div>
@@ -432,7 +439,7 @@ function page(lang: Lang, links: StoreLinks = DEFAULT_LINKS): string {
     <section class="wrap final reveal">
       <h2>${c.finalH}</h2>
       <div class="cta-row" style="justify-content:center">
-        ${storeButton(c, links)}
+        ${storeButton(c, links, platform)}
         <span class="note">${c.note}</span>
       </div>
     </section>
@@ -483,7 +490,10 @@ function page(lang: Lang, links: StoreLinks = DEFAULT_LINKS): string {
 
 router.get('/', (req, res) => {
   const lang = detectLang(req);
-  res.type('html').send(page(lang, storeLinks(req)));
+  // The buttons depend on the User-Agent: no cache may serve one device's
+  // page to another.
+  res.vary('User-Agent');
+  res.type('html').send(page(lang, storeLinks(req), storePlatform(req.get('user-agent'))));
 });
 
 export default router;
