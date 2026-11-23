@@ -8,3 +8,6 @@ node_modules/
 
 # Python bytecode (marketing generators)
 __pycache__/
+
+# generated marketing assets (store headers, pins): rebuilt by marketing/*.py, kept here for reuse
+marketing/out/
