@@ -67,12 +67,26 @@ store :
 | appareil | `User-Agent` | `iphone`, `ipad`, `android`, `desktop`, `other` |
 | navigateur intégré | `User-Agent` | `pinterest`, `instagram`, `facebook`, `tiktok`, rien |
 | langue | celle choisie par `detectLang` | `fr` |
-| pays | adresse IP → base de géolocalisation, IP jetée aussitôt | `FR` |
+| pays | adresse IP → base de géolocalisation, IP jetée aussitôt ; pas plus fin que le pays (voir plus bas) | `FR` |
 | robot | `User-Agent` (liste plus bas) | `ChatGPT-User`, rien pour une personne |
 
 *Mon choix* : des compteurs agrégés par jour (une ligne par combinaison,
 incrémentée), pas une ligne par visite. Rien de ce qui est stocké ne permet
 de retrouver une personne.
+
+**Localisation sans consentement (vérifié le 2026-11-23).** L'adresse IP est
+une donnée personnelle, mais la CNIL dispense de consentement la mesure
+d'audience qui respecte ses conditions : finalité limitée à la mesure
+d'audience pour notre seul compte, statistiques anonymes, aucun croisement
+avec d'autres traitements (donc jamais relié à un compte), adresse IP non
+conservée (tronquée ou jetée), localisation **pas plus précise que la
+ville**. *Mon choix* : le pays seulement (assez pour nos questions ; une
+ville croisée avec l'appareil et le jour pourrait désigner quelqu'un, vu nos
+petits volumes). La dispense ne supprime pas l'information : une ligne dans
+la politique de confidentialité et en pied de page du site (« mesure
+d'audience anonyme, sans cookie »). Les lignes directrices européennes
+(EDPB 2/2023) rangent aussi le suivi par IP dans le champ de l'ePrivacy :
+suivre les conditions de la CNIL couvre ce point pour un éditeur français.
 
 **Visiteurs uniques par jour.** Sans cookie ni IP gardée, on ne reconnaît
 pas un visiteur. *Mon choix*, la méthode de Plausible : une empreinte du
