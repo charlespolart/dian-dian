@@ -122,10 +122,10 @@ scripts). Module autonome ; Fable écrira la fiche du playbook
 (`~/Documents/Coding/playbook`). Volet légal : section de la politique de
 confidentialité, lien d'opposition, registre. Environ 3 à 4 jours, dans le
 même lot que le regroupement du `ct` Apple. L'Install Referrer Android lié
-au compte est abandonné (2026-11-23). Fait hors lot le 2026-11-23 (branche
-`feat/landing-store-by-platform`, à publier avec le backend) : le site ne
-montre plus que l'App Store sur iPhone et Google Play sur Android, les deux
-quand l'appareil ne se reconnaît pas.
+au compte est abandonné (2026-11-23). Fait hors lot et en production le
+2026-11-23 (backend 1.2.1) : le site ne montre plus que l'App Store sur
+iPhone et Google Play sur Android, les deux quand l'appareil ne se reconnaît
+pas.
 Images App Store (iOS 27), refaites le 2026-11-23 : en-tête de page produit
 = le titre 点点 / Dian Dian avec une semaine de points
 (`marketing/header_page.py`, une image pour toutes les langues) ; image des

@@ -259,8 +259,8 @@ Conservation : lignes du jour 25 mois au plus, puis totaux mensuels.
   téléchargements restent visibles côté App Store (campagne `chatgptcom`).
 - **Pinterest et l'App Store** : une épingle ouvre le site (Charles), pas
   l'App Store. Le site montrait les deux boutons sur iPhone : corrigé le
-  2026-11-23 hors de ce lot (branche `feat/landing-store-by-platform`,
-  `backend/src/lib/storePlatform.ts`) : App Store seul sur iPhone, Google
+  2026-11-23 hors de ce lot, en production avec le backend 1.2.1
+  (`backend/src/lib/storePlatform.ts`) : App Store seul sur iPhone, Google
   Play seul sur Android, les deux quand l'appareil ne se reconnaît pas.
   Reste à observer si le bouton App Store s'ouvre depuis le navigateur de
   Pinterest (pour Instagram, un fil du forum Apple de juillet-août 2026
