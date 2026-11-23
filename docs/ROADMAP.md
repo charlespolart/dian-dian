@@ -141,10 +141,10 @@ devenir anxiogène (ton cozy / pixel-art). À reprendre par un spec
   reste un tracker quotidien vide, dès le soir de J1 ; silence après 3
   rappels ignorés, un dernier message à J+10 au plus tous les 60 jours ;
   écran de demande juste après le premier point ; section « Rappels » dans
-  les réglages ; noms de trackers masqués sur l'écran verrouillé ; rappel de
-  fin d'essai sur Android seulement. **Abandonnés** d'après la recherche :
-  « série en danger » et « succès débloqué » en notification, et toute
-  promotion. Décidé le 2026-11-23 : plugin dans sa version la plus récente,
+  les réglages ; noms de trackers masqués sur l'écran verrouillé.
+  **Abandonnés** d'après la recherche : « série en danger » et « succès
+  débloqué » en notification, et toute promotion ; le rappel de fin d'essai
+  aussi (Charles, 2026-11-23 : pas de gain démontré). Décidé le 2026-11-23 : plugin dans sa version la plus récente,
   donc montée en AGP 9 d'abord (point 6).
   Pour la série, la recherche recommande de compter les **jours coloriés**
   (rattraper un jour répare la série) et de ne jamais afficher de remise à

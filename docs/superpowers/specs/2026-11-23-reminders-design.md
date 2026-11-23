@@ -38,7 +38,6 @@ trackers ne sont pas quotidiens (les règles, par exemple).
 - Se taire quand les rappels sont ignorés, puis un seul dernier message.
 - Protéger la vie privée : des noms de trackers comme « Anxiété » ou
   « Règles » ne doivent pas s'afficher n'importe où.
-- Sur Android, prévenir de la fin d'un essai gratuit (Google ne le fait pas).
 
 **Non-objectifs**
 - Push serveur (Firebase, APNs, cron backend).
@@ -277,28 +276,13 @@ la cadence est synchronisée.
 - Exclusion du nom tracker par tracker (suggérée par la recherche) : laissée
   en option, aucun modèle actuel n'étant sensible.
 
-### Rappel de fin d'essai (Android seulement)
+### Rappel de fin d'essai : abandonné
 
-**Décidé le 2026-11-23** : sur Android seulement. Charles : sur iOS aussi
-seulement si c'est statistiquement intéressant. Rien ne montre qu'un rappel
-de fin d'essai fasse gagner des ventes ; il évite les prélèvements surprise
-(remboursements, mauvais avis), et la recherche ne le recommande que là où
-le store ne prévient pas : Google Play. Donc pas sur iOS.
-
-Google Play ne prévient pas l'utilisateur avant qu'un essai devienne payant
-(RevenueCat recommande de le faire soi-même) ; les essais Android existent
-depuis le 2026-11-23 (`docs/PRICING.md`).
-
-- Sur Android, si `customerInfo` (RevenueCat) montre l'entitlement `premium`
-  en période d'essai (`periodType` trial) qui se renouvellera (`willRenew`),
-  programmer **une** notification locale **2 jours avant**
-  `expirationDate`, informative : date de fin, prix qui suivra, où gérer
-  l'abonnement (Google Play). Pas de promotion, pas de pression.
-- *Mon choix* : ce jour-là, elle **remplace** le rappel quotidien (règle
-  d'une seule notification par jour). Recalculée au même moment que le
-  cycle ; annulée si l'essai est résilié.
-- Sans autorisation de notification : un bandeau discret dans l'app pendant
-  les 2 derniers jours (*mon choix*, à confirmer).
+**Décidé le 2026-11-23** : ni sur Android ni sur iOS. Charles ne le voulait
+que s'il était statistiquement intéressant ; rien ne montre qu'un rappel de
+fin d'essai fasse gagner des ventes (il évite seulement des prélèvements
+surprise, que Google Play ne signale pas). Les rappels restent des rappels
+de saisie, rien d'autre.
 
 ## Mesure
 
@@ -316,7 +300,6 @@ le dispositif se comporte comme prévu. Événements par la route existante
 | `reminder.final_open_48h` | ouverture dans les 48 h suivant le dernier message |
 | `reminder.permission_revoked` | autorisation retirée, détectée au retour au premier plan |
 | `reminder.disabled` | interrupteur coupé dans les réglages |
-| `trial_reminder.scheduled` | rappel de fin d'essai programmé (Android) |
 
 Les événements n'ont pas de plateforme aujourd'hui (voir l'audit, « Trous
 de mesure ») : l'ajouter dans la même version. Lecture de la rétention :
@@ -345,6 +328,6 @@ brouillées par Pinterest et janvier ; un ordre de grandeur seulement.
    pas de version ancienne compatible AGP 8.
 2. « Nommer mes trackers » **activé par défaut**, avec la version générique
    sur l'écran verrouillé.
-3. Rappel de fin d'essai : **Android seulement**.
+3. Rappel de fin d'essai : **abandonné**, sur Android comme sur iOS.
 4. Textes chinois : écrits directement en chinois ; relecture native si
    possible (voir « Laissé au constructeur »).

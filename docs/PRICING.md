@@ -121,8 +121,9 @@ médiane) ; un an de mensuel (35,88 $) coûte à peu près le lifetime.
   l'abonnement « Premium Yearly » en « Dian Dian Premium » ; vérifier que
   chaque package de l'offering RevenueCat courante porte son produit Play ;
   activer le délai de grâce (les échecs de paiement font 31 % des
-  résiliations sur Play contre 14 % sur l'App Store) ; rappel de fin d'essai
-  par l'app, Google ne prévenant pas (spec des rappels).
+  résiliations sur Play contre 14 % sur l'App Store). Pas de rappel de fin
+  d'essai par l'app, même si Google ne prévient pas (décidé le 2026-11-23 :
+  aucun gain démontré).
 - Google Play ne réajuste jamais les prix locaux (modèles de prix supprimés
   le 2025-10-27) : recopier à la main les prix locaux d'Apple, et
   recommencer à chaque réajustement annoncé par Apple.
