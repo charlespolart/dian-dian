@@ -78,7 +78,7 @@ points sont saisis plus d'une semaine après leur date).
 
 | Déclencheur | Condition | Message (idée) | Ouvre |
 |---|---|---|---|
-| `trackers` | 3 trackers (la limite) et un usage régulier : *mon choix*, au moins 5 jours avec des points sur les 14 derniers | « Vos 3 trackers sont bien remplis. Avec Premium, ajoutez-en autant que vous voulez — pour toujours avec l'achat unique. » | paywall, lifetime mis en avant |
+| `trackers` | 3 trackers (la limite) et un usage régulier : au moins 5 jours avec des points sur les 14 derniers (décidé) | « Vos 3 trackers sont bien remplis. Avec Premium, ajoutez-en autant que vous voulez — pour toujours avec l'achat unique. » | paywall, lifetime mis en avant |
 | `days_7` | 7e jour rempli | aperçu des stats sur ses données : « Cette semaine, votre humeur la plus fréquente : ■ Calme. Premium vous montre toutes vos stats. » | paywall des stats |
 | `days_30` | 30e jour rempli | aperçu plus riche (le mois écoulé) | paywall des stats |
 | `year_end` | fin décembre / début janvier, avec assez de jours remplis dans l'année (*mon choix* : 30) | « Votre année 2026 est complète — exportez-la en image. » (l'export est premium) | paywall de l'export |
@@ -98,7 +98,10 @@ Esquisse (style de l'app, dialogue `AppDialog`) :
 ```
 
 L'aperçu est calculé dans l'app à partir des points de l'utilisateur ; une
-seule donnée, vraie, pas de fausse stat. Une étape « fin de mois » a été
+seule donnée, vraie, pas de fausse stat. Décidé le 2026-11-23 : dévoiler
+gratuitement une vraie stat, pour donner envie ; les stats plus poussées
+restent premium. Lesquelles : à revoir avec le chantier « stats plus
+utiles » (`docs/ROADMAP.md` §10). Une étape « fin de mois » a été
 évoquée ; laissée pour plus tard.
 
 ### Garde-fous
@@ -110,8 +113,9 @@ seule donnée, vraie, pas de fausse stat. Une étape « fin de mois » a été
   au plus une **toutes les deux semaines**, au plus une par session ; jamais
   la même session que l'écran de demande des rappels (qui a la priorité) ;
   jamais juste après un mur premium vu dans la session.
-- **Plus rien après 2 refus de suite** (« Plus tard » ou fermeture). *Mon
-  choix* : définitif, réinitialisable à distance.
+- **Plus rien après 2 refus de suite** (« Plus tard » ou fermeture) :
+  définitif (décidé), réinitialisable à distance. Les emplacements passifs
+  (bouton de la liste, murs premium) restent.
 - **Jamais pour les payants** (abonnement actif, lifetime, VIP), ni sans
   réseau (le paywall a besoin des offres RevenueCat).
 
@@ -175,11 +179,13 @@ L'interface exacte de la pop-up, le calcul des aperçus, le format du bloc
 (`dialogOpen`), les tests (la sélection du déclencheur en fonction pure,
 testée unitairement).
 
-## Questions ouvertes (pour Charles)
+## Questions closes le 2026-11-23
 
-1. Seuil « usage régulier » du déclencheur `trackers` (proposé : 5 jours sur
-   14).
-2. Après 2 refus : arrêt définitif, ou reprise après quelques mois ?
-3. L'aperçu des stats montre une vraie donnée gratuitement (« humeur la plus
-   fréquente ») : d'accord pour en dévoiler une ?
-4. Fenêtre exacte du déclencheur de fin d'année.
+Charles : « selon tes recommandations », et oui au teaser.
+
+1. Seuil « usage régulier » du déclencheur `trackers` : **5 jours sur 14**.
+2. Après 2 refus : **arrêt définitif** des pop-ups (réinitialisable à
+   distance) ; les emplacements passifs restent.
+3. L'aperçu **dévoile une vraie stat** gratuitement ; les plus
+   intéressantes restent premium.
+4. Fenêtre de fin d'année : *mon choix*, du 26 décembre au 7 janvier.

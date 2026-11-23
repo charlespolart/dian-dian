@@ -142,9 +142,10 @@ devenir anxiogène (ton cozy / pixel-art). À reprendre par un spec
   rappels ignorés, un dernier message à J+10 au plus tous les 60 jours ;
   écran de demande juste après le premier point ; section « Rappels » dans
   les réglages ; noms de trackers masqués sur l'écran verrouillé ; rappel de
-  fin d'essai sur Android. **Abandonnés** d'après la recherche : « série en
-  danger » et « succès débloqué » en notification, et toute promotion. À
-  trancher d'abord : le plugin exige AGP 9 (voir le point 6).
+  fin d'essai sur Android seulement. **Abandonnés** d'après la recherche :
+  « série en danger » et « succès débloqué » en notification, et toute
+  promotion. Décidé le 2026-11-23 : plugin dans sa version la plus récente,
+  donc montée en AGP 9 d'abord (point 6).
   Pour la série, la recherche recommande de compter les **jours coloriés**
   (rattraper un jour répare la série) et de ne jamais afficher de remise à
   zéro : à reprendre au spec de la série.
@@ -163,9 +164,10 @@ pixel-à-pixel.
 Remarques Play Console : bannière AdMob sous la navigation 3 boutons à
 vérifier, puis AGP 9 / Gradle 9.1 / Kotlin 2.3 + R8 dans une release
 dédiée testée sur appareil. Détail : `ANDROID_RELEASE_PLAN.md` §8.
-Lié aux rappels (point 4) : `flutter_local_notifications` 23.x exige AGP
-≥ 9.1.1 ; sans version antérieure compatible AGP 8, les rappels sortent
-après cette release.
+Prérequis des rappels (point 4), décidé le 2026-11-23 : pas de plugin
+ancien, on monte en AGP 9 même si la mise à niveau demande du travail, puis
+on prend la version la plus récente de `flutter_local_notifications` (23.x
+exige AGP ≥ 9.1.1).
 
 ### 7. Esthétique : animations, sons, vibrations, écran de lancement — fusionné sur master le 2026-10-28
 Brainstormé et spécifié le 2026-10-22 :
@@ -212,12 +214,13 @@ intention de sortir, le correctif a été annulé.
 **Livré** : `docs/PRICING.md`, d'après la recherche
 `docs/research/reports/Prix abonnement et achat à vie.md` et l'audit.
 Abonnement et lifetime gardés ; mensuel 2,99 $ inchangé, annuel 8,99 →
-14,99 $, lifetime 22,99 → 29,99 $ (à confirmer contre 34,99 $) ; essai de 7
-jours gardé ; mêmes prix sur Android ; abonnés actuels protégés ;
-changement avant le Nouvel An, relecture début mars. Android : offres d'essai
+14,99 $, lifetime 22,99 → 29,99 $ (décidé le 2026-11-23) ; en euros 2,99 /
+14,99 / 29,99 € (aujourd'hui 1,99 / 9,99 / 24,99 €) ; essai de 7 jours
+gardé ; mêmes prix sur Android ; abonnés actuels protégés ; changement le
+1er décembre, relecture début mars. Android : offres d'essai
 `monthly-free-trial` / `yearly-free-trial` créées le 2026-11-23. Message de
 résiliation App Store rédigé (quatre langues). Promotions saisonnières en
-pause. Reste : confirmer le lifetime et la date, vérifications Android,
+pause. Reste : changer les prix le 1er décembre (Charles), vérifications Android,
 refonte du paywall (annuel par mois, mensuel en lien, lifetime visible, mur
 des 3 trackers centré sur le lifetime).
 
@@ -245,17 +248,36 @@ cette note.
 du jour, jamais au lancement ; étapes affichées une seule fois (3 trackers
 avec un usage régulier, 7e et 30e jour remplis avec un aperçu des stats,
 fin d'année avec l'export) ; rien les premiers jours, une pop-up toutes les
-deux semaines au plus, plus rien après 2 refus, jamais pour les payants ;
-réglable à distance par le bootstrap. Public encore petit (≈ 16 gratuits
+deux semaines au plus, plus rien après 2 refus (définitif), jamais pour les
+payants ; réglable à distance par le bootstrap. Décidé le 2026-11-23 : usage
+régulier = 5 jours sur 14 ; l'aperçu dévoile gratuitement une vraie stat,
+les plus poussées restent premium (voir le point 10). Public encore petit (≈ 16 gratuits
 actifs à 3 trackers) : il grandit avec la rétention, donc après les rappels.
 **Pop-up promo** (annonces datées pilotées par le serveur, prix barré par un
 produit promo) : décrite dans le même spec, **en pause** avec toutes les
 promotions.
 
+### 10. Stats plus utiles — à brainstormer (demandé le 2026-11-23)
+Charles : même en premium, les stats « n'apportent pas grand-chose ». Une
+app dédiée (au suivi des règles, par exemple) va bien plus loin ; Dian Dian
+ne peut pas viser un thème précis, mais ses stats peuvent devenir plus
+utiles. Idée de fond : une vraie stat dévoilée gratuitement en teaser
+(pop-up premium, point 9), les plus intéressantes en premium.
+Aujourd'hui : en gratuit, jours remplis, série en cours et % de l'année
+(barre latérale du tracker) ; en premium (`StatsDetailDialog`,
+`GlobalStatsDialog`), en plus la meilleure série, la répartition des
+légendes, le remplissage par mois, la répartition par jour de la semaine,
+et des totaux tous trackers (trackers, jours, meilleure série, tracker le
+plus actif, cette année ou depuis le début). Que du comptage de
+remplissage : presque rien ne parle de ce que les couleurs veulent dire.
+Brainstorm en cours, puis un spec avant la passe Fable.
+
 ## Fait récemment
 - 2026-11-23 : audit de conversion, `docs/PRICING.md`, specs des rappels et
   de la pop-up premium, essais gratuits Android, images App Store ; branche
-  `docs/conversion-retention`.
+  `docs/conversion-retention`. Branche `feat/comment-badge` (non fusionnée) :
+  pastille de commentaire à la place de l'anneau troué, tuiles Sons et
+  Vibrations qui suivent le thème.
 - 2026-10-14 : backend 1.1.0 en prod (bootstrap en une requête, store
   client, snapshot disque, fixes décembre / déconnexions / sync légendes),
   outillage de release et de déploiement par script, app 1.3.0 taguée.

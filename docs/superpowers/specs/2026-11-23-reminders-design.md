@@ -78,9 +78,10 @@ trackers ne sont pas quotidiens (les règles, par exemple).
 - **Plugin** : `flutter_local_notifications` 23.0.3 exige AGP ≥ 9.1.1 ; le
   projet est en AGP 8.11.1 (`flutter_app/android/settings.gradle.kts`) et le
   passage à AGP 9 est prévu dans une release dédiée (point 6 de la feuille
-  de route). **À trancher en premier** : retenir une version antérieure du
-  plugin compatible AGP 8 (lire son changelog), ou sortir les rappels après
-  la release AGP 9. Pour `zonedSchedule` : paquets `timezone` et
+  de route). **Décidé le 2026-11-23** : pas de version ancienne du plugin.
+  Le projet monte en AGP 9 (`ANDROID_RELEASE_PLAN.md` §8), même si la mise
+  à niveau demande du travail, et on prend la version la plus récente du
+  plugin au moment de coder. Ordre : AGP 9 d'abord, puis les rappels. Pour `zonedSchedule` : paquets `timezone` et
   `flutter_timezone`.
 - **Multi-appareils** : la synchro est multi-appareils, les rappels sont
   locaux. Un rappel programmé sur le téléphone peut nommer un tracker déjà
@@ -268,7 +269,7 @@ la cadence est synchronisée.
 
 ### Vie privée
 
-- Réglage global « Nommer mes trackers dans le rappel ». *Mon choix* :
+- Réglage global « Nommer mes trackers dans le rappel ». **Décidé** :
   activé par défaut (nommer aide), avec une version générique sur l'écran
   verrouillé : visibilité privée et version publique sur Android, texte de
   remplacement quand les aperçus sont masqués sur iOS. Le support de ces
@@ -276,7 +277,13 @@ la cadence est synchronisée.
 - Exclusion du nom tracker par tracker (suggérée par la recherche) : laissée
   en option, aucun modèle actuel n'étant sensible.
 
-### Rappel de fin d'essai (Android)
+### Rappel de fin d'essai (Android seulement)
+
+**Décidé le 2026-11-23** : sur Android seulement. Charles : sur iOS aussi
+seulement si c'est statistiquement intéressant. Rien ne montre qu'un rappel
+de fin d'essai fasse gagner des ventes ; il évite les prélèvements surprise
+(remboursements, mauvais avis), et la recherche ne le recommande que là où
+le store ne prévient pas : Google Play. Donc pas sur iOS.
 
 Google Play ne prévient pas l'utilisateur avant qu'un essai devienne payant
 (RevenueCat recommande de le faire soi-même) ; les essais Android existent
@@ -318,23 +325,26 @@ brouillées par Pinterest et janvier ; un ordre de grandeur seulement.
 
 ## Laissé au constructeur
 
-- La version du plugin (contrainte AGP) et l'ordre de sortie.
+- Livrer les rappels dans la release AGP 9 ou dans la suivante (le plugin
+  est pris dans sa version la plus récente, décidé).
 - Le schéma des identifiants de notifications, le canal Android (nommé
   « Rappel du soir », importance par défaut, catégorie rappel), le
   récepteur de redémarrage.
 - L'interface du choix de cadence dans `_CreateTrackerDialog` et l'endroit
   où la modifier dans le tracker.
-- L'écriture finale des textes dans les quatre langues (relecture native du
-  chinois).
+- L'écriture finale des textes dans les quatre langues. Le chinois est
+  écrit directement en chinois, en phrases courtes ; relu par un natif
+  avant la sortie si Charles en a un sous la main, sinon tel quel, comme les
+  autres textes chinois de l'app.
 - Les tests : la fonction de cycle en unitaire ; le reste à la main sur un
   iPhone et un Android (dont Android 13+ et un redémarrage).
 
-## Questions ouvertes (pour Charles)
+## Questions closes le 2026-11-23
 
-1. **Ordre de sortie** : rappels dans la prochaine version avec un plugin
-   compatible AGP 8, ou après la release AGP 9 ?
-2. « Nommer mes trackers » **activé par défaut** ? (mon choix : oui, avec la
-   version générique sur l'écran verrouillé)
-3. Rappel de fin d'essai **aussi sur iOS** ? (la recherche ne l'impose que
-   pour Android)
-4. Qui relit les textes chinois ?
+1. **Ordre de sortie** : montée en AGP 9 d'abord, plugin le plus récent ;
+   pas de version ancienne compatible AGP 8.
+2. « Nommer mes trackers » **activé par défaut**, avec la version générique
+   sur l'écran verrouillé.
+3. Rappel de fin d'essai : **Android seulement**.
+4. Textes chinois : écrits directement en chinois ; relecture native si
+   possible (voir « Laissé au constructeur »).

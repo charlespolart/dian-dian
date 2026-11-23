@@ -6,8 +6,9 @@ Sources : la recherche `docs/research/reports/Prix abonnement et achat à vie.md
 occidental, relevé de 36 apps le 2026-11-22) et l'audit de prod
 `docs/research/audit-2026-11-22.md`.
 
-**État** : recommandation. Dans les stores, seule la configuration Android
-a changé (essais ajoutés le 2026-11-23) ; aucun prix n'a bougé.
+**État** : grille décidée le 2026-11-23, à appliquer dans les stores par
+Charles le 1er décembre. Dans les stores, seule la configuration Android a
+changé (essais ajoutés le 2026-11-23) ; aucun prix n'a bougé.
 
 ## En bref
 
@@ -16,14 +17,22 @@ le point faible n'est pas la conversion mais le revenu par payant. Mêmes
 prix sur iOS et Android, abonnés actuels protégés, changement pour tous avant
 le pic du Nouvel An, relecture début mars.
 
-| Formule | Aujourd'hui | Recommandé | Statut |
+| Formule | Aujourd'hui | Nouveau | Statut |
 |---|---|---|---|
-| Mensuel (essai 7 j) | 2,99 $ | **2,99 $**, inchangé | décidé |
-| Annuel (essai 7 j) | 8,99 $ | **14,99 $** | décidé |
-| Lifetime | 22,99 $ | **29,99 $** | ma recommandation, **à confirmer par Charles** (le rapport disait 34,99 $) |
+| Mensuel (essai 7 j) | 2,99 $ · 1,99 € | **2,99 $ · 2,99 €** | décidé |
+| Annuel (essai 7 j) | 8,99 $ · 9,99 € | **14,99 $ · 14,99 €** | décidé |
+| Lifetime | 22,99 $ · 24,99 € | **29,99 $ · 29,99 €** | décidé le 2026-11-23 (le rapport disait 34,99 $) |
 
-En euros, App Store Connect propose les prix égalisés (TVA comprise) :
-autour de 2,99 €, 15,99 € et 30 à 32 €. Les reprendre tels quels.
+**Euros.** Prix français relevés par Charles le 2026-11-23, TVA comprise :
+1,99 € / 9,99 € / 24,99 €. Le mensuel en euros est sous le dollar (1,99 €
+pour 2,99 $), quand l'annuel et le lifetime suivent l'égalisation d'Apple.
+*Mon choix* : dans la zone euro, les mêmes chiffres qu'en dollars, 2,99 € /
+14,99 € / 29,99 €, réglés à la main plutôt que l'égalisation d'Apple
+(≈ 16,99 € et 32,99 €). Ils restent sous 15 € et 30 €, et l'annuel vaut
+toujours 5 fois le mensuel, donc le même badge « −58 % ». Le mensuel passe
+de 1,99 € à 2,99 € pour les nouveaux abonnés seulement (un seul essai
+mensuel à ce jour). Ailleurs (GB, CA, AU…), l'égalisation d'Apple, recopiée
+à la main sur Google Play.
 
 ## Pourquoi monter
 
@@ -58,8 +67,9 @@ autour de 2,99 €, 15,99 € et 30 à 32 €. Les reprendre tels quels.
 
 ## Le lifetime : 29,99 $ plutôt que 34,99 $
 
-Ma recommandation du 2026-11-23, après que Charles a trouvé la grille du
-rapport « un peu chère » :
+Décidé le 2026-11-23. Charles a demandé le prix le plus cohérent avec la
+recherche et l'audit (la grille du rapport lui semblait « un peu chère ») ;
+c'est 29,99 $, pour ces raisons :
 
 - Avec 3 ventes, rien ne départage 29,99 $ et 34,99 $ : l'écart est plus
   petit que l'incertitude.
@@ -71,6 +81,7 @@ rapport « un peu chère » :
   34,99 $ ne touche que les nouveaux acheteurs.
 - Un prix intermédiaire (32,99 $) n'apporte rien : plus sous 30 $, et pas le
   revenu de 34,99 $.
+- En euros, 24,99 → 29,99 € : +20 %, le plus petit pas des trois formules.
 
 Rapports de la grille : annuel = 5 fois le mensuel (badge « −58 % » au lieu
 de « −75 % » aujourd'hui ; les concurrents sont à 4 à 10 fois, 5,6 en
@@ -124,7 +135,10 @@ médiane) ; un an de mensuel (35,88 $) coûte à peu près le lifetime.
   Les acheteurs du lifetime ne sont pas concernés.
 - **Quand** : avant le pic du Nouvel An (une année en pixels commence le
   1er janvier ; les acheteurs du lifetime testent de 2 jours à un mois avant
-  de payer). Date non fixée ; le rapport proposait le 2 décembre.
+  de payer). *Mon choix* : **mardi 1er décembre 2026**, après la semaine du
+  Black Friday, avec quatre semaines de recul avant janvier. Les deux stores
+  le même jour : App Store Connect permet de programmer la date d'effet,
+  Google Play se change à la main ce jour-là.
 - **Pas de test A/B** : détecter un écart de 20 % demanderait ≈ 21 000
   utilisateurs par variante. On change pour tous et on suit trois
   indicateurs : revenu par nouvel utilisateur qui voit le paywall, taux de
@@ -201,11 +215,11 @@ offres commerciales (vérifié dans le code le 2026-11-23). On peut envoyer
 les e-mails techniques, pas de promo. Il faudrait une case à l'inscription
 et un réglage pour en envoyer un jour.
 
-## Questions ouvertes
+## Questions closes le 2026-11-23
 
-1. Lifetime à **29,99 $ ou 34,99 $** ?
-2. **Date du changement** de prix (avant le Nouvel An).
-3. Prix locaux exacts aujourd'hui sur les deux stores (FR, DE, GB, CA, AU),
-   pour vérifier que Google Play n'a pas divergé.
-4. Les trois acheteurs du lifetime accepteraient-ils de dire pourquoi ils
-   n'ont pas pris d'abonnement ?
+1. Lifetime : **29,99 $** (29,99 €), voir plus haut.
+2. Date du changement : **1er décembre 2026** (*mon choix*).
+3. Prix français actuels : 1,99 € / 9,99 € / 24,99 € (voir « Euros »). En
+   changeant les prix, vérifier que Google Play affiche les mêmes que l'App
+   Store dans chaque pays.
+4. On ne sollicite pas les trois acheteurs du lifetime.
