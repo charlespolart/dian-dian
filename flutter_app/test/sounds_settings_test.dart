@@ -4,22 +4,54 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:dian_dian/providers/language_provider.dart';
+import 'package:dian_dian/providers/theme_provider.dart';
 import 'package:dian_dian/services/audio_service.dart';
+import 'package:dian_dian/theme/app_theme.dart';
 import 'package:dian_dian/widgets/press_scale.dart';
 import 'package:dian_dian/widgets/sounds_settings.dart';
 
 import 'helpers.dart';
 
 void main() {
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  late ThemeProvider theme;
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    theme = ThemeProvider();
+  });
+  tearDown(() => AppColors.setTheme(AppThemeType.defaultTheme));
 
+  // Like the settings screen: a parent that rebuilds on a theme change and
+  // holds the section as a const.
   Widget host(AudioService audio) => MultiProvider(
         providers: [
           ChangeNotifierProvider(create: (_) => LanguageProvider()),
           ChangeNotifierProvider<AudioService>.value(value: audio),
+          ChangeNotifierProvider<ThemeProvider>.value(value: theme),
         ],
-        child: const MaterialApp(home: Scaffold(body: SoundsSettings())),
+        child: MaterialApp(
+          home: Builder(builder: (context) {
+            context.watch<ThemeProvider>();
+            return const Scaffold(body: SoundsSettings());
+          }),
+        ),
       );
+
+  testWidgets('a theme change repaints both tiles at once, though the screen holds the section as a const', (tester) async {
+    final rec = await recordingAudio();
+    await tester.pumpWidget(host(rec.service));
+    await tester.pumpAndSettle();
+    BoxDecoration tile(String key) =>
+        tester.widget<Container>(find.descendant(of: find.byKey(Key(key)), matching: find.byType(Container)).first).decoration!
+            as BoxDecoration;
+    final before = AppColors.shell;
+    theme.applyServerSettings(AppThemeType.midnight.name);
+    await tester.pump();
+    expect(AppColors.shell, isNot(before));
+    for (final key in ['settings.sounds', 'settings.haptics']) {
+      expect(tile(key).color, AppColors.shell, reason: '$key keeps the old theme until touched');
+      expect(tile(key).border, Border.all(color: AppColors.shellBorder));
+    }
+  });
 
   testWidgets('the tile shows the state, flips it on tap, persists, and plays press when turning on', (tester) async {
     final rec = await recordingAudio();
