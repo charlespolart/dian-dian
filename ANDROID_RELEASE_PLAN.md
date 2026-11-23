@@ -242,7 +242,7 @@ des évolutions produit, testée sur appareil réel (achat, pub, Google Sign-In)
 - Constat : `isMinifyEnabled` / `isShrinkResources` absents de `app/build.gradle.kts`, AGP 8.11.1, Gradle 8.14, Kotlin 2.2.20 (Flutter avertit déjà que ces versions seront bientôt abandonnées).
 - Gain : quelques Mo et un peu de mémoire (R8 n'optimise que la partie Java/Kotlin : embedding + plugins ; le Dart est déjà AOT). Pas perceptible pour l'utilisateur.
 - Risque : plugin cassé à l'exécution par une règle manquante (RevenueCat, AdMob, Google Sign-In livrent leurs règles consumer, à valider sur appareil).
-- À faire, dans l'ordre : AGP 9.x + Gradle 9.1 + Kotlin 2.3 → build vert → `isMinifyEnabled = true`, `isShrinkResources = true`, `proguard-rules.pro` → test appareil complet → release app (patch).
+- À faire, dans l'ordre : AGP 9.1.x + Gradle ≥ 9.3.1 (AGP 9.1 l'exige ; vérifié le 2026-11-23) + Kotlin 2.3, `compileSdk = 37` écrit à la main (Flutter fixe encore 36), Dart ≥ 3.12 pour les rappels → build vert → `isMinifyEnabled = true`, `isShrinkResources = true`, `proguard-rules.pro` → test appareil complet → release app (patch).
 
 ---
 

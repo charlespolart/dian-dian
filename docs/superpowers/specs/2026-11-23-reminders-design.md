@@ -74,14 +74,22 @@ trackers ne sont pas quotidiens (les règles, par exemple).
   `SCHEDULE_EXACT_ALARM` ni `USE_EXACT_ALARM`. Un seul canal. Reprogrammer
   au redémarrage du téléphone. Les surcouches (Huawei, Xiaomi, OnePlus,
   Samsung) peuvent bloquer les notifications programmées : limite acceptée.
-- **Plugin** : `flutter_local_notifications` 23.0.3 exige AGP ≥ 9.1.1 ; le
+- **Plugin** : `flutter_local_notifications` 23.x exige AGP ≥ 9.1.1 ; le
   projet est en AGP 8.11.1 (`flutter_app/android/settings.gradle.kts`) et le
   passage à AGP 9 est prévu dans une release dédiée (point 6 de la feuille
   de route). **Décidé le 2026-11-23** : pas de version ancienne du plugin.
   Le projet monte en AGP 9 (`ANDROID_RELEASE_PLAN.md` §8), même si la mise
   à niveau demande du travail, et on prend la version la plus récente du
-  plugin au moment de coder. Ordre : AGP 9 d'abord, puis les rappels. Pour `zonedSchedule` : paquets `timezone` et
-  `flutter_timezone`.
+  plugin au moment de coder. Ordre : AGP 9 d'abord, puis les rappels.
+  Vérifié le 2026-11-23 : la plus récente est la 23.0.4 (publiée le jour
+  même ; la 23.0.3 a une régression iOS). Elle demande AGP ≥ 9.1.1, donc
+  **Gradle ≥ 9.3.1** (le projet est en 8.14), **compileSdk 37** écrit à la
+  main (`flutter.compileSdkVersion` vaut encore 36), le desugaring
+  (`desugar_jdk_libs` 2.1.4), Java 17, minSdk 24 (vérifier
+  `flutter.minSdkVersion`), Flutter ≥ 3.44 et **Dart ≥ 3.12** (le
+  `pubspec.yaml` dit `^3.11.4`). Pour `zonedSchedule` : `timezone` 0.11.2
+  et `flutter_timezone` 5.1.1, qui renvoie un `TimezoneInfo` et non plus
+  une chaîne depuis la 5.0.
 - **Multi-appareils** : la synchro est multi-appareils, les rappels sont
   locaux. Un rappel programmé sur le téléphone peut nommer un tracker déjà
   rempli depuis la tablette. Limite acceptée (voir Approches).
@@ -270,9 +278,14 @@ la cadence est synchronisée.
 
 - Réglage global « Nommer mes trackers dans le rappel ». **Décidé** :
   activé par défaut (nommer aide), avec une version générique sur l'écran
-  verrouillé : visibilité privée et version publique sur Android, texte de
-  remplacement quand les aperçus sont masqués sur iOS. Le support de ces
-  deux options par le plugin reste à vérifier.
+  verrouillé. Vérifié le 2026-11-23 : le plugin ne donne sur Android que la
+  visibilité privée (pas de version publique) et sur iOS aucun texte de
+  remplacement, alors que les deux API natives existent (`setPublicVersion`,
+  `hiddenPreviewsBodyPlaceholder`). *Mon choix* : s'en tenir au masquage du
+  système (Android `NotificationVisibility.private`, aperçus masqués d'iOS),
+  qui cache déjà le texte sur l'écran verrouillé quand le téléphone le
+  demande ; un texte générique maison demanderait du code natif, laissé au
+  constructeur s'il est simple.
 - Exclusion du nom tracker par tracker (suggérée par la recherche) : laissée
   en option, aucun modèle actuel n'étant sensible.
 
@@ -281,8 +294,9 @@ la cadence est synchronisée.
 **Décidé le 2026-11-23** : ni sur Android ni sur iOS. Charles ne le voulait
 que s'il était statistiquement intéressant ; rien ne montre qu'un rappel de
 fin d'essai fasse gagner des ventes (il évite seulement des prélèvements
-surprise, que Google Play ne signale pas). Les rappels restent des rappels
-de saisie, rien d'autre.
+surprise ; Google Play prévient d'ailleurs déjà par e-mail, Apple ne
+documente aucun rappel). Les rappels restent des rappels de saisie, rien
+d'autre.
 
 ## Mesure
 

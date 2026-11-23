@@ -162,7 +162,7 @@ pixel-à-pixel.
 
 ### 6. Toolchain Android
 Remarques Play Console : bannière AdMob sous la navigation 3 boutons à
-vérifier, puis AGP 9 / Gradle 9.1 / Kotlin 2.3 + R8 dans une release
+vérifier, puis AGP 9.1 / Gradle 9.3.1 (et non 9.1) / Kotlin 2.3 + R8 dans une release
 dédiée testée sur appareil. Détail : `ANDROID_RELEASE_PLAN.md` §8.
 Prérequis des rappels (point 4), décidé le 2026-11-23 : pas de plugin
 ancien, on monte en AGP 9 même si la mise à niveau demande du travail, puis

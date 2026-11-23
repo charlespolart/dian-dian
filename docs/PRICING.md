@@ -92,7 +92,8 @@ médiane) ; un an de mensuel (35,88 $) coûte à peu près le lifetime.
 - Stats publiques (RevenueCat SOSA 2026, médianes) : part des essais qui
   deviennent payants 25,5 % pour 4 jours ou moins, **37,4 % pour 5 à 9
   jours**, 42,5 % pour 17 à 32 jours (comparaison entre apps, pas un test).
-  Santé-forme : 37,7 %. 82 % des essais démarrent le jour de l'installation.
+  Santé-forme : 37,7 %. 82 % des essais démarrent le jour de l'installation
+  (SOSA 2025, toutes apps ; SOSA 2026 donne 82,1 % pour la santé-forme).
 - Nos essais : 2 conversions sur 5 annuels. Les 3 qui ont expiré avaient
   quitté l'app en 1 à 3 jours : un essai plus long n'aurait fait que
   retarder leur résiliation. Le problème est la rétention de la première
@@ -122,11 +123,16 @@ médiane) ; un an de mensuel (35,88 $) coûte à peu près le lifetime.
   chaque package de l'offering RevenueCat courante porte son produit Play ;
   activer le délai de grâce (les échecs de paiement font 31 % des
   résiliations sur Play contre 14 % sur l'App Store). Pas de rappel de fin
-  d'essai par l'app, même si Google ne prévient pas (décidé le 2026-11-23 :
-  aucun gain démontré).
-- Google Play ne réajuste jamais les prix locaux (modèles de prix supprimés
-  le 2025-10-27) : recopier à la main les prix locaux d'Apple, et
-  recommencer à chaque réajustement annoncé par Apple.
+  d'essai par l'app (décidé le 2026-11-23 : aucun gain démontré) ; Google
+  Play prévient déjà par e-mail quand un essai va finir, Apple ne documente
+  aucun rappel (vérifié le 2026-11-23).
+- Google Play génère les prix locaux une fois, au taux du jour, et ne les
+  réajuste jamais (les modèles de prix, retirés le 2025-10-27, partageaient
+  un prix entre produits, ils ne suivaient pas le change) : recopier à la
+  main les prix locaux d'Apple. Apple ne réajuste jamais les prix des
+  abonnements ; ses réajustements ne touchent que le lifetime, à recopier
+  sur Play quand il en annonce un. Sur l'App Store, le prix se fixe pays par
+  pays (pas de groupe « zone euro »).
 
 ## Changer les prix
 
@@ -138,8 +144,9 @@ médiane) ; un an de mensuel (35,88 $) coûte à peu près le lifetime.
   1er janvier ; les acheteurs du lifetime testent de 2 jours à un mois avant
   de payer). *Mon choix* : **mardi 1er décembre 2026**, après la semaine du
   Black Friday, avec quatre semaines de recul avant janvier. Les deux stores
-  le même jour : App Store Connect permet de programmer la date d'effet,
-  Google Play se change à la main ce jour-là.
+  le même jour : App Store Connect permet de programmer la date d'effet
+  (à faire au plus tard le 28 ou le 29 novembre, il demande en général un
+  à deux jours d'avance), Google Play se change à la main ce jour-là.
 - **Pas de test A/B** : détecter un écart de 20 % demanderait ≈ 21 000
   utilisateurs par variante. On change pour tous et on suit trois
   indicateurs : revenu par nouvel utilisateur qui voit le paywall, taux de
@@ -188,8 +195,11 @@ soumettre par Charles**. Nom de référence `Cancel - keep pixels` ; rattaché
 à Premium Monthly et Premium Yearly ; **sans image** (le visuel universel
 était trop grand et c'est une image de présentation) ; **sans offre** (les
 promos sont en pause, et une remise demanderait un produit de plus pour deux
-abonnés). Le corps ne doit citer ni offre ni prix (règle d'Apple). Limites :
-66 caractères pour l'en-tête, 144 pour le corps.
+abonnés). Ni l'en-tête ni le corps ne doivent citer d'offre, de remise ou de
+prix (règle d'Apple). Limites : 66 caractères pour l'en-tête, 144 pour le
+corps ; les quatre messages ci-dessous les respectent (vérifié le
+2026-11-23). Nom officiel : « Retention messages », disponibles depuis le
+4 novembre 2026.
 
 | Langue | En-tête | Corps |
 |---|---|---|
