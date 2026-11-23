@@ -10,6 +10,8 @@ working against the new backend.
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-11-23
+
 ### Changed
 - Landing: the store buttons follow the visitor's device — the App Store only on an iPhone (Safari, Chrome or an in-app browser such as Pinterest's), Google Play only on Android, both when the device can't be told (a computer, an iPad in desktop mode). Read from the `User-Agent` (`src/lib/storePlatform.ts`); the page is sent with `Vary: User-Agent`.
 
