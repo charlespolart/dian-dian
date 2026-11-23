@@ -4,8 +4,9 @@
 --   ssh root@45.76.44.34 "docker exec -i dian-dian-postgres-1 sh -c 'PGPASSWORD=\$POSTGRES_PASSWORD psql -U postgres -d dian_dian -h localhost'" < backend/scripts/prod-trackers.sql
 --
 -- Excluded everywhere: test accounts (@example.com, @overridedev.com,
--- demo@diandian.app) and VIP accounts. "Paying" = active, unexpired
--- subscription. "Used" tracker = at least one cell filled in the window.
+-- demo@diandian.app), internal accounts (@mydiandian.app) and VIP accounts.
+-- "Paying" = active, unexpired subscription. "Used" tracker = at least one
+-- cell filled in the window.
 
 \pset format aligned
 
@@ -14,7 +15,7 @@
 CREATE TEMP TABLE u AS
 WITH real AS (
   SELECT id FROM users
-  WHERE NOT (vip OR email ILIKE '%@example.com' OR email ILIKE '%@overridedev.com' OR email = 'demo@diandian.app')),
+  WHERE NOT (vip OR email ILIKE '%@example.com' OR email ILIKE '%@overridedev.com' OR email = 'demo@diandian.app' OR email ILIKE '%@mydiandian.app')),
 paying AS (
   SELECT DISTINCT user_id FROM subscriptions
   WHERE active AND (expires_at IS NULL OR expires_at > now())),
@@ -88,7 +89,7 @@ FROM u GROUP BY paying ORDER BY paying;
 \echo === Titres les plus fréquents (ce que les gens suivent) ===
 WITH real AS (
   SELECT id FROM users
-  WHERE NOT (vip OR email ILIKE '%@example.com' OR email ILIKE '%@overridedev.com' OR email = 'demo@diandian.app'))
+  WHERE NOT (vip OR email ILIKE '%@example.com' OR email ILIKE '%@overridedev.com' OR email = 'demo@diandian.app' OR email ILIKE '%@mydiandian.app'))
 SELECT lower(trim(p.title)) AS title, count(*) AS n
 FROM pages p JOIN real r ON r.id = p.user_id
 GROUP BY 1 HAVING count(*) >= 2 ORDER BY n DESC, title LIMIT 25;

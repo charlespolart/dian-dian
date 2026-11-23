@@ -3,15 +3,16 @@
 --   ssh root@45.76.44.34 "docker exec -i dian-dian-postgres-1 sh -c 'PGPASSWORD=\$POSTGRES_PASSWORD psql -U postgres -d dian_dian -h localhost'" < backend/scripts/prod-stats.sql
 --
 -- Excluded from every count: smoke/e2e accounts (@example.com), seed-test
--- accounts (@overridedev.com), the demo account, and VIP accounts (custom flag
--- for special accounts — never counted as users).
+-- accounts (@overridedev.com), the demo account, internal accounts
+-- (@mydiandian.app) and VIP accounts (custom flag for special accounts —
+-- never counted as users).
 
 \pset format aligned
 
 \echo === Comptes : total / exclus (test + vip) / vrais ===
 WITH t AS (
   SELECT id, vip,
-         (vip OR email ILIKE '%@example.com' OR email ILIKE '%@overridedev.com' OR email = 'demo@diandian.app') AS is_excluded
+         (vip OR email ILIKE '%@example.com' OR email ILIKE '%@overridedev.com' OR email = 'demo@diandian.app' OR email ILIKE '%@mydiandian.app') AS is_excluded
   FROM users)
 SELECT count(*)                                AS total_accounts,
        count(*) FILTER (WHERE is_excluded)     AS excluded_accounts,
@@ -21,19 +22,19 @@ FROM t;
 
 \echo === Comptes exclus (test + vip) ===
 SELECT email, vip FROM users
-WHERE vip OR email ILIKE '%@example.com' OR email ILIKE '%@overridedev.com' OR email = 'demo@diandian.app'
+WHERE vip OR email ILIKE '%@example.com' OR email ILIKE '%@overridedev.com' OR email = 'demo@diandian.app' OR email ILIKE '%@mydiandian.app'
 ORDER BY vip DESC, 1;
 
 \echo === Vrais comptes : inscriptions par mois ===
 SELECT to_char(date_trunc('month', created_at), 'YYYY-MM') AS mois, count(*)
 FROM users
-WHERE NOT (vip OR email ILIKE '%@example.com' OR email ILIKE '%@overridedev.com' OR email = 'demo@diandian.app')
+WHERE NOT (vip OR email ILIKE '%@example.com' OR email ILIKE '%@overridedev.com' OR email = 'demo@diandian.app' OR email ILIKE '%@mydiandian.app')
 GROUP BY 1 ORDER BY 1;
 
 \echo === Actifs (vrais comptes) : ont rempli >= 1 case, par dernière activité ===
 WITH real AS (
   SELECT id FROM users
-  WHERE NOT (vip OR email ILIKE '%@example.com' OR email ILIKE '%@overridedev.com' OR email = 'demo@diandian.app')),
+  WHERE NOT (vip OR email ILIKE '%@example.com' OR email ILIKE '%@overridedev.com' OR email = 'demo@diandian.app' OR email ILIKE '%@mydiandian.app')),
 act AS (
   SELECT p.user_id, max(c.updated_at) AS last_cell, count(*) AS cells
   FROM cells c JOIN pages p ON p.id = c.page_id JOIN real r ON r.id = p.user_id
@@ -48,7 +49,7 @@ FROM act;
 \echo === Sessions (vrais comptes) : refresh token émis dans les 7 / 30 jours ===
 WITH real AS (
   SELECT id FROM users
-  WHERE NOT (vip OR email ILIKE '%@example.com' OR email ILIKE '%@overridedev.com' OR email = 'demo@diandian.app'))
+  WHERE NOT (vip OR email ILIKE '%@example.com' OR email ILIKE '%@overridedev.com' OR email = 'demo@diandian.app' OR email ILIKE '%@mydiandian.app'))
 SELECT count(DISTINCT user_id) FILTER (WHERE created_at > now() - interval '7 days')  AS sessions_7d,
        count(DISTINCT user_id) FILTER (WHERE created_at > now() - interval '30 days') AS sessions_30d
 FROM refresh_tokens rt JOIN real r ON r.id = rt.user_id;
