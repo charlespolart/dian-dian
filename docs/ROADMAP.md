@@ -294,20 +294,26 @@ actifs à 3 trackers) : il grandit avec la rétention, donc après les rappels.
 produit promo) : décrite dans le même spec, **en pause** avec toutes les
 promotions.
 
-### 10. Stats plus utiles — à brainstormer (demandé le 2026-11-23)
-Charles : même en premium, les stats « n'apportent pas grand-chose ». Une
-app dédiée (au suivi des règles, par exemple) va bien plus loin ; Dian Dian
-ne peut pas viser un thème précis, mais ses stats peuvent devenir plus
-utiles. Idée de fond : une vraie stat dévoilée gratuitement en teaser
-(pop-up premium, point 9), les plus intéressantes en premium.
-Aujourd'hui : en gratuit, jours remplis, série en cours et % de l'année
-(barre latérale du tracker) ; en premium (`StatsDetailDialog`,
-`GlobalStatsDialog`), en plus la meilleure série, la répartition des
-légendes, le remplissage par mois, la répartition par jour de la semaine,
-et des totaux tous trackers (trackers, jours, meilleure série, tracker le
-plus actif, cette année ou depuis le début). Que du comptage de
-remplissage : presque rien ne parle de ce que les couleurs veulent dire.
-Brainstorm en cours, puis un spec avant la passe Fable.
+### 10. Stats plus utiles — spécifié le 2026-11-24
+`docs/superpowers/specs/2026-11-24-stats-design.md`, maquettes
+https://claude.ai/artifact/1rF2wxMQx5fMsxf4Rogz3P (rangée 6, « Parcours
+complets », la référence). Charles : même en premium, les stats
+« n'apportent pas grand-chose » ; aujourd'hui elles ne font que compter le
+remplissage (`StatsDetailDialog`, `GlobalStatsDialog`).
+Le principe : la **forme** du tracker décide de ses stats. Deux réglages
+par tracker, échelle (oui / non, avec des couleurs hors échelle comme Repos)
+et cadence (chaque jour / de temps en temps, la même que pour les rappels),
+d'où trois formes : échelle, catégories, de temps en temps. Un modèle arrive
+réglé, avec ses phrases ; un perso répond à une question à la création
+(« Comment se remplit-il ? », 3 choix) et obtient les mêmes calculs avec des
+phrases génériques. Quatre modèles de plus : Cycle, Études, Dépenses,
+Émotions. Gratuit : ce mois-ci comparé au mois dernier, depuis la dernière
+fois, l'annonce d'un lien ; Premium : niveau et tendance, mois par mois,
+jour de la semaine, rythme et estimation, liens entre trackers, avec les
+seuils de la recherche. Décidé le 2026-11-24 : une couleur par case ; la
+possibilité A ; les trackers existants reconnus quand ils viennent d'un
+modèle, sinon une question une fois ; l'essai dès le premier jour, avec des
+cartes d'exemple tant que les stats Premium ne sont pas prêtes.
 
 ## Fait récemment
 - 2026-11-23 : audit de conversion, `docs/PRICING.md`, specs des rappels et

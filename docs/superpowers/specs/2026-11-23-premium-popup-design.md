@@ -197,7 +197,11 @@ Charles : « selon tes recommandations », et oui au teaser.
    (`docs/FABLE.md`) : les aperçus des jalons `days_7` et `days_30`
    montrent une stat choisie par la spec des stats. *Mon choix* : à défaut,
    « la couleur la plus fréquente de la semaine / du mois » du tracker
-   qu'on vient de remplir, calculable aujourd'hui.
+   qu'on vient de remplir, calculable aujourd'hui. **Réglé le 2026-11-24**
+   (`2026-11-24-stats-design.md`, « Découpage ») : l'aperçu montre « ce
+   mois-ci comparé au mois dernier » du tracker qu'on vient de remplir ou,
+   sous son seuil, « depuis la dernière fois » ; la pop-up se construit
+   après le lot 2 des stats.
 2. **Déclencheur `trackers`.** *Mon choix* : 3 trackers possédés (la limite)
    et au moins 5 dates coloriées sur les 14 derniers jours, tous trackers
    confondus, rattrapages compris, calculé dans l'app. Le texte ne dit plus

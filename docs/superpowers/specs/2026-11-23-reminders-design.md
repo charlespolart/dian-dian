@@ -131,13 +131,17 @@ dans les retours.
   occasionnel (les règles, par exemple) ne déclenche jamais de rappel et
   n'y est jamais nommé. Quelqu'un qui n'a que des trackers occasionnels ne
   reçoit aucun rappel quotidien.
-- Le choix se fait **à la création** : `_CreateTrackerDialog`
-  (`flutter_app/lib/screens/page_list_screen.dart`) n'a aujourd'hui qu'un
-  champ titre et Annuler / Créer ; il gagne un choix à deux options, « Tous
-  les jours » (présélectionné) / « De temps en temps ». *Mon choix* : la
-  présélection sur « Tous les jours », la majorité des trackers l'étant.
-- **Modifiable ensuite** (depuis le tracker et depuis la section Rappels des
-  réglages). L'endroit exact dans le tracker est laissé au constructeur.
+- Le choix se fait **à la création**. **Mis à jour le 2026-11-24** : par
+  la question de la spec des stats (`2026-11-24-stats-design.md`, « La
+  création »), qui remplace le choix à deux options prévu ici. « Une note
+  chaque jour » et « Une activité chaque jour » donnent un tracker
+  quotidien, « Quelque chose qui arrive parfois » un tracker occasionnel ;
+  un modèle porte sa cadence (Cycle est occasionnel). Le lot 1 des stats se
+  construit avant les rappels : ce chantier n'a pas à toucher
+  `_CreateTrackerDialog`.
+- **Modifiable ensuite** : l'interrupteur « Chaque jour » en haut de la
+  légende (spec des stats, « La légende ») et la section Rappels des
+  réglages.
 - *Mon choix* : le parcours d'accueil (`first_tracker_screen.dart`,
   modèles humeur, sommeil, sport, lecture, habitudes, autre) crée des
   trackers quotidiens sans poser la question, pour ne pas ajouter de
@@ -335,8 +339,6 @@ brouillées par Pinterest et janvier ; un ordre de grandeur seulement.
 - Le schéma des identifiants de notifications, le canal Android (nommé
   « Rappel du soir », importance par défaut, catégorie rappel), le
   récepteur de redémarrage.
-- L'interface du choix de cadence dans `_CreateTrackerDialog` et l'endroit
-  où la modifier dans le tracker.
 - L'écriture finale des textes dans les quatre langues. Le chinois est
   écrit directement en chinois, en phrases courtes ; relu par un natif
   avant la sortie si Charles en a un sous la main, sinon tel quel, comme les

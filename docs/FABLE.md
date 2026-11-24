@@ -2,7 +2,8 @@
 
 Point d'entrée de la passe de confirmation puis de la construction.
 Rédigé le 2026-11-23, à la fin de la phase de préparation (recherches,
-audits, specs, sans code — `docs/ROADMAP.md`, en tête).
+audits, specs, sans code — `docs/ROADMAP.md`, en tête) ; mis à jour le
+2026-11-24 avec la spec des stats.
 
 Charles est le propriétaire et le seul développeur. Il écrit en français ;
 le code, les identifiants et les libellés de configuration (stores,
@@ -23,8 +24,11 @@ RevenueCat) sont en anglais ; les textes de l'app vouvoient.
 
 1. Ce fichier.
 2. `docs/ROADMAP.md` : la liste des chantiers et leur historique.
-3. Les specs de `docs/superpowers/specs/` datées du 2026-11-23 :
-   `reminders-design`, `premium-popup-design`, `landing-visits-design`.
+3. Les specs de `docs/superpowers/specs/` datées du 2026-11-23 et du
+   2026-11-24 : `reminders-design`, `premium-popup-design`,
+   `landing-visits-design`, `stats-design`. Pour les stats, les maquettes :
+   https://claude.ai/artifact/1rF2wxMQx5fMsxf4Rogz3P, rangée 6
+   (« Parcours complets »), la référence.
 4. `docs/PRICING.md` : prix décidés, paywall à refaire (section « Le
    paywall (pour Fable) »).
 5. Au besoin, les recherches : `docs/research/reports/` (rapports) et
@@ -47,20 +51,24 @@ RevenueCat) sont en anglais ; les textes de l'app vouvoient.
 | 1 | Compteur de visites du site, avec le regroupement du `ct` Apple par source | `2026-11-23-landing-visits-design.md`, ROADMAP §3 | rien (backend seul) | 3 à 4 jours |
 | 2 | Refonte du paywall et du mur des 3 trackers, événements du parcours d'achat | `docs/PRICING.md` | les prix en stores (Charles, 1er décembre) | à estimer |
 | 3 | Outillage Android : AGP 9.1, Gradle ≥ 9.3.1, Kotlin 2.3, `compileSdk = 37` écrit à la main, Dart ≥ 3.12, R8 ; release dédiée testée sur appareil | `ANDROID_RELEASE_PLAN.md` §8 | rien | à estimer |
-| 4 | Rappels du soir (notifications locales, cadence quotidien / occasionnel, section Rappels, écran de demande) | `2026-11-23-reminders-design.md` | 3 (le plugin le plus récent exige AGP 9) | à estimer |
-| 5 | Stats plus utiles | **pas encore de spec** : recherche `Stats utiles pour trackers génériques.md` et maquettes ; Charles doit dire quelles stats il retient | l'avis de Charles | — |
-| 6 | Pop-up premium occasionnelle | `2026-11-23-premium-popup-design.md` | 4 (passe après l'écran des rappels), 5 (l'aperçu montre une vraie stat) | à estimer |
+| 4 | Rappels du soir (notifications locales, section Rappels, écran de demande) | `2026-11-23-reminders-design.md` | 3 (le plugin le plus récent exige AGP 9) ; 5, lot 1 (la cadence se règle à la création et dans la légende) | à estimer |
+| 5 | Stats plus utiles, en trois lots : forme et création (lot 1), page Stats (lot 2), rythme avancé et liens (lot 3) | `2026-11-24-stats-design.md` | lot 1 : rien ; lots 2 et 3 : le lot 1 | à estimer |
+| 6 | Pop-up premium occasionnelle | `2026-11-23-premium-popup-design.md` | 4 (passe après l'écran des rappels), 5 lot 2 (l'aperçu montre une vraie stat) | à estimer |
 | — | Registre RGPD du projet et politique de confidentialité (événements produit, compteur de visites), en quatre langues | specs du compteur et `docs/PRICING.md` (« Relecture ») | avant ou avec 1 et 2 | ½ jour |
 
-Chaque spec finit par une section « Relecture du 2026-11-23 » : les trous
-trouvés en la relisant comme un constructeur, réglés ou laissés à Charles.
+Chaque spec finit par une section « Relecture » (du 2026-11-23, ou du
+2026-11-24 pour les stats) : les trous trouvés en la relisant comme un
+constructeur, réglés ou laissés à Charles.
 
 Calendrier à garder en tête : les prix changent le **1er décembre** ; le pic
 de l'année est le **Nouvel An** (une année en pixels commence le 1er
 janvier). Décidé le 2026-11-23 : **avant le Nouvel An**, le compteur de
 visites (1), le registre et la politique de confidentialité, puis la
 refonte du paywall (2) ; **en janvier**, l'outillage Android (3) puis les
-rappels (4) ; pas de bilan de fin d'année en 2026.
+rappels (4) ; pas de bilan de fin d'année en 2026. Ajusté le 2026-11-24
+(proposition du rédacteur, voir la spec des stats) : le lot 1 des stats
+passe entre l'outillage Android et les rappels, et sort avec eux ou juste
+avant ; puis les lots 2 et 3 des stats, puis la pop-up (6).
 
 ## Règles du projet
 
@@ -116,7 +124,6 @@ rappels (4) ; pas de bilan de fin d'année en 2026.
 
 ## Questions encore ouvertes
 
-- Les stats à retenir (chantier 5).
 - Le relais des `utm_*` vers les liens stores (en production depuis le
   15 octobre) demande-t-il un avis juridique ? (spec du compteur)
 
@@ -125,3 +132,10 @@ Tranché le 2026-11-23 après les relectures (détail dans chaque spec) :
 fin d'année pour le Nouvel An 2026 ; pas de lifetime pour les abonnés ni les
 essais ; événements du parcours d'achat sous intérêt légitime, avec la
 politique de confidentialité ; l'annuel reste présélectionné partout.
+
+Tranché le 2026-11-24 (spec des stats) : une seule couleur par case ; une
+question à 3 choix à la création (« Comment se remplit-il ? »), et l'échelle
+proposée à la 2e couleur d'un tracker de temps en temps ; les trackers
+existants reconnus quand ils viennent d'un modèle, sinon une question une
+fois sur la page Stats ; l'essai proposé dès le premier jour, avec des
+cartes d'exemple tant que les stats Premium ne sont pas prêtes.
