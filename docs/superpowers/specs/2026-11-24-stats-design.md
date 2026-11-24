@@ -405,7 +405,7 @@ langues, revient au constructeur.
 
 ## Découpage
 
-*Mon choix* pour l'ordre : le lot 1 passe **avant les rappels** (en
+**Décidé (Charles, 2026-11-24)** pour l'ordre : le lot 1 passe **avant les rappels** (en
 janvier, après l'outillage Android, dont il ne dépend pas), et sort dans la
 même version de l'app qu'eux ou juste avant. Les rappels ne construisent
 alors ni le choix « Tous les jours / De temps en temps » dans
@@ -468,7 +468,8 @@ existants (migration ou app), les noms des colonnes et des événements.
 ## Relecture du 2026-11-24
 
 Relue comme un constructeur qui doit planifier sans pouvoir poser de
-question. Six trous, tous réglés dans le texte ci-dessus comme *mon choix* :
+question. Six trous, tous réglés dans le texte ci-dessus ; Charles a validé
+ces choix le 2026-11-24 (« valide l'ordre, fais comme tu recommandes ») :
 
 1. **Ce que compte le rythme** : un sujet par tracker (une couleur ou le
    tracker entier), et une définition de l'épisode qui tient pour Cycle et

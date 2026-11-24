@@ -66,7 +66,7 @@ janvier). Décidé le 2026-11-23 : **avant le Nouvel An**, le compteur de
 visites (1), le registre et la politique de confidentialité, puis la
 refonte du paywall (2) ; **en janvier**, l'outillage Android (3) puis les
 rappels (4) ; pas de bilan de fin d'année en 2026. Ajusté le 2026-11-24
-(proposition du rédacteur, voir la spec des stats) : le lot 1 des stats
+(décidé par Charles, voir la spec des stats) : le lot 1 des stats
 passe entre l'outillage Android et les rappels, et sort avec eux ou juste
 avant ; puis les lots 2 et 3 des stats, puis la pop-up (6).
 
