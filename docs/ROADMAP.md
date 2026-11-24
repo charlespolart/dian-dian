@@ -171,11 +171,13 @@ devenir anxiogène (ton cozy / pixel-art). À reprendre par un spec
 - **Notifications — spécifié le 2026-11-23** :
   `docs/superpowers/specs/2026-11-23-reminders-design.md`, appuyé sur la
   recherche `docs/research/reports/Notifications de rappel et fidélisation.md`.
-  Locales, opt-in. Chaque tracker est quotidien ou occasionnel (choisi à la
-  création ; les occasionnels, comme les règles, ne rappellent jamais). Un
-  seul rappel groupé par jour au plus, à 20 h 30 par défaut, seulement s'il
-  reste un tracker quotidien vide, dès le soir de J1 ; silence après 3
-  rappels ignorés, un dernier message à J+10 au plus tous les 60 jours ;
+  Locales, opt-in. Mis à jour le 2026-11-24 : chaque tracker choisit Non,
+  Matin ou Soir (prérempli à la création : le soir pour « tous les jours »,
+  rien pour « seulement quand ça arrive », le matin pour Sommeil) ; deux
+  heures pour tous (9 h 00 et 20 h 30), au plus deux rappels groupés par
+  jour, chacun seulement s'il reste un de ses trackers vide, dès J1 ;
+  silence après 3 rappels ignorés, un dernier message à J+10 au plus tous
+  les 60 jours ;
   écran de demande juste après le premier point ; section « Rappels » dans
   les réglages ; noms de trackers masqués sur l'écran verrouillé.
   **Abandonnés** d'après la recherche : « série en danger » et « succès
@@ -283,8 +285,10 @@ cette note.
 ### 9. Pop-up premium occasionnelle — spécifié le 2026-11-23
 `docs/superpowers/specs/2026-11-23-premium-popup-design.md`. Après le point
 du jour, jamais au lancement ; étapes affichées une seule fois (3 trackers
-avec un usage régulier, 7e et 30e jour remplis avec un aperçu des stats,
-fin d'année avec l'export) ; rien les premiers jours, une pop-up toutes les
+avec un usage régulier ; depuis le 2026-11-24, une stat Premium prête
+(`stats_ready`) ou un premier lien entre trackers (`link_found`), dévoilés
+une fois sur ses données, à la place des jalons de 7 et 30 jours ; fin
+d'année avec l'export) ; rien les premiers jours, une pop-up toutes les
 deux semaines au plus, plus rien après 2 refus (définitif), jamais pour les
 payants ; réglable à distance par le bootstrap. Décidé le 2026-11-23 : usage
 régulier = 5 jours sur 14 ; l'aperçu dévoile gratuitement une vraie stat,
@@ -296,24 +300,36 @@ promotions.
 
 ### 10. Stats plus utiles — spécifié le 2026-11-24
 `docs/superpowers/specs/2026-11-24-stats-design.md`, maquettes
-https://claude.ai/artifact/1rF2wxMQx5fMsxf4Rogz3P (rangée 6, « Parcours
-complets », la référence). Charles : même en premium, les stats
+https://claude.ai/artifact/HVMGhCrPR82sjShMxiht2e (la référence ; sept
+histoires de « + » jusqu'aux stats). Charles : même en premium, les stats
 « n'apportent pas grand-chose » ; aujourd'hui elles ne font que compter le
 remplissage (`StatsDetailDialog`, `GlobalStatsDialog`).
-Le principe : la **forme** du tracker décide de ses stats. Deux réglages
-par tracker, échelle (oui / non, avec des couleurs hors échelle comme Repos)
-et cadence (chaque jour / de temps en temps, la même que pour les rappels),
-d'où trois formes : échelle, catégories, de temps en temps. Un modèle arrive
-réglé, avec ses phrases ; un perso répond à une question à la création
-(« Comment se remplit-il ? », 3 choix) et obtient les mêmes calculs avec des
-phrases génériques. Quatre modèles de plus : Cycle, Études, Dépenses,
-Émotions. Gratuit : ce mois-ci comparé au mois dernier, depuis la dernière
-fois, l'annonce d'un lien ; Premium : niveau et tendance, mois par mois,
-jour de la semaine, rythme et estimation, liens entre trackers, avec les
-seuils de la recherche. Décidé le 2026-11-24 : une couleur par case ; la
-possibilité A ; les trackers existants reconnus quand ils viennent d'un
-modèle, sinon une question une fois ; l'essai dès le premier jour, avec des
-cartes d'exemple tant que les stats Premium ne sont pas prêtes.
+Le principe : l'app sait comment un tracker se colorie et si ses couleurs
+ont un ordre, et c'est ce qui décide de ses stats. Trois réglages par
+tracker : le remplissage (« tous les jours, même les jours sans » ou
+« seulement les jours où ça arrive », demandé à la création), l'ordre des
+couleurs (« du plus au moins » ou « des sortes différentes », demandé à la
+2ᵉ couleur) et le rappel (Non / Matin / Soir). Un modèle arrive réglé, avec
+ses phrases ; un perso a les mêmes calculs avec des phrases génériques.
+Neuf modèles aux libellés sans ambiguïté, dont quatre nouveaux (Cycle,
+Études, Dépenses, Émotions). Rien n'est définitif : des réglages du tracker
+où tout se change ; un modèle modifié ne perd que ses phrases, et les
+retrouve. Un filet de sécurité pour les trackers coloriés seulement quand
+ça arrive (8 sur 53 en prod). Gratuit : ce mois-ci comparé au mois dernier,
+depuis la dernière fois, l'annonce d'un lien ; Premium : niveau et
+tendance, combien de fois et à quel niveau, mois par mois, jour de la
+semaine, rythme et estimation, liens entre trackers, avec les seuils de la
+recherche. Une première version (une question à 3 choix à la création) a
+été remplacée le même jour ; la seconde est validée par Charles sur
+maquettes.
+
+### 11. Voir un tracker par mois et par semaine — à brainstormer
+Demandé par Charles le 2026-11-24, pour Fable (spec et maquettes avant le
+code). Aujourd'hui un tracker ne se voit qu'à l'année (`TrackerGrid`,
+12 colonnes de mois × 31 jours). L'idée : pouvoir « zoomer » sur un mois,
+voire une semaine, sans changer de mode par accident ; puis profiter de la
+place pour montrer plus (les commentaires des jours, par exemple). Brainstorm
+en cours : le geste (pincer, boutons, les deux), puis le contenu des vues.
 
 ## Fait récemment
 - 2026-11-23 : audit de conversion, `docs/PRICING.md`, specs des rappels et

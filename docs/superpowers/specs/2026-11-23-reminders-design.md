@@ -1,4 +1,4 @@
-# Rappels du soir — design (2026-11-23)
+# Rappels — design (2026-11-23, mis à jour le 2026-11-24)
 
 Point 4 de `docs/ROADMAP.md` (engagement, volet notifications). Brainstormé
 du 2026-11-22 au 2026-11-23, appuyé sur la recherche
@@ -7,6 +7,17 @@ dans `docs/research/notes/Notifications de rappel et fidélisation/`) et sur
 l'audit `docs/research/audit-2026-11-22.md`. Décisions validées par Charles le
 2026-11-23 (« selon les recommandations »). Phase de documentation : à
 confirmer puis construire plus tard ; aucun code n'est écrit avec ce spec.
+
+**Mis à jour le 2026-11-24** (validé par Charles sur les maquettes des
+stats, histoire 8 : https://claude.ai/artifact/HVMGhCrPR82sjShMxiht2e).
+Charles : une seule heure pour tous ne va pas pour Sommeil, il faut un
+réglage par tracker, « mais pas trop complexe ». Chaque tracker choisit
+**Non, Matin ou Soir** ; deux heures pour tous (matin 9 h 00, soir
+20 h 30) ; **au plus deux rappels par jour**. Le remplissage (« tous les
+jours » ou « seulement quand ça arrive ») et le moment du rappel se règlent
+à la création et dans les réglages du tracker (spec des stats). Les sections
+ci-dessous sont à jour ; le détail des changements est dans « Mise à jour du
+2026-11-24 », en fin de document.
 
 ## Objectif
 
@@ -31,8 +42,8 @@ trackers ne sont pas quotidiens (les règles, par exemple).
 ## Objectifs, non-objectifs, anti-objectifs
 
 **Objectifs**
-- Au plus un rappel par jour, le soir, seulement s'il reste un tracker
-  quotidien vide.
+- Au plus deux rappels par jour, un le matin et un le soir, chacun
+  seulement s'il reste un de ses trackers vide.
 - Demander l'autorisation au bon moment, avec un écran de l'app avant le
   dialogue système.
 - Se taire quand les rappels sont ignorés, puis un seul dernier message.
@@ -47,8 +58,9 @@ trackers ne sont pas quotidiens (les règles, par exemple).
 - Relance par e-mail.
 
 **Anti-objectifs** — ce serait un échec même si ça marche :
-- plus d'une notification par jour, ou une par tracker ;
-- un rappel pour un tracker occasionnel ;
+- plus de deux notifications par jour, ou une par tracker ;
+- un rappel que la personne n'a pas choisi pour un tracker « seulement quand
+  ça arrive » ;
 - un ton culpabilisant : « vous avez oublié », « ne cassez pas »,
   « vous nous manquez », « dernière chance », toute menace de perte ;
 - une promotion dans une notification (App Store 4.5.4 : consentement
@@ -125,61 +137,72 @@ dans les retours.
 
 ## Décisions
 
-### Trackers quotidiens ou occasionnels (option C, choisie le 2026-11-22)
+### Le moment du rappel, par tracker (mis à jour le 2026-11-24)
 
-- Chaque tracker est **quotidien** ou **occasionnel**. Un tracker
-  occasionnel (les règles, par exemple) ne déclenche jamais de rappel et
-  n'y est jamais nommé. Quelqu'un qui n'a que des trackers occasionnels ne
-  reçoit aucun rappel quotidien.
-- Le choix se fait **à la création**. **Mis à jour le 2026-11-24** : par
-  la question de la spec des stats (`2026-11-24-stats-design.md`, « La
-  création »), qui remplace le choix à deux options prévu ici. « Une note
-  chaque jour » et « Une activité chaque jour » donnent un tracker
-  quotidien, « Quelque chose qui arrive parfois » un tracker occasionnel ;
-  un modèle porte sa cadence (Cycle est occasionnel). Le lot 1 des stats se
-  construit avant les rappels : ce chantier n'a pas à toucher
-  `_CreateTrackerDialog`.
-- **Modifiable ensuite** : l'interrupteur « Chaque jour » en haut de la
-  légende (spec des stats, « La légende ») et la section Rappels des
-  réglages.
-- *Mon choix* : le parcours d'accueil (`first_tracker_screen.dart`,
-  modèles humeur, sommeil, sport, lecture, habitudes, autre) crée des
-  trackers quotidiens sans poser la question, pour ne pas ajouter de
-  friction au premier geste. Les trackers existants sont quotidiens par
-  défaut ; la section Rappels les liste pour corriger.
-- **Stockage synchronisé** : c'est une propriété du tracker, donc côté
-  serveur. *Mon choix* : colonne `pages.cadence` (`'daily' | 'occasional'`,
-  défaut `'daily'`, migration), renvoyée par le bootstrap et les routes
-  pages, acceptée par `POST /api/pages` et la mise à jour d'une page ;
-  champ `cadence` dans `PageModel`. Le nom exact est laissé au
+D'abord « quotidien ou occasionnel » (option C, choisie le 2026-11-22) ;
+remplacé le 2026-11-24 par deux réglages du tracker, décrits dans la spec
+des stats (`2026-11-24-stats-design.md`, « Le modèle » et « Les réglages
+du tracker ») :
+
+- **Le remplissage** : « Tous les jours, même les jours sans » ou
+  « Seulement les jours où ça arrive » (`pages.cadence`, `'daily' |
+  'occasional'`). Demandé à la création, prérempli par un modèle.
+- **Le rappel** : **Non, Matin ou Soir** (`pages.reminder`, `'none' |
+  'morning' | 'evening'`). Prérempli : Soir pour « tous les jours », Non
+  pour « seulement quand », celui du modèle (Sommeil : Matin, puisqu'on
+  colorie le jour du réveil ; Cycle : Non).
+- Un tracker sur Non ne déclenche jamais de rappel et n'y est jamais
+  nommé. Quelqu'un dont aucun tracker n'a de rappel n'en reçoit aucun, et
+  ne voit pas l'écran de demande.
+- **Modifiable à tout moment** : dans les réglages du tracker (la roue) et
+  dans Réglages › Rappels. Le lot 1 des stats construit la question, les
+  fiches des modèles et les réglages du tracker avant ce chantier : les
+  rappels n'ont pas à toucher `_CreateTrackerDialog` ; ils rendent visible
+  la ligne « Rappel », cachée jusque-là.
+- Le parcours d'accueil (`first_tracker_screen.dart`) crée des trackers
+  depuis des modèles, avec leur rappel, sans poser de question. Les
+  trackers existants : Soir, sauf ceux reconnus comme un modèle, qui
+  prennent celui du modèle (spec des stats, « Les trackers déjà créés ») ;
+  la section Rappels les liste pour corriger.
+- **Stockage synchronisé** : ce sont des propriétés du tracker, donc côté
+  serveur, renvoyées par le bootstrap et les routes pages, acceptées par
+  `POST /api/pages` et la mise à jour d'une page ; champs dans
+  `PageModel`. Les colonnes viennent du lot 1 des stats. Noms exacts au
   constructeur.
 
 ### Le rappel
 
-1. **Une seule notification par jour au maximum**, groupée.
-2. **Seulement si au moins un tracker quotidien est vide** pour la date du
-   jour au moment où l'app programme (voir le cycle). Jamais quand tout est
-   rempli : les plus réguliers reçoivent automatiquement moins de messages
-   (leçon de Pinterest et Twitter : envoyer moins aux non-répondants ne coûte
-   rien).
-3. **Heure par défaut 20 h 30**, modifiable dans l'écran de demande et dans
-   les réglages, présentée comme un moment (« quand la journée se pose »).
-   Pas d'heure magique dans la recherche ; la régularité compte ; Android
-   peut retarder d'une heure, et les Focus de sommeil se placent plus tard.
-4. **Premier rappel le soir de J1**, pas celui de J0 : le soir de
-   l'inscription, la personne vient d'utiliser l'app, et c'est après J1
-   qu'on perd la majorité des gens. C'est le rappel le plus important.
+1. **Au plus deux notifications par jour**, une par moment (matin, soir),
+   chacune regroupant ses trackers. Pas d'heure libre par tracker : avec
+   cinq trackers, cela pourrait faire cinq notifications par jour, ce qui
+   fait couper les notifications (recherche).
+2. **Un moment n'envoie rien si tous ses trackers sont remplis** pour la
+   date du jour au moment où l'app programme (voir le cycle). Les plus
+   réguliers reçoivent automatiquement moins de messages (leçon de
+   Pinterest et Twitter : envoyer moins aux non-répondants ne coûte rien).
+3. **Deux heures pour tous** : matin **9 h 00**, soir **20 h 30** par
+   défaut, modifiables dans Réglages › Rappels, présentées comme des
+   moments (« quand la journée se pose »). Pas d'heure magique dans la
+   recherche ; la régularité compte ; Android peut retarder d'une heure, et
+   les Focus de sommeil se placent plus tard.
+4. **Premier rappel le J1**, au premier moment dû, jamais le jour de
+   l'inscription : ce jour-là, la personne vient d'utiliser l'app, et c'est
+   après J1 qu'on perd la majorité des gens. C'est le rappel le plus
+   important.
 5. **Week-end compris.**
-6. **Silence après 3 rappels consécutifs sans aucune ouverture de l'app** ;
-   toute ouverture remet le compteur à zéro. Le critère est l'ouverture,
-   pas la saisie : quelqu'un qui ouvre tous les trois ou quatre jours garde
-   son rappel.
-7. **Un dernier message, 10 jours après la dernière ouverture**, avec un
-   texte jamais vu : il annonce la pause avec douceur et rappelle que les
-   jours passés se colorient encore. **Au plus un tous les 60 jours.**
-   Ensuite plus rien jusqu'au retour.
-8. **Un tap** ouvre la journée en cours. *Mon choix* : s'il n'y a qu'un
-   tracker quotidien vide, l'ouvrir sur aujourd'hui ; sinon, la liste.
+6. **Silence après 3 rappels consécutifs sans aucune ouverture de l'app**,
+   quel que soit leur moment (*mon choix* : on compte les notifications,
+   pas les jours ; avec un tracker le matin et un le soir, le silence vient
+   donc au bout d'un jour et demi) ; toute ouverture remet le compteur à
+   zéro. Le critère est l'ouverture, pas la saisie : quelqu'un qui ouvre
+   tous les trois ou quatre jours garde ses rappels.
+7. **Un dernier message, 10 jours après la dernière ouverture**, à l'heure
+   du soir (du matin si aucun tracker n'a le soir), avec un texte jamais
+   vu : il annonce la pause avec douceur et rappelle que les jours passés
+   se colorient encore. **Au plus un tous les 60 jours.** Ensuite plus rien
+   jusqu'au retour.
+8. **Un tap** ouvre la journée en cours. *Mon choix* : si un seul tracker
+   de ce moment est vide, l'ouvrir sur aujourd'hui ; sinon, la liste.
 9. **Jamais de promotion**, jamais de « série en danger », jamais de
    « succès débloqué ». Le rappel peut mentionner un fait positif s'il est
    vrai (« 12 jours coloriés ce mois-ci »).
@@ -190,27 +213,31 @@ dans les retours.
 posé ou effacé, et après une synchro qui change les points du jour, l'app :
 
 1. annule les notifications de rappel en attente ;
-2. si les rappels sont activés et autorisés :
-   - **R1** : ce soir à l'heure choisie si l'heure n'est pas passée et
-     qu'un tracker quotidien est vide aujourd'hui, sinon demain ; jamais le
-     soir du jour de création du compte ;
-   - **R2, R3** : les deux soirs suivants (textes calculés maintenant :
-     tous les trackers quotidiens sont vides ces jours-là) ;
-   - **dernier message** : dernière ouverture + 10 jours, à l'heure
-     choisie, si aucun dernier message n'a été envoyé depuis 60 jours.
+2. si les rappels sont activés et autorisés, programme **les trois
+   prochains rappels dus**, dans l'ordre du temps. Un moment (matin ou
+   soir d'un jour) est dû si son heure n'est pas passée, que ce n'est pas
+   le jour de création du compte, et qu'un de ses trackers est vide ce
+   jour-là : aujourd'hui selon les points posés ; les jours suivants, tous
+   ses trackers sont vides (textes calculés maintenant). Exemples :
+   Sommeil le matin et Humeur le soir, ouverture à 14 h avec Sommeil rempli
+   → ce soir, demain matin, demain soir ; seulement Humeur le soir → ce
+   soir, demain soir, après-demain soir ;
+3. programme le **dernier message** : dernière ouverture + 10 jours, à
+   l'heure du soir (ou du matin), si aucun dernier message n'a été envoyé
+   depuis 60 jours.
 
-Si la personne ne revient pas, R1, R2 et R3 partent, puis le téléphone se
-tait de lui-même, le dernier message arrive, puis plus rien. Toute
+Si la personne ne revient pas, les trois rappels partent, puis le téléphone
+se tait de lui-même, le dernier message arrive, puis plus rien. Toute
 ouverture relance le cycle. L'app n'a jamais besoin de savoir si une
 notification a été vue. Pour la règle des 60 jours : noter localement la
 date du dernier message programmé, et le considérer comme envoyé quand
 l'app s'ouvre après cette date.
 
 *Mon choix* : écrire ce calcul comme une fonction pure (maintenant, date de
-création du compte, dernière ouverture, trackers quotidiens et points du
-jour, réglages, date du dernier « dernier message ») → liste de
-notifications à programmer, testée unitairement ; le plugin ne fait que
-programmer la liste.
+création du compte, dernière ouverture, trackers avec leur moment de rappel
+et leurs points du jour, réglages, date du dernier « dernier message ») →
+liste de notifications à programmer, testée unitairement ; le plugin ne
+fait que programmer la liste.
 
 ### Demander l'autorisation
 
@@ -219,12 +246,20 @@ programmer la liste.
   exactement ce cas (« après que la personne a programmé une première
   tâche ») ; attendre le 3e lancement reviendrait à ne jamais demander à la
   plupart des gens, qui partent après J1.
-- **Écran de l'app d'abord**, dans le style pixel : un petit rappel le soir
-  pour colorier sa journée, sélecteur d'heure réglé sur 20 h 30, boutons
-  « Oui, à cette heure-là » et « Pas maintenant ». Le bouton ne s'appelle
-  pas « Autoriser » ; aucune récompense promise (règle 5.1.2(i)). **Seul le
+- **Écran de l'app d'abord**, dans le style pixel (histoire 8 et étape 6
+  de l'histoire 1 des maquettes) : « Un petit rappel ? Seulement quand un
+  tracker attend encore sa couleur du jour. Jamais quand tout est
+  rempli. » ; la liste des trackers qui ont un rappel, avec leur moment
+  (« Sommeil — le matin, 9 h 00 », « Humeur — le soir, 20 h 30 ») ;
+  « Heures et trackers se changent dans Réglages › Rappels. » ;
+  l'interrupteur « Nommer mes trackers » (désactivé, « Sinon : « Une case
+  attend sa couleur du jour. » ») ; boutons « Oui, me le rappeler » et
+  « Pas maintenant ». Pas de sélecteur d'heure sur cet écran (mis à jour le
+  2026-11-24 : il y en aurait deux). Le bouton ne s'appelle pas
+  « Autoriser » ; aucune récompense promise (règle 5.1.2(i)). **Seul le
   oui déclenche le dialogue système** : refuser l'écran de l'app ne
   consomme pas le dialogue unique d'iOS ni l'un des deux refus d'Android.
+  Si aucun tracker n'a de rappel, l'écran ne s'affiche pas.
   Donner une raison rend l'acceptation 12 % plus probable (Tan et al.) ;
   base réaliste : environ un utilisateur sur deux accepte, davantage en
   contexte.
@@ -234,8 +269,8 @@ programmer la liste.
 - **Android** : `POST_NOTIFICATIONS` seulement après le oui ; après un
   premier refus, le oui suivant passe par un écran d'explication avant le
   second et dernier dialogue.
-- **Utilisateurs existants** : une carte « Nouveau : un rappel le soir »,
-  une seule fois, après leur prochain point, jamais au lancement.
+- **Utilisateurs existants** : le même écran, titré « Nouveau : un petit
+  rappel », une seule fois, après leur prochain point, jamais au lancement.
 - **Priorité** : cet écran passe avant la pop-up premium
   (`2026-11-23-premium-popup-design.md`) ; jamais deux fenêtres à la suite
   après un même point.
@@ -246,17 +281,20 @@ Dans `settings_screen.dart`, à côté de Sons et Vibrations
 (`SoundsSettings`), même titre de section et même tuile :
 
 - interrupteur des rappels ;
-- heure ;
-- liste des trackers avec leur cadence (quotidien / occasionnel) ;
-- « Nommer mes trackers dans le rappel ».
+- les deux heures, Matin (09:00) et Soir (20:30) ;
+- « Nommer mes trackers » (« sur l'écran verrouillé aussi ») ;
+- « Chaque tracker » : la liste des trackers, chacun avec Non / Matin /
+  Soir ;
+- une ligne : « Au plus deux rappels par jour, chacun seulement si un de
+  ses trackers attend encore sa couleur du jour. »
 
 Si le système a refusé, la section le dit en une ligne et propose d'ouvrir
 les réglages de notification du téléphone, **seulement sur une action de
 l'utilisateur** (`openNotificationSettingsURLString` à partir d'iOS 16,
 réglages du canal sur Android). L'app vérifie l'autorisation à chaque retour
-au premier plan. *Mon choix* : interrupteur, heure et « nommer » sont
-**locaux à l'appareil** (chaque appareil a sa propre autorisation) ; seule
-la cadence est synchronisée.
+au premier plan. *Mon choix* : interrupteur, heures et « nommer » sont
+**locaux à l'appareil** (chaque appareil a sa propre autorisation) ; le
+moment de chaque tracker et son remplissage sont synchronisés.
 
 ### Textes
 
@@ -271,11 +309,12 @@ la cadence est synchronisée.
 
 | Situation | Exemple |
 |---|---|
-| Deux trackers vides | « Humeur et Sommeil attendent leur couleur du jour. » |
+| Le matin | « Sommeil attend la couleur de votre nuit. » |
+| Deux trackers vides | « Humeur et Énergie attendent leur couleur du jour. » |
 | Plus de deux | « Humeur, Lecture + 2 : votre grille garde une place pour ce soir. » |
 | Routine | « Avant de dormir, un point pour Humeur ? » |
 | Fait positif, s'il est vrai | « 12 jours coloriés ce mois-ci. Humeur attend celui d'aujourd'hui. » |
-| Noms masqués / écran verrouillé | « Quelques cases attendent leur couleur du jour. » |
+| Noms masqués / écran verrouillé | « Une case attend sa couleur du jour. » / « Quelques cases attendent leur couleur du jour. » |
 | Dernier message (J+10) | « Votre grille vous attend, sans pression. Les rappels sont en pause ; ils reprendront à votre prochain point. Les jours passés se colorient aussi. » |
 
 ### Vie privée
@@ -320,7 +359,7 @@ le dispositif se comporte comme prévu. Événements par la route existante
 |---|---|
 | `reminder.prompt_shown` / `reminder.prompt_yes` / `reminder.prompt_later` | écran de l'app |
 | `reminder.permission_granted` / `reminder.permission_denied` | résultat du dialogue système |
-| `reminder.tap` | ouverture par un rappel |
+| `reminder.tap.morning` / `reminder.tap.evening` | ouverture par un rappel, selon son moment |
 | `reminder.open_2h` | ouverture dans les 2 h suivant l'heure d'un rappel programmé (mesure de Duolingo) |
 | `reminder.silence_return` | retour après le silence (les 3 rappels passés sans ouverture) |
 | `reminder.final_open_48h` | ouverture dans les 48 h suivant le dernier message |
@@ -337,8 +376,8 @@ brouillées par Pinterest et janvier ; un ordre de grandeur seulement.
 - Livrer les rappels dans la release AGP 9 ou dans la suivante (le plugin
   est pris dans sa version la plus récente, décidé).
 - Le schéma des identifiants de notifications, le canal Android (nommé
-  « Rappel du soir », importance par défaut, catégorie rappel), le
-  récepteur de redémarrage.
+  « Rappels », importance par défaut, catégorie rappel), le récepteur de
+  redémarrage.
 - L'écriture finale des textes dans les quatre langues. Le chinois est
   écrit directement en chinois, en phrases courtes ; relu par un natif
   avant la sortie si Charles en a un sous la main, sinon tel quel, comme les
@@ -364,7 +403,7 @@ Une relecture « comme un constructeur » a trouvé trois trous.
    quotidiens ; un tracker qu'on ne remplit plus déclencherait le rappel
    chaque soir, même chez les plus réguliers (54 % des trackers gratuits
    n'ont jamais été remplis ; les payants ont 6,5 trackers en moyenne).
-   *Mon choix* : un tracker quotidien sans aucun point depuis 14 jours ne
+   *Mon choix* : un tracker avec un rappel, sans aucun point depuis 14 jours, ne
    déclenche pas le rappel et n'y est pas nommé (`lastCellAt` du
    `PageModel`) ; il redevient actif à son prochain point. À tester dans la
    fonction de cycle.
@@ -382,3 +421,30 @@ Une relecture « comme un constructeur » a trouvé trois trous.
    dit oui sur un iPhone et un iPad reçoit deux rappels. *Mon choix* :
    accepté (accord donné sur chaque appareil, cas rare) ; pas de champ
    serveur en plus.
+
+## Mise à jour du 2026-11-24
+
+Validée par Charles avec les maquettes des stats (« c'est bon pour moi »,
+histoire 8 de https://claude.ai/artifact/HVMGhCrPR82sjShMxiht2e). Ce qui
+change par rapport à la version du 2026-11-23 :
+
+1. **Un moment par tracker** : Non, Matin ou Soir (`pages.reminder`), au
+   lieu de « quotidien ou occasionnel ». Défauts : Soir pour « tous les
+   jours », Non pour « seulement quand ça arrive », Matin pour Sommeil.
+2. **Deux heures pour tous**, matin 9 h 00 et soir 20 h 30, et **au plus
+   deux rappels par jour** au lieu d'un seul à 20 h 30. Pas d'heure libre
+   par tracker (trop de notifications possibles).
+3. **Le cycle programme les trois prochains rappels dus**, quel que soit
+   leur moment, au lieu de trois soirs ; le silence après 3 rappels ignorés
+   compte des notifications (*mon choix*).
+4. **L'écran de demande** liste les trackers et leur moment, sans
+   sélecteur d'heure ; les heures se changent dans Réglages › Rappels.
+5. **Où se règle le moment** : à la création (fiche d'un modèle, défauts
+   d'un perso), dans les réglages du tracker (la roue, spec des stats) et
+   dans Réglages › Rappels. L'interrupteur « Chaque jour » de la légende,
+   prévu la veille, n'existe plus.
+6. **Limite connue** jusqu'au lot 2 des stats (le filet de sécurité) : un
+   tracker « tous les jours » colorié seulement les jours où ça arrive
+   reçoit le rappel du soir ; la personne le corrige dans les réglages du
+   tracker. La règle des 14 jours sans point (« Relecture », point 1)
+   s'applique toujours.

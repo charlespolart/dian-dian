@@ -5,6 +5,13 @@ Conversion, à la suite de l'audit `docs/research/audit-2026-11-22.md` et de
 recommandations le 2026-11-23 (« fais selon tes recommandations »). Phase de
 documentation : à confirmer puis construire plus tard.
 
+**Mis à jour le 2026-11-24** : sur une idée de Charles (proposer Premium
+quand quelqu'un a assez de données pour les stats avancées), les jalons
+`days_7` et `days_30` sont remplacés par `stats_ready` et `link_found` :
+la pop-up arrive quand une stat Premium devient prête sur ses propres
+données, et la dévoile une fois. Validé avec les maquettes des stats
+(histoire 9 de https://claude.ai/artifact/HVMGhCrPR82sjShMxiht2e).
+
 ## Objectif
 
 Pousser un peu la conversion en proposant premium de temps en temps, au bon
@@ -79,30 +86,51 @@ points sont saisis plus d'une semaine après leur date).
 | Déclencheur | Condition | Message (idée) | Ouvre |
 |---|---|---|---|
 | `trackers` | 3 trackers (la limite) et un usage régulier : au moins 5 jours avec des points sur les 14 derniers (décidé) | « Vos 3 trackers sont bien remplis. Avec Premium, ajoutez-en autant que vous voulez — pour toujours avec l'achat unique. » | paywall (annuel présélectionné, lifetime visible) |
-| `days_7` | 7e jour rempli | aperçu des stats sur ses données : « Cette semaine, votre humeur la plus fréquente : ■ Calme. Premium vous montre toutes vos stats. » | paywall des stats |
-| `days_30` | 30e jour rempli | aperçu plus riche (le mois écoulé) | paywall des stats |
+| `stats_ready` | la première stat Premium qui devient prête sur un tracker (seuil franchi, voir la spec des stats), après le point du jour sur ce tracker | « Nouveau pour Sommeil : votre nuit moyenne de septembre est prête. » La carte elle-même, sur ses données (« 6 h 50 par nuit · sur 7 nuits »), puis « Premium vous la donne chaque mois, avec la tendance, les jours de la semaine et les liens avec vos autres trackers. » | paywall des stats |
+| `link_found` | le premier lien trouvé entre deux trackers | « Un lien apparaît entre Sommeil et Humeur. Sur 62 jours notés dans les deux. Premium vous montre lequel, avec ses comptes. » | paywall des stats |
 | `year_end` | fin décembre / début janvier, avec assez de jours remplis dans l'année (*mon choix* : 30) | « Votre année 2026 est complète — exportez-la en image. » (l'export est premium) | paywall de l'export |
 
 Esquisse (style de l'app, dialogue `AppDialog`) :
 
 ```
 ┌──────────────────────────────┐
-│  30 jours remplis ! 🌱        │
-│  Ce mois-ci, votre humeur la  │
-│  plus fréquente : ■ Calme     │
-│                               │
-│  Premium vous montre toutes   │
-│  vos stats, mois par mois.    │
-│  [ Découvrir ]   Plus tard    │
+│     NOUVEAU POUR SOMMEIL      │
+│  Votre nuit moyenne de        │
+│  septembre est prête.         │
+│  ┌──────────────────────────┐ │
+│  │ 6 h 50  par nuit · 7 nuits│ │
+│  └──────────────────────────┘ │
+│  Premium vous la donne chaque │
+│  mois, avec la tendance…      │
+│  [ Essayer 7 jours gratuits ] │
+│          Plus tard            │
 └──────────────────────────────┘
 ```
 
-L'aperçu est calculé dans l'app à partir des points de l'utilisateur ; une
-seule donnée, vraie, pas de fausse stat. Décidé le 2026-11-23 : dévoiler
+La stat est calculée dans l'app à partir des points de l'utilisateur ; une
+seule, vraie, pas de fausse stat. Décidé le 2026-11-23 : dévoiler
 gratuitement une vraie stat, pour donner envie ; les stats plus poussées
-restent premium. Lesquelles : à revoir avec le chantier « stats plus
-utiles » (`docs/ROADMAP.md` §10). Une étape « fin de mois » a été
-évoquée ; laissée pour plus tard.
+restent premium. Depuis le 2026-11-24, c'est la stat Premium qui vient
+d'être prête, montrée une fois en entier dans la pop-up, puis de nouveau
+nommée (pas floutée) sur la page Stats. Le bouton dit « Essayer 7 jours
+gratuits » quand l'essai est disponible, « Découvrir » sinon.
+
+*Mon choix* :
+
+- `stats_ready` et `link_found` s'affichent **une fois par compte**, comme
+  les autres déclencheurs ; avec le budget commun (une pop-up toutes les
+  deux semaines, plus rien après 2 refus), pas plus.
+- La stat dévoilée par `stats_ready` est la première prête, dans cet
+  ordre : niveau du mois (« tous les jours, du plus au moins »), combien
+  de fois et à quel niveau (« seulement quand »), rythme d'une couleur.
+- Un compte existant peut la voir dès son premier point après la mise à
+  jour : les stats sont nouvelles pour tout le monde (la règle « jamais
+  rétroactivement », point 3 de la relecture, visait les jalons de jours,
+  qui disparaissent).
+- `stats_ready` se construit avec le lot 2 des stats, `link_found` avec le
+  lot 3.
+
+Une étape « fin de mois » a été évoquée ; laissée pour plus tard.
 
 ### Garde-fous
 
@@ -201,7 +229,9 @@ Charles : « selon tes recommandations », et oui au teaser.
    (`2026-11-24-stats-design.md`, « Découpage ») : l'aperçu montre « ce
    mois-ci comparé au mois dernier » du tracker qu'on vient de remplir ou,
    sous son seuil, « depuis la dernière fois » ; la pop-up se construit
-   après le lot 2 des stats.
+   après le lot 2 des stats. **Remplacé le même jour** : plus de jalons de
+   jours, la pop-up dévoile la première stat Premium prête (`stats_ready`,
+   « Déclencheurs »).
 2. **Déclencheur `trackers`.** *Mon choix* : 3 trackers possédés (la limite)
    et au moins 5 dates coloriées sur les 14 derniers jours, tous trackers
    confondus, rattrapages compris, calculé dans l'app. Le texte ne dit plus
@@ -210,7 +240,8 @@ Charles : « selon tes recommandations », et oui au teaser.
    pour toujours avec l'achat unique. »
 3. **Comptes existants.** *Mon choix* : un jalon de jours ne se déclenche
    que s'il est franchi après la mise à jour, jamais rétroactivement (pas de
-   « 7 jours remplis ! » à quelqu'un qui en a 150).
+   « 7 jours remplis ! » à quelqu'un qui en a 150). Sans objet depuis le
+   2026-11-24 (les jalons de jours sont remplacés par `stats_ready`).
 4. **`year_end`.** *Mon choix* : une fois par an (événement nommé avec
    l'année). Texte aligné sur la recherche des stats, où la carte de bilan
    est gratuite : « Votre année 2026 est prête — le bilan complet et l'image
