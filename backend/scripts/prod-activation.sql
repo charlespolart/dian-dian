@@ -3,7 +3,8 @@
 --   ssh root@45.76.44.34 "docker exec -i dian-dian-postgres-1 sh -c 'PGPASSWORD=\$POSTGRES_PASSWORD psql -U postgres -d dian_dian -h localhost'" < backend/scripts/prod-activation.sql
 --
 -- Same exclusions as prod-stats.sql: smoke/e2e accounts (@example.com),
--- seed-test accounts (@overridedev.com), the demo account, VIP accounts.
+-- seed-test accounts (@overridedev.com), the demo account, internal
+-- accounts (@mydiandian.app), VIP accounts.
 --
 -- Columns: comptes = signups that week; j1_pct / j7_pct = share with a first
 -- cell within 24 h / 7 days of signup; jamais_pct = share with no cell to date.
@@ -20,7 +21,7 @@
 WITH real AS (
   SELECT id, created_at
   FROM users
-  WHERE NOT (vip OR email ILIKE '%@example.com' OR email ILIKE '%@overridedev.com' OR email = 'demo@diandian.app')
+  WHERE NOT (vip OR email ILIKE '%@example.com' OR email ILIKE '%@overridedev.com' OR email = 'demo@diandian.app' OR email ILIKE '%@mydiandian.app')
     AND created_at >= date_trunc('week', now()) - interval '15 weeks'),
 first_cell AS (
   SELECT p.user_id, min(c.created_at) AS at

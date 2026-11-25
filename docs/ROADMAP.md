@@ -3,7 +3,31 @@
 Une seule liste pour ce qui reste à faire, par ordre de priorité, avec les
 mesures qui la justifient. Les plans détaillés vivent à part
 (`ANDROID_RELEASE_PLAN.md`, `docs/superpowers/specs/`). Mise à jour le
-2026-10-22.
+2026-11-25.
+
+**Phase actuelle (décidée le 2026-11-23)** : recherche, audits et specs
+seulement. Rien n'est codé avant une passe de confirmation avec Fable 5 ;
+c'est Fable qui codera ensuite. Les recherches vivent dans `docs/research/`.
+Point d'entrée pour Fable : `docs/FABLE.md` (ordre des chantiers, branches,
+règles du projet, questions ouvertes).
+**Passe de confirmation faite le 2026-11-25** : `docs/CONFIRMATION.md`. La
+construction peut commencer, chantier par chantier, un plan avant le code.
+**Une seule release (Charles, 2026-11-25)** : tout ce qui suit se construit
+puis sort ensemble, sans release intermédiaire. Les sorties par chantier
+écrites plus bas (« avant le Nouvel An », « en janvier », « release
+dédiée ») ne valent plus que comme ordre de construction.
+
+## Audit de conversion (prod, 2026-11-22)
+
+Détail : `docs/research/audit-2026-11-22.md`. 195 vrais comptes (hors test,
+VIP et comptes internes `@mydiandian.app`, exclus des scripts
+`backend/scripts/prod-*.sql` depuis le 2026-11-23), 50 actifs par semaine,
+84 par mois. Rétention : 19 inscrits sur 100 saisissent encore après J7 —
+**le goulot, avant le prix**. 9 achats, tous sur l'App Store : 3 lifetime
+(≈ 73 % du revenu), 5 essais annuels (2 convertis), 1 essai mensuel ; achats
+dans les 51 h après l'inscription ; personne ne s'abonne sans essai ; les 3
+acheteurs du lifetime étaient à la limite des 3 trackers. Android : 0 vente,
+faute d'essai gratuit configuré (corrigé le 2026-11-23).
 
 ## Mesures (prod, hors comptes test et VIP, 2026-10-15)
 
@@ -55,6 +79,17 @@ Lecture : `backend/scripts/prod-events.sql`. À lire quelques semaines après
 la sortie de la 1.4.0, avant de toucher à la limite. Au passage : limite
 appliquée côté serveur, et le passage en gratuit laisse choisir les 3
 trackers gardés (les plus actifs par défaut).
+**Reste (audit du 2026-11-22, « Trous de mesure »)** : la plateforme et la
+version de l'app sur les événements ; les étapes du parcours d'achat
+(paywall affiché, formule, achat lancé / réussi / annulé) ; le webhook
+RevenueCat qui ignore `CANCELLATION` et jette période (essai ou non), prix,
+devise, raison d'annulation et environnement (sandbox) — garder chaque
+événement brut dans une table à part ; une ouverture d'app.
+Réparti le 2026-11-25 (`docs/CONFIRMATION.md`, point 10) : la table brute
+du webhook et la plateforme sur les événements dans un petit lot backend
+(chantier 0 de `docs/FABLE.md`) ; les étapes du
+parcours d'achat avec la refonte du paywall ; l'ouverture d'app avec les
+rappels.
 
 ### 3. Communication — Pinterest en cours (décidé le 2026-10-15)
 Plan éditorial : `marketing/pinterest/PLAN.md`. Épingles générées
@@ -67,6 +102,50 @@ Pinterest Analytics et App Store Connect → Sources vers le 29 octobre, lot 2
 (nouveaux thèmes) ensuite, mesurer à 8 semaines ; puis export PNG
 épinglable dans l'app (1.3.x). Ensuite : vidéo courte (TikTok / Reels /
 Shorts) avec des outils IA pour éviter le montage.
+Lot 1 lu le 2026-11-22 : l'anglais fait ≈ 93 % des clics ; meilleures
+épingles Mood (2,3 k impressions, 54 clics) et Sleep (1,2 k, 58 clics) ;
+lot 2 surtout en anglais, thème 2027.
+**Attribution App Store, à corriger (noté le 2026-11-23)** : aucune ligne
+Pinterest n'apparaît dans App Store Connect › Acquisition › Campagnes. La
+landing (`storeLinks()` dans `backend/src/routes/landing.ts`) fait
+`ct = <source>-<campagne>`, soit un nom par épingle (`pinterest-mood-en`,
+`pinterest-sleep-fr`…), et Apple n'affiche un nom qu'à partir de 5 premiers
+téléchargements dans les 24 h du clic : les téléchargements Pinterest sont
+éparpillés sous le seuil. À faire avec Fable : un `ct` par source (`pinterest`)
+ou par source et langue (`pinterest-en`), le détail par épingle restant dans
+le referrer Play. Retenu le 2026-11-25 : un `ct` par source. En face, ChatGPT cite la landing avec
+`utm_source=chatgpt.com`, sans campagne : une seule ligne `chatgptcom`, 34
+vues de la page App Store et 10 téléchargements entre mi-octobre et le
+22 novembre. La landing n'a pas de journal de visites (Caddy sans log
+d'accès) : ses visites ne se comptent pas.
+**Compteur de visites du site — spécifié le 2026-11-23**, révisé après la
+recherche `docs/research/reports/Mesure de trafic auto hébergée.md` :
+`docs/superpowers/specs/2026-11-23-landing-visits-design.md`. Compteur maison
+dans le backend (aucun outil open source ne tient sur le VPS en nommant les
+robots), sans cookie ni IP gardée : visites, visiteurs uniques du jour, site
+d'origine, navigateur intégré, appareil, pays (DB-IP Lite), clics vers
+chaque store par `/go/apple` et `/go/play`, robots nommés par famille et
+vérifiés par les listes d'IP des opérateurs. Pas de valeur `utm_*` stockée
+(la grille CNIL de juillet 2025 exclut la mesure des canaux d'acquisition) :
+le détail par épingle se lit dans Pinterest Analytics, App Store Connect et
+la Play Console ; option de repli activée (quand le `Referer` manque,
+`utm_source` traduit en nom de site d'une liste fermée), car les apps
+ChatGPT n'en envoient presque jamais. Pas d'écran : lecture par `prod-landing.sql` (Claude Code ou
+scripts). Module autonome ; Fable écrira la fiche du playbook
+(`~/Documents/Coding/playbook`). Volet légal : section de la politique de
+confidentialité, lien d'opposition, registre. Environ 3 à 4 jours, dans le
+même lot que le regroupement du `ct` Apple. L'Install Referrer Android lié
+au compte est abandonné (2026-11-23). Fait hors lot et en production le
+2026-11-23 (backend 1.2.1) : le site ne montre plus que l'App Store sur
+iPhone et Google Play sur Android, les deux quand l'appareil ne se reconnaît
+pas.
+Images App Store (iOS 27), refaites le 2026-11-23 : en-tête de page produit
+= le titre 点点 / Dian Dian avec une semaine de points
+(`marketing/header_page.py`, une image pour toutes les langues) ; image des
+résultats de recherche = trois trackers, sans logo, par langue
+(`marketing/search_results.py`). Une image par emplacement : l'image
+universelle 16:9 était recadrée dans la recherche. Reste : les charger,
+vérifier l'aperçu iPhone et iPad.
 
 ### 4. Engagement : succès, série, notifications (puis avatars, widgets)
 Brainstorm du 2026-10-14, en pause ; rappel et précisions du 2026-10-28. But :
@@ -100,14 +179,25 @@ devenir anxiogène (ton cozy / pixel-art). À reprendre par un spec
   l'utilisateur (aucun aujourd'hui, sinon ça casse à minuit UTC). Des
   « pixels » (+1 par jour saisi, bonus aux paliers, ne baissent jamais)
   amortissent la casse d'une série ; pas de niveaux ni d'XP.
-- **Notifications.** Locales d'abord (pas Firebase), opt-in, à heure choisie,
-  pour rappeler de remplir ses trackers. À brainstormer : **par tracker
-  plutôt que globale**, car certains trackers ne se remplissent pas tous les
-  jours (les règles, par exemple : on ne doit jamais rappeler ceux-là), avec
-  un choix simple et intuitif de quels trackers rappellent ; et **jamais dix
-  notifications pour dix trackers** : une seule, groupée, par jour, qui
-  liste ce qui reste à remplir. Plus « série en danger » le soir et « succès
-  débloqué ». Maximum une par jour.
+- **Notifications — spécifié le 2026-11-23** :
+  `docs/superpowers/specs/2026-11-23-reminders-design.md`, appuyé sur la
+  recherche `docs/research/reports/Notifications de rappel et fidélisation.md`.
+  Locales, opt-in. Mis à jour le 2026-11-24 : chaque tracker choisit Non,
+  Matin ou Soir (prérempli à la création : le soir pour « tous les jours »,
+  rien pour « seulement quand ça arrive », le matin pour Sommeil) ; deux
+  heures pour tous (9 h 00 et 20 h 30), au plus deux rappels groupés par
+  jour, chacun seulement s'il reste un de ses trackers vide, dès J1 ;
+  silence après 3 rappels ignorés, un dernier message à J+10 au plus tous
+  les 60 jours ;
+  écran de demande juste après le premier point ; section « Rappels » dans
+  les réglages ; noms de trackers masqués sur l'écran verrouillé.
+  **Abandonnés** d'après la recherche : « série en danger » et « succès
+  débloqué » en notification, et toute promotion ; le rappel de fin d'essai
+  aussi (Charles, 2026-11-23 : pas de gain démontré). Décidé le 2026-11-23 : plugin dans sa version la plus récente,
+  donc montée en AGP 9 d'abord (point 6).
+  Pour la série, la recherche recommande de compter les **jours coloriés**
+  (rattraper un jour répare la série) et de ne jamais afficher de remise à
+  zéro : à reprendre au spec de la série.
 - **Widgets** (iOS WidgetKit, Android) en dernier : point du jour, série,
   mini-grille du mois, avatar.
 
@@ -121,8 +211,15 @@ pixel-à-pixel.
 
 ### 6. Toolchain Android
 Remarques Play Console : bannière AdMob sous la navigation 3 boutons à
-vérifier, puis AGP 9 / Gradle 9.1 / Kotlin 2.3 + R8 dans une release
+vérifier, puis AGP 9.1 / Gradle 9.3.1 (et non 9.1) / Kotlin 2.3 + R8 dans une release
 dédiée testée sur appareil. Détail : `ANDROID_RELEASE_PLAN.md` §8.
+Prérequis des rappels (point 4), décidé le 2026-11-23 : pas de plugin
+ancien, on monte en AGP 9 même si la mise à niveau demande du travail, puis
+on prend la version la plus récente de `flutter_local_notifications` (23.x
+exige AGP ≥ 9.1.1).
+Vérifié le 2026-11-25 : le projet est déjà en Flutter 3.47.5 et Dart 3.13.4
+(rien à faire pour Dart) ; AGP 8.11.1 est le plancher de ce Flutter, donc
+pas de mise à jour de Flutter avant ce chantier.
 
 ### 7. Esthétique : animations, sons, vibrations, écran de lancement — fusionné sur master le 2026-10-28
 Brainstormé et spécifié le 2026-10-22 :
@@ -165,7 +262,22 @@ système pendant la fermeture du tracker (deux retours rapides fermaient
 l'app sur Android) — décision de Charles, deux appuis rapides sont une
 intention de sortir, le correctif a été annulé.
 
-### 8. Prix : étude de marché avant de retoucher l'offre (demandé le 2026-10-28)
+### 8. Prix : étude de marché avant de retoucher l'offre — fait le 2026-11-23
+**Livré** : `docs/PRICING.md`, d'après la recherche
+`docs/research/reports/Prix abonnement et achat à vie.md` et l'audit.
+Abonnement et lifetime gardés ; mensuel 2,99 $ inchangé, annuel 8,99 →
+14,99 $, lifetime 22,99 → 29,99 $ (décidé le 2026-11-23) ; en euros 2,99 /
+14,99 / 29,99 € (aujourd'hui 1,99 / 9,99 / 24,99 €) ; essai de 7 jours
+gardé ; mêmes prix sur Android ; abonnés actuels protégés ; changement le
+1er décembre, relecture début mars. Android : offres d'essai
+`monthly-free-trial` / `yearly-free-trial` créées le 2026-11-23. Message de
+résiliation App Store rédigé (quatre langues). Promotions saisonnières en
+pause. Reste : changer les prix le 1er décembre (Charles), vérifications Android,
+refonte du paywall (annuel présélectionné partout, prix facturé d'abord,
+mensuel en lien, lifetime visible ; mur des 3 trackers sur « trackers
+illimités », décidé le 2026-11-23).
+
+Demande d'origine (2026-10-28) :
 Intuition de départ : les prix actuels (mensuel / annuel / à vie, via
 RevenueCat ; les montants vivent dans App Store Connect et la Play Console,
 pas dans le code) ne sont « pas forcément adaptés ». Avant d'y toucher, une
@@ -184,7 +296,98 @@ Croiser avec nos propres chiffres : murs premium affichés (point 2,
 / les deux tranchée avec ses raisons. Ne rien changer dans les stores avant
 cette note.
 
+### 9. Pop-up premium occasionnelle — spécifié le 2026-11-23
+`docs/superpowers/specs/2026-11-23-premium-popup-design.md`. Après le point
+du jour, jamais au lancement ; étapes affichées une seule fois (3 trackers
+avec un usage régulier ; depuis le 2026-11-24, une stat Premium prête
+(`stats_ready`) ou un premier lien entre trackers (`link_found`), dévoilés
+une fois sur ses données, à la place des jalons de 7 et 30 jours ; fin
+d'année avec l'export) ; rien les premiers jours, une pop-up toutes les
+deux semaines au plus, plus rien après 2 refus (définitif), jamais pour les
+payants ; réglable à distance par le bootstrap. Décidé le 2026-11-23 : usage
+régulier = 5 jours sur 14 ; l'aperçu dévoile gratuitement une vraie stat,
+les plus poussées restent premium (voir le point 10). Public encore petit (≈ 16 gratuits
+actifs à 3 trackers) : il grandit avec la rétention, donc après les rappels.
+**Pop-up promo** (annonces datées pilotées par le serveur, prix barré par un
+produit promo) : décrite dans le même spec, **en pause** avec toutes les
+promotions.
+
+### 10. Stats plus utiles — spécifié le 2026-11-24
+`docs/superpowers/specs/2026-11-24-stats-design.md`, maquettes
+https://claude.ai/artifact/HVMGhCrPR82sjShMxiht2e (la référence ; sept
+histoires de « + » jusqu'aux stats). Charles : même en premium, les stats
+« n'apportent pas grand-chose » ; aujourd'hui elles ne font que compter le
+remplissage (`StatsDetailDialog`, `GlobalStatsDialog`).
+Le principe : l'app sait comment un tracker se colorie et si ses couleurs
+ont un ordre, et c'est ce qui décide de ses stats. Trois réglages par
+tracker : le remplissage (« tous les jours, même les jours sans » ou
+« seulement les jours où ça arrive », demandé à la création), l'ordre des
+couleurs (« du plus au moins » ou « des sortes différentes », demandé à la
+2ᵉ couleur) et le rappel (Non / Matin / Soir). Un modèle arrive réglé, avec
+ses phrases ; un perso a les mêmes calculs avec des phrases génériques.
+Neuf modèles aux libellés sans ambiguïté, dont quatre nouveaux (Cycle,
+Études, Dépenses, Émotions). Rien n'est définitif : des réglages du tracker
+où tout se change ; un modèle modifié ne perd que ses phrases, et les
+retrouve. Un filet de sécurité pour les trackers coloriés seulement quand
+ça arrive (8 sur 53 en prod). Gratuit : ce mois-ci comparé au mois dernier,
+depuis la dernière fois, l'annonce d'un lien ; Premium : niveau et
+tendance, combien de fois et à quel niveau, mois par mois, jour de la
+semaine, rythme et estimation, liens entre trackers, avec les seuils de la
+recherche. Une première version (une question à 3 choix à la création) a
+été remplacée le même jour ; la seconde est validée par Charles sur
+maquettes.
+
+### 11. Voir un tracker par mois et par semaine — spécifié le 2026-11-25
+Demandé par Charles le 2026-11-24, pour Fable. Spec :
+`docs/superpowers/specs/2026-11-25-tracker-zoom-design.md` ; page d'essai
+(version 2, qui fait foi pour le geste) :
+https://claude.ai/artifact/TonXNPhgKSxYvDwVet948j. Trois niveaux fixes
+(Année, Mois en une ligne par jour, Semaine en sept lignes avec les
+commentaires entiers) ; sélecteur dans la barre, lettre du mois, et
+pincement sur un chemin fixe que l'écart des doigts fait avancer (longueur
+Moyen, moitié du chemin pour lâcher) ; glissement d'une page à l'autre en
+Mois et Semaine ; la barre de gauche ne se plie jamais seule mais se plie et
+se déplie d'un glissement sur elle-même, dans les trois vues. Gratuit
+(Charles, 2026-11-25). Complété le 2026-11-25 : le glissement d'une page à
+l'autre vaut aussi pour l'année ; le chantier passe après la pop-up
+premium (`docs/CONFIRMATION.md`, décisions 6 et 7).
+
+### 12. Astuces : montrer les fonctions cachées — spécifié le 2026-11-25
+Demandé par Charles le 2026-11-25 : après l'accueil, un chemin complet qui
+montre une à une les fonctions qui ne se devinent pas, jamais toutes d'un
+coup, jamais pour ce qu'on sait déjà faire. Spec :
+`docs/superpowers/specs/2026-11-25-feature-tips-design.md` ; maquettes
+validées (« ça me paraît pas mal tout ça ») :
+https://claude.ai/artifact/3HsujtgXLrre5FbtaViGmE.
+- Neuf astuces, dans l'ordre :
+  - colorier un autre jour ;
+  - le bouton du jour ;
+  - le pinceau, en deux temps ;
+  - le commentaire ;
+  - ouvrir un mois en pinçant ;
+  - tourner les pages ;
+  - plier la barre ;
+  - la légende ;
+  - un deuxième tracker.
+- La forme : un cadre qui clignote, une bulle d'une phrase, des doigts
+  fantômes pour les gestes, une réussite quand le geste est fait.
+- Le rythme : au plus une astuce par ouverture de l'app, jamais le jour
+  d'une autre fenêtre, aucune ne vend Premium.
+- Le relevé des usages est sur l'appareil ; deux champs du bootstrap
+  (`cells_total`, `has_comment`) servent à reconnaître les comptes anciens.
+- Les astuces 1 à 3 ne visent que les trackers « tous les jours ».
+- En plus : un carnet d'astuces dans les réglages, et trois événements par
+  astuce.
+- Deux lots : sans le zoom, puis avec.
+- Place (2026-11-25) : le lot 1 juste après les rappels, le lot 2 avec le
+  zoom.
+
 ## Fait récemment
+- 2026-11-23 : audit de conversion, `docs/PRICING.md`, specs des rappels et
+  de la pop-up premium, essais gratuits Android, images App Store ; branche
+  `docs/conversion-retention`. Branche `feat/comment-badge` (non fusionnée) :
+  pastille de commentaire à la place de l'anneau troué, tuiles Sons et
+  Vibrations qui suivent le thème.
 - 2026-10-14 : backend 1.1.0 en prod (bootstrap en une requête, store
   client, snapshot disque, fixes décembre / déconnexions / sync légendes),
   outillage de release et de déploiement par script, app 1.3.0 taguée.
