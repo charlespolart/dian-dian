@@ -54,7 +54,8 @@ dian-dian/
 │   │                    # stats (all-time days), purchase (RC webhook), legal
 │   ├── drizzle/         # Generated SQL migrations
 │   ├── scripts/         # seed-demo-local, smoke (end-to-end against a running backend),
-│   │                    # prod-*.sql (read-only stats: accounts, trackers, activation, events, purchases)
+│   │                    # prod-*.sql (read-only stats: accounts, trackers, activation, events, purchases,
+│   │                    # and landing: the site's visits, taps on the store buttons, origins and robots)
 │   └── Dockerfile       # Multi-stage: builder / runtime / development
 ├── flutter_app/
 │   ├── lib/
