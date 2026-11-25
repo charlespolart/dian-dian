@@ -323,13 +323,27 @@ recherche. Une première version (une question à 3 choix à la création) a
 été remplacée le même jour ; la seconde est validée par Charles sur
 maquettes.
 
-### 11. Voir un tracker par mois et par semaine — à brainstormer
-Demandé par Charles le 2026-11-24, pour Fable (spec et maquettes avant le
-code). Aujourd'hui un tracker ne se voit qu'à l'année (`TrackerGrid`,
-12 colonnes de mois × 31 jours). L'idée : pouvoir « zoomer » sur un mois,
-voire une semaine, sans changer de mode par accident ; puis profiter de la
-place pour montrer plus (les commentaires des jours, par exemple). Brainstorm
-en cours : le geste (pincer, boutons, les deux), puis le contenu des vues.
+### 11. Voir un tracker par mois et par semaine — spécifié le 2026-11-25
+Demandé par Charles le 2026-11-24, pour Fable. Spec :
+`docs/superpowers/specs/2026-11-25-tracker-zoom-design.md` ; page d'essai
+(version 2, qui fait foi pour le geste) :
+https://claude.ai/artifact/TonXNPhgKSxYvDwVet948j. Trois niveaux fixes
+(Année, Mois en une ligne par jour, Semaine en sept lignes avec les
+commentaires entiers) ; sélecteur dans la barre, lettre du mois, et
+pincement sur un chemin fixe que l'écart des doigts fait avancer (longueur
+Moyen, moitié du chemin pour lâcher) ; glissement d'une page à l'autre en
+Mois et Semaine ; la barre de gauche ne se plie jamais seule mais se plie et
+se déplie d'un glissement sur elle-même, dans les trois vues. Question
+ouverte : gratuit ou Premium (recommandé : gratuit).
+
+### 12. Astuces : montrer les fonctions cachées — brainstorm en cours
+Demandé par Charles le 2026-11-25 : après l'accueil, un chemin complet qui
+montre une à une les fonctions qui ne se devinent pas (les trois façons de
+colorier, le commentaire, le pincement, les pages, la barre…), jamais toutes
+d'un coup, jamais pour ce qu'on sait déjà faire. Maquettes et proposition :
+https://claude.ai/artifact/3HsujtgXLrre5FbtaViGmE (neuf astuces, une par
+ouverture de l'app au plus, cadre qui clignote + bulle, doigts fantômes pour
+les gestes). Spec à écrire après les retours de Charles.
 
 ## Fait récemment
 - 2026-11-23 : audit de conversion, `docs/PRICING.md`, specs des rappels et

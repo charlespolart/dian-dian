@@ -4,7 +4,8 @@ Point d'entrée de la passe de confirmation puis de la construction.
 Rédigé le 2026-11-23, à la fin de la phase de préparation (recherches,
 audits, specs, sans code — `docs/ROADMAP.md`, en tête) ; mis à jour le
 2026-11-24 avec la spec des stats (seconde version, validée sur maquettes)
-et la mise à jour des rappels et de la pop-up qui en découle.
+et la mise à jour des rappels et de la pop-up qui en découle ; le
+2026-11-25 avec la spec du zoom (mois et semaine).
 
 Charles est le propriétaire et le seul développeur. Il écrit en français ;
 le code, les identifiants et les libellés de configuration (stores,
@@ -27,7 +28,8 @@ RevenueCat) sont en anglais ; les textes de l'app vouvoient.
 2. `docs/ROADMAP.md` : la liste des chantiers et leur historique.
 3. Les specs de `docs/superpowers/specs/` datées du 2026-11-23 et du
    2026-11-24 : `reminders-design`, `premium-popup-design`,
-   `landing-visits-design`, `stats-design`. Pour les stats, les maquettes :
+   `landing-visits-design`, `stats-design`, et celle du 2026-11-25,
+   `tracker-zoom-design`. Pour les stats, les maquettes :
    https://claude.ai/artifact/HVMGhCrPR82sjShMxiht2e, la référence (le
    principe, les neuf modèles, sept histoires de « + » jusqu'aux stats, les
    rappels, Premium). L'ancienne page
@@ -57,6 +59,7 @@ RevenueCat) sont en anglais ; les textes de l'app vouvoient.
 | 4 | Rappels (notifications locales, matin et soir, section Rappels, écran de demande) | `2026-11-23-reminders-design.md` | 3 (le plugin le plus récent exige AGP 9) ; 5, lot 1 (le remplissage et le moment du rappel se règlent à la création et dans les réglages du tracker) | à estimer |
 | 5 | Stats plus utiles, en trois lots : réglages et création (lot 1), page Stats (lot 2), estimation et liens (lot 3) | `2026-11-24-stats-design.md` | lot 1 : rien ; lots 2 et 3 : le lot 1 | à estimer |
 | 6 | Pop-up premium occasionnelle | `2026-11-23-premium-popup-design.md` | 4 (passe après l'écran des rappels), 5 lot 2 (`stats_ready` dévoile une stat Premium prête) et lot 3 (`link_found`) | à estimer |
+| 7 | Voir un tracker par mois et par semaine (zoom), et plier la barre d'un glissement | `2026-11-25-tracker-zoom-design.md` ; page d'essai https://claude.ai/artifact/TonXNPhgKSxYvDwVet948j (version 2) | la fusion de `feat/comment-badge` (même fichier, `tracker_grid.dart`) ; place dans l'ordre à décider par Charles | à estimer |
 | — | Registre RGPD du projet et politique de confidentialité (événements produit, compteur de visites), en quatre langues | specs du compteur et `docs/PRICING.md` (« Relecture ») | avant ou avec 1 et 2 | ½ jour |
 
 Chaque spec finit par une section « Relecture » (du 2026-11-23, ou du
@@ -152,6 +155,8 @@ premier jour, avec des cartes d'exemple ; rappels Non / Matin / Soir par
 tracker, au plus deux par jour ; la pop-up « stats prêtes » à la place des
 jalons de 7 et 30 jours.
 
-À venir (demandé par Charles le 2026-11-24, brainstorm en cours, spec à
-écrire) : voir un tracker par mois et par semaine, en plus de l'année
-(`docs/ROADMAP.md` §11).
+Ajouté le 2026-11-25 : voir un tracker par mois et par semaine, en plus de
+l'année (`2026-11-25-tracker-zoom-design.md`, `docs/ROADMAP.md` §11),
+spécifié après deux versions d'une page d'essai ; une question ouverte
+(gratuit ou Premium). À venir : les astuces qui montrent les fonctions
+cachées (`docs/ROADMAP.md` §12), brainstorm en cours.
