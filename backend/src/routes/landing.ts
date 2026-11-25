@@ -1,4 +1,6 @@
 import { Router, Request } from 'express';
+import { siteAudience } from '../lib/siteAudience.js';
+import { campaignQuery, storeLinks } from '../lib/storeLinks.js';
 import { storePlatform, type StorePlatform } from '../lib/storePlatform.js';
 
 const router = Router();
@@ -21,36 +23,18 @@ function detectLang(req: Request): Lang {
 }
 
 const ORIGIN = 'https://diandian.overridedev.com';
-const APP_STORE_URL = 'https://apps.apple.com/app/id6761432329';
-const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=app.mydiandian';
 
-// Campaign attribution. A visitor arriving with ?utm_source=pinterest&utm_campaign=mood-en
-// (our pins, posts…) gets store buttons that carry the campaign:
-//   - Play: `referrer=utm_source%3D…` → Play Console → Acquisition;
-//   - App Store: `pt=<provider token>&ct=<campaign>&mt=8` → App Store Connect →
-//     Analytics → Sources. The provider token (pt) is per developer account:
-//     App Store Connect → Analytics → Campaigns → "Generate campaign link".
-//     Until APPLE_CAMPAIGN_PT is set, the App Store link stays plain.
+// Campaign attribution (lib/storeLinks.ts). The store buttons point at this
+// site's own /go/apple and /go/play, which count the tap and redirect to the
+// store with the campaign the visitor arrived with. The App Store's provider
+// token is per developer account; until APPLE_CAMPAIGN_PT is set, its link
+// stays plain.
 const APPLE_CAMPAIGN_PT = process.env.APPLE_CAMPAIGN_PT || '';
 
-type StoreLinks = { apple: string; play: string };
-const DEFAULT_LINKS: StoreLinks = { apple: APP_STORE_URL, play: PLAY_STORE_URL };
-
-function campaignParam(value: unknown, max: number): string {
-  return String(value ?? '').slice(0, max).replace(/[^a-zA-Z0-9_-]/g, '').toLowerCase();
-}
-
-function storeLinks(req: Request): StoreLinks {
-  const source = campaignParam(req.query.utm_source, 40);
-  if (!source) return DEFAULT_LINKS;
-  const campaign = campaignParam(req.query.utm_campaign, 60);
-  const ct = campaign ? `${source}-${campaign}` : source;
-  const referrer = encodeURIComponent(`utm_source=${source}${campaign ? `&utm_campaign=${campaign}` : ''}`);
-  return {
-    apple: APPLE_CAMPAIGN_PT ? `${APP_STORE_URL}?pt=${encodeURIComponent(APPLE_CAMPAIGN_PT)}&ct=${encodeURIComponent(ct)}&mt=8` : APP_STORE_URL,
-    play: `${PLAY_STORE_URL}&referrer=${referrer}`,
-  };
-}
+// The stores are told the visitor comes from this site (its origin alone,
+// never the page or its query): App Store Connect shows it as the "Web
+// referrer". Everywhere else the site keeps helmet's `no-referrer`.
+const REFERRER_POLICY = 'strict-origin-when-cross-origin';
 
 // App Store screenshots shipped under /shots (see backend/public/shots).
 // Each feature row pairs a screenshot with a line of copy.
@@ -203,9 +187,13 @@ const PLAY_GLYPH =
 
 // The store buttons for the visitor's platform: the App Store on an iPhone,
 // Google Play on Android, both when it can't be told (see storePlatform).
-function storeButton(c: Copy, links: StoreLinks, platform: StorePlatform): string {
-  const apple = `<a class="btn-store" href="${links.apple}" target="_blank" rel="noopener">${APPLE_GLYPH}<span>${c.cta}</span></a>`;
-  const play = `<a class="btn-store" href="${links.play}" target="_blank" rel="noopener">${PLAY_GLYPH}<span>${c.ctaPlay}</span></a>`;
+// `campaign` is what `campaignQuery` returns: '' or a query of cleaned
+// values, safe in HTML once its `&` is written as an entity. `nofollow`:
+// these are redirections, not pages (robots.txt keeps polite robots off them).
+function storeButton(c: Copy, campaign: string, platform: StorePlatform): string {
+  const query = campaign.replace(/&/g, '&amp;');
+  const apple = `<a class="btn-store" href="/go/apple${query}" target="_blank" rel="nofollow noopener">${APPLE_GLYPH}<span>${c.cta}</span></a>`;
+  const play = `<a class="btn-store" href="/go/play${query}" target="_blank" rel="nofollow noopener">${PLAY_GLYPH}<span>${c.ctaPlay}</span></a>`;
   if (platform === 'ios') return apple;
   if (platform === 'android') return play;
   return `${apple}
@@ -234,7 +222,7 @@ function langPicker(lang: Lang): string {
       </div>`;
 }
 
-function page(lang: Lang, links: StoreLinks = DEFAULT_LINKS, platform: StorePlatform = 'unknown'): string {
+function page(lang: Lang, campaign = '', platform: StorePlatform = 'unknown'): string {
   const c = t[lang];
 
   const heroDots = CHIP_HUES.concat(['--p-pink', '--p-green'])
@@ -410,7 +398,7 @@ function page(lang: Lang, links: StoreLinks = DEFAULT_LINKS, platform: StorePlat
         <h1>${c.h1}</h1>
         <p class="sub">${c.sub}</p>
         <div class="cta-row">
-          ${storeButton(c, links, platform)}
+          ${storeButton(c, campaign, platform)}
           <span class="note">${c.note}</span>
         </div>
         <div class="dots" aria-hidden="true">${heroDots}</div>
@@ -439,7 +427,7 @@ function page(lang: Lang, links: StoreLinks = DEFAULT_LINKS, platform: StorePlat
     <section class="wrap final reveal">
       <h2>${c.finalH}</h2>
       <div class="cta-row" style="justify-content:center">
-        ${storeButton(c, links, platform)}
+        ${storeButton(c, campaign, platform)}
         <span class="note">${c.note}</span>
       </div>
     </section>
@@ -493,7 +481,22 @@ router.get('/', (req, res) => {
   // The buttons depend on the User-Agent: no cache may serve one device's
   // page to another.
   res.vary('User-Agent');
-  res.type('html').send(page(lang, storeLinks(req), storePlatform(req.get('user-agent'))));
+  res.set('Referrer-Policy', REFERRER_POLICY);
+  res.type('html').send(page(lang, campaignQuery(req.query), storePlatform(req.get('user-agent'))));
+  // Counted once the page is on its way: no I/O, and it cannot fail the response.
+  siteAudience.visit(req, lang);
 });
+
+// The store buttons. Counted, then redirected: the redirection stays on this
+// domain, so that Apple sees the site as where the visitor comes from.
+for (const store of ['apple', 'play'] as const) {
+  router.get(`/go/${store}`, (req, res) => {
+    res.set('Referrer-Policy', REFERRER_POLICY);
+    // Every tap must reach the server: a cached redirection would not be counted.
+    res.set('Cache-Control', 'no-store');
+    res.redirect(302, storeLinks(req.query, APPLE_CAMPAIGN_PT)[store]);
+    siteAudience.storeTap(req, store, detectLang(req));
+  });
+}
 
 export default router;

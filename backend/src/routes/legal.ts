@@ -5,7 +5,7 @@ const router = Router();
 type Lang = 'en' | 'fr' | 'zh-CN' | 'zh-TW';
 const SUPPORTED: Lang[] = ['en', 'fr', 'zh-CN', 'zh-TW'];
 
-function detectLang(req: Request): Lang {
+export function detectLang(req: Request): Lang {
   const q = String(req.query.lang || '');
   if (SUPPORTED.includes(q as Lang)) return q as Lang;
   const accept = req.headers['accept-language'] || '';
@@ -34,6 +34,19 @@ const ui = {
 
 function jsEscape(s: string): string {
   return s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+const notFound = {
+  title: { en: 'Page not found', fr: 'Page introuvable', 'zh-CN': '找不到页面', 'zh-TW': '找不到頁面' },
+  text: { en: 'There is nothing at this address.', fr: 'Il n’y a rien à cette adresse.', 'zh-CN': '此地址没有内容。', 'zh-TW': '此網址沒有內容。' },
+  home: { en: 'Back to Dian Dian', fr: 'Retour à l’accueil', 'zh-CN': '返回首页', 'zh-TW': '返回首頁' },
+};
+
+/** What an unknown path gets (see index.ts): a 404 in the site's layout, with a way back. */
+export function notFoundPage(lang: Lang): string {
+  return layout(notFound.title[lang], `<h1>${notFound.title[lang]}</h1>
+    <p>${notFound.text[lang]}</p>
+    <p><a href="/">${notFound.home[lang]}</a></p>`, lang);
 }
 
 function layout(title: string, content: string, lang: Lang): string {

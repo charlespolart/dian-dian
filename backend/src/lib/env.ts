@@ -26,4 +26,12 @@ export const env = {
   // Google OAuth 2.0 client ids accepted as ID-token `aud` (iOS + Android +
   // Web each have their own client id in Google Cloud Console).
   GOOGLE_CLIENT_IDS: commaList('GOOGLE_CLIENT_IDS'),
+  // The site's audience counter (src/audience). Without a Referer, a
+  // `utm_source` of a closed list is read as the site of origin; `off`
+  // turns that fallback off.
+  AUDIENCE_TAG_FALLBACK: process.env.AUDIENCE_TAG_FALLBACK !== 'off',
+  // Whether the counter downloads the robots' IP ranges and the country
+  // database (DB-IP, 4 MB) at start. In production only, unless set to `on`
+  // or `off`: a dev server restarts at every save.
+  AUDIENCE_DOWNLOADS: process.env.AUDIENCE_DOWNLOADS ? process.env.AUDIENCE_DOWNLOADS === 'on' : process.env.NODE_ENV === 'production',
 };

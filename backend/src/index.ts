@@ -16,7 +16,7 @@ import authRoutes from './routes/auth.js';
 import pagesRoutes from './routes/pages.js';
 import cellsRoutes from './routes/cells.js';
 import legendsRoutes from './routes/legends.js';
-import legalRoutes from './routes/legal.js';
+import legalRoutes, { detectLang, notFoundPage } from './routes/legal.js';
 import landingRoutes from './routes/landing.js';
 import purchaseRoutes from './routes/purchase.js';
 import bootstrapRoutes from './routes/bootstrap.js';
@@ -200,8 +200,14 @@ app.get('/app-ads.txt', (_req, res) => {
 // Web is intentionally limited to the server-rendered landing + legal pages.
 // All app interaction (login, tracker, password reset OTP) lives in the
 // iOS/Android app — no Flutter web build is served.
-app.get('*', (_req, res) => {
-  res.redirect(302, '/');
+//
+// An unknown path is a 404, not the home page: scanners (/wp-login.php,
+// /.env) that followed a redirection to `/` would be counted as visits.
+app.use('/api', (_req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
+app.get('*', (req, res) => {
+  res.status(404).type('html').send(notFoundPage(detectLang(req)));
 });
 
 server.listen(env.PORT, () => {

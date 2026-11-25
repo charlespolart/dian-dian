@@ -175,27 +175,151 @@ async function main() {
   r = await call('GET', `/api/legends/${pageId}`);
   assert.equal(r.json.length, 1);
 
-  // --- landing forwards a campaign to the store links (Pinterest attribution) ---
+  // --- the site: store buttons go through /go/*, unknown paths are 404 -------
   {
-    const res = await fetch(`${BASE}/?utm_source=pinterest&utm_campaign=mood-en`);
+    const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Mobile/15E148 Safari/604.1';
+    const ANDROID = 'Mozilla/5.0 (Linux; Android 15; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Mobile Safari/537.36';
+    // The suite is not a visitor: `DNT: 1` keeps these requests out of the
+    // audience counter, on the production site too.
+    const site = (path: string, headers: Record<string, string> = {}) => fetch(`${BASE}${path}`, { redirect: 'manual', headers: { dnt: '1', ...headers } });
+
+    const res = await site('/?utm_source=pinterest&utm_campaign=mood-en');
     assert.equal(res.status, 200);
+    assert.equal(res.headers.get('referrer-policy'), 'strict-origin-when-cross-origin', 'the stores are told the visitor comes from the site');
     const html = await res.text();
-    assert.ok(html.includes('referrer=utm_source%3Dpinterest%26utm_campaign%3Dmood-en'), 'Play link carries the campaign referrer');
-    const plain = await (await fetch(`${BASE}/`)).text();
-    assert.ok(!plain.includes('referrer='), 'no referrer without a campaign');
+    assert.ok(html.includes('href="/go/play?utm_source=pinterest&amp;utm_campaign=mood-en"'), 'the Play button carries the campaign');
+    assert.ok(html.includes('href="/go/apple?utm_source=pinterest&amp;utm_campaign=mood-en"'), 'the App Store button carries the campaign');
+    assert.ok(!html.includes('apps.apple.com') && !html.includes('play.google.com'), 'the page links to the stores through the site only');
+    const plain = await (await site('/')).text();
+    assert.ok(plain.includes('href="/go/apple"') && plain.includes('href="/go/play"'), 'an unknown device sees both stores, without a campaign');
     // One store per platform; both when the device can't be told.
-    const iphone = await (await fetch(`${BASE}/`, {
-      headers: { 'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148' },
-    })).text();
-    assert.ok(iphone.includes('apps.apple.com') && !iphone.includes('play.google.com'), 'an iPhone sees the App Store only');
-    const android = await (await fetch(`${BASE}/`, {
-      headers: { 'user-agent': 'Mozilla/5.0 (Linux; Android 15; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Mobile Safari/537.36' },
-    })).text();
-    assert.ok(android.includes('play.google.com') && !android.includes('apps.apple.com'), 'an Android device sees Google Play only');
-    assert.ok(plain.includes('apps.apple.com') && plain.includes('play.google.com'), 'an unknown device sees both stores');
+    const iphone = await (await site('/', { 'user-agent': IPHONE })).text();
+    assert.ok(iphone.includes('/go/apple') && !iphone.includes('/go/play'), 'an iPhone sees the App Store only');
+    const android = await (await site('/', { 'user-agent': ANDROID })).text();
+    assert.ok(android.includes('/go/play') && !android.includes('/go/apple'), 'an Android device sees Google Play only');
+
+    // The buttons redirect to the store, with the campaign.
+    let go = await site('/go/play?utm_source=pinterest&utm_campaign=mood-en');
+    assert.equal(go.status, 302, 'the Play button redirects');
+    assert.equal(go.headers.get('location'), 'https://play.google.com/store/apps/details?id=app.mydiandian&referrer=utm_source%3Dpinterest%26utm_campaign%3Dmood-en');
+    assert.equal(go.headers.get('cache-control'), 'no-store', 'every tap reaches the server');
+    assert.equal(go.headers.get('referrer-policy'), 'strict-origin-when-cross-origin');
+    go = await site('/go/play');
+    assert.equal(go.headers.get('location'), 'https://play.google.com/store/apps/details?id=app.mydiandian');
+    go = await site('/go/apple?utm_source=pinterest&utm_campaign=mood-en');
+    assert.equal(go.status, 302, 'the App Store button redirects');
+    const apple = go.headers.get('location') ?? '';
+    assert.ok(apple.startsWith('https://apps.apple.com/app/id6761432329'), apple);
+    // With a provider token on the server, the campaign is the source alone (one name per source).
+    if (apple.includes('ct=')) assert.ok(apple.includes('ct=pinterest&') && !apple.includes('mood'), apple);
+    assert.equal((await site('/go/amazon')).status, 404, 'there are two stores');
+
+    // Unknown paths are not the home page any more: scanners would count as visits.
+    const lost = await site('/wp-login.php');
+    assert.equal(lost.status, 404, 'an unknown path is a 404');
+    assert.ok((await lost.text()).includes('href="/"'), 'with a way back to the site');
+    const lostApi = await site('/api/nope');
+    assert.equal(lostApi.status, 404);
+    assert.deepEqual(await lostApi.json(), { error: 'Not found' }, 'an unknown API path answers JSON');
+    for (const path of ['/privacy', '/terms', '/legal', '/contact', '/about', '/delete-account', '/app-ads.txt', '/favicon.png', '/robots.txt']) {
+      assert.equal((await site(path)).status, 200, `${path} is still there`);
+    }
+    assert.equal((await site('/privacy')).headers.get('referrer-policy'), 'no-referrer', 'the other pages keep the strict policy');
+    assert.ok((await (await site('/robots.txt')).text()).includes('Disallow: /go/'), 'polite robots do not follow the store buttons');
     // The website's contact page is a real form posting to /api/contact.
-    const contact = await (await fetch(`${BASE}/contact?lang=fr`)).text();
+    const contact = await (await site('/contact?lang=fr')).text();
     assert.ok(contact.includes('id="contact-form"') && contact.includes('/api/contact'), 'contact page has the form');
+
+    // The audience counter, read in the database: local only.
+    if (sql) {
+      const run = `smoke-${Date.now()}`;
+      const origin = `${run}.example`;
+      const CHATGPT = 'Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ChatGPT-User/1.0; +https://openai.com/bot';
+      const today = new Date().toISOString().slice(0, 10);
+      const visit = (headers: Record<string, string>) => fetch(`${BASE}/`, { headers });
+      const person = { 'user-agent': IPHONE, referer: `https://www.${origin}/a/page?x=1`, 'accept-language': 'fr-FR,fr;q=0.9' };
+      const count = async (where: postgres.PendingQuery<postgres.Row[]>) => {
+        const [row] = await sql`select coalesce(sum(count), 0)::int as n from audience_counts where day = ${today} and ${where}`;
+        return row.n as number;
+      };
+      const robots = sql`bot_family = 'ai_user' and bot_name = 'ChatGPT-User' and bot_check = 'unverified'`;
+      const taps = sql`kind = 'store_tap' and store = 'apple' and device = 'iphone' and bot_family = ''`;
+      const totals = async () => {
+        const [row] = await sql`select visits, taps_apple from audience_totals where day = ${today}`;
+        return { visits: (row?.visits ?? 0) as number, tapsApple: (row?.taps_apple ?? 0) as number };
+      };
+      /** Waits for the counter's next write (every 5 seconds) to show `n` visits from this run's origin. */
+      const written = async (n: number) => {
+        for (let i = 0; i < 40; i++) {
+          if (await count(sql`origin = ${origin}`) === n) return;
+          await new Promise((resolve) => setTimeout(resolve, 250));
+        }
+        assert.fail(`the counter did not write ${n} visit(s) from ${origin} within 10 seconds`);
+      };
+      const before = { robots: await count(robots), taps: await count(taps), ...(await totals()) };
+
+      await visit(person);
+      await visit({ 'user-agent': CHATGPT });
+      await fetch(`${BASE}/go/apple`, { redirect: 'manual', headers: { 'user-agent': IPHONE } });
+      await visit({ ...person, dnt: '1' });
+      await visit({ ...person, 'sec-gpc': '1' });
+      await fetch(`${BASE}/`, { method: 'HEAD', headers: person });
+      await written(1);
+      const [row] = await sql`
+        select kind, origin_from, tagged, device, browser, in_app, lang, bot_family, count
+        from audience_counts where origin = ${origin}`;
+      assert.deepEqual(
+        { ...row },
+        { kind: 'visit', origin_from: 'referer', tagged: false, device: 'iphone', browser: 'safari', in_app: '', lang: 'fr', bot_family: '', count: 1 },
+        'a visit is one row: its origin as a bare domain, and classes of what was seen',
+      );
+      assert.equal(await count(robots) - before.robots, 1, 'a robot is counted by name, unverified when its address is not its operator\'s');
+      assert.equal(await count(taps) - before.taps, 1, 'a tap on a store button is counted');
+      const after = await totals();
+      assert.deepEqual({ visits: after.visits - before.visits, tapsApple: after.tapsApple - before.tapsApple }, { visits: 1, tapsApple: 1 }, 'the totals of the day count the person, not the robot, not who objects');
+
+      // A later write adds to the row instead of replacing it (as after a restart).
+      await visit(person);
+      await written(2);
+
+      // Nothing that identifies anyone is in the table.
+      const columns = await sql`select column_name from information_schema.columns where table_name = 'audience_counts'`;
+      assert.deepEqual(
+        columns.map((c) => c.column_name).sort(),
+        ['bot_check', 'bot_family', 'bot_name', 'browser', 'count', 'country', 'day', 'device', 'in_app', 'kind', 'lang', 'origin', 'origin_from', 'store', 'tagged'],
+      );
+      await sql`delete from audience_counts where origin = ${origin}`;
+
+      // Days older than 25 months become one total per month.
+      const { db } = await import('../src/db/index.js');
+      const { rollUpOldDays } = await import('../src/audience/counter.js');
+      const month = async () => {
+        const [m] = await sql`select visits, taps_apple, taps_play, bot_hits from audience_months where month = '2020-03-01'`;
+        return { visits: (m?.visits ?? 0) as number, tapsApple: (m?.taps_apple ?? 0) as number, tapsPlay: (m?.taps_play ?? 0) as number, botHits: (m?.bot_hits ?? 0) as number, there: m !== undefined };
+      };
+      const monthBefore = await month();
+      await sql`insert into audience_counts (day, kind, origin, device, count) values ('2020-03-15', 'visit', ${origin}, 'iphone', 3)`;
+      await sql`insert into audience_counts (day, kind, bot_family, bot_name, bot_check, count) values ('2020-03-16', 'visit', 'other', ${run}, 'unverifiable', 4)`;
+      await sql`insert into audience_totals (day, visits, visitors, taps_apple, taps_play) values ('2020-03-15', 3, 2, 1, 0)`;
+      await rollUpOldDays(db, new Date());
+      const monthAfter = await month();
+      assert.deepEqual(
+        { visits: monthAfter.visits - monthBefore.visits, tapsApple: monthAfter.tapsApple - monthBefore.tapsApple, tapsPlay: monthAfter.tapsPlay - monthBefore.tapsPlay, botHits: monthAfter.botHits - monthBefore.botHits },
+        { visits: 3, tapsApple: 1, tapsPlay: 0, botHits: 4 },
+        'the old days are added to their month',
+      );
+      const [{ left }] = await sql`
+        select (select count(*) from audience_counts where day < '2020-04-01') + (select count(*) from audience_totals where day < '2020-04-01') as left`;
+      assert.equal(Number(left), 0, 'and deleted');
+      await rollUpOldDays(db, new Date());
+      assert.deepEqual(await month(), monthAfter, 'rolling up again changes nothing');
+      if (monthBefore.there) {
+        await sql`update audience_months set visits = visits - 3, taps_apple = taps_apple - 1, bot_hits = bot_hits - 4 where month = '2020-03-01'`;
+      } else {
+        await sql`delete from audience_months where month = '2020-03-01'`;
+      }
+      await db.$client.end();
+    }
   }
 
   // --- first tracker (app 1.4.0): page + legends in one transaction ---------

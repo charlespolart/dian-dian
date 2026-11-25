@@ -1,0 +1,3 @@
+# The store buttons are redirections that count a tap: not pages to crawl.
+User-agent: *
+Disallow: /go/
