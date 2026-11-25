@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { entitlementAction, parseRcEvent, rcEventAccountId, subscriptionEventRow, type RcEvent } from './rcEvent.js';
+import { entitlementAction, parseRcEvent, rcEventAccountIds, subscriptionEventRow, type RcEvent } from './rcEvent.js';
 
 const ACCOUNT = '4bedb450-8ef2-41e9-b475-0800200c9a66';
 const NOW = new Date('2026-11-25T10:00:00Z');
@@ -115,22 +115,31 @@ test('the reasons and the trial conversion are kept', () => {
   assert.equal(subscriptionEventRow(of('RENEWAL', { is_trial_conversion: false }), NOW)?.isTrialConversion, false);
 });
 
-test('rcEventAccountId is the account the event names', () => {
-  assert.equal(rcEventAccountId(trial), ACCOUNT);
-  assert.equal(rcEventAccountId(of('RENEWAL', { app_user_id: ACCOUNT.toUpperCase() })), ACCOUNT, 'upper-case uuids are normalised');
+test('rcEventAccountIds is the account the event names', () => {
+  assert.deepEqual(rcEventAccountIds(trial), [ACCOUNT]);
+  assert.deepEqual(rcEventAccountIds(of('RENEWAL', { app_user_id: ACCOUNT.toUpperCase() })), [ACCOUNT], 'upper-case uuids are normalised');
 });
 
-test('rcEventAccountId is null when the event names no account of ours', () => {
-  assert.equal(rcEventAccountId(of('RENEWAL', { app_user_id: '$RCAnonymousID:abc' })), null);
-  assert.equal(rcEventAccountId(of('RENEWAL', { app_user_id: 'not-a-uuid' })), null);
-  assert.equal(rcEventAccountId(of('RENEWAL', { app_user_id: 42 })), null);
-  assert.equal(rcEventAccountId({ type: 'TEST', id: 'EVT-3' }), null);
+test('rcEventAccountIds is empty when the event names no account of ours', () => {
+  assert.deepEqual(rcEventAccountIds(of('RENEWAL', { app_user_id: '$RCAnonymousID:abc' })), []);
+  assert.deepEqual(rcEventAccountIds(of('RENEWAL', { app_user_id: 'not-a-uuid' })), []);
+  assert.deepEqual(rcEventAccountIds(of('RENEWAL', { app_user_id: 42 })), []);
+  assert.deepEqual(rcEventAccountIds({ type: 'TEST', id: 'EVT-3' }), []);
 });
 
 test('a transfer names the account it goes to', () => {
-  assert.equal(rcEventAccountId({ type: 'TRANSFER', id: 'EVT-4', transferred_from: ['00005a1c-6091-4f81-be77-f0a83a271ab6'], transferred_to: [ACCOUNT] }), ACCOUNT);
-  assert.equal(rcEventAccountId({ type: 'TRANSFER', id: 'EVT-4', transferred_to: [] }), null);
-  assert.equal(rcEventAccountId({ type: 'TRANSFER', id: 'EVT-4', transferred_to: 'x' }), null);
+  assert.deepEqual(rcEventAccountIds({ type: 'TRANSFER', id: 'EVT-4', transferred_from: ['00005a1c-6091-4f81-be77-f0a83a271ab6'], transferred_to: [ACCOUNT] }), [ACCOUNT]);
+  assert.deepEqual(rcEventAccountIds({ type: 'TRANSFER', id: 'EVT-4', transferred_to: [] }), []);
+  assert.deepEqual(rcEventAccountIds({ type: 'TRANSFER', id: 'EVT-4', transferred_to: 'x' }), []);
+});
+
+test('a transfer names every account of ours it may reach, in the order given and once each', () => {
+  // The caller takes the first that still exists: the first of the list may be an account deleted since.
+  const third = '9f1c2a3b-4d5e-4f60-8a7b-1c2d3e4f5a6b';
+  assert.deepEqual(
+    rcEventAccountIds({ type: 'TRANSFER', id: 'EVT-4', transferred_to: ['$RCAnonymousID:new', third, ACCOUNT, third.toUpperCase()] }),
+    [third, ACCOUNT],
+  );
 });
 
 test('a purchase, a renewal or a product change sets the subscription', () => {
@@ -198,16 +207,23 @@ test('a cancellation, an alias, a test or an unknown type changes nothing', () =
 const OTHER = '00005a1c-6091-4f81-be77-f0a83a271ab6';
 const transfer = (from: unknown, to: unknown): RcEvent => ({ type: 'TRANSFER', id: 'EVT-T', transferred_from: from, transferred_to: to });
 
-test('a transfer moves the purchases of the accounts it leaves to the account it reaches', () => {
-  assert.deepEqual(entitlementAction(transfer([OTHER], [ACCOUNT])), { kind: 'transfer', from: [OTHER], to: ACCOUNT });
+test('a transfer moves the purchases of the accounts it leaves to the event\'s account', () => {
+  assert.deepEqual(entitlementAction(transfer([OTHER], [ACCOUNT])), { kind: 'transfer', from: [OTHER], store: null });
+});
+
+test('a transfer that names its store moves the purchases of that store only', () => {
+  const stored = (store: unknown) => entitlementAction({ ...transfer([OTHER], [ACCOUNT]), store });
+  assert.deepEqual(stored('PLAY_STORE'), { kind: 'transfer', from: [OTHER], store: 'google' });
+  assert.deepEqual(stored('MAC_APP_STORE'), { kind: 'transfer', from: [OTHER], store: 'apple' });
+  assert.deepEqual(stored(null), { kind: 'transfer', from: [OTHER], store: null }, 'no store named: every purchase of the account');
 });
 
 test('a transfer only knows our accounts: anonymous ids and aliases are skipped', () => {
   assert.deepEqual(
     entitlementAction(transfer(['$RCAnonymousID:old', OTHER.toUpperCase()], ['$RCAnonymousID:new', ACCOUNT])),
-    { kind: 'transfer', from: [OTHER], to: ACCOUNT },
+    { kind: 'transfer', from: [OTHER], store: null },
   );
-  assert.equal(rcEventAccountId(transfer([OTHER], ['$RCAnonymousID:new', ACCOUNT])), ACCOUNT);
+  assert.deepEqual(rcEventAccountIds(transfer([OTHER], ['$RCAnonymousID:new', ACCOUNT])), [ACCOUNT]);
 });
 
 test('a transfer from or to no account of ours changes nothing', () => {

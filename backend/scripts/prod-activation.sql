@@ -16,6 +16,7 @@
 -- UNDER-estimated for older cohorts. Cohorts after the backfill are exact.
 
 \pset format aligned
+SET default_transaction_read_only = on;
 
 \echo === Activation par cohorte : inscriptions par semaine, 16 dernières semaines ===
 WITH real AS (

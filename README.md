@@ -114,6 +114,7 @@ make help      # List all targets
 cd flutter_app && flutter analyze && flutter test            # hermetic unit tests
 cd backend && npx tsx scripts/smoke.ts                        # backend end-to-end (needs `make back`)
                                                               # webhook checks need the same REVENUECAT_WEBHOOK_SECRET on the server and here
+                                                              # and only run when the server and the database are on this machine
 cd flutter_app && flutter test integration/backend_e2e_test.dart   # real client data layer vs local backend
 cd backend && npx tsx scripts/seed-demo-local.ts              # demo@diandian.app / password with 9 trackers
 ```

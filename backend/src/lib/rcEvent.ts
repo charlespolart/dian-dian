@@ -39,23 +39,25 @@ function accountId(value: unknown): string | null {
   return id !== null && UUID.test(id) ? id.toLowerCase() : null;
 }
 
-/** The account ids of ours in a list RevenueCat sends (ids and their aliases). */
+/** The account ids of ours in a list RevenueCat sends (ids and their aliases), once each. */
 function accountIds(list: unknown): string[] {
   if (!Array.isArray(list)) return [];
-  return list.map(accountId).filter((id): id is string => id !== null);
+  return [...new Set(list.map(accountId).filter((id): id is string => id !== null))];
 }
 
 /**
- * The account of ours the event is about: its `app_user_id`, or for a
- * TRANSFER (which has none) the first account of ours the purchase goes to.
- * Null when there is none, when it is one of RevenueCat's anonymous ids
- * (`$RCAnonymousID:…`, a device not logged in yet) or anything else that is
- * not one of our uuids. Whether that account still exists is the caller's
- * question.
+ * The accounts of ours the event may be about, the likeliest first: its
+ * `app_user_id`, or for a TRANSFER (which has none) every account of ours
+ * the purchase goes to, in the order RevenueCat gives them. Empty when there
+ * is none: one of RevenueCat's anonymous ids (`$RCAnonymousID:…`, a device
+ * not logged in yet) or anything else that is not one of our uuids is not an
+ * account. Which of them still exists is the caller's question: the event is
+ * about the first that does.
  */
-export function rcEventAccountId(event: RcEvent): string | null {
-  if (event.type === 'TRANSFER') return accountIds(event.transferred_to)[0] ?? null;
-  return accountId(event.app_user_id);
+export function rcEventAccountIds(event: RcEvent): string[] {
+  if (event.type === 'TRANSFER') return accountIds(event.transferred_to);
+  const id = accountId(event.app_user_id);
+  return id === null ? [] : [id];
 }
 
 /**
@@ -109,8 +111,12 @@ export type EntitlementAction =
   | { kind: 'deactivate'; txId: string }
   /** The subscription of this transaction stays open until `until` (a grace period). */
   | { kind: 'extend'; txId: string; until: Date }
-  /** The purchases of the accounts `from` now belong to the account `to`. */
-  | { kind: 'transfer'; from: string[]; to: string }
+  /**
+   * The purchases of the accounts `from` now belong to the event's account
+   * (`rcEventAccountIds`): those of `store` when the transfer names one,
+   * all of them otherwise.
+   */
+  | { kind: 'transfer'; from: string[]; store: string | null }
   | { kind: 'none' };
 
 const NONE: EntitlementAction = { kind: 'none' };
@@ -125,12 +131,15 @@ export function entitlementAction(event: RcEvent): EntitlementAction {
   // Someone restored a purchase on another account: RevenueCat moved the
   // entitlement, and so do we — when both ends are accounts of ours. A
   // transfer to an anonymous id (a device not logged in) is left alone:
-  // taking premium away on that would cut off a customer who paid.
+  // taking premium away on that would cut off a customer who paid. What is
+  // restored is the purchases of one store account, and RevenueCat names
+  // that store on most transfers: an account that also bought in the other
+  // store keeps what it bought there.
   if (event.type === 'TRANSFER') {
-    const to = accountIds(event.transferred_to)[0];
-    if (to === undefined) return NONE;
-    const from = accountIds(event.transferred_from).filter((id) => id !== to);
-    return from.length === 0 ? NONE : { kind: 'transfer', from, to };
+    const to = accountIds(event.transferred_to);
+    const from = accountIds(event.transferred_from).filter((id) => !to.includes(id));
+    if (to.length === 0 || from.length === 0) return NONE;
+    return { kind: 'transfer', from, store: str(event.store) === null ? null : storeName(event.store) };
   }
 
   // A subscription is keyed by its original transaction; without one there

@@ -10,6 +10,7 @@
 -- settings_upgrade (the voluntary upgrade buttons).
 
 \pset format aligned
+SET default_transaction_read_only = on;
 
 \echo === Événements par semaine, 16 dernières : occurrences et comptes distincts ===
 SELECT date_trunc('week', e.created_at)::date AS semaine,

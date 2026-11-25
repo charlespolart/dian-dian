@@ -7,10 +7,12 @@
  * Run: cd backend && npx tsx scripts/smoke.ts
  *      SMOKE_BASE=https://diandian.overridedev.com npx tsx scripts/smoke.ts
  *
- * The RevenueCat webhook checks post made-up purchase events and read the
- * database directly: they only run against the local server (never when
- * SMOKE_BASE is set), and need the server's REVENUECAT_WEBHOOK_SECRET in
- * this process too:
+ * The RevenueCat webhook checks post made-up purchase events, and read and
+ * write the database directly. They only run when the server under test AND
+ * the database of DATABASE_URL are on this machine (localhost), and after
+ * checking that this database is the server's; against anything else they
+ * are skipped. They need the server's REVENUECAT_WEBHOOK_SECRET in this
+ * process too:
  *      REVENUECAT_WEBHOOK_SECRET=local-smoke npm run dev
  *      REVENUECAT_WEBHOOK_SECRET=local-smoke npx tsx scripts/smoke.ts
  */
@@ -19,12 +21,17 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import postgres from 'postgres';
+import { isLoopbackUrl } from '../src/lib/loopback.js';
 
 const BASE = process.env.SMOKE_BASE ?? 'http://localhost:3001';
 // What no route shows (the raw purchase events, the columns of a product
-// event) is read straight from the database — the local one only.
-const sql = !process.env.SMOKE_BASE && process.env.DATABASE_URL ? postgres(process.env.DATABASE_URL, { max: 1 }) : null;
-const webhookSecret = process.env.SMOKE_BASE ? undefined : process.env.REVENUECAT_WEBHOOK_SECRET;
+// event) is read straight from the database, and made-up purchases are
+// posted to the webhook: only when the server and the database are both on
+// this machine. Decided from where they are, not from which variables are
+// set: a production address in SMOKE_BASE or in DATABASE_URL turns it off.
+const local = isLoopbackUrl(BASE) && isLoopbackUrl(process.env.DATABASE_URL);
+const sql = local ? postgres(process.env.DATABASE_URL!, { max: 1 }) : null;
+const webhookSecret = local ? process.env.REVENUECAT_WEBHOOK_SECRET : undefined;
 // The version this checkout would run; only compared against the server when
 // the server IS this checkout (local dev, CI) — not when SMOKE_BASE points at prod.
 const localVersion = (JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string }).version;
@@ -75,6 +82,11 @@ async function main() {
   access = r.json.accessToken; refresh = r.json.refreshToken;
   const userId: string = r.json.userId;
   assert.ok(userId, 'register returns userId');
+  if (sql) {
+    // The database read below must be the one the server writes to.
+    const [registered] = await sql`select 1 from users where id = ${userId}`;
+    assert.ok(registered, 'DATABASE_URL is not the database of the server under test: the account just registered is not in it');
+  }
 
   // --- refresh returns the profile (new) and still the tokens (legacy) ----
   r = await call('POST', '/api/auth/refresh', { refreshToken: refresh }, false);
@@ -292,10 +304,10 @@ async function main() {
 
   // --- RevenueCat webhook: every event is kept, the entitlement follows -----
   if (process.env.CI && !process.env.SMOKE_BASE) {
-    assert.ok(webhookSecret && sql, 'CI runs the webhook checks: REVENUECAT_WEBHOOK_SECRET and DATABASE_URL must be set');
+    assert.ok(webhookSecret && sql, 'CI runs the webhook checks: REVENUECAT_WEBHOOK_SECRET and a local DATABASE_URL must be set');
   }
   if (!webhookSecret || !sql) {
-    console.log('smoke: webhook checks skipped (SMOKE_BASE is set, or REVENUECAT_WEBHOOK_SECRET / DATABASE_URL is missing)');
+    console.log('smoke: webhook checks skipped (the server or the database is not on this machine, or REVENUECAT_WEBHOOK_SECRET is missing)');
   } else {
     const run = `smoke-${Date.now()}`;
     const now = Date.now();
@@ -375,6 +387,11 @@ async function main() {
       ...mine, app_user_id: secondId, type: 'EXPIRATION', id: `${run}-expire`, period_type: 'NORMAL', expiration_reason: 'BILLING_ERROR', expiration_at_ms: now,
     }), 200, 'expiration');
     assert.equal(await premium(secondToken), false, 'the expiration ends premium');
+    assert.equal(await webhook({
+      ...mine, app_user_id: secondId, type: 'BILLING_ISSUE', id: `${run}-late-billing`, period_type: 'NORMAL', expiration_at_ms: now,
+      grace_period_expiration_at_ms: now + 4 * 24 * hour,
+    }), 200, 'billing issue after the expiration');
+    assert.equal(await premium(secondToken), false, 'a failed payment reported after the expiration does not reopen the subscription');
 
     // A subscription whose events now come for another account belongs to
     // it: a transfer this server never received (lost, or from before it
@@ -399,17 +416,81 @@ async function main() {
     assert.equal(await premium(), true, 'and so does the purchase status');
     assert.equal(await premium(), true, 'asked twice, the same answer');
 
+    const subscription = async (tx: string) => {
+      const [row] = await sql`select user_id, active, expires_at from subscriptions where original_transaction_id = ${`${run}-${tx}`}`;
+      return row as { user_id: string; active: boolean; expires_at: Date | null } | undefined;
+    };
+    assert.equal(await webhook({
+      ...mine, type: 'BILLING_ISSUE', id: `${run}-life-billing`, product_id: 'premium_lifetime', period_type: 'NORMAL',
+      original_transaction_id: `${run}-tx5`, transaction_id: `${run}-tx5`, expiration_at_ms: null, grace_period_expiration_at_ms: now + 3 * 24 * hour,
+    }), 200, 'billing issue on a lifetime');
+    assert.equal((await subscription('tx5'))?.expires_at, null, 'a lifetime never gets an end date');
+
+    // Transfers. To an account we do not know: nothing moves.
+    const nowhereId = `${run}-nowhere`;
+    assert.equal(await webhook({
+      type: 'TRANSFER', id: nowhereId, event_timestamp_ms: now, environment: 'SANDBOX', store: 'APP_STORE',
+      transferred_from: [userId], transferred_to: [randomUUID()],
+    }), 200, 'transfer to an account we do not know');
+    assert.equal((await subscription('tx5'))?.user_id, userId, 'a transfer to an account we do not know moves nothing');
+
+    // The account also buys on Android, and restores that purchase on the
+    // second account. The transfer lists an account deleted since before the
+    // one that exists, and names its store: the Play purchase follows, what
+    // was bought on the App Store stays.
+    const play = {
+      ...mine, store: 'PLAY_STORE', product_id: 'premium_monthly', original_transaction_id: `${run}-tx6`, transaction_id: `${run}-tx6`,
+      period_type: 'NORMAL', price: 2.99, price_in_purchased_currency: 2.99,
+    };
+    const playStart = { ...play, type: 'INITIAL_PURCHASE', id: `${run}-tx6-start`, expiration_at_ms: now + week };
+    assert.equal(await webhook(playStart), 200, 'a purchase in the other store');
+    const toSecond = {
+      type: 'TRANSFER', id: `${run}-play-moved`, event_timestamp_ms: now, environment: 'SANDBOX', store: 'PLAY_STORE',
+      transferred_from: [userId], transferred_to: [randomUUID(), secondId],
+    };
+    assert.equal(await webhook(toSecond), 200, 'transfer of the Play purchase');
+    assert.equal((await subscription('tx6'))?.user_id, secondId, 'a transfer reaches the first account of its list that exists');
+    assert.equal((await subscription('tx5'))?.user_id, userId, 'what was bought in the other store stays where it is');
+
+    // Restored back, then the first transfer is delivered a second time
+    // (RevenueCat retries when our answer got lost): an event already applied
+    // is not applied again, or the purchase would leave once more.
+    assert.equal(await webhook({ ...toSecond, id: `${run}-play-back`, transferred_from: [secondId], transferred_to: [userId] }), 200, 'restored back');
+    assert.equal((await subscription('tx6'))?.user_id, userId, 'the Play purchase is back');
+    assert.equal((await subscription('tx3'))?.user_id, secondId, 'and the App Store subscription of the second account did not come with it');
+    assert.equal(await webhook(toSecond), 200, 'the first transfer delivered again');
+    assert.equal((await subscription('tx6'))?.user_id, userId, 'a transfer already applied is not applied again');
+    assert.equal(await webhook({ ...play, type: 'EXPIRATION', id: `${run}-tx6-expire`, expiration_reason: 'UNSUBSCRIBE', expiration_at_ms: now }), 200, 'expiration');
+    assert.equal(await webhook(playStart), 200, 'its purchase delivered again');
+    assert.equal((await subscription('tx6'))?.active, false, 'a purchase delivered again does not reopen what has expired since');
+
+    // An event that cannot be kept (its id holds a character the database
+    // refuses) still gives what was paid for: only the record is missing.
+    assert.equal(await webhook({
+      ...play, type: 'INITIAL_PURCHASE', id: `${run}-nul\u0000`, original_transaction_id: `${run}-tx7`, transaction_id: `${run}-tx7`, expiration_at_ms: now + week,
+    }), 200, 'an event the database cannot keep');
+    assert.equal((await subscription('tx7'))?.user_id, userId, 'the purchase is applied all the same');
+    const [{ unkept }] = await sql`select count(*)::int as unkept from subscription_events where original_transaction_id = ${`${run}-tx7`}`;
+    assert.equal(unkept, 0, 'and it is the record that is missing');
+
     const kept = await sql`
-      select type, period_type, environment, price_usd, currency, cancel_reason, expiration_reason
+      select rc_event_id, type, period_type, environment, price_usd, currency, cancel_reason, expiration_reason
       from subscription_events where user_id = ${userId}`;
     assert.deepEqual(
       kept.map((e) => e.type).sort(),
-      ['BILLING_ISSUE', 'CANCELLATION', 'INITIAL_PURCHASE', 'INITIAL_PURCHASE', 'NON_RENEWING_PURCHASE', 'REFUND_REVERSED', 'RENEWAL', 'RENEWAL', 'SUBSCRIPTION_PAUSED'],
-      'one row per event of the account: the retried purchase is one row',
+      [
+        'BILLING_ISSUE', 'BILLING_ISSUE', 'CANCELLATION', 'EXPIRATION', 'INITIAL_PURCHASE', 'INITIAL_PURCHASE', 'INITIAL_PURCHASE',
+        'NON_RENEWING_PURCHASE', 'REFUND_REVERSED', 'RENEWAL', 'RENEWAL', 'SUBSCRIPTION_PAUSED', 'TRANSFER',
+      ],
+      'one row per event of the account: an event delivered twice is one row',
     );
     const keptBySecond = await sql`select type from subscription_events where user_id = ${secondId}`;
-    assert.deepEqual(keptBySecond.map((e) => e.type).sort(), ['EXPIRATION', 'RENEWAL', 'TRANSFER'], 'a transfer is kept with the account it reaches');
-    const start = kept.find((e) => e.type === 'INITIAL_PURCHASE')!;
+    assert.deepEqual(
+      keptBySecond.map((e) => e.type).sort(),
+      ['BILLING_ISSUE', 'EXPIRATION', 'RENEWAL', 'TRANSFER', 'TRANSFER'],
+      'a transfer is kept with the account it reaches',
+    );
+    const start = kept.find((e) => e.rc_event_id === `${run}-purchase`)!;
     assert.deepEqual(
       { period: start.period_type, env: start.environment, price: start.price_usd, currency: start.currency },
       { period: 'TRIAL', env: 'SANDBOX', price: 0, currency: 'EUR' },
@@ -418,15 +499,15 @@ async function main() {
     assert.equal(kept.find((e) => e.type === 'CANCELLATION')!.cancel_reason, 'UNSUBSCRIBE');
     const orphans = await sql`
       select rc_event_id, payload from subscription_events
-      where user_id is null and rc_event_id in ${sql([transferId, strangerId])}`;
-    assert.equal(orphans.length, 2, 'events for unknown accounts are kept without an account');
+      where user_id is null and rc_event_id in ${sql([transferId, strangerId, nowhereId])}`;
+    assert.equal(orphans.length, 3, 'events for unknown accounts are kept without an account');
     for (const orphan of orphans) {
       const fields = Object.keys(orphan.payload as Record<string, unknown>);
       for (const who of ['app_user_id', 'aliases', 'transferred_from', 'transferred_to']) {
         assert.ok(!fields.includes(who), `${orphan.rc_event_id} keeps no ${who}`);
       }
     }
-    await sql`delete from subscription_events where rc_event_id in ${sql([transferId, strangerId])}`;
+    await sql`delete from subscription_events where rc_event_id in ${sql([transferId, strangerId, nowhereId])}`;
     const gone = await fetch(`${BASE}/api/auth/account`, { method: 'DELETE', headers: { Authorization: `Bearer ${secondToken}` } });
     assert.equal(gone.status, 200, 'second account deleted');
   }

@@ -11,7 +11,9 @@
 \pset format aligned
 
 -- One row per real user: tier, trackers owned, trackers used in the last 30 / 90 days / ever,
--- and when the user last filled anything.
+-- and when the user last filled anything. A temporary table, private to this
+-- session and gone with it; it comes before the read-only guard below, which
+-- would refuse it.
 CREATE TEMP TABLE u AS
 WITH real AS (
   SELECT id FROM users
@@ -36,6 +38,8 @@ FROM real r
 LEFT JOIN paying pg ON pg.user_id = r.id
 LEFT JOIN page_use pu ON pu.user_id = r.id
 GROUP BY r.id, pg.user_id;
+
+SET default_transaction_read_only = on;
 
 \echo === Trackers possédés par compte (tous les vrais comptes) ===
 SELECT paying,
@@ -93,5 +97,3 @@ WITH real AS (
 SELECT lower(trim(p.title)) AS title, count(*) AS n
 FROM pages p JOIN real r ON r.id = p.user_id
 GROUP BY 1 HAVING count(*) >= 2 ORDER BY n DESC, title LIMIT 25;
-
-DROP TABLE u;

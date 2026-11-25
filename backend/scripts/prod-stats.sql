@@ -8,6 +8,7 @@
 -- never counted as users).
 
 \pset format aligned
+SET default_transaction_read_only = on;
 
 \echo === Comptes : total / exclus (test + vip) / vrais ===
 WITH t AS (

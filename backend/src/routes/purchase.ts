@@ -5,7 +5,7 @@ import { subscriptions, subscriptionEvents, users } from '../db/schema.js';
 import { requireAuth } from '../middleware/auth.js';
 import { env } from '../lib/env.js';
 import { entitlingSubscription } from '../lib/premium.js';
-import { entitlementAction, parseRcEvent, rcEventAccountId, subscriptionEventRow, type EntitlementAction, type RcEvent } from '../lib/rcEvent.js';
+import { entitlementAction, parseRcEvent, rcEventAccountIds, subscriptionEventRow, type EntitlementAction, type RcEvent } from '../lib/rcEvent.js';
 import { eq, and, inArray, lt } from 'drizzle-orm';
 
 const router = Router();
@@ -44,9 +44,9 @@ router.get('/status', requireAuth, async (req, res) => {
 // `Authorization` header, and that static secret is what is checked here.
 // See ~/Documents/Coding/playbook/third-party/revenuecat.md
 //
-// Every authenticated event is first kept as it arrived in
-// `subscription_events` (what was bought, at what price, trial or not, why
-// it ended), then applied to `subscriptions`, the current state. Reading
+// Every authenticated event is kept as it arrived in `subscription_events`
+// (what was bought, at what price, trial or not, why it ended) and applied
+// to `subscriptions`, the current state — once: see `keepAndApply`. Reading
 // the event is in lib/rcEvent.ts.
 //
 // RevenueCat retries anything but a 200 (5 times, over about 80 minutes),
@@ -87,11 +87,8 @@ router.post('/webhook', async (req, res) => {
     // The account the event is about, when it is one of ours and still
     // exists: not an anonymous RevenueCat id (a device not logged in yet),
     // not an account deleted since.
-    const accountId = rcEventAccountId(event);
-    const userId = accountId !== null && (await accountExists(accountId)) ? accountId : null;
-
-    await recordEvent(event, userId);
-    await applyEntitlement(entitlementAction(event), userId);
+    const userId = await firstExistingAccount(rcEventAccountIds(event));
+    await keepAndApply(event, userId);
     res.json({ ok: true });
   } catch (err) {
     console.error('RC webhook error:', err);
@@ -99,32 +96,69 @@ router.post('/webhook', async (req, res) => {
   }
 });
 
-async function accountExists(id: string): Promise<boolean> {
-  const [row] = await db.select({ id: users.id }).from(users).where(eq(users.id, id)).limit(1);
-  return row !== undefined;
+/// The first of `ids` that is an account, in their order; null when none is.
+async function firstExistingAccount(ids: string[]): Promise<string | null> {
+  if (ids.length === 0) return null;
+  const rows = await db.select({ id: users.id }).from(users).where(inArray(users.id, ids));
+  const existing = new Set(rows.map((row) => row.id));
+  return ids.find((id) => existing.has(id)) ?? null;
 }
 
-/// Keeps the event as it arrived. A retried delivery reuses the event's id
-/// and is one row. This is measurement: a failure is logged and goes no
-/// further, so it can neither fail a purchase nor make RevenueCat retry it.
-async function recordEvent(event: RcEvent, userId: string | null): Promise<void> {
-  const row = subscriptionEventRow(event, new Date());
-  if (!row) return;
-  try {
-    await db.insert(subscriptionEvents)
-      .values({ ...row, userId })
-      .onConflictDoNothing({ target: subscriptionEvents.rcEventId });
-  } catch (err) {
-    console.error('RC webhook: event not recorded:', err);
+/// The database, or a transaction of it.
+type Db = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/// The event's row could not be written; `cause` is why.
+class EventNotKept extends Error {
+  constructor(readonly cause: unknown) {
+    super('RevenueCat event not kept');
   }
 }
 
-async function applyEntitlement(action: EntitlementAction, userId: string | null): Promise<void> {
+/// Keeps the event as it arrived and applies it to `subscriptions`, once
+/// per event. RevenueCat delivers an event again when our answer did not
+/// reach it, under the same id and up to 80 minutes later: other events may
+/// have come by then (the purchase restored back, the subscription expired)
+/// and applying the old one again would undo them. So the row and its
+/// effect go together, in one transaction: an id already kept is an event
+/// already applied, and changes nothing; an effect that fails keeps no row,
+/// and the delivery RevenueCat retries for our 500 does both again.
+///
+/// Keeping the event is measurement and must not cost a purchase: when the
+/// row cannot be written (a value the database refuses), that is logged and
+/// the event is applied on its own. scripts/prod-purchases.sql lists the
+/// subscriptions changed that way.
+async function keepAndApply(event: RcEvent, userId: string | null): Promise<void> {
+  const action = entitlementAction(event);
+  const row = subscriptionEventRow(event, new Date());
+  // No id of its own: nothing tells a second delivery from a new event.
+  if (row === null) {
+    await applyEntitlement(db, action, userId);
+    return;
+  }
+
+  try {
+    await db.transaction(async (tx) => {
+      const kept = await tx.insert(subscriptionEvents)
+        .values({ ...row, userId })
+        .onConflictDoNothing({ target: subscriptionEvents.rcEventId })
+        .returning({ id: subscriptionEvents.id })
+        .catch((err: unknown) => { throw new EventNotKept(err); });
+      if (kept.length === 0) return; // delivered before, and applied then
+      await applyEntitlement(tx, action, userId);
+    });
+  } catch (err) {
+    if (!(err instanceof EventNotKept)) throw err;
+    console.error('RC webhook: event not recorded:', err.cause);
+    await applyEntitlement(db, action, userId);
+  }
+}
+
+async function applyEntitlement(handle: Db, action: EntitlementAction, userId: string | null): Promise<void> {
   switch (action.kind) {
     case 'upsert':
       // A purchase with no account of ours behind it has no one to entitle.
       if (userId === null) return;
-      await upsertSubscription({
+      await upsertSubscription(handle, {
         userId,
         store: action.store,
         productId: action.productId,
@@ -134,13 +168,13 @@ async function applyEntitlement(action: EntitlementAction, userId: string | null
       });
       return;
     case 'deactivate':
-      await deactivateByTransaction(action.txId);
+      await deactivateByTransaction(handle, action.txId);
       return;
     case 'extend':
       // Only ever later, and never on a purchase with no end (a lifetime's
       // `expires_at` is null, which `lt` does not match). A subscription an
       // EXPIRATION has closed stays closed: nothing here reopens it.
-      await db.update(subscriptions)
+      await handle.update(subscriptions)
         .set({ expiresAt: action.until, updatedAt: new Date() })
         .where(and(
           eq(subscriptions.originalTransactionId, action.txId),
@@ -148,11 +182,15 @@ async function applyEntitlement(action: EntitlementAction, userId: string | null
         ));
       return;
     case 'transfer':
-      // `userId` is the transfer's destination when that account exists.
-      if (userId !== action.to) return;
-      await db.update(subscriptions)
-        .set({ userId: action.to, updatedAt: new Date() })
-        .where(inArray(subscriptions.userId, action.from));
+      // `userId` is the transfer's destination: the first account it lists
+      // that exists. Without one there is no one to move the purchases to.
+      if (userId === null) return;
+      await handle.update(subscriptions)
+        .set({ userId, updatedAt: new Date() })
+        .where(and(
+          inArray(subscriptions.userId, action.from),
+          action.store === null ? undefined : eq(subscriptions.store, action.store),
+        ));
       return;
     case 'none':
       return;
@@ -173,14 +211,14 @@ interface UpsertParams {
   active: boolean;
 }
 
-/// Atomic upsert keyed by original_transaction_id. RC may retry the same
-/// event if we don't 2xx in 60s, so we need this to be idempotent — running
-/// the same event twice must converge to the same row, not error out on the
+/// Atomic upsert keyed by original_transaction_id: a subscription is one
+/// row from its first purchase to every renewal, so the second event of a
+/// transaction updates the row of the first instead of failing on the
 /// unique constraint.
-async function upsertSubscription(params: UpsertParams): Promise<void> {
+async function upsertSubscription(handle: Db, params: UpsertParams): Promise<void> {
   if (!params.txId) return; // can't dedupe without a transaction id
 
-  await db.insert(subscriptions)
+  await handle.insert(subscriptions)
     .values({
       userId: params.userId,
       store: params.store,
@@ -205,9 +243,9 @@ async function upsertSubscription(params: UpsertParams): Promise<void> {
     });
 }
 
-async function deactivateByTransaction(txId: string): Promise<void> {
+async function deactivateByTransaction(handle: Db, txId: string): Promise<void> {
   if (!txId) return;
-  await db.update(subscriptions)
+  await handle.update(subscriptions)
     .set({ active: false, updatedAt: new Date() })
     .where(eq(subscriptions.originalTransactionId, txId));
 }
