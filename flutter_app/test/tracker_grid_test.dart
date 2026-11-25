@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -66,7 +68,7 @@ void main() {
     });
   });
 
-  testWidgets('a commented cell is drawn as a ring: a hole of the screen colour at its centre, a third of the dot; plain cells have none', (tester) async {
+  testWidgets('a commented cell wears a badge astride its top-right edge, the dot\'s colour 45 % into the screen\'s, ringed by the screen; plain cells have none', (tester) async {
     await tester.pumpWidget(MaterialApp(
       home: Center(
         child: SizedBox(
@@ -81,17 +83,47 @@ void main() {
         ),
       ),
     ));
-    final holes = find.byKey(const Key('dot.comment'));
-    expect(holes, findsOneWidget, reason: 'one commented cell, one hole');
-    final dot = find.ancestor(of: holes, matching: find.byType(Container)).first;
-    // The hole is a third of the dot, ringed by a 1 px line in the accent (the
-    // today ring's colour) so it reads on a dot of the screen's own colour.
-    expect(tester.getSize(holes).width, closeTo(tester.getSize(dot).width * 0.34 + 2, 0.01));
-    expect(tester.getCenter(holes), tester.getCenter(dot));
-    final deco = tester.widget<Container>(holes).decoration! as BoxDecoration;
+    final badges = find.byKey(const Key('dot.comment'));
+    expect(badges, findsOneWidget, reason: 'one commented cell, one badge');
+    final dot = find.ancestor(of: badges, matching: find.byType(Container)).first;
+    final w = tester.getSize(dot).width;
+    // 0.42 of the dot, its centre up and to the right of the dot's: it pokes
+    // 0.12 dot past the dot's box, inside the cell's margin.
+    expect(tester.getSize(badges).width, closeTo(w * 0.42, 0.01));
+    final off = tester.getCenter(badges) - tester.getCenter(dot);
+    expect(off.dx, closeTo(w * 0.41, 0.01));
+    expect(off.dy, closeTo(-w * 0.41, 0.01));
+    final cell = w / 0.78;
+    expect(tester.getRect(badges).right - tester.getCenter(dot).dx, lessThan(cell / 2), reason: 'never into the next cell');
+    final deco = tester.widget<Container>(badges).decoration! as BoxDecoration;
+    final backdrop = Color.alphaBlend(AppColors.screen, AppColors.shell);
     expect(deco.shape, BoxShape.circle);
-    expect(deco.color, Color.alphaBlend(AppColors.screen, AppColors.shell), reason: 'the hole shows the screen behind the dot');
-    expect(deco.border, Border.all(color: AppColors.accent, width: 1), reason: 'a second colour, whatever the dot');
+    expect(deco.color, Color.lerp(const Color(0xFFFF0000), backdrop, 0.45), reason: 'tone on tone, faded into the theme\'s screen');
+    expect(deco.border, Border.all(color: backdrop, width: math.max(1.0, w / 15)), reason: 'the screen colour sets it off the dot');
+  });
+
+  testWidgets('a commented today wears its badge over the today ring too, at the same place; a plain today has none there', (tester) async {
+    final now = DateTime.now();
+    Widget host({required bool commented}) => MaterialApp(
+          home: Center(
+            child: SizedBox(
+              width: 260,
+              height: 640,
+              child: TrackerGrid(
+                year: now.year,
+                getCellColor: (m, d) => m == now.month && d == now.day ? '#FF0000' : null,
+                hasComment: (m, d) => commented && m == now.month && d == now.day,
+                onCellPress: (_, _, _) {},
+              ),
+            ),
+          ),
+        );
+    await tester.pumpWidget(host(commented: true));
+    final over = find.byKey(const Key('today.comment'));
+    expect(over, findsOneWidget, reason: 'the ring would cut through the badge');
+    expect(tester.getRect(over), tester.getRect(find.byKey(const Key('dot.comment'))));
+    await tester.pumpWidget(host(commented: false));
+    expect(over, findsNothing);
   });
 
   // The popped cell is filled (a fill pop over an empty cell draws nothing).
@@ -120,7 +152,7 @@ void main() {
     expect(find.byType(DotPop), findsOneWidget);
   });
 
-  testWidgets('the pop over a commented cell carries the hole too: it stays over the dot after its bounce and must not hide the ring', (tester) async {
+  testWidgets('the pop over a commented cell wears the badge too: it stays over the dot after its bounce and must not hide it', (tester) async {
     const pop = CellChange(pageId: 'a', year: 2026, month: 2, day: 5, color: '#FF0000', erased: false, seq: 1);
     Widget host({required bool commented}) => MaterialApp(
           home: Center(
@@ -137,14 +169,14 @@ void main() {
             ),
           ),
         );
-    final popHole = find.descendant(of: find.byType(DotPop), matching: find.byKey(const Key('dot.comment')));
+    final popBadge = find.descendant(of: find.byType(DotPop), matching: find.byKey(const Key('dot.comment')));
     await tester.pumpWidget(host(commented: true));
     await tester.pumpAndSettle();
     expect(find.byType(DotPop), findsOneWidget);
-    expect(popHole, findsOneWidget, reason: 'the pop is drawn like the dot it covers');
+    expect(popBadge, findsOneWidget, reason: 'the pop is drawn like the dot it covers');
     await tester.pumpWidget(host(commented: false));
     await tester.pumpAndSettle();
-    expect(popHole, findsNothing);
+    expect(popBadge, findsNothing);
   });
 
   testWidgets('under reduced motion the pop is the plain dot at once: no bounce, no first frame at 60 %', (tester) async {

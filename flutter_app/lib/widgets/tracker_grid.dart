@@ -14,9 +14,9 @@ class TrackerGrid extends StatelessWidget {
   final int year;
   final String? Function(int month, int day) getCellColor;
 
-  /// Whether the cell carries a comment: such a dot is drawn as a ring (a
-  /// hole of the screen's colour at its centre, a third of the dot), the
-  /// hint that there is something to read behind it.
+  /// Whether the cell carries a comment: such a dot wears a small badge at
+  /// its top-right edge ([CommentBadge]), the hint that there is something
+  /// to read behind it.
   final bool Function(int month, int day) hasComment;
   /// Called with the global position of the tap, so the editor can be born
   /// from the dot.
@@ -120,8 +120,9 @@ class TrackerGrid extends StatelessWidget {
           dotSize: cellSize * 0.78,
         );
         final dotSize = geometry.dotSize;
-        // The hole shows what lies behind the dot: the screen over the shell.
-        final holeColor = Color.alphaBlend(AppColors.screen, AppColors.shell);
+        // What lies behind the dots, the screen over the shell: the comment
+        // badge's ring, and what its fill fades into.
+        final backdrop = Color.alphaBlend(AppColors.screen, AppColors.shell);
         final gridW = geometry.size.width;
         final gridH = geometry.size.height;
 
@@ -133,6 +134,11 @@ class TrackerGrid extends StatelessWidget {
         final popCenter = pop != null && pop.year == year && (pop.erased || popColor != null)
             ? geometry.center(month: pop.month, day: pop.day)
             : null;
+
+        // Today's ring would cut through the badge of a commented today: the
+        // chrome draws that badge again, over the ring (as the pop does).
+        final todayHex = showToday ? getCellColor(today.month, today.day) : null;
+        final todayBadge = todayHex != null && hasComment(today.month, today.day) ? _parseColor(todayHex) : null;
 
         final anchors = this.anchors;
         final box = SizedBox(
@@ -158,7 +164,8 @@ class TrackerGrid extends StatelessWidget {
                               final month = mIdx + 1;
                               final maxDays = getDaysInMonth(month, year);
                               final valid = day <= maxDays;
-                              final color = valid ? getCellColor(month, day) : null;
+                              final hex = valid ? getCellColor(month, day) : null;
+                              final color = hex != null ? _parseColor(hex) : null;
                               return SizedBox(
                                 width: cellSize,
                                 child: Center(
@@ -170,13 +177,13 @@ class TrackerGrid extends StatelessWidget {
                                             height: dotSize,
                                             decoration: BoxDecoration(
                                               shape: BoxShape.circle,
-                                              color: color != null ? _parseColor(color) : AppColors.dotEmpty,
+                                              color: color ?? AppColors.dotEmpty,
                                               border: color == null
                                                   ? Border.all(color: AppColors.dotBorder, width: 0.5)
                                                   : null,
                                             ),
                                             child: color != null && hasComment(month, day)
-                                                ? Center(child: _commentHole(dotSize, holeColor))
+                                                ? _commentBadge(dotSize, color, backdrop)
                                                 : null,
                                           )
                                         : SizedBox(width: dotSize, height: dotSize),
@@ -200,6 +207,8 @@ class TrackerGrid extends StatelessWidget {
                     geometry: geometry,
                     labelSize: labelSize,
                     today: showToday ? today : null,
+                    todayBadge: todayBadge,
+                    backdrop: backdrop,
                   ),
                 ),
               ),
@@ -215,7 +224,7 @@ class TrackerGrid extends StatelessWidget {
                       color: popColor == null ? AppColors.dotEmpty : _parseColor(popColor),
                       erased: pop.erased,
                       size: dotSize,
-                      hole: popColor != null && hasComment(pop.month, pop.day) ? holeColor : null,
+                      commentBackdrop: popColor != null && hasComment(pop.month, pop.day) ? backdrop : null,
                     ),
                   ),
                 ),
@@ -236,13 +245,26 @@ class _GridChrome extends StatelessWidget {
   final double labelSize;
   final DateTime? today;
 
-  const _GridChrome({required this.geometry, required this.labelSize, required this.today});
+  /// The colour of today's dot when it carries a comment (null: none): its
+  /// badge is drawn again over the ring, which would otherwise cut it.
+  final Color? todayBadge;
+  final Color backdrop;
+
+  const _GridChrome({
+    required this.geometry,
+    required this.labelSize,
+    required this.today,
+    required this.todayBadge,
+    required this.backdrop,
+  });
 
   @override
   Widget build(BuildContext context) {
     final style = AppFonts.pixel(fontSize: labelSize, color: AppColors.textMuted);
     final today = this.today;
+    final todayBadge = this.todayBadge;
     final ring = geometry.dotSize + 4;
+    final dotSize = geometry.dotSize;
     final todayCenter = today == null ? null : geometry.center(month: today.month, day: today.day);
     return Stack(
       children: [
@@ -281,6 +303,14 @@ class _GridChrome extends StatelessWidget {
               ),
             ),
           ),
+        if (todayCenter != null && todayBadge != null)
+          Positioned(
+            left: todayCenter.dx - dotSize / 2,
+            top: todayCenter.dy - dotSize / 2,
+            width: dotSize,
+            height: dotSize,
+            child: _commentBadge(dotSize, todayBadge, backdrop, key: const Key('today.comment')),
+          ),
       ],
     );
   }
@@ -295,11 +325,12 @@ class DotPop extends StatelessWidget {
   final bool erased;
   final double size;
 
-  /// The colour of the hole when the cell carries a comment: the pop stays
-  /// over the dot after its bounce, so it must look exactly like it.
-  final Color? hole;
+  /// The screen colour behind the dot, set when the cell carries a comment
+  /// (null: none): the pop stays over the dot after its bounce, so it wears
+  /// the same badge.
+  final Color? commentBackdrop;
 
-  const DotPop({super.key, required this.color, required this.erased, required this.size, this.hole});
+  const DotPop({super.key, required this.color, required this.erased, required this.size, this.commentBackdrop});
 
   static final Animatable<double> fillScale = TweenSequence<double>([
     TweenSequenceItem(tween: Tween(begin: 0.6, end: 1.15).chain(CurveTween(curve: AppMotion.enter)), weight: 60),
@@ -308,11 +339,12 @@ class DotPop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final backdrop = commentBackdrop;
     final dot = Container(
       width: size,
       height: size,
       decoration: BoxDecoration(shape: BoxShape.circle, color: color),
-      child: hole != null && !erased ? Center(child: _commentHole(size, hole!)) : null,
+      child: backdrop != null && !erased ? _commentBadge(size, color, backdrop) : null,
     );
     // Reduced motion: the final state at once (a TweenAnimationBuilder would
     // still paint its first frame at 0.6).
@@ -332,16 +364,29 @@ class DotPop extends StatelessWidget {
   }
 }
 
-/// The comment ring's centre: a hole of the screen's colour, a third of the
-/// dot, with a 1 px line in the accent (the today ring's colour) just outside
-/// it, so the ring reads on a dot of the screen's own colour too.
-Widget _commentHole(double dotSize, Color hole) => Container(
-      key: const Key('dot.comment'),
-      width: dotSize * 0.34 + 2,
-      height: dotSize * 0.34 + 2,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: hole,
-        border: Border.all(color: AppColors.accent, width: 1),
+/// The comment badge ([CommentBadge]) of a dot of `dotSize` and colour `dot`,
+/// laid over the dot's box: a stack that lets it overflow the box, into the
+/// cell's margin.
+Widget _commentBadge(double dotSize, Color dot, Color backdrop, {Key key = const Key('dot.comment')}) {
+  final size = CommentBadge.size(dotSize);
+  final centre = Offset(dotSize / 2, dotSize / 2) + CommentBadge.offset(dotSize);
+  return Stack(
+    clipBehavior: Clip.none,
+    children: [
+      Positioned(
+        left: centre.dx - size / 2,
+        top: centre.dy - size / 2,
+        width: size,
+        height: size,
+        child: Container(
+          key: key,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: CommentBadge.fill(dot, backdrop),
+            border: Border.all(color: backdrop, width: CommentBadge.ring(dotSize)),
+          ),
+        ),
       ),
-    );
+    ],
+  );
+}

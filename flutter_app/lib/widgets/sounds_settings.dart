@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/language_provider.dart';
+import '../providers/theme_provider.dart';
 import '../services/audio_service.dart';
 import '../theme/app_theme.dart';
 import 'press_scale.dart';
@@ -17,6 +18,10 @@ class SoundsSettings extends StatelessWidget {
   Widget build(BuildContext context) {
     final lang = context.watch<LanguageProvider>();
     final audio = context.watch<AudioService>();
+    // AppColors is static: rebuild on a theme change, which the settings
+    // screen's own rebuild never brings here (it holds this section as a
+    // const, so Flutter skips it).
+    context.watch<ThemeProvider>();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

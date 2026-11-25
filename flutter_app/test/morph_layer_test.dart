@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -121,39 +123,49 @@ void main() {
     expect(bottomRight.dy, closeTo(cardTitle.bottom, 0.5));
   });
 
-  testWidgets('a commented cell is painted as a ring once the dots have landed (g = 1), plain on the card (g = 0)', (tester) async {
+  testWidgets('a commented cell wears its badge once the dots have landed (g = 1), as on the grid; none on the card (g = 0)', (tester) async {
     final cells = YearCells.fromList('p', 2026, const [
       CellModel(pageId: 'p', year: 2026, month: 2, day: 5, color: '#FF0000', comment: 'note', updatedAt: ''),
       CellModel(pageId: 'p', year: 2026, month: 3, day: 1, color: '#00FF00', updatedAt: ''),
     ]);
     final content = MorphContent(title: 'Mood', cells: cells, year: 2026, legendColors: const []);
-    final hole = Color.alphaBlend(AppColors.screen, AppColors.shell).toARGB32();
-    final accent = AppColors.accent.toARGB32();
-    PaintPattern ringAt(double g, {required int month, required int day}) {
-      final centre = MorphLayer.dotCenter(ends, month: month, day: day, g: g);
-      final r = MorphLayer.dotRadius(ends, g: g) * 0.34;
-      // The hole, then its 1 px accent line just outside it.
+    final backdrop = Color.alphaBlend(AppColors.screen, AppColors.shell);
+    PaintPattern badgeAt(double g, {required int month, required int day, required Color dot}) {
+      final d = MorphLayer.dotRadius(ends, g: g) * 2;
+      // The grid's badge: 0.42 of the dot, centred (0.41, -0.41) dot from the
+      // dot's centre, ringed by the screen inside its diameter.
+      final centre = MorphLayer.dotCenter(ends, month: month, day: day, g: g) + Offset(d * 0.41, -d * 0.41);
+      final outer = d * 0.42 / 2;
+      final ring = math.max(1.0, d / 15);
+      final fill = Color.lerp(dot, backdrop, 0.45)!.toARGB32();
+      bool at(Object? o) => ((o as Offset) - centre).distance < 0.01;
       return paints
         ..something((m, a) =>
-            m == #drawCircle && a[0] == centre && ((a[1] as double) - r).abs() < 0.01 && (a[2] as Paint).color.toARGB32() == hole)
+            m == #drawCircle &&
+            at(a[0]) &&
+            ((a[1] as double) - (outer - ring)).abs() < 0.01 &&
+            (a[2] as Paint).style == PaintingStyle.fill &&
+            (a[2] as Paint).color.toARGB32() == fill)
         ..something((m, a) =>
             m == #drawCircle &&
-            a[0] == centre &&
-            ((a[1] as double) - (r + 0.5)).abs() < 0.01 &&
+            at(a[0]) &&
+            ((a[1] as double) - (outer - ring / 2)).abs() < 0.01 &&
             (a[2] as Paint).style == PaintingStyle.stroke &&
-            (a[2] as Paint).color.toARGB32() == accent);
+            ((a[2] as Paint).strokeWidth - ring).abs() < 0.01 &&
+            (a[2] as Paint).color.toARGB32() == backdrop.toARGB32());
     }
 
     await tester.pumpWidget(MaterialApp(
       home: Stack(fit: StackFit.expand, children: [MorphLayer(ends: ends, content: content, g: 1, legendsOpacity: 0)]),
     ));
     final landed = tester.renderObject(find.byType(CustomPaint).first);
-    expect(landed, ringAt(1, month: 2, day: 5));
-    expect(landed, isNot(ringAt(1, month: 3, day: 1)), reason: 'no comment, no hole');
+    expect(landed, badgeAt(1, month: 2, day: 5, dot: const Color(0xFFFF0000)));
+    expect(landed, isNot(badgeAt(1, month: 3, day: 1, dot: const Color(0xFF00FF00))), reason: 'no comment, no badge');
     await tester.pumpWidget(MaterialApp(
       home: Stack(fit: StackFit.expand, children: [MorphLayer(ends: ends, content: content, g: 0, legendsOpacity: 1)]),
     ));
-    expect(tester.renderObject(find.byType(CustomPaint).first), isNot(ringAt(0, month: 2, day: 5)), reason: 'the card preview shows no comments');
+    expect(tester.renderObject(find.byType(CustomPaint).first), isNot(badgeAt(0, month: 2, day: 5, dot: const Color(0xFFFF0000))),
+        reason: 'the card preview shows no comments');
   });
 
   testWidgets('towards the landscape panel (a centred 36 px title), at g = 1 the glyph run fills the title rect at 36 px, letter spacing 2, centred', (tester) async {
