@@ -274,6 +274,21 @@ async function main() {
   assert.equal(r.status, 400, 'event names are lower-case slugs');
   r = await call('POST', '/api/events', { name: 'paywall.tracker_limit' }, false);
   assert.equal(r.status, 401, 'events need a session');
+  // Where an event comes from: kept when it is a platform and a version this
+  // server knows, dropped (never refused) otherwise — the count comes first.
+  r = await call('POST', '/api/events', { name: 'paywall.stats', platform: 'ios', appVersion: '1.5.0' });
+  assert.equal(r.status, 204, `event with its origin: ${JSON.stringify(r.json)}`);
+  r = await call('POST', '/api/events', { name: 'paywall.export', platform: 'macos', appVersion: '1.5.0-beta' });
+  assert.equal(r.status, 204, 'an origin this server does not know never refuses the event');
+  if (sql) {
+    const origin = async (name: string) => {
+      const [row] = await sql`select platform, app_version from events where user_id = ${userId} and name = ${name}`;
+      return { platform: row.platform, appVersion: row.app_version };
+    };
+    assert.deepEqual(await origin('paywall.stats'), { platform: 'ios', appVersion: '1.5.0' }, 'platform and version are kept');
+    assert.deepEqual(await origin('paywall.export'), { platform: null, appVersion: null }, 'an unknown origin is left empty');
+    assert.deepEqual(await origin('paywall.tracker_limit'), { platform: null, appVersion: null }, 'an app that sends the name alone (≤ 1.4.0) still counts');
+  }
 
   // --- RevenueCat webhook: every event is kept, the entitlement follows -----
   if (process.env.CI && !process.env.SMOKE_BASE) {
