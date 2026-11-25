@@ -91,7 +91,7 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Unit tests
-        run: npx tsx --test src/lib/*.test.ts
+        run: npx tsx --test "src/**/*.test.ts"
 
       - name: Build
         run: npm run build

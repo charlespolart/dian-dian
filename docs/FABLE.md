@@ -134,7 +134,7 @@ release ; un correctif urgent de la production part du tag.
 ## Vérifier
 
 - App : `make test` (analyse Flutter + tests + typecheck du backend).
-- Backend : `cd backend && npx tsx --test src/lib/*.test.ts` ; la suite
+- Backend : `cd backend && npx tsx --test "src/**/*.test.ts"` ; la suite
   smoke `npx tsx scripts/smoke.ts` contre un backend local lancé.
 
 ## Ce que Charles fait de son côté (hors code)

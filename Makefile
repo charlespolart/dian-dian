@@ -29,7 +29,7 @@ db-down:        ## Stop the Postgres container
 
 test:           ## Flutter analyze + tests, backend typecheck
 	cd flutter_app && flutter analyze && flutter test
-	cd backend && npx tsc --noEmit && npx tsx --test src/lib/*.test.ts
+	cd backend && npx tsc --noEmit && npx tsx --test "src/**/*.test.ts"
 
 prod-ios: check-release                 ## Build iOS for the App Store (.ipa), from the app-vX.Y.Z tag
 	cd flutter_app && flutter build ipa --release --build-number=$(BUILD_NUMBER) && open build/ios/ipa
