@@ -285,7 +285,9 @@ Conservation : lignes du jour 25 mois au plus, puis totaux mensuels.
 ## Relecture du 2026-11-23
 
 1. **Origine des clics store.** `/go/apple` et `/go/play` ne reçoivent
-   jamais de `Referer`. *Mon choix* : un clic garde la même origine que la
+   jamais le `Referer` du site d'origine (corrigé le 2026-11-25 : avec le
+   point 3, ils reçoivent l'adresse de la landing elle-même, `utm_*`
+   compris, à ne pas garder). *Mon choix* : un clic garde la même origine que la
    visite par l'option de repli (`utm_source` relayé, traduit par la liste
    fermée) ; un clic sans étiquette n'a pas d'origine. Pas de domaine
    d'origine recopié dans l'URL.
@@ -307,3 +309,34 @@ Conservation : lignes du jour 25 mois au plus, puis totaux mensuels.
    les visites de la landing ; les journaux de sécurité (échecs de
    connexion, jetons refusés) gardent l'IP, avec leur propre ligne au
    registre.
+
+## Passe de confirmation du 2026-11-25
+
+Comparée à `master` (backend 1.2.1). Détail : `docs/CONFIRMATION.md`,
+points 4 à 7.
+
+1. **Chemins inconnus : 404** (décidé, sur la recommandation de Fable).
+   Aujourd'hui `backend/src/index.ts` redirige toute URL inconnue vers `/` :
+   les scanners (`/wp-login.php`, `/.env`) qui suivent la redirection
+   deviendraient des visites. Les chemins inconnus répondent 404, avec une
+   petite page dans le style du site et un lien vers l'accueil. Au plan :
+   vérifier qu'aucun lien encore en circulation ne compte sur cette
+   redirection.
+2. **DB-IP sans disque.** L'image tourne sous l'utilisateur `node`, sans
+   volume ni tâche planifiée. Le fichier est téléchargé au démarrage du
+   serveur et gardé en mémoire (8 Mo), puis rafraîchi chaque mois par une
+   minuterie du processus, comme la purge des jetons ; les listes d'IP des
+   robots de la même façon, chaque jour. Tant qu'un fichier manque : « pays
+   inconnu », robot « non vérifié », et le site répond normalement.
+3. **Le site n'est jamais son propre site d'origine.** Les liens de langue
+   rechargent `/` et, avec la nouvelle `Referrer-Policy`, `/go/*` reçoit
+   l'adresse de la landing : un `Referer` du domaine lui-même est ignoré.
+4. **Tests.** `backend/scripts/smoke.ts` cherche aujourd'hui
+   `apps.apple.com` et `referrer=` dans la page : à réécrire avec `/go/*`
+   dans ce lot (la CI lance la suite smoke à chaque release).
+5. **`ct` Apple** : un par source (`pinterest`), pas par source et langue.
+6. **Confirmé dans le code** : Caddy n'a pas de journal d'accès ;
+   `trust proxy` vaut 1 ; helmet est utilisé avec sa `Referrer-Policy` par
+   défaut ; `legal.ts` dit que les cookies ne servent qu'à la connexion et
+   qu'il n'y a pas d'outil d'analyse ; la page porte déjà
+   `Vary: User-Agent`.

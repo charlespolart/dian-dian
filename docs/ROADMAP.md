@@ -3,13 +3,19 @@
 Une seule liste pour ce qui reste à faire, par ordre de priorité, avec les
 mesures qui la justifient. Les plans détaillés vivent à part
 (`ANDROID_RELEASE_PLAN.md`, `docs/superpowers/specs/`). Mise à jour le
-2026-11-23.
+2026-11-25.
 
 **Phase actuelle (décidée le 2026-11-23)** : recherche, audits et specs
 seulement. Rien n'est codé avant une passe de confirmation avec Fable 5 ;
 c'est Fable qui codera ensuite. Les recherches vivent dans `docs/research/`.
 Point d'entrée pour Fable : `docs/FABLE.md` (ordre des chantiers, branches,
 règles du projet, questions ouvertes).
+**Passe de confirmation faite le 2026-11-25** : `docs/CONFIRMATION.md`. La
+construction peut commencer, chantier par chantier, un plan avant le code.
+**Une seule release (Charles, 2026-11-25)** : tout ce qui suit se construit
+puis sort ensemble, sans release intermédiaire. Les sorties par chantier
+écrites plus bas (« avant le Nouvel An », « en janvier », « release
+dédiée ») ne valent plus que comme ordre de construction.
 
 ## Audit de conversion (prod, 2026-11-22)
 
@@ -79,6 +85,11 @@ version de l'app sur les événements ; les étapes du parcours d'achat
 RevenueCat qui ignore `CANCELLATION` et jette période (essai ou non), prix,
 devise, raison d'annulation et environnement (sandbox) — garder chaque
 événement brut dans une table à part ; une ouverture d'app.
+Réparti le 2026-11-25 (`docs/CONFIRMATION.md`, point 10) : la table brute
+du webhook et la plateforme sur les événements dans un petit lot backend
+(chantier 0 de `docs/FABLE.md`) ; les étapes du
+parcours d'achat avec la refonte du paywall ; l'ouverture d'app avec les
+rappels.
 
 ### 3. Communication — Pinterest en cours (décidé le 2026-10-15)
 Plan éditorial : `marketing/pinterest/PLAN.md`. Épingles générées
@@ -102,7 +113,7 @@ landing (`storeLinks()` dans `backend/src/routes/landing.ts`) fait
 téléchargements dans les 24 h du clic : les téléchargements Pinterest sont
 éparpillés sous le seuil. À faire avec Fable : un `ct` par source (`pinterest`)
 ou par source et langue (`pinterest-en`), le détail par épingle restant dans
-le referrer Play. En face, ChatGPT cite la landing avec
+le referrer Play. Retenu le 2026-11-25 : un `ct` par source. En face, ChatGPT cite la landing avec
 `utm_source=chatgpt.com`, sans campagne : une seule ligne `chatgptcom`, 34
 vues de la page App Store et 10 téléchargements entre mi-octobre et le
 22 novembre. La landing n'a pas de journal de visites (Caddy sans log
@@ -206,6 +217,9 @@ Prérequis des rappels (point 4), décidé le 2026-11-23 : pas de plugin
 ancien, on monte en AGP 9 même si la mise à niveau demande du travail, puis
 on prend la version la plus récente de `flutter_local_notifications` (23.x
 exige AGP ≥ 9.1.1).
+Vérifié le 2026-11-25 : le projet est déjà en Flutter 3.47.5 et Dart 3.13.4
+(rien à faire pour Dart) ; AGP 8.11.1 est le plancher de ce Flutter, donc
+pas de mise à jour de Flutter avant ce chantier.
 
 ### 7. Esthétique : animations, sons, vibrations, écran de lancement — fusionné sur master le 2026-10-28
 Brainstormé et spécifié le 2026-10-22 :
@@ -334,7 +348,9 @@ pincement sur un chemin fixe que l'écart des doigts fait avancer (longueur
 Moyen, moitié du chemin pour lâcher) ; glissement d'une page à l'autre en
 Mois et Semaine ; la barre de gauche ne se plie jamais seule mais se plie et
 se déplie d'un glissement sur elle-même, dans les trois vues. Gratuit
-(Charles, 2026-11-25).
+(Charles, 2026-11-25). Complété le 2026-11-25 : le glissement d'une page à
+l'autre vaut aussi pour l'année ; le chantier passe après la pop-up
+premium (`docs/CONFIRMATION.md`, décisions 6 et 7).
 
 ### 12. Astuces : montrer les fonctions cachées — spécifié le 2026-11-25
 Demandé par Charles le 2026-11-25 : après l'accueil, un chemin complet qui
@@ -363,6 +379,8 @@ https://claude.ai/artifact/3HsujtgXLrre5FbtaViGmE.
 - En plus : un carnet d'astuces dans les réglages, et trois événements par
   astuce.
 - Deux lots : sans le zoom, puis avec.
+- Place (2026-11-25) : le lot 1 juste après les rappels, le lot 2 avec le
+  zoom.
 
 ## Fait récemment
 - 2026-11-23 : audit de conversion, `docs/PRICING.md`, specs des rappels et

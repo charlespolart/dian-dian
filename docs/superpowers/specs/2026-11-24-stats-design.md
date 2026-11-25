@@ -231,8 +231,10 @@ tracker). Humeur, Émotions et Études passaient sans hésitation.
   forme reconnue. Avec une ancienne légende, les phrases qui ont besoin
   d'une valeur parlent en libellés (Sommeil en tranches, « 7–8 h ou
   plus » ; Lecture avec « Quelques pages »). Chaque modèle décrit donc ses
-  formes : la nouvelle, et l'ancienne avec la correspondance de ses places
-  (Fait → Séance, Presque → Un peu…).
+  formes : la nouvelle et l'ancienne, chacune avec ses propres places
+  (corrigé le 2026-11-25 : l'ancien Sport et les anciennes Habitudes ont
+  cinq couleurs, les nouveaux quatre, il n'y a donc pas de correspondance
+  place à place ; voir « Passe de confirmation »).
 - **Les valeurs des libellés**, pour dire une moyenne dans l'unité du
   modèle : Sommeil 9 h et + = 9 h, 8 h, 7 h, 6 h, 5 h et − = 5 h ; Lecture
   1 h et + = 60 min, 30, 15, Rien = 0 ; Études 3 h et + = 3 h, 2 h, 1 h,
@@ -383,10 +385,14 @@ Histoire 7 (Pilule). Ils n'ont aucun réglage enregistré.
    « Autre… » (Oui / Un peu / Non) devient « tous les jours, du plus au
    moins », sans modèle. *Mon choix* : la reconnaissance se fait **sur le
    serveur**, par une seule fonction (les libellés des modèles y sont
-   copiés depuis l'app), appelée deux fois : par une migration, une fois,
-   pour les trackers existants ; et par `POST /api/pages` quand la
-   création arrive sans les nouveaux champs, c'est-à-dire d'une app 1.4.0
-   (par « + » ou par le parcours du premier tracker), qui continuera de
+   copiés depuis l'app), appelée deux fois : une fois pour les trackers
+   existants, par un rattrapage que le serveur lance à son démarrage et qui
+   ne refait rien quand il a déjà tourné (corrigé le 2026-11-25 : les
+   migrations sont des fichiers SQL et ne peuvent pas appeler cette
+   fonction) ; et par `POST /api/pages` quand la
+   création arrive sans les nouveaux champs, c'est-à-dire du parcours du
+   premier tracker d'une app 1.4.0 (son « + » n'envoie qu'un titre : rien à
+   reconnaître, le tracker reste « jamais demandé »), qui continuera de
    créer des trackers après la mise à jour du serveur.
    Les anciennes légendes sont des formes des modèles (voir « Les
    modèles ») : un tracker reconnu garde ses phrases sans avertissement.
@@ -550,7 +556,10 @@ D'après la recherche (méthode de drip, Li et al.) :
   1er janvier, au pic de l'année où arrivent les essais.
 - L'app charge donc l'année précédente en plus de l'année affichée.
   `SyncService.ensureYear` change aussi l'année active : il faut un
-  chargement à part, au constructeur.
+  chargement à part, au constructeur. **Dès le lot 1** (corrigé le
+  2026-11-25) : le bandeau « N fois · depuis X j » et l'unité (jours ou
+  fois) en ont besoin, et le lot 1 sort en janvier, quand l'année affichée
+  est presque vide.
 - « Voir ces jours dans la grille » met en avant les jours de l'année
   affichée ; le bandeau dit combien sont dans l'autre année.
 
@@ -589,15 +598,17 @@ constructeur.
 
 ## Les écrans
 
-- **Page Stats d'un tracker** (remplace `StatsDetailDialog`), ouverte depuis
-  le bandeau du tracker, **pour tous** : aujourd'hui le gratuit tombe
+- **Page Stats d'un tracker** (remplace `StatsDetailDialog`), ouverte comme
+  aujourd'hui par l'icône des stats (barre du haut en portrait, panneau de
+  gauche en paysage), **pour tous** : aujourd'hui le gratuit tombe
   directement sur le mur `stats`. En gratuit : les cartes gratuites,
   l'annonce d'un lien, la liste nommée (pas floutée) de ce que Premium
   ajoute, sur ses propres données (« Votre nuit moyenne, mois par mois · en
   heures, depuis le 24 août »), et le bouton « Voir toutes mes stats » qui
   ouvre le paywall (événement `paywall.stats`, inchangé). En haut, selon le
   cas : la carte des trackers existants ou le filet de sécurité.
-- **Bandeau du tracker** : inchangé pour « tous les jours » (jours, série,
+- **Bandeau du tracker** (le bloc STATS en bas de la barre de gauche) :
+  inchangé pour « tous les jours » (jours, série,
   % de l'année) ; « N fois · depuis X j » pour « seulement quand », où la
   série n'a pas de sens.
 - **Barre du haut du tracker** : la roue des réglages.
@@ -669,7 +680,8 @@ pas encore. Restent cachés, avec leur valeur par défaut enregistrée :
    quatre nouveaux modèles. Le bandeau « N fois » a besoin des **épisodes
    et de l'unité** (« Le rythme ») : leur calcul, une fonction pure testée,
    arrive donc dès le lot 1 (sinon un Cycle dirait « 25 fois » pour cinq
-   règles).
+   règles). Il lui faut aussi l'année précédente : son chargement à part
+   (« La période ») arrive avec ce lot.
 2. **Lot 2 — page Stats** : cartes gratuites et Premium des quatre
    combinaisons, seuils et progression, cartes d'exemple (page Stats et
    paywall ouvert depuis les stats), mise en avant dans la grille, carte
@@ -795,3 +807,63 @@ Quatre trous, réglés dans le texte (*mon choix*) :
 Vu aussi : l'éditeur de légende accepte aujourd'hui deux couleurs
 identiques, et choisir la couleur d'une autre légende fusionne ses cases
 sans le dire (`recolorCells`) : à interdire (« La légende »).
+
+## Passe de confirmation du 2026-11-25
+
+Comparée à `master` (app 1.4.0, backend 1.2.1). Détail :
+`docs/CONFIRMATION.md`, points 17 à 22 et 33. Décisions sur la
+recommandation de Fable (Charles : « fais selon tes recommandations »).
+
+1. **Sport et Habitudes : deux formes, sans correspondance.** L'app 1.4.0
+   leur donne cinq couleurs (Fait, Presque, Un peu, Repos, puis Malade ou
+   Raté) ; les nouveaux modèles en ont quatre.
+   - L'ancienne légende est une forme du modèle à part entière. Sport
+     1.4.0 : échelle Fait, Presque, Un peu ; à part Repos et Malade ;
+     « rien » Repos. Habitudes 1.4.0 : échelle Fait, Presque, Un peu,
+     Raté ; à part Repos ; « rien » Repos. Lecture et Sommeil 1.4.0 ont le
+     même nombre de couleurs que les nouveaux.
+   - La forme d'origine s'enregistre avec le tracker (une colonne de plus,
+     ou des places numérotées à part pour l'ancienne légende ; au
+     constructeur) : `legends.template_slot` seul ne dit pas de quelle
+     forme il parle.
+   - *Mon choix*, à relire : dans la nouvelle légende, c'est la troisième
+     couleur de l'ancienne qui part. Sport : Séance `#51CF66`, Un peu
+     `#8CE99A`, Repos `#74C0FC`, Malade `#FFA8A8` (part `#FFD8A8`).
+     Habitudes : Fait `#20C997`, À moitié `#63E6BE`, Repos `#FFD8A8`, Raté
+     `#FFA94D` (part `#C3FAE8`). Sport garde ainsi deux verts pour son
+     échelle et deux teintes bien distinctes pour ses couleurs à part.
+2. **La reconnaissance des trackers existants** ne peut pas être « appelée
+   par une migration » : les migrations sont des fichiers SQL
+   (`drizzle-kit migrate`). Le serveur lance la fonction à son démarrage,
+   une seule fois (le marqueur est au constructeur) ; la migration ne fait
+   que créer les colonnes.
+3. **Le « + » d'une app 1.4.0** n'envoie qu'un titre, puis ses légendes
+   une à une : rien à reconnaître à la création, ces trackers restent
+   « jamais demandé ». Seul le parcours du premier tracker est reconnu.
+4. **L'année précédente dès le lot 1**, par un chargement qui ne change
+   pas l'année affichée. Les rappels (points du jour) et le zoom (page
+   voisine d'une autre année) s'en servent aussi : le construire une fois,
+   ici.
+5. **Couleurs identiques déjà en place.** L'éditeur les accepte
+   aujourd'hui ; les interdire ne règle pas les trackers qui en ont. Elles
+   comptent comme une seule couleur, celle de la première légende (c'est
+   déjà ce que fait l'éditeur de jour), et l'éditeur de légende le signale
+   d'une ligne, sans rien bloquer. À compter en production (lecture seule)
+   avant le lot 1.
+6. **Vocabulaire.** Le « bandeau » est le bloc STATS de la barre de
+   gauche ; la page Stats s'ouvre par l'icône des stats. En paysage, il n'y
+   a pas de barre du haut : la roue rejoint les icônes stats et export du
+   panneau de gauche.
+7. **Données.** `pages.rhythm_legend_id` se vide quand sa légende est
+   supprimée. Les nouveaux champs passent par l'instantané
+   (`PageModel.toJson`, `LegendModel.toJson`).
+8. **Confirmé dans le code** : une app 1.4.0 ne peut pas remettre les
+   nouveaux champs à zéro (champs inconnus ignorés, mises à jour
+   partielles, légendes modifiées en place) ; le bootstrap liste bien les
+   colonnes des légendes une à une ; les modèles actuels sont rangés du
+   plus haut au plus bas ; le gratuit tombe sur le mur `stats`.
+9. **Une seule release** (Charles, 2026-11-25) : les trois lots sortent
+   ensemble. Ce que le lot 1 devait cacher en sortant seul (la ligne
+   « Rappel », l'encadré « Ses stats », l'estimation) n'a plus à l'être,
+   et la « limite connue entre le lot 1 et le lot 2 » n'existe plus. Les
+   lots restent l'ordre de construction.

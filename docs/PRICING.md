@@ -217,6 +217,42 @@ de mesure ») ; les ajouter avec cette refonte.
   confidentialité de l'App Store et la section « sécurité des données » de
   Google Play avant la sortie. Même lot que le registre RGPD.
 
+### Passe de confirmation du 2026-11-25
+
+Comparé à `master` (app 1.4.0). Détail : `docs/CONFIRMATION.md`, points 8
+à 11.
+
+- **Un seul écran par mur** (*mon choix*, Charles ayant répondu « fais
+  selon tes recommandations » ; à relire). Aujourd'hui chaque mur a deux
+  étapes : `PremiumGateDialog` (la raison, la liste des avantages, un
+  bouton), puis `CustomPaywallDialog` (les cartes). Toucher une fonction
+  Premium ouvre désormais le paywall directement : en titre la raison
+  (« Trackers illimités » pour `tracker_limit` et `locked_tracker`, le nom
+  de la fonction ailleurs), une liste courte des avantages, puis les
+  cartes des points 1 à 3. Le mur `locked_tracker` garde son lien
+  « choisir les trackers gardés ». L'événement `paywall.<mur>` garde son
+  nom : il dit maintenant que le paywall s'est affiché.
+- **L'essai selon l'éligibilité.** `_introTrial` lit
+  `storeProduct.introductoryPrice`, qui décrit le produit et non le droit
+  de la personne : sur iOS, quelqu'un qui a déjà eu son essai verrait
+  encore « 7 jours gratuits ». Demander l'éligibilité à RevenueCat
+  (`checkTrialOrIntroductoryPriceEligibility`) avant d'écrire l'essai dans
+  la carte ; sinon, le prix seul. Sur Android, à vérifier au plan (Google
+  ne renvoie en principe que les offres auxquelles la personne a droit).
+  Même règle pour le bouton de la pop-up premium.
+- **Les événements du parcours d'achat** : après `paywall.<mur>`, la
+  formule choisie, l'achat lancé, puis réussi, annulé ou en erreur, avec
+  le mur et la formule dans le nom (la table `events` ne garde qu'un nom,
+  de 64 caractères au plus). `PurchaseService.purchasePackage` ne renvoie
+  qu'un booléen : il lui faut trois issues. Noms exacts au plan. La
+  plateforme et la version arrivent avec le chantier 0 de
+  `docs/FABLE.md`.
+- **Le prix par mois de l'annuel** se calcule (prix ÷ 12, dans la devise
+  du store) ; le projet n'a pas le paquet `intl` : l'ajouter, ou reprendre
+  la mise en forme de `priceString`. Au plan.
+- **Conservation** : rien n'efface la table `events` aujourd'hui ; la
+  purge à 13 mois se construit avec le registre.
+
 ## Message à la résiliation (App Store)
 
 App Store Connect → abonnements → « Messages de fidélisation » : un message

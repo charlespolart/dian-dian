@@ -85,7 +85,7 @@ points sont saisis plus d'une semaine après leur date).
 
 | Déclencheur | Condition | Message (idée) | Ouvre |
 |---|---|---|---|
-| `trackers` | 3 trackers (la limite) et un usage régulier : au moins 5 jours avec des points sur les 14 derniers (décidé) | « Vos 3 trackers sont bien remplis. Avec Premium, ajoutez-en autant que vous voulez — pour toujours avec l'achat unique. » | paywall (annuel présélectionné, lifetime visible) |
+| `trackers` | 3 trackers (la limite) et un usage régulier : au moins 5 dates coloriées parmi les 14 derniers jours, aujourd'hui compris, tous trackers confondus (décidé ; lecture précisée le 2026-11-25) | « Vos 3 trackers sont bien remplis. Avec Premium, ajoutez-en autant que vous voulez — pour toujours avec l'achat unique. » | paywall (annuel présélectionné, lifetime visible) |
 | `stats_ready` | la première stat Premium qui devient prête sur un tracker (seuil franchi, voir la spec des stats), après le point du jour sur ce tracker | « Nouveau pour Sommeil : votre nuit moyenne de septembre est prête. » La carte elle-même, sur ses données (« 6 h 50 par nuit · sur 7 nuits »), puis « Premium vous la donne chaque mois, avec la tendance, les jours de la semaine et les liens avec vos autres trackers. » | paywall des stats |
 | `link_found` | le premier lien trouvé entre deux trackers | « Un lien apparaît entre Sommeil et Humeur. Sur 62 jours notés dans les deux. Premium vous montre lequel, avec ses comptes. » | paywall des stats |
 | `year_end` | fin décembre / début janvier, avec assez de jours remplis dans l'année (*mon choix* : 30) | « Votre année 2026 est complète — exportez-la en image. » (l'export est premium) | paywall de l'export |
@@ -249,3 +249,37 @@ Charles : « selon tes recommandations », et oui au teaser.
    pas de jalon ni de bilan pour le Nouvel An 2026 ; avant le Nouvel An, le
    compteur de visites et la refonte du paywall ; les rappels en janvier ;
    `year_end` à partir de fin 2027.
+
+## Passe de confirmation du 2026-11-25
+
+Comparée à `master` (app 1.4.0, backend 1.2.1). Détail :
+`docs/CONFIRMATION.md`, points 8, 9, 14 et 23.
+
+1. **« 5 jours sur 14 »** (décidé, sur la recommandation de Fable) : au
+   moins 5 dates coloriées parmi les 14 derniers jours, aujourd'hui
+   compris, tous trackers confondus. « Rattrapages compris » veut dire
+   qu'un de ces jours colorié plus tard compte ; un vieux jour colorié
+   aujourd'hui ne compte pas. L'app ne peut pas faire autrement : les
+   cases qu'elle reçoit ne portent pas leur jour de saisie.
+2. **Le délai après l'inscription** a besoin de la date de création du
+   compte, que l'app ne connaît pas : le bootstrap l'ajoute (même champ
+   que pour les rappels).
+3. **Un seul paywall, un seul écran.** « Paywall des stats » et « paywall
+   de l'export » sont le même écran avec un autre titre (et, pour les
+   stats, les cartes d'exemple du lot 2). La fenêtre intermédiaire
+   `PremiumGateDialog` disparaît : voir `docs/PRICING.md`, « Passe de
+   confirmation ». La section « Le mur des 3 trackers » se lit ainsi : le
+   paywall s'ouvre directement, titré « Trackers illimités ».
+4. **Le bouton d'essai** (« Essayer 7 jours gratuits » ou « Découvrir »)
+   suit l'éligibilité demandée à RevenueCat, pas la seule présence d'une
+   offre sur le produit (même source).
+5. **Confirmé dans le code** : les noms `upsell.<déclencheur>.shown`
+   passent la règle de la route des événements (minuscules, chiffres,
+   tirets bas, points, 64 caractères) ; l'historique par compte peut se
+   calculer depuis `events`, qui garde le compte, le nom et la date.
+6. **Une seule release** (Charles, 2026-11-25) : rappels, stats et pop-up
+   arrivent le même jour. Un compte existant peut donc croiser les
+   nouveautés, puis l'écran des rappels, puis, une autre fois, « stats
+   prêtes ». Les règles déjà écrites suffisent (l'écran des rappels
+   d'abord, jamais deux fenêtres dans la même session, une pop-up toutes
+   les deux semaines) ; à tester ensemble sur un compte ancien.

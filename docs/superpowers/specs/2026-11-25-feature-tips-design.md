@@ -118,7 +118,8 @@ large.
   un léger grossissement (0,9 → 1) en `AppMotion.quick` (200 ms). Pas de
   son.
 - **La réussite** :
-  - le cadre devient plein, couleur `okText` ;
+  - le cadre devient plein, couleur `okText` (à créer : elle n'existe pas
+    dans le thème, voir « Passe de confirmation ») ;
   - la bulle dit « ✓ C'EST ÇA ! », avec la phrase de réussite s'il y en a
     une (le pinceau) ;
   - elle reste 1,2 s, ou 2,5 s quand elle a une phrase, puis tout
@@ -137,12 +138,12 @@ Dans cet ordre. Un « usage » est un nom du relevé (section « Le relevé »).
 | 1 | `other_day` | La case d'hier dans la vue affichée ; si elle n'est pas vide ou pas visible, le jour vide le plus récent des sept derniers | Tracker ouvert ; aucun usage `fill.grid` ni `fill.brush` ; un jour vide parmi les sept derniers | `fill.grid` ou `fill.brush` | « Hier compte aussi : touchez un jour pour le colorier. » Pour un autre jour que hier : « Les jours passés comptent aussi : touchez un jour pour le colorier. » |
 | 2 | `today_button` | Le bouton Aujourd'hui | À partir du 2ᵉ jour d'usage (`usage_days`) ; la case du jour de ce tracker est vide ; aucun usage `fill.today` | `fill.today` | « Chaque jour, touchez ici : la case du jour s'ouvre, même depuis une autre année. » |
 | 3 | `brush` | Étape 1 : la couleur de la légende du dernier jour colorié de ce tracker. Étape 2 : les jours vides visés, trois cadres au plus | Aucun usage `fill.brush` ; et soit deux jours vides ou plus parmi les sept derniers (hier compris) après le premier point du tracker, soit trois usages `fill.grid` ou plus | `fill.brush` | 1/2 : « Plusieurs jours à colorier ? Touchez une couleur… » 2/2 : « … puis touchez les cases : elles se colorient d'un toucher. » Réussite : « Touchez {couleur} de nouveau pour ranger le pinceau. » |
-| 4 | `comment` | Le champ commentaire de la fenêtre d'un jour (ou « + commentaire » pour un jour déjà colorié) ; la bulle sous les boutons de la fenêtre | À l'ouverture de cette fenêtre ; au moins cinq jours coloriés dans le compte ; aucun commentaire dans le compte ; aucun usage `comment.add` | `comment.add` | « Ajoutez un mot : vous le relirez d'un coup d'œil dans la vue Mois. » Avant le zoom : « Ajoutez un mot : vous le relirez en touchant le jour. » |
+| 4 | `comment` | Le champ commentaire de la fenêtre d'un jour (ou « + commentaire » pour un jour déjà colorié) ; la bulle sous les boutons de la fenêtre | À l'ouverture de cette fenêtre ; au moins cinq cases coloriées dans le compte ; aucun commentaire dans le compte ; aucun usage `comment.add` | `comment.add` | « Ajoutez un mot : vous le relirez d'un coup d'œil dans la vue Mois. » Avant le zoom : « Ajoutez un mot : vous le relirez en touchant le jour. » |
 | 5 | `open_month` | La colonne du mois en cours, éclairée comme une cible de pincement, et deux doigts fantômes qui s'écartent | Vue Année sur l'année en cours ; sept jours coloriés ou plus ce mois-ci dans ce tracker, ou un commentaire ; aucun usage `zoom.pinch` | `zoom.pinch` | « Écartez deux doigts sur un mois pour l'ouvrir. Ou touchez sa lettre. » Si `zoom.selector` ou `zoom.letter` a déjà servi : « Plus rapide : écartez deux doigts sur un mois. » |
 | 6 | `page_swipe` | La vue Mois ou Semaine, un doigt fantôme qui glisse vers la gauche | Deux usages `page.arrows` ou plus ; aucun `page.swipe` | `page.swipe` | « Glissez vers la gauche ou la droite pour changer de mois. » (« … de semaine » en vue Semaine) |
 | 7 | `sidebar_swipe` | La barre de gauche dépliée, un doigt fantôme qui la pousse vers la gauche | Vue Mois ou Semaine ; au moins un aperçu de commentaire coupé à l'écran ; trois usages `view.zoomed` ou plus ; aucun `sidebar.swipe` | `sidebar.swipe` | « Poussez la barre vers la gauche : les commentaires prennent la place. Vers la droite, elle revient. » Si `sidebar.chevron` a servi : « Aussi d'un geste : poussez la barre vers la gauche, puis vers la droite pour la retrouver. » |
 | 8 | `tracker_settings` | Le bouton Éditer ; une fois le lot 1 des stats construit, la roue des réglages du tracker | Dix jours coloriés ou plus dans ce tracker ; quatre jours d'usage ou plus ; aucun usage `legend.editor` (avant les stats) ou `tracker.settings` (après) | `legend.editor`, puis `tracker.settings` | Avant les stats : « Renommez, recoloriez, ajoutez des couleurs : tout se change ici. » Après : « Le nom, la légende, l'habitude, le rappel : tout se change ici. » |
-| 9 | `second_tracker` | Le bouton + de la liste des trackers | Sur la liste ; trois jours d'usage ou plus ; cinq jours coloriés ou plus dans le compte ; un seul tracker | `tracker.create`, ou un 2ᵉ tracker présent | « Suivez autre chose à côté : sommeil, sport, lecture… » |
+| 9 | `second_tracker` | Le bouton + de la liste des trackers | Sur la liste ; trois jours d'usage ou plus ; cinq cases coloriées ou plus dans le compte ; un seul tracker | `tracker.create`, ou un 2ᵉ tracker présent | « Suivez autre chose à côté : sommeil, sport, lecture… » |
 
 Précisions :
 
@@ -234,7 +235,7 @@ pourtant déjà beaucoup :
 
 - un commentaire existe : `comment` est tenue pour connue ;
 - deux trackers ou plus : `second_tracker` est connue ;
-- plus de 30 jours coloriés dans le compte : `other_day`, `today_button`,
+- plus de 30 cases coloriées dans le compte (`cells_total`) : `other_day`, `today_button`,
   `brush` et `tracker_settings` sont connues.
 
 **D'où vient « le compte »** : l'app ne charge qu'une année à la fois
@@ -248,7 +249,7 @@ et tous trackers confondus :
 C'est une petite sortie du backend, avant l'app, comme `activated` pour
 l'accueil. Ces deux champs servent à la règle des comptes anciens, à la
 condition « aucun commentaire dans le compte » de l'astuce 4 et aux « cinq
-jours coloriés dans le compte » des astuces 4 et 9. Les conditions « dans ce
+cases coloriées dans le compte » des astuces 4 et 9. Les conditions « dans ce
 tracker » restent calculées sur l'année chargée.
 
 Les astuces du zoom (5, 6, 7) restent proposées à tous : c'est nouveau pour
@@ -276,7 +277,7 @@ table, et un nom présent vaut au moins 1. Les noms :
 | `tracker.settings` | les réglages du tracker (la roue, spec des stats) s'ouvrent |
 | `tracker.create` | un tracker est créé depuis la liste |
 | `zoom.pinch`, `zoom.selector`, `zoom.letter` | un changement de niveau acquis par ce moyen (spec du zoom) |
-| `page.swipe`, `page.arrows` | une page tournée par ce moyen |
+| `page.swipe`, `page.arrows` | une page tournée par ce moyen (année, mois ou semaine) |
 | `sidebar.swipe`, `sidebar.chevron` | la barre pliée ou dépliée par ce moyen |
 | `view.zoomed` | une entrée dans la vue Mois ou Semaine |
 | `editor.date_swipe` | un jour changé en glissant sur la date de la fenêtre |
@@ -393,3 +394,36 @@ des rappels et de la pop-up. Ce qu'elle a changé, en *mes choix* :
   (`Overlay`), des cibles repérées par des clés ; à lui de voir.
 - Le placement fin de la bulle sur tablette et en paysage.
 - Les traductions (section « Textes »).
+
+## Passe de confirmation du 2026-11-25
+
+Comparée à `master` (app 1.4.0, backend 1.2.1). Détail :
+`docs/CONFIRMATION.md`, points 30 à 32.
+
+1. **`okText` n'existe pas** dans le thème (`AppThemeColors`), pas plus
+   que `accentSoft` et `weekend` du zoom. À tirer de chaque thème, en
+   mêlant vers le fond du thème, et à vérifier sur les sept thèmes.
+2. **Des cases, pas des jours.** `cells_total` compte les cases du compte,
+   tous trackers confondus : trois trackers remplis deux jours font six.
+   Les seuils « cinq » et « plus de 30 » se lisent en cases (texte
+   corrigé) ; ils restent des ordres de grandeur.
+3. **`date_swipe`** montre le geste de l'éditeur de jour, qui passe
+   aujourd'hui par des jours qui n'existent pas (spec du zoom, « Passe de
+   confirmation », point 6) : ce correctif se construit avant l'astuce.
+4. **Le glissement des années** (spec du zoom, décidé le 2026-11-25) note
+   aussi `page.swipe`. L'astuce 6 ne change pas : elle se montre en vue
+   Mois ou Semaine, et quelqu'un qui a déjà glissé d'une année à l'autre
+   connaît le geste.
+5. **Place dans l'ordre** (*mon choix*, `docs/FABLE.md`) : le lot 1 juste
+   après les rappels, avant les lots 2 et 3 des stats ; le lot 2 avec le
+   zoom. Le lot 1 arrive donc après le lot 1 des stats : l'astuce 8 vise
+   directement la roue.
+6. **Confirmé dans le code** : aucun mécanisme de bulle n'existe ; le
+   bouton Éditer pulse quand la légende est vide ; `first_tracker_done_`,
+   l'oubli de `last_tracker_id` au retour à la liste, la poignée ≡, le
+   titre qui se renomme au toucher, le retour par le bord ; les noms
+   `tip.shown.<id>.notebook` passent la règle de la route des événements.
+7. **Une seule release** (Charles, 2026-11-25) : les deux lots sortent
+   ensemble, avec les stats et le zoom. Les formes d'attente ne se
+   construisent pas : l'astuce 8 vise la roue (pas Éditer) et l'astuce 4
+   dit « dans la vue Mois ». Les lots restent l'ordre de construction.

@@ -79,7 +79,7 @@ la place de l'année dans la barre de gauche : même `SwipeNav`, mêmes flèches
 l'année, au mois ou à la semaine d'avant ou d'après. Sur deux lignes si la
 largeur l'exige (barre de 90 px sur téléphone). Barre pliée, la période
 s'écrit à la verticale sans flèches, comme l'année aujourd'hui ; on change
-alors de mois ou de semaine en glissant sur la grille.
+alors d'année, de mois ou de semaine en glissant sur la grille.
 
 Le **sélecteur** ANNÉE · MOIS · SEMAINE est toujours visible, dans la barre,
 sous la période. Barre pliée (32 px), il se réduit à A · M · S. Le niveau
@@ -107,7 +107,7 @@ d'année aujourd'hui (`onYearChanged`, `last_tracker_year`).
 | Sélecteur | va au niveau touché | idem | idem |
 | Écarter deux doigts | ouvre le mois sous les doigts | ouvre la semaine sous les doigts | rien : « C'est la vue la plus proche » |
 | Rapprocher deux doigts | rien : « C'est déjà toute l'année » | revient à l'année | revient au mois |
-| Glisser un doigt à gauche ou à droite sur la grille | comme aujourd'hui | mois suivant ou précédent | semaine suivante ou précédente |
+| Glisser un doigt à gauche ou à droite sur la grille | année suivante ou précédente (nouveau : aujourd'hui la grille n'a pas de glissement) | mois suivant ou précédent | semaine suivante ou précédente |
 | Flèches ‹ › | année | mois | semaine |
 | Bouton Aujourd'hui | passe à la période du jour au niveau affiché, puis ouvre l'éditeur du jour (comme aujourd'hui pour l'année) | idem | idem |
 
@@ -215,8 +215,10 @@ s'efface ou apparaît autour d'eux.
 - La période et le sélecteur prennent leur nouvelle valeur au moment où le
   changement est acquis : au lâcher passé la moitié, ou au toucher du
   sélecteur. Un pincement qui revient ne les change pas.
-- **Réduire les animations** (réglage du système) : un fondu de 160 ms, sans
-  déplacement, au doigt comme au bouton.
+- **Réduire les animations** (réglage du système) : le changement est
+  immédiat, sans fondu ni déplacement, au doigt comme au bouton, comme
+  partout dans l'app (corrigé le 2026-11-25 ; la première version disait
+  un fondu de 160 ms).
 - *Pour la construction* : un `AnimationController` par chemin, dont le geste
   règle `value` et que le lâcher termine par `animateTo` ; les groupes qui
   bougent (colonnes, lignes) en `Transform`, ou dessinés dans un
@@ -236,7 +238,9 @@ vertical, au-delà de 9 px) tourne la page :
 - un départ plutôt vertical ne fait rien : ni défilement, ni changement de
   vue.
 
-En vue Année, le glissement sur la grille reste ce qu'il est aujourd'hui.
+En vue Année, le même glissement tourne les années (*mon choix* du
+2026-11-25, voir « Passe de confirmation » : aujourd'hui la grille n'a
+aucun glissement, et barre pliée on ne peut pas changer d'année).
 
 ## La vue Mois
 
@@ -448,3 +452,54 @@ gratuit.
   le panneau de gauche de 240 px y affiche l'année en texte) et sur
   tablette en portrait (barre de 140 px), dans l'esprit de la barre
   actuelle.
+
+## Passe de confirmation du 2026-11-25
+
+Comparée à `master` et à `feat/comment-badge` (app 1.4.0). Détail :
+`docs/CONFIRMATION.md`, points 24 à 29 et 33. Décisions sur la
+recommandation de Fable (Charles : « fais selon tes recommandations »).
+
+1. **Le glissement tourne aussi les années** (*mon choix*, à relire). La
+   spec disait « comme aujourd'hui » pour la vue Année, or la grille n'a
+   aucun glissement : l'année ne change que par sa ligne dans la barre, et
+   pas du tout barre pliée. Le glissement d'une page à l'autre vaut donc
+   dans les trois vues, avec les mêmes seuils ; il note `page.swipe`.
+2. **Les lettres des mois** ne se touchent pas aujourd'hui : toute la
+   couche des libellés est sous `IgnorePointer`. La cible d'une lettre est
+   sa case d'en-tête entière (la largeur de la colonne, la hauteur de la
+   ligne), soit 20 à 25 px sur téléphone : petit, à essayer au doigt. Ce
+   sont douze initiales anglaises (J F M A M J J A S O N D), non traduites.
+3. **Deux doigts ne colorient jamais.** Chaque point a son propre toucher ;
+   deux doigts posés puis levés dans la zone morte colorieraient deux
+   cases. Dès qu'un second doigt se pose, les touchers en cours sont
+   annulés, jusqu'à ce que tous les doigts soient levés.
+4. **Réduire les animations : zéro**, comme le reste de l'app
+   (`AppMotion.of`). Les durées nouvelles (440 ms, 320 ms, 120 + 280 ms)
+   vivent dans `lib/theme/motion.dart`, pas dans les widgets.
+5. **L'année voisine se charge d'avance** : en vue Mois et Semaine quand
+   la page voisine tombe dans une autre année, en vue Année celle d'avant
+   et celle d'après, par le chargement à part du lot 1 des stats. Si elle
+   n'est pas encore là, la page voisine arrive vide puis se remplit.
+6. **L'éditeur de jour a un bug** : ses flèches et son glissement passent
+   par des jours qui n'existent pas (31 février, 31 avril) et bouclent de
+   janvier à décembre dans la même année ; le serveur refuse ces cases.
+   Les jours invalides se corrigent tôt, avec le chantier du paywall ; le
+   passage d'une année à l'autre se fait ici, avec l'extension déjà notée
+   dans « Avant de construire ». Tout sort dans la même release.
+7. **La place dans la barre**, en portrait sur téléphone : 90 px, déjà
+   pleine (chevron, année, légende, Éditer, Aujourd'hui, trois stats).
+   « ANNÉE · MOIS · SEMAINE » n'y tient pas sur une ligne, ni « A · M · S »
+   dans 32 px : le sélecteur s'empile, et c'est la liste de la légende qui
+   cède la hauteur. À essayer sur le plus petit téléphone ; s'ajoute à
+   « Laissé au constructeur ».
+8. **`SwipeNav` et `BackSwipe`** écoutent les doigts directement, hors de
+   l'arbitrage des gestes de Flutter : le glissement de la barre doit
+   exclure lui-même la ligne de période, et `BackSwipe` apprendre à ignorer
+   la barre pliée.
+9. **Confirmé dans le code** : la largeur de la coque en portrait et les
+   barres de 90, 140, 150 et 32 px ; `_showLegendLabels` non gardé ; le
+   bord de 24 px et les 60 px de `BackSwipe` ; les 40 px de `SwipeNav` ;
+   les sons repris ; `accentSoft` et `weekend` absents du thème ; le
+   toucher qui colorie seulement un jour vide quand le pinceau est pris.
+10. **Place dans l'ordre** : après la pop-up premium, avec le lot 2 des
+    astuces (*mon choix*, `docs/FABLE.md`).

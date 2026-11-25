@@ -97,9 +97,9 @@ trackers ne sont pas quotidiens (les règles, par exemple).
   même ; la 23.0.3 a une régression iOS). Elle demande AGP ≥ 9.1.1, donc
   **Gradle ≥ 9.3.1** (le projet est en 8.14), **compileSdk 37** écrit à la
   main (`flutter.compileSdkVersion` vaut encore 36), le desugaring
-  (`desugar_jdk_libs` 2.1.4), Java 17, minSdk 24 (vérifier
-  `flutter.minSdkVersion`), Flutter ≥ 3.44 et **Dart ≥ 3.12** (le
-  `pubspec.yaml` dit `^3.11.4`). Pour `zonedSchedule` : `timezone` 0.11.2
+  (`desugar_jdk_libs` 2.1.4), Java 17, minSdk 24, Flutter ≥ 3.44 et Dart ≥ 3.12 :
+  ces quatre-là sont acquis (vérifié le 2026-11-25 : Java 17, Flutter
+  3.47.5, Dart 3.13.4, `flutter.minSdkVersion` = 24). Pour `zonedSchedule` : `timezone` 0.11.2
   et `flutter_timezone` 5.1.1, qui renvoie un `TimezoneInfo` et non plus
   une chaîne depuis la 5.0.
 - **Multi-appareils** : la synchro est multi-appareils, les rappels sont
@@ -448,3 +448,37 @@ change par rapport à la version du 2026-11-23 :
    reçoit le rappel du soir ; la personne le corrige dans les réglages du
    tracker. La règle des 14 jours sans point (« Relecture », point 1)
    s'applique toujours.
+
+## Passe de confirmation du 2026-11-25
+
+Comparée à `master` (app 1.4.0, backend 1.2.1). Détail :
+`docs/CONFIRMATION.md`, points 12 à 16.
+
+1. **La date de création du compte** manque à l'app : ni la session ni le
+   bootstrap ne la renvoient. Le bootstrap l'ajoute (côté serveur, avant
+   l'app) ; elle sert aussi au délai de la pop-up premium.
+2. **Les points du jour.** L'app rouvre le dernier tracker sur sa dernière
+   année et ne charge qu'une année à la fois : avant de programmer, le
+   cycle s'assure que l'année en cours est chargée, par le chargement à
+   part que construit le lot 1 des stats (sans changer l'année affichée).
+3. **`lastCellAt`** est la date de la dernière modification d'une case, pas
+   le dernier jour colorié ; il ne se met à jour qu'au bootstrap, et
+   recolorier une légende le rafraîchit. Cela convient à la règle des
+   14 jours ; la fonction de cycle tient compte aussi des points posés sur
+   l'appareil depuis le dernier bootstrap.
+4. **L'instantané.** Le moment du rappel et le remplissage doivent passer
+   par `PageModel.toJson`, sinon un démarrage à froid programme avec des
+   valeurs par défaut.
+5. **L'ouverture de l'app** (audit, « Trous de mesure », point 4) se
+   construit ici : *mon choix*, un événement au plus par jour civil et par
+   appareil. La plateforme et la version sur les événements se
+   construisent avec le chantier 0 de `docs/FABLE.md`.
+6. **Hors ligne**, les rappels se programment, mais un point posé sans
+   réseau est annulé (`CellsProvider.setCell`) : limite existante, hors de
+   ce chantier.
+7. **Outillage** : AGP 8.11.1, Gradle 8.14 et `compileSdk` 36 sont bien
+   l'état d'aujourd'hui ; AGP 8.11.1 est le plancher de Flutter 3.47.5, donc
+   pas de mise à jour de Flutter avant la montée en AGP 9.
+8. **Une seule release** (Charles, 2026-11-25) : les rappels sortent avec
+   tout le reste. « Livrer dans la release AGP 9 ou dans la suivante » et
+   la « limite connue jusqu'au lot 2 des stats » sont sans objet.
