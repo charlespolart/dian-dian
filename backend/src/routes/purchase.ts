@@ -5,6 +5,7 @@ import { subscriptions, subscriptionEvents, users } from '../db/schema.js';
 import { requireAuth } from '../middleware/auth.js';
 import { env } from '../lib/env.js';
 import { entitlingSubscription } from '../lib/premium.js';
+import { refusesTheRow } from '../lib/pgError.js';
 import { entitlementAction, parseRcEvent, rcEventAccountIds, subscriptionEventRow, type EntitlementAction, type RcEvent } from '../lib/rcEvent.js';
 import { eq, and, inArray, lt } from 'drizzle-orm';
 
@@ -107,7 +108,7 @@ async function firstExistingAccount(ids: string[]): Promise<string | null> {
 /// The database, or a transaction of it.
 type Db = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-/// The event's row could not be written; `cause` is why.
+/// The database refused the event's row for what it holds; `cause` is why.
 class EventNotKept extends Error {
   constructor(readonly cause: unknown) {
     super('RevenueCat event not kept');
@@ -124,9 +125,16 @@ class EventNotKept extends Error {
 /// and the delivery RevenueCat retries for our 500 does both again.
 ///
 /// Keeping the event is measurement and must not cost a purchase: when the
-/// row cannot be written (a value the database refuses), that is logged and
-/// the event is applied on its own. scripts/prod-purchases.sql lists the
-/// subscriptions changed that way.
+/// database refuses the row for what it holds (a character it cannot store,
+/// and it would refuse it again), that is logged — "RC webhook: event not
+/// recorded", the one complete trace of it — and the event is applied on
+/// its own. A failure of the moment (a connection that dropped, a query
+/// cancelled) is not that: nothing is applied, the answer is 500, and the
+/// delivery RevenueCat retries finds the database back.
+///
+/// To replay an event by hand (RevenueCat's dashboard can send one again),
+/// delete its row first (`rc_event_id`): while the row is there, the event
+/// counts as applied.
 async function keepAndApply(event: RcEvent, userId: string | null): Promise<void> {
   const action = entitlementAction(event);
   const row = subscriptionEventRow(event, new Date());
@@ -142,7 +150,7 @@ async function keepAndApply(event: RcEvent, userId: string | null): Promise<void
         .values({ ...row, userId })
         .onConflictDoNothing({ target: subscriptionEvents.rcEventId })
         .returning({ id: subscriptionEvents.id })
-        .catch((err: unknown) => { throw new EventNotKept(err); });
+        .catch((err: unknown) => { throw refusesTheRow(err) ? new EventNotKept(err) : err; });
       if (kept.length === 0) return; // delivered before, and applied then
       await applyEntitlement(tx, action, userId);
     });

@@ -20,9 +20,15 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const str = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null);
 const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 const bool = (v: unknown): boolean | null => (typeof v === 'boolean' ? v : null);
-const date = (v: unknown): Date | null => {
+/** A timestamp in milliseconds; a number no date can hold gives an invalid Date. */
+const rawDate = (v: unknown): Date | null => {
   const ms = num(v);
   return ms === null ? null : new Date(ms);
+};
+/** The same for the kept row, where what cannot be read is simply absent. */
+const date = (v: unknown): Date | null => {
+  const d = rawDate(v);
+  return d === null || Number.isNaN(d.getTime()) ? null : d;
 };
 
 /** The `event` of a webhook body, when it is an object with a type. */
@@ -131,10 +137,16 @@ export function entitlementAction(event: RcEvent): EntitlementAction {
   // Someone restored a purchase on another account: RevenueCat moved the
   // entitlement, and so do we — when both ends are accounts of ours. A
   // transfer to an anonymous id (a device not logged in) is left alone:
-  // taking premium away on that would cut off a customer who paid. What is
-  // restored is the purchases of one store account, and RevenueCat names
-  // that store on most transfers: an account that also bought in the other
-  // store keeps what it bought there.
+  // taking premium away on that would cut off a customer who paid.
+  //
+  // Some transfers name a store ("Store of the transferred purchases" is
+  // all RevenueCat's documentation says of the field, marked "sometimes").
+  // Our reading: a restore goes through one store account, so only the
+  // purchases of that store move, and an account that also bought in the
+  // other store keeps what it bought there. If that reading is wrong, a
+  // subscription is caught up at its next renewal (it follows the account
+  // its events name); a lifetime bought in the other store would stay on
+  // the account it left.
   if (event.type === 'TRANSFER') {
     const to = accountIds(event.transferred_to);
     const from = accountIds(event.transferred_from).filter((id) => !to.includes(id));
@@ -159,7 +171,11 @@ export function entitlementAction(event: RcEvent): EntitlementAction {
         store: storeName(event.store),
         productId: str(event.product_id) ?? '',
         txId,
-        expiresAt: date(event.expiration_at_ms),
+        // Absent means a purchase with no end (a lifetime). A value that is
+        // there but that no date can hold is not that: it stays an invalid
+        // date, the write refuses it and the event is answered 500 — never
+        // a lifetime given by mistake.
+        expiresAt: rawDate(event.expiration_at_ms),
       };
 
     case 'EXPIRATION':
@@ -170,7 +186,7 @@ export function entitlementAction(event: RcEvent): EntitlementAction {
     // period paid for simply runs out. Either way access is not cut here:
     // an EXPIRATION says when it is over.
     case 'BILLING_ISSUE': {
-      const until = date(event.grace_period_expiration_at_ms);
+      const until = rawDate(event.grace_period_expiration_at_ms);
       return until === null ? NONE : { kind: 'extend', txId, until };
     }
 

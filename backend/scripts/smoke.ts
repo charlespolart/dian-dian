@@ -21,7 +21,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import postgres from 'postgres';
-import { isLoopbackUrl } from '../src/lib/loopback.js';
+import { isLoopbackDatabase, isLoopbackUrl } from '../src/lib/loopback.js';
 
 const BASE = process.env.SMOKE_BASE ?? 'http://localhost:3001';
 // What no route shows (the raw purchase events, the columns of a product
@@ -29,7 +29,7 @@ const BASE = process.env.SMOKE_BASE ?? 'http://localhost:3001';
 // posted to the webhook: only when the server and the database are both on
 // this machine. Decided from where they are, not from which variables are
 // set: a production address in SMOKE_BASE or in DATABASE_URL turns it off.
-const local = isLoopbackUrl(BASE) && isLoopbackUrl(process.env.DATABASE_URL);
+const local = isLoopbackUrl(BASE) && isLoopbackDatabase(process.env.DATABASE_URL);
 const sql = local ? postgres(process.env.DATABASE_URL!, { max: 1 }) : null;
 const webhookSecret = local ? process.env.REVENUECAT_WEBHOOK_SECRET : undefined;
 // The version this checkout would run; only compared against the server when
@@ -473,6 +473,35 @@ async function main() {
     const [{ unkept }] = await sql`select count(*)::int as unkept from subscription_events where original_transaction_id = ${`${run}-tx7`}`;
     assert.equal(unkept, 0, 'and it is the record that is missing');
 
+    // A date no calendar holds in a field that is only measurement: the
+    // purchase goes through, the field is left empty.
+    assert.equal(await webhook({
+      ...play, type: 'RENEWAL', id: `${run}-odd-date`, original_transaction_id: `${run}-tx8`, transaction_id: `${run}-tx8`,
+      purchased_at_ms: 1e20, expiration_at_ms: now + week,
+    }), 200, 'a purchase date that cannot be read');
+    assert.equal((await subscription('tx8'))?.active, true, 'the purchase is applied');
+    const [oddDate] = await sql`select purchased_at from subscription_events where rc_event_id = ${`${run}-odd-date`}`;
+    assert.equal(oddDate?.purchased_at, null, 'and kept, without the date');
+
+    // The end of the period cannot be read: nothing can be given safely, so
+    // nothing is applied AND nothing is kept, and RevenueCat is told to send
+    // it again. The same event sent again, readable this time, does both.
+    const badEnd = { ...play, type: 'RENEWAL', id: `${run}-bad-end`, original_transaction_id: `${run}-tx9`, transaction_id: `${run}-tx9` };
+    assert.equal(await webhook({ ...badEnd, expiration_at_ms: 1e20 }), 500, 'an event that cannot be applied is refused');
+    assert.equal(await subscription('tx9'), undefined, 'nothing is applied');
+    const [{ refused }] = await sql`select count(*)::int as refused from subscription_events where rc_event_id = ${`${run}-bad-end`}`;
+    assert.equal(refused, 0, 'and nothing is kept, or its next delivery would be taken for one already applied');
+    assert.equal(await webhook({ ...badEnd, expiration_at_ms: now + week }), 200, 'delivered again');
+    assert.equal((await subscription('tx9'))?.active, true, 'the delivery that can be applied is');
+
+    // A transfer that names no store moves everything the account bought.
+    assert.equal(await webhook({
+      type: 'TRANSFER', id: `${run}-all-moved`, event_timestamp_ms: now, environment: 'SANDBOX',
+      transferred_from: [userId], transferred_to: [secondId],
+    }), 200, 'transfer without a store');
+    assert.equal((await subscription('tx5'))?.user_id, secondId, 'the App Store lifetime follows');
+    assert.equal((await subscription('tx9'))?.user_id, secondId, 'and so does the Play subscription');
+
     const kept = await sql`
       select rc_event_id, type, period_type, environment, price_usd, currency, cancel_reason, expiration_reason
       from subscription_events where user_id = ${userId}`;
@@ -480,14 +509,14 @@ async function main() {
       kept.map((e) => e.type).sort(),
       [
         'BILLING_ISSUE', 'BILLING_ISSUE', 'CANCELLATION', 'EXPIRATION', 'INITIAL_PURCHASE', 'INITIAL_PURCHASE', 'INITIAL_PURCHASE',
-        'NON_RENEWING_PURCHASE', 'REFUND_REVERSED', 'RENEWAL', 'RENEWAL', 'SUBSCRIPTION_PAUSED', 'TRANSFER',
+        'NON_RENEWING_PURCHASE', 'REFUND_REVERSED', 'RENEWAL', 'RENEWAL', 'RENEWAL', 'RENEWAL', 'SUBSCRIPTION_PAUSED', 'TRANSFER',
       ],
       'one row per event of the account: an event delivered twice is one row',
     );
     const keptBySecond = await sql`select type from subscription_events where user_id = ${secondId}`;
     assert.deepEqual(
       keptBySecond.map((e) => e.type).sort(),
-      ['BILLING_ISSUE', 'EXPIRATION', 'RENEWAL', 'TRANSFER', 'TRANSFER'],
+      ['BILLING_ISSUE', 'EXPIRATION', 'RENEWAL', 'TRANSFER', 'TRANSFER', 'TRANSFER'],
       'a transfer is kept with the account it reaches',
     );
     const start = kept.find((e) => e.rc_event_id === `${run}-purchase`)!;

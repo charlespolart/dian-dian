@@ -255,11 +255,13 @@ Comparé à `master` (app 1.4.0). Détail : `docs/CONFIRMATION.md`, points 8
 
 ### Trouvé pendant le chantier 0 (2026-11-25), pour ce chantier
 
-En refaisant le webhook RevenueCat (`docs/superpowers/plans/2026-11-25-purchase-measurement.md`), trois points côté app ou achat sont restés ouverts ; ils se traitent avec la refonte du paywall :
+En refaisant le webhook RevenueCat (`docs/superpowers/plans/2026-11-25-purchase-measurement.md`), cinq points côté app ou achat sont restés ouverts ; ils se traitent avec la refonte du paywall :
 
 - **`PurchaseService.logIn` ne fait rien si le SDK n'est pas encore initialisé** (`purchase_service.dart`), et `_onAuthChange` l'appelle dès la restauration de la session. Si l'appel arrive avant la fin de `init()`, la session reste anonyme pour RevenueCat jusqu'au prochain changement d'authentification : un achat fait à ce moment-là part sous un identifiant anonyme, que le serveur ne rattache à personne. À faire : `logIn` attend `init()`. Lu dans le code, pas reproduit.
 - **Un achat arrivé par un identifiant anonyme** (cas ci-dessus, ou reçu traité pendant que l'app est déconnectée) ne rejoint le compte, côté serveur, qu'au prochain événement d'achat à son nom ; pour un achat à vie il n'y en a pas. Le remède sûr est de demander l'état du client à RevenueCat (API REST) quand un transfert arrive, ce que sa documentation recommande. À décider ici.
 - **Le remboursement d'un achat à vie** : rien ne dit qu'une EXPIRATION suit le CANCELLATION `CUSTOMER_SUPPORT`. La table `subscription_events` montrera ce que RevenueCat envoie ; d'ici là un achat à vie remboursé peut rester Premium côté serveur.
+- **Un événement d'abonnement sans date de fin donne un Premium sans fin.** Le webhook lit « pas de `expiration_at_ms` » comme un achat à vie, quel que soit le type d'événement ; c'est déjà le cas en production (backend 1.2.1). RevenueCat envoie toujours ce champ pour un abonnement, donc le cas ne s'est sans doute jamais produit, mais rien ne l'empêche. Le resserrer (« sans fin » seulement pour un achat non renouvelable) demande de savoir sous quel type arrive l'achat à vie : `subscription_events` le dira dès la sortie.
+- **La mémoire des événements déjà appliqués part avec le compte.** Un événement livré deux fois n'est appliqué qu'une fois parce que sa ligne existe ; supprimer le compte efface la ligne. Il faut trois coïncidences en 80 minutes pour que cela compte (une expiration dont la réponse se perd, un renouvellement qui déplace l'abonnement vers un autre compte, puis la suppression du premier) : l'abonnement déplacé serait alors fermé jusqu'à son prochain renouvellement. Laissé tel quel ; à revoir si la suppression de compte devait garder les événements d'achat sans leur compte.
 
 ## Message à la résiliation (App Store)
 

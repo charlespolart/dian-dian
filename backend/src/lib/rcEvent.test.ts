@@ -102,6 +102,21 @@ test('missing, null or mistyped fields become null columns, never an exception',
   assert.equal(row.originalTransactionId, null);
 });
 
+test('a timestamp no date can hold is left empty in the row, and an event without a readable one is dated at reception', () => {
+  const row = subscriptionEventRow(of('RENEWAL', { event_timestamp_ms: 1e20, purchased_at_ms: -1e20, expiration_at_ms: 8.64e15 + 1 }), NOW);
+  assert.equal(row?.eventAt, NOW);
+  assert.equal(row?.purchasedAt, null);
+  assert.equal(row?.expiresAt, null);
+});
+
+test('an end that cannot be read is not "no end": the entitlement keeps it unreadable, and the write refuses it', () => {
+  const action = entitlementAction(of('RENEWAL', { expiration_at_ms: 1e20 }));
+  assert.equal(action.kind, 'upsert');
+  assert.ok(action.kind === 'upsert' && action.expiresAt !== null && Number.isNaN(action.expiresAt.getTime()), 'not null, which would be a lifetime');
+  const grace = entitlementAction(of('BILLING_ISSUE', { grace_period_expiration_at_ms: 1e20 }));
+  assert.ok(grace.kind === 'extend' && Number.isNaN(grace.until.getTime()));
+});
+
 test('a refund keeps its negative price', () => {
   const row = subscriptionEventRow(of('CANCELLATION', { cancel_reason: 'CUSTOMER_SUPPORT', price: -9.99, price_in_purchased_currency: -9.99 }), NOW);
   assert.equal(row?.priceUsd, -9.99);

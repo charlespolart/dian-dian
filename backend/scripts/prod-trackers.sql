@@ -9,6 +9,10 @@
 -- cell filled in the window.
 
 \pset format aligned
+-- Every section reads the temporary table made first: if making it fails
+-- (run a second time in one session, where it exists and the session is
+-- read-only), stop instead of printing the numbers of the first run.
+\set ON_ERROR_STOP on
 
 -- One row per real user: tier, trackers owned, trackers used in the last 30 / 90 days / ever,
 -- and when the user last filled anything. A temporary table, private to this
