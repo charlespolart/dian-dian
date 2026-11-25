@@ -59,6 +59,17 @@ export function rcEventAccountId(event: RcEvent): string | null {
 }
 
 /**
+ * The fields that say who an event is about. None is kept in the payload:
+ * the row's `user_id` says it for an account of ours, and goes with the
+ * account when it is deleted. Events keep arriving after that (deleting an
+ * account does not cancel a store subscription), and a transfer names two
+ * accounts: kept as received, those rows would hold an account's ids long
+ * after it is gone. Subscriber attributes are free-form and can hold an
+ * e-mail address or a name.
+ */
+const WHO = new Set(['app_user_id', 'original_app_user_id', 'aliases', 'transferred_from', 'transferred_to', 'subscriber_attributes']);
+
+/**
  * The row of `subscription_events` for this event, without its account
  * (looked up by the caller). Null when the event has no id of its own:
  * without it a retried delivery could not be told from a new event.
@@ -67,9 +78,7 @@ export function rcEventAccountId(event: RcEvent): string | null {
 export function subscriptionEventRow(event: RcEvent, now: Date): Omit<NewSubscriptionEvent, 'userId'> | null {
   const rcEventId = str(event.id);
   if (rcEventId === null) return null;
-  // Subscriber attributes are free-form and can hold an e-mail address or a
-  // name: nothing here needs them, so they are not kept.
-  const { subscriber_attributes: _attributes, ...payload } = event;
+  const payload = Object.fromEntries(Object.entries(event).filter(([field]) => !WHO.has(field)));
   return {
     rcEventId,
     type: event.type,

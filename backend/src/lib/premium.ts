@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, gt, isNull, or, sql } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { cells, pages, subscriptions, users } from '../db/schema.js';
 import { lockedPageIdsFor } from './trackerLock.js';
@@ -6,14 +6,28 @@ import { lockedPageIdsFor } from './trackerLock.js';
 /** Free accounts own at most this many trackers (the app shows the same number). */
 export const maxFreeTrackers = 3;
 
-export async function hasActiveSubscription(userId: string): Promise<boolean> {
+/**
+ * The subscription that makes the account premium right now: open, and not
+ * past its end (a lifetime purchase has none). An account can hold several
+ * rows — a period that ran out and whose EXPIRATION is yet to come, next to
+ * a purchase that is valid — so the expiry is part of the query, never a
+ * check on whichever row comes first. The one that lasts longest wins.
+ */
+export async function entitlingSubscription(userId: string) {
   const [sub] = await db.select()
     .from(subscriptions)
-    .where(and(eq(subscriptions.userId, userId), eq(subscriptions.active, true)))
+    .where(and(
+      eq(subscriptions.userId, userId),
+      eq(subscriptions.active, true),
+      or(isNull(subscriptions.expiresAt), gt(subscriptions.expiresAt, new Date())),
+    ))
+    .orderBy(sql`${subscriptions.expiresAt} desc nulls first`)
     .limit(1);
-  if (!sub) return false;
-  if (sub.expiresAt && sub.expiresAt < new Date()) return false;
-  return true;
+  return sub;
+}
+
+export async function hasActiveSubscription(userId: string): Promise<boolean> {
+  return (await entitlingSubscription(userId)) !== undefined;
 }
 
 /** VIP (manual flag, never counted as a customer) or an active subscription: no free-tier limits. */

@@ -4,6 +4,7 @@ import { db } from '../db/index.js';
 import { subscriptions, subscriptionEvents, users } from '../db/schema.js';
 import { requireAuth } from '../middleware/auth.js';
 import { env } from '../lib/env.js';
+import { entitlingSubscription } from '../lib/premium.js';
 import { entitlementAction, parseRcEvent, rcEventAccountId, subscriptionEventRow, type EntitlementAction, type RcEvent } from '../lib/rcEvent.js';
 import { eq, and, inArray, lt } from 'drizzle-orm';
 
@@ -16,28 +17,15 @@ const router = Router();
 // ---------------------------------------------------------------------------
 router.get('/status', requireAuth, async (req, res) => {
   try {
-    const userId = req.userId!;
-    const [sub] = await db.select()
-      .from(subscriptions)
-      .where(and(
-        eq(subscriptions.userId, userId),
-        eq(subscriptions.active, true),
-      ))
-      .limit(1);
-
+    // The same answer as everywhere else on the server (lib/premium.ts).
+    // Reading only: a period that ran out is closed by RevenueCat's
+    // EXPIRATION, not here — closing it on sight could undo a renewal or a
+    // grace period that arrives a moment later.
+    const sub = await entitlingSubscription(req.userId!);
     if (!sub) {
       res.json({ premium: false });
       return;
     }
-
-    if (sub.expiresAt && sub.expiresAt < new Date()) {
-      await db.update(subscriptions)
-        .set({ active: false, updatedAt: new Date() })
-        .where(eq(subscriptions.id, sub.id));
-      res.json({ premium: false });
-      return;
-    }
-
     res.json({ premium: true, productId: sub.productId, expiresAt: sub.expiresAt });
   } catch (err) {
     console.error('Purchase status error:', err);
@@ -150,11 +138,10 @@ async function applyEntitlement(action: EntitlementAction, userId: string | null
       return;
     case 'extend':
       // Only ever later, and never on a purchase with no end (a lifetime's
-      // `expires_at` is null, which `lt` does not match). The subscription
-      // is reopened too: GET /status closes a period it sees expired, and
-      // the app may well ask before RevenueCat's event gets here.
+      // `expires_at` is null, which `lt` does not match). A subscription an
+      // EXPIRATION has closed stays closed: nothing here reopens it.
       await db.update(subscriptions)
-        .set({ expiresAt: action.until, active: true, updatedAt: new Date() })
+        .set({ expiresAt: action.until, updatedAt: new Date() })
         .where(and(
           eq(subscriptions.originalTransactionId, action.txId),
           lt(subscriptions.expiresAt, action.until),
@@ -205,6 +192,11 @@ async function upsertSubscription(params: UpsertParams): Promise<void> {
     .onConflictDoUpdate({
       target: subscriptions.originalTransactionId,
       set: {
+        // The subscription belongs to the account its latest purchase event
+        // names. That is how a purchase restored on another account is
+        // caught up when its TRANSFER never got here (lost, sent before this
+        // server handled them, or made through a device not logged in).
+        userId: params.userId,
         active: params.active,
         productId: params.productId,
         expiresAt: params.expiresAt,

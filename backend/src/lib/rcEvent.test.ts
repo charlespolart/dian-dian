@@ -50,12 +50,22 @@ test('subscriptionEventRow keeps what the purchase script reads', () => {
   assert.deepEqual(row.expiresAt, new Date(1764604800000));
 });
 
-test('the payload is the whole event without the subscriber attributes, and the event is left untouched', () => {
-  const row = subscriptionEventRow(trial, NOW);
+test('the payload is the event without who it is about, and the event is left untouched', () => {
+  const event: RcEvent = { ...trial, original_app_user_id: '$RCAnonymousID:first', aliases: ['$RCAnonymousID:first', ACCOUNT] };
+  const row = subscriptionEventRow(event, NOW);
   assert.ok(row);
-  const { subscriber_attributes: _dropped, ...rest } = trial;
+  const { subscriber_attributes: _a, app_user_id: _b, original_app_user_id: _c, aliases: _d, ...rest } = event;
   assert.deepEqual(row.payload, rest);
-  assert.ok('subscriber_attributes' in trial, 'the received event still has its attributes');
+  assert.ok(!JSON.stringify(row.payload).includes(ACCOUNT), 'no account id is left in the payload');
+  assert.ok('subscriber_attributes' in event && 'app_user_id' in event && 'aliases' in event, 'the received event is untouched');
+});
+
+test('a transfer is kept without the accounts it names', () => {
+  const row = subscriptionEventRow({
+    type: 'TRANSFER', id: 'EVT-T', event_timestamp_ms: 1764000000000, store: 'APP_STORE', environment: 'PRODUCTION',
+    transferred_from: ['00005a1c-6091-4f81-be77-f0a83a271ab6'], transferred_to: [ACCOUNT],
+  }, NOW);
+  assert.deepEqual(row?.payload, { type: 'TRANSFER', id: 'EVT-T', event_timestamp_ms: 1764000000000, store: 'APP_STORE', environment: 'PRODUCTION' });
 });
 
 test('an event without its own id cannot be deduplicated: no row', () => {

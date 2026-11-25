@@ -267,7 +267,7 @@ Hors de la mesure, mais dans le même fichier, trois écarts trouvés en lisant 
 
 ## Hors périmètre
 
-- La ligne du registre RGPD et de la politique de confidentialité pour `subscription_events` : chantier du registre.
+- La ligne du registre RGPD et de la politique de confidentialité pour `subscription_events` : chantier du registre. Ce qu'il doit savoir (relecture du 2026-11-25) : les lignes d'un compte partent avec lui ; les événements qui arrivent après la suppression d'un compte sont gardés sans compte ni identifiant (il reste le produit, le prix, le pays et les numéros de transaction du store) ; aucune durée de conservation n'est fixée, à décider là.
 - Les événements du parcours d'achat et l'ouverture de l'app : chantiers 2 et 4.
 - Le remboursement d'un achat à vie (CANCELLATION `CUSTOMER_SUPPORT` sans EXPIRATION ?) : la documentation lue ne tranche pas ; la table brute montrera ce que RevenueCat envoie.
 - La signature facultative `X-RevenueCat-Webhook-Signature`, que la documentation mentionne aujourd'hui et que le playbook dit inexistante : à proposer à Charles pour le playbook, pas dans ce lot.

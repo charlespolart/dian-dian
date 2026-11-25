@@ -143,8 +143,8 @@ export const events = pgTable('events', {
 // was a trial, what was paid and in which currency, why and when a
 // subscription was cancelled, and whether the purchase was a sandbox one.
 // The columns are the fields scripts/prod-purchases.sql reads; `payload` is
-// the whole event (minus subscriber attributes) for whatever else is needed
-// later. `user_id` is null when the event names no account we know (an
+// the rest of the event for whatever else is needed later, without any field
+// that says who it is about (see lib/rcEvent.ts). `user_id` is null when the event names no account we know (an
 // anonymous RevenueCat id, a deleted account, a test event).
 export const subscriptionEvents = pgTable('subscription_events', {
   id: uuid('id').defaultRandom().primaryKey(),

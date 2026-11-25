@@ -304,6 +304,11 @@ async function main() {
       const res = await fetch(`${BASE}/api/purchase/status`, { headers: { Authorization: `Bearer ${token}` } });
       return ((await res.json()) as { premium: boolean }).premium;
     };
+    // What the session routes and the tracker limit read (`hasActiveSubscription`).
+    const premiumInSession = async (token = access) => {
+      const res = await fetch(`${BASE}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+      return ((await res.json()) as { premium: boolean }).premium;
+    };
     // Everything is a sandbox event of this throwaway account.
     const mine = {
       app_user_id: userId, environment: 'SANDBOX', store: 'APP_STORE', product_id: 'premium_yearly',
@@ -371,16 +376,39 @@ async function main() {
     }), 200, 'expiration');
     assert.equal(await premium(secondToken), false, 'the expiration ends premium');
 
+    // A subscription whose events now come for another account belongs to
+    // it: a transfer this server never received (lost, or from before it
+    // handled them) is caught up at the next purchase event.
+    const moving = { ...mine, original_transaction_id: `${run}-tx3`, transaction_id: `${run}-tx3`, period_type: 'NORMAL', price: 14.99, price_in_purchased_currency: 14.99 };
+    assert.equal(await webhook({ ...moving, type: 'INITIAL_PURCHASE', id: `${run}-tx3-start`, expiration_at_ms: now + week }), 200, 'purchase');
+    assert.equal(await premium(), true, 'the buyer is premium');
+    assert.equal(await webhook({ ...moving, app_user_id: secondId, type: 'RENEWAL', id: `${run}-tx3-renewal`, expiration_at_ms: now + 2 * week }), 200, 'renewal for another account');
+    assert.equal(await premium(secondToken), true, 'the account the renewal names is premium');
+    assert.equal(await premium(), false, 'the account it used to belong to is not any more');
+
+    // A period that ran out but was never closed (its EXPIRATION is yet to
+    // come) must not hide a purchase that is valid: here a lifetime.
+    const lapsed = { ...mine, original_transaction_id: `${run}-tx4`, transaction_id: `${run}-tx4`, period_type: 'NORMAL', price: 2.99, price_in_purchased_currency: 2.99 };
+    assert.equal(await webhook({ ...lapsed, type: 'RENEWAL', id: `${run}-tx4-renewal`, product_id: 'premium_monthly', expiration_at_ms: now - hour }), 200, 'a period already over');
+    assert.equal(await premiumInSession(), false, 'a period that is over gives nothing');
+    assert.equal(await webhook({
+      ...mine, type: 'NON_RENEWING_PURCHASE', id: `${run}-life`, product_id: 'premium_lifetime', period_type: 'NORMAL',
+      original_transaction_id: `${run}-tx5`, transaction_id: `${run}-tx5`, price: 29.99, price_in_purchased_currency: 29.99, expiration_at_ms: null,
+    }), 200, 'lifetime purchase');
+    assert.equal(await premiumInSession(), true, 'the session sees the lifetime, not the period that ran out');
+    assert.equal(await premium(), true, 'and so does the purchase status');
+    assert.equal(await premium(), true, 'asked twice, the same answer');
+
     const kept = await sql`
       select type, period_type, environment, price_usd, currency, cancel_reason, expiration_reason
       from subscription_events where user_id = ${userId}`;
     assert.deepEqual(
       kept.map((e) => e.type).sort(),
-      ['BILLING_ISSUE', 'CANCELLATION', 'INITIAL_PURCHASE', 'REFUND_REVERSED', 'RENEWAL', 'SUBSCRIPTION_PAUSED'],
+      ['BILLING_ISSUE', 'CANCELLATION', 'INITIAL_PURCHASE', 'INITIAL_PURCHASE', 'NON_RENEWING_PURCHASE', 'REFUND_REVERSED', 'RENEWAL', 'RENEWAL', 'SUBSCRIPTION_PAUSED'],
       'one row per event of the account: the retried purchase is one row',
     );
     const keptBySecond = await sql`select type from subscription_events where user_id = ${secondId}`;
-    assert.deepEqual(keptBySecond.map((e) => e.type).sort(), ['EXPIRATION', 'TRANSFER'], 'a transfer is kept with the account it reaches');
+    assert.deepEqual(keptBySecond.map((e) => e.type).sort(), ['EXPIRATION', 'RENEWAL', 'TRANSFER'], 'a transfer is kept with the account it reaches');
     const start = kept.find((e) => e.type === 'INITIAL_PURCHASE')!;
     assert.deepEqual(
       { period: start.period_type, env: start.environment, price: start.price_usd, currency: start.currency },
@@ -389,9 +417,15 @@ async function main() {
     );
     assert.equal(kept.find((e) => e.type === 'CANCELLATION')!.cancel_reason, 'UNSUBSCRIBE');
     const orphans = await sql`
-      select rc_event_id from subscription_events
+      select rc_event_id, payload from subscription_events
       where user_id is null and rc_event_id in ${sql([transferId, strangerId])}`;
     assert.equal(orphans.length, 2, 'events for unknown accounts are kept without an account');
+    for (const orphan of orphans) {
+      const fields = Object.keys(orphan.payload as Record<string, unknown>);
+      for (const who of ['app_user_id', 'aliases', 'transferred_from', 'transferred_to']) {
+        assert.ok(!fields.includes(who), `${orphan.rc_event_id} keeps no ${who}`);
+      }
+    }
     await sql`delete from subscription_events where rc_event_id in ${sql([transferId, strangerId])}`;
     const gone = await fetch(`${BASE}/api/auth/account`, { method: 'DELETE', headers: { Authorization: `Bearer ${secondToken}` } });
     assert.equal(gone.status, 200, 'second account deleted');
