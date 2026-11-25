@@ -24,7 +24,7 @@ export function createVisitors(deps: {
 } {
   const max = deps.max ?? 200_000;
   let day = '';
-  let salt = Buffer.alloc(0);
+  let salt: Buffer = Buffer.alloc(0);
   let seen = new Set<string>();
 
   return {
