@@ -148,7 +148,16 @@ release ; un correctif urgent de la production part du tag.
   renommer « Dian Dian Premium », délai de grâce, packages RevenueCat.
 - Demander à Vultr son avenant de traitement des données (DPA), puis le
   citer avec sa date dans `docs/REGISTRE.md` (fiche 1, « Hébergement »).
-- Tester le bouton App Store depuis une épingle Pinterest sur iPhone.
+- Tester le bouton App Store depuis une épingle Pinterest sur iPhone, et
+  depuis Safari : depuis le chantier 1 il passe par `/go/apple` et s'ouvre
+  dans le même onglet (plus de nouvel onglet).
+- Vérifier les adresses du site saisies dans App Store Connect et la Play
+  Console (assistance, marketing, confidentialité) : un chemin inconnu
+  répond maintenant 404 au lieu de renvoyer à l'accueil.
+- Décider si le changement de la politique de confidentialité (mesure
+  d'audience du site, puis événements produit avec le lot « registre »)
+  demande l'e-mail que sa section « Modifications » promet pour les
+  changements importants.
 - Compteur de visites, après le déploiement de la release : porter la date
   de mise en service dans `docs/REGISTRE.md` ; une semaine plus tard, lancer
   `backend/scripts/prod-landing.sql` et vérifier que plusieurs pays

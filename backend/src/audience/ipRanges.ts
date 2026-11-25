@@ -53,10 +53,13 @@ function rangesOf(body: Buffer): BlockList | null {
     for (const [field, family] of [['ipv4Prefix', 'ipv4'], ['ipv6Prefix', 'ipv6']] as const) {
       const prefix = (entry as Record<string, unknown> | null)?.[field];
       if (typeof prefix !== 'string') continue;
-      const [network, bits] = prefix.split('/');
-      const length = Number(bits);
-      // One unreadable line does not cost the file its other lines.
-      if (isIP(network) !== (family === 'ipv4' ? 4 : 6) || !Number.isInteger(length) || length < 0 || length > (family === 'ipv4' ? 32 : 128)) continue;
+      const [network, bits = ''] = prefix.split('/');
+      const length = /^\d{1,3}$/.test(bits) ? Number(bits) : -1;
+      const [shortest, longest] = family === 'ipv4' ? [8, 32] : [16, 128];
+      // One unreadable line does not cost the file its other lines. A missing
+      // length is not zero, and no operator's range is a /0 or a /7: a prefix
+      // that wide would make every address in the world "verified".
+      if (isIP(network) !== (family === 'ipv4' ? 4 : 6) || length < shortest || length > longest) continue;
       list.addSubnet(network, length, family);
       added++;
     }
@@ -65,8 +68,8 @@ function rangesOf(body: Buffer): BlockList | null {
 }
 
 export function createIpRanges(deps: { fetch: typeof fetch; sources?: Record<string, string>; warn?: (message: string) => void }): {
-  /** Reloads every list. One that fails keeps the version loaded before. Never throws. */
-  refresh(): Promise<void>;
+  /** Reloads every list. One that fails keeps the version loaded before. Never throws. True when all were loaded. */
+  refresh(): Promise<boolean>;
   check(ranges: string | null, ip: string | undefined): BotCheck;
 } {
   const sources = deps.sources ?? RANGE_SOURCES;
@@ -75,16 +78,18 @@ export function createIpRanges(deps: { fetch: typeof fetch; sources?: Record<str
 
   return {
     async refresh() {
-      await Promise.all(Object.entries(sources).map(async ([name, url]) => {
+      const loaded = await Promise.all(Object.entries(sources).map(async ([name, url]) => {
         const body = await download(deps.fetch, url, LIMITS);
         const list = body === null ? null : rangesOf(body);
         if (list === null) {
           warn(`Audience: IP ranges not loaded: ${name}`);
-          return;
+          return false;
         }
         // Built aside, then swapped in: a check never sees half a list.
         lists.set(name, list);
+        return true;
       }));
+      return loaded.every(Boolean);
     },
 
     check(ranges, ip) {

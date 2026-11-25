@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { Hit } from './counter.js';
-import { OPT_OUT_COOKIE, createAudience, type AudienceRequest } from './index.js';
+import { OPT_OUT_COOKIE, createAudience, objection, type AudienceRequest } from './index.js';
 import { KNOWN_SITES } from './origin.js';
 
 const SAFARI = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Mobile/15E148 Safari/604.1';
@@ -151,4 +151,13 @@ test('a request of an unexpected shape never throws', () => {
   assert.doesNotThrow(() => audience.visit({} as AudienceRequest, 'fr'));
   assert.doesNotThrow(() => audience.visit({ method: 'GET', ip: undefined, headers: {}, query: {} }, 'fr'));
   assert.equal(audience.objects({} as AudienceRequest), false);
+});
+
+test('why a visitor is not counted: their browser says so, or they asked', () => {
+  assert.equal(objection(request()), null);
+  assert.equal(objection(request({ cookies: { [OPT_OUT_COOKIE]: '1' } })), 'cookie');
+  assert.equal(objection(request({ headers: { 'sec-gpc': '1' } })), 'signal');
+  assert.equal(objection(request({ headers: { dnt: '1' } })), 'signal');
+  assert.equal(objection(request({ headers: { dnt: '1' }, cookies: { [OPT_OUT_COOKIE]: '1' } })), 'signal', 'the browser\'s own signal comes first: there is nothing to undo');
+  assert.equal(objection({} as AudienceRequest), null);
 });

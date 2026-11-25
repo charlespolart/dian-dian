@@ -102,3 +102,18 @@ test('a very long User-Agent costs nothing', () => {
   assert.notEqual(bot(long)?.name, 'GPTBot', 'only the first 512 characters are read');
   assert.ok(performance.now() - started < 5, 'under 5 ms');
 });
+
+test('what isbot matched is only kept as a name when it is a product name', () => {
+  const name = (ua: string) => bot(ua)?.name;
+  // A contact address or a URL in the User-Agent is not the robot's name, and may be a person's.
+  assert.equal(name('Mozilla/5.0 (compatible; +mailto:john.smith@example.org)'), 'other');
+  assert.equal(name('contact jean.dupont@gmail.com'), 'other');
+  assert.equal(name('Mozilla/5.0 (compatible; Yahoo! Slurp; http://help.yahoo.com/help/us/ysearch/slurp)'), 'other');
+  assert.equal(name('Mozilla/5.0'), 'other');
+  assert.equal(name('Mozilla/5.0 (compatible)'), 'other');
+  // Product names are kept.
+  assert.equal(name('Mozilla/5.0 (compatible; AhrefsBot/7.0; +http://ahrefs.com/robot/)'), 'AhrefsBot');
+  assert.equal(name('curl/8.7.1'), 'curl');
+  assert.equal(name('Go-http-client/2.0'), 'Go-http-client');
+  assert.equal(name('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/138.0.0.0 Safari/537.36'), 'HeadlessChrome');
+});

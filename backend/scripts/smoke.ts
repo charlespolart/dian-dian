@@ -21,6 +21,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import postgres from 'postgres';
+import { envFlag } from '../src/lib/envFlag.js';
 import { isLoopbackDatabase, isLoopbackUrl } from '../src/lib/loopback.js';
 
 const BASE = process.env.SMOKE_BASE ?? 'http://localhost:3001';
@@ -185,13 +186,22 @@ async function main() {
 
     const res = await site('/?utm_source=pinterest&utm_campaign=mood-en');
     assert.equal(res.status, 200);
-    assert.equal(res.headers.get('referrer-policy'), 'strict-origin-when-cross-origin', 'the stores are told the visitor comes from the site');
+    assert.equal(res.headers.get('referrer-policy'), 'no-referrer', 'what the page loads (its fonts) does not learn which site the visitor is on');
     const html = await res.text();
-    assert.ok(html.includes('href="/go/play?utm_source=pinterest&amp;utm_campaign=mood-en"'), 'the Play button carries the campaign');
-    assert.ok(html.includes('href="/go/apple?utm_source=pinterest&amp;utm_campaign=mood-en"'), 'the App Store button carries the campaign');
+    assert.ok(html.includes('href="/go/play?lang=en&amp;utm_source=pinterest&amp;utm_campaign=mood-en"'), 'the Play button carries the page language and the campaign');
+    assert.ok(html.includes('href="/go/apple?lang=en&amp;utm_source=pinterest&amp;utm_campaign=mood-en"'), 'the App Store button carries the page language and the campaign');
     assert.ok(!html.includes('apps.apple.com') && !html.includes('play.google.com'), 'the page links to the stores through the site only');
     const plain = await (await site('/')).text();
-    assert.ok(plain.includes('href="/go/apple"') && plain.includes('href="/go/play"'), 'an unknown device sees both stores, without a campaign');
+    assert.ok(plain.includes('href="/go/apple?lang=en"') && plain.includes('href="/go/play?lang=en"'), 'an unknown device sees both stores, without a campaign');
+    const buttons = plain.match(/<a class="btn-store"[^>]*>/g) ?? [];
+    assert.ok(buttons.length >= 2 && buttons.every((a) => a.includes('referrerpolicy="strict-origin-when-cross-origin"')), 'only the store buttons tell the store where the visitor comes from');
+    assert.ok(buttons.every((a) => !a.includes('target=')), 'a store button opens in place: a new tab that only redirects would stay behind, empty');
+    assert.ok((await (await site('/?lang=fr')).text()).includes('href="/go/apple?lang=fr"'), 'the button carries the language of the page');
+    // A parameter written with brackets is not a string: it is ignored, not a 500.
+    assert.equal((await site('/?lang[toString]=x&utm_source[toString]=y')).status, 200, 'a parameter of the wrong shape does not break the page');
+    assert.equal((await site('/go/apple?lang[toString]=x&utm_source[toString]=y&utm_campaign[toString]=z')).status, 302, 'nor a store button');
+    assert.equal((await site('/privacy?lang[toString]=x')).status, 200, 'nor a legal page');
+    assert.equal((await site('/nope?lang[toString]=x')).status, 404, 'nor the 404 page');
     // One store per platform; both when the device can't be told.
     const iphone = await (await site('/', { 'user-agent': IPHONE })).text();
     assert.ok(iphone.includes('/go/apple') && !iphone.includes('/go/play'), 'an iPhone sees the App Store only');
@@ -231,14 +241,21 @@ async function main() {
     assert.ok(contact.includes('id="contact-form"') && contact.includes('/api/contact'), 'contact page has the form');
 
     // The privacy policy says what the site counts and where to object, in its four languages.
-    for (const [lang, title] of [['en', 'Website Audience Measurement'], ['fr', "Mesure d'audience du site"], ['zh-CN', '网站访问统计'], ['zh-TW', '網站訪問統計']]) {
+    for (const [lang, title, tag, updated] of [
+      ['en', 'Website Audience Measurement', 'campaign tag', 'November 25, 2026'], ['fr', "Mesure d'audience du site", 'marquage de campagne', '25 novembre 2026'],
+      ['zh-CN', '网站访问统计', '推广标记', '2026年11月25日'], ['zh-TW', '網站流量統計', '推廣標記', '2026年11月25日'],
+    ]) {
       const policy = await (await site(`/privacy?lang=${lang}`)).text();
       assert.ok(policy.includes(title), `the ${lang} policy has its audience section`);
+      assert.ok(policy.includes(tag), `the ${lang} policy says a tagged link is noted`);
+      assert.ok(policy.includes(updated), `the ${lang} policy carries the date of this change`);
       assert.ok(policy.includes(`href="/privacy/audience?lang=${lang}"`), `the ${lang} policy links to the opt-out page`);
       assert.ok(policy.includes('dd_noaudience'), `the ${lang} policy names the opt-out cookie`);
       assert.ok(policy.includes('IP Geolocation by DB-IP'), `the ${lang} policy credits the country database`);
     }
-    assert.ok(!(await (await site('/privacy?lang=fr')).text()).includes("autre outil d'analyse"), 'the policy no longer says there is no analytics tool');
+    const frPolicy = await (await site('/privacy?lang=fr')).text();
+    assert.ok(frPolicy.includes("autre outil d'analyse tiers") && !frPolicy.includes("outil d'analyse ou script"), 'the policy no longer says there is no analytics tool at all, only no third-party one');
+    assert.ok(!frPolicy.includes("uniquement pour l'authentification") && !(await (await site('/privacy?lang=en')).text()).includes('solely for authentication'), 'the policy no longer says cookies serve authentication alone');
     assert.ok(plain.includes('href="https://db-ip.com"') && plain.includes('IP Geolocation by DB-IP'), 'the site credits the country database (its licence asks for the link)');
     assert.ok(plain.includes('href="/privacy/audience?lang=en"'), 'the site\'s footer leads to the opt-out page');
 
@@ -251,6 +268,9 @@ async function main() {
     });
     let optOut = await optOutPage();
     assert.equal(optOut.status, 200, 'the opt-out page');
+    // Under `no-referrer` a browser sends `Origin: null` with the form, and
+    // the page could not tell its own button from another site's.
+    assert.equal(optOut.headers.get('referrer-policy'), 'same-origin', 'the page lets its own form say where it comes from');
     let optOutHtml = await optOut.text();
     assert.ok(optOutHtml.includes('Ne plus compter mes visites') && !optOutHtml.includes('Compter à nouveau mes visites'), 'someone who is counted is offered to stop');
     optOut = await choose('out');
@@ -266,9 +286,20 @@ async function main() {
     optOut = await choose('in', { cookie: 'dd_noaudience=1' });
     assert.equal(optOut.status, 303);
     assert.ok(/^dd_noaudience=;/.test(optOut.headers.get('set-cookie') ?? ''), 'coming back removes the cookie');
+    // What browsers really send. Chrome, Safari and Firefox say where a
+    // request comes from in Sec-Fetch-Site; that is what is believed.
+    optOut = await choose('out', { origin: 'null', 'sec-fetch-site': 'same-origin' });
+    assert.equal(optOut.status, 303, 'the site\'s own form is accepted even when the browser hides its Origin');
+    optOut = await choose('out', { 'sec-fetch-site': 'cross-site' });
+    assert.equal(optOut.status, 403, 'a form on another site is refused, whatever Origin it shows');
+    assert.equal(optOut.headers.get('set-cookie'), null);
+    optOut = await choose('in', { 'sec-fetch-site': 'same-site' });
+    assert.equal(optOut.status, 403, 'a sibling domain is another site');
+    // A browser too old for Sec-Fetch-Site: its Origin is compared.
     optOut = await choose('out', { origin: 'https://elsewhere.example' });
     assert.equal(optOut.status, 403, 'another site cannot make the choice for a visitor');
     assert.equal(optOut.headers.get('set-cookie'), null);
+    assert.equal((await choose('out', { origin: 'null' })).status, 403, 'an Origin that says nothing is not this site');
     assert.equal((await choose('maybe')).status, 400, 'a choice is out or in');
 
     // The audience counter, read in the database: local only.
@@ -284,10 +315,10 @@ async function main() {
         return row.n as number;
       };
       const robots = sql`bot_family = 'ai_user' and bot_name = 'ChatGPT-User' and bot_check = 'unverified'`;
-      const taps = sql`kind = 'store_tap' and store = 'apple' and device = 'iphone' and bot_family = ''`;
+      const taps = sql`kind = 'store_tap' and store = 'apple' and device = 'iphone' and bot_family = '' and lang = 'zh-TW'`;
       const totals = async () => {
-        const [row] = await sql`select visits, taps_apple from audience_totals where day = ${today}`;
-        return { visits: (row?.visits ?? 0) as number, tapsApple: (row?.taps_apple ?? 0) as number };
+        const [row] = await sql`select visits, visitors, taps_apple from audience_totals where day = ${today}`;
+        return { visits: (row?.visits ?? 0) as number, visitors: (row?.visitors ?? 0) as number, tapsApple: (row?.taps_apple ?? 0) as number };
       };
       /** Waits for the counter's next write (every 5 seconds) to show `n` visits from this run's origin. */
       const written = async (n: number) => {
@@ -301,7 +332,7 @@ async function main() {
 
       await visit(person);
       await visit({ 'user-agent': CHATGPT });
-      await fetch(`${BASE}/go/apple`, { redirect: 'manual', headers: { 'user-agent': IPHONE } });
+      await fetch(`${BASE}/go/apple?lang=zh-TW`, { redirect: 'manual', headers: { 'user-agent': IPHONE, 'accept-language': 'fr-FR,fr;q=0.9' } });
       await visit({ ...person, dnt: '1' });
       await visit({ ...person, 'sec-gpc': '1' });
       await visit({ ...person, cookie: 'dd_noaudience=1' });
@@ -316,7 +347,7 @@ async function main() {
         'a visit is one row: its origin as a bare domain, and classes of what was seen',
       );
       assert.equal(await count(robots) - before.robots, 1, 'a robot is counted by name, unverified when its address is not its operator\'s');
-      assert.equal(await count(taps) - before.taps, 1, 'a tap on a store button is counted');
+      assert.equal(await count(taps) - before.taps, 1, 'a tap on a store button is counted, in the language of the page it was on');
       const after = await totals();
       assert.deepEqual({ visits: after.visits - before.visits, tapsApple: after.tapsApple - before.tapsApple }, { visits: 1, tapsApple: 1 }, 'the totals of the day count the person, not the robot, not who objects');
 
@@ -330,7 +361,36 @@ async function main() {
         columns.map((c) => c.column_name).sort(),
         ['bot_check', 'bot_family', 'bot_name', 'browser', 'count', 'country', 'day', 'device', 'in_app', 'kind', 'lang', 'origin', 'origin_from', 'store', 'tagged'],
       );
-      await sql`delete from audience_counts where origin = ${origin}`;
+      // With the real downloads on — the release checks set AUDIENCE_DOWNLOADS=on
+      // for the server and for this suite — the server holds DB-IP's real
+      // database: a visit forwarded from a well-known American address must be
+      // counted in the United States. It is the one automated check that the
+      // reader still reads the real file, and that the server sees the
+      // visitor's address behind a proxy.
+      const probe = `${run}-country.example`;
+      if (envFlag(process.env.AUDIENCE_DOWNLOADS, false)) {
+        let country = '';
+        for (let i = 0; i < 20 && country !== 'US'; i++) {
+          await visit({ 'user-agent': IPHONE, referer: `https://${probe}/`, 'x-forwarded-for': '8.8.8.8' });
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+          const [seen] = await sql`select country from audience_counts where origin = ${probe} and country <> ''`;
+          country = (seen?.country ?? '') as string;
+        }
+        assert.equal(country, 'US', 'with its downloads on, the server finds the country of an address (waited a minute for the database)');
+      } else {
+        console.log('smoke: country check skipped (AUDIENCE_DOWNLOADS is not on for this suite and its server)');
+      }
+
+      // The suite leaves the database as it found it: its rows, and what it added to the day's totals.
+      const end = await totals();
+      await sql`delete from audience_counts where origin in ${sql([origin, probe])}`;
+      await sql`update audience_counts set count = count - 1 where day = ${today} and ((${robots}) or (${taps}))`;
+      await sql`delete from audience_counts where day = ${today} and count <= 0`;
+      await sql`
+        update audience_totals
+        set visits = visits - ${end.visits - before.visits}, visitors = visitors - ${end.visitors - before.visitors}, taps_apple = taps_apple - ${end.tapsApple - before.tapsApple}
+        where day = ${today}`;
+      await sql`delete from audience_totals where day = ${today} and visits <= 0 and visitors <= 0 and taps_apple <= 0 and taps_play <= 0`;
 
       // Days older than 25 months become one total per month.
       const { db } = await import('../src/db/index.js');

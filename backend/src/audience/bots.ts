@@ -72,10 +72,21 @@ export const BOT_RANGES: string[] = [...new Set(TABLE.map((entry) => entry.range
 const MAX_LENGTH = 512;
 const NAME = /[A-Za-z0-9._-]/;
 
+/** Words around a match that are not a product: the start of every User-Agent, pieces of a URL. */
+const GENERIC = new Set(['mozilla', 'compatible', 'http', 'https', 'www', 'com', 'mailto']);
+/** What a robot calls itself when it does not write `Name/version`. */
+const ROBOT_WORD = /bot|crawl|spider|slurp|fetch|scan|monitor|check|preview|scrap/i;
+
 /**
  * The product name around what `isbot` matched (`Bot` in `AhrefsBot/7.0`
  * gives `AhrefsBot`), reduced to plain characters and 40 of them: this
  * string comes from the request and ends up in a table.
+ *
+ * Only a product name is kept. What `isbot` matched may be a piece of a
+ * contact address or of a URL (`john.smith` in `mailto:john.smith@…`),
+ * which is not the robot's name and may be a person's: a name must be
+ * written `Name/version` or contain a robot's word, and not sit in an
+ * address. Anything else is counted under 'other'.
  */
 function nameAround(ua: string, match: string): string {
   let start = Math.max(0, ua.indexOf(match));
@@ -83,7 +94,9 @@ function nameAround(ua: string, match: string): string {
   while (start > 0 && NAME.test(ua[start - 1])) start--;
   while (end < ua.length && NAME.test(ua[end])) end++;
   const name = ua.slice(start, end).replace(/^[._-]+|[._-]+$/g, '').slice(0, 40);
-  return name === '' ? 'other' : name;
+  const inAddress = ua[end] === '@' || ua[start - 1] === '@' || ua[start - 1] === ':' || ua.slice(end, end + 3) === '://';
+  const product = ua[end] === '/' || ROBOT_WORD.test(name);
+  return name === '' || inAddress || !product || GENERIC.has(name.toLowerCase()) ? 'other' : name;
 }
 
 export function detectBot(userAgent: string | undefined, signatureAgent: string | undefined): Bot | null {

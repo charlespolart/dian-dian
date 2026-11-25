@@ -21,9 +21,14 @@ export type StoreLinks = { apple: string; play: string };
 /** A request's query: only `utm_source` and `utm_campaign` are read. */
 type Query = Record<string, unknown>;
 
-/** Lower case, letters, digits, `_` and `-` only: safe in a URL and in HTML. */
+/**
+ * Lower case, letters, digits, `_` and `-` only: safe in a URL and in HTML.
+ * Only a plain string is a value: a parameter given twice, or with brackets
+ * (`?utm_source[toString]=x`, which Express turns into an object that cannot
+ * even be converted to text), is none.
+ */
 export function campaignParam(value: unknown, max: number): string {
-  return String(value ?? '').slice(0, max).replace(/[^a-zA-Z0-9_-]/g, '').toLowerCase();
+  return typeof value === 'string' ? value.slice(0, max).replace(/[^a-zA-Z0-9_-]/g, '').toLowerCase() : '';
 }
 
 export function storeLinks(query: Query, applePt: string): StoreLinks {

@@ -8,7 +8,11 @@
 export async function download(fetcher: typeof fetch, url: string, limits: { maxBytes: number; timeoutMs: number }): Promise<Buffer | null> {
   try {
     const res = await fetcher(url, { signal: AbortSignal.timeout(limits.timeoutMs) });
-    if (!res.ok || res.body === null) return null;
+    if (!res.ok || res.body === null) {
+      // Not read, but not left open either: the connection goes back to the pool.
+      await res.body?.cancel();
+      return null;
+    }
     const reader = res.body.getReader();
     const chunks: Uint8Array[] = [];
     let size = 0;

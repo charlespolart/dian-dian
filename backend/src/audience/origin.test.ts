@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { KNOWN_SITES, originOf } from './origin.js';
+import { KNOWN_ORIGINS, KNOWN_SITES, originOf } from './origin.js';
 
 const of = (referer: string | undefined, utmSource?: unknown, tagFallback = true) =>
   originOf({ referer, utmSource, ownHost: 'diandian.overridedev.com', knownSites: KNOWN_SITES, tagFallback });
@@ -68,11 +68,40 @@ test('a host that could be anything is filed under "other"', () => {
   assert.equal(of('https://exa_mple.com/').site, 'other', 'a character no domain has');
 });
 
-test('a tag of the wrong shape never throws', () => {
-  assert.deepEqual(of(undefined, ['pinterest', 'x']), { site: '', from: '', tagged: true });
-  assert.deepEqual(of(undefined, { a: 1 }), { site: '', from: '', tagged: true });
+test('only a plain string is a tag: any other shape is no tag, and never throws', () => {
+  assert.deepEqual(of(undefined, ['pinterest', 'x']), { site: '', from: '', tagged: false });
+  assert.deepEqual(of(undefined, { a: 1 }), { site: '', from: '', tagged: false });
+  // What Express makes of ?utm_source[toString]=x: an object String() cannot convert.
+  assert.deepEqual(of(undefined, { toString: 'x' }), { site: '', from: '', tagged: false });
   assert.deepEqual(of(undefined, ''), { site: '', from: '', tagged: false });
   assert.deepEqual(of(undefined, '   '), { site: '', from: '', tagged: false });
   assert.deepEqual(of(undefined, undefined), { site: '', from: '', tagged: false });
-  assert.deepEqual(of(undefined, 42), { site: '', from: '', tagged: true });
+  assert.deepEqual(of(undefined, 42), { site: '', from: '', tagged: false });
+});
+
+test('a site that lives on several hosts is one site', () => {
+  for (const host of ['www.pinterest.co.uk', 'fr.pinterest.com', 'www.pinterest.fr', 'pinterest.com.mx', 'pin.it']) assert.equal(of(`https://${host}/pin/1/`).site, 'pinterest.com', host);
+  for (const host of ['www.google.com.hk', 'www.google.fr', 'google.co.uk', 'news.google.com']) assert.equal(of(`https://${host}/`).site, 'google.com', host);
+  assert.equal(of('https://gemini.google.com/app').site, 'gemini.google.com', 'Gemini is its own source');
+  assert.equal(of('https://l.instagram.com/?u=x').site, 'instagram.com');
+  assert.equal(of('https://web.facebook.com/').site, 'facebook.com');
+  assert.equal(of('https://t.co/abc').site, 'x.com');
+  assert.equal(of('https://twitter.com/x/status/1').site, 'x.com');
+  assert.equal(of('https://chat.openai.com/').site, 'chatgpt.com');
+  assert.equal(of('https://m.youtube.com/watch').site, 'youtube.com');
+  assert.equal(of('https://old.reddit.com/r/x').site, 'reddit.com');
+  assert.equal(of('https://vm.tiktok.com/x').site, 'tiktok.com');
+  assert.equal(of('https://www.perplexity.ai/search').site, 'perplexity.ai');
+});
+
+test('a host that only looks like a known site stays itself', () => {
+  assert.equal(of('https://pinterest.evil.example/').site, 'pinterest.evil.example');
+  assert.equal(of('https://notpinterest.com/').site, 'notpinterest.com');
+  assert.equal(of('https://google.com.evil.example/').site, 'google.com.evil.example');
+  assert.equal(of('https://mygoogle.fr/').site, 'mygoogle.fr');
+});
+
+test('every site a tag or a family can name is listed, so the counter can keep them out of its limits', () => {
+  for (const site of ['pinterest.com', 'chatgpt.com', 'google.com', 'instagram.com', 'x.com', 'gemini.google.com']) assert.ok(KNOWN_ORIGINS.has(site), site);
+  for (const site of Object.values(KNOWN_SITES)) assert.ok(KNOWN_ORIGINS.has(site), site);
 });

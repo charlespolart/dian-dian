@@ -58,7 +58,7 @@ l'app n'appelle pas les pages du site que le compteur regarde.
 | `User-Agent` | Lu en mémoire : réduit à une classe d'appareil, une famille de navigateur, le nom d'une app à navigateur intégré, ou le nom d'un robot. Le `User-Agent` complet n'est jamais écrit. |
 | En-tête `Referer` | Réduit au nom de domaine du site d'origine. L'adresse de la page d'origine n'est jamais écrite. |
 | Paramètre `utm_source` | Sa valeur n'est jamais écrite. Seul reste le fait qu'un lien était marqué, et, quand il n'y a pas de `Referer`, le nom de domaine que désigne une valeur d'une liste fermée (voir « Risque résiduel »). `utm_campaign` n'est jamais lu par le compteur. |
-| Empreinte du jour | `SHA-256(sel du jour ‖ domaine ‖ IP ‖ User-Agent)`, gardée en mémoire jusqu'à minuit UTC pour compter les visiteurs distincts. Le sel est tiré au hasard chaque jour, vit en mémoire seulement, n'est dérivé d'aucun secret et n'est jamais écrit : une fois le jour passé, les empreintes ne peuvent plus être recalculées. Un redémarrage du serveur efface le tout. |
+| Empreinte du jour | `SHA-256(sel du jour ‖ domaine ‖ IP ‖ User-Agent)`, gardée en mémoire jusqu'à minuit UTC pour compter les visiteurs distincts. Le sel est tiré au hasard chaque jour, vit en mémoire seulement, n'est dérivé d'aucun secret et n'est jamais écrit. Le sel et les empreintes d'un jour sont effacés de la mémoire dans les secondes qui suivent minuit UTC (un contrôle toutes les 5 secondes) : passé ce moment, elles ne peuvent plus être recalculées. Un redémarrage du serveur efface le tout. |
 | Ce qui est écrit en base | Des compteurs par jour : type (visite ou clic store), store, site d'origine, lien marqué ou non, classe d'appareil, famille de navigateur, app à navigateur intégré, langue de la page, pays, et pour les robots leur famille, leur nom et le résultat de la vérification. Aucune ligne ne décrit une personne. |
 
 Aucune donnée sensible. Aucun identifiant de visiteur ne dure plus d'un jour.
@@ -71,8 +71,11 @@ script tiers sur la page. Sous-traitant : l'hébergeur du serveur (voir
 
 ### Durées de conservation
 
-- Compteurs par jour : 25 mois, puis remplacés par un total par mois
-  (visites, clics par store, passages de robots).
+- Compteurs par jour : 25 mois au plus (le mois en cours et les 24
+  précédents), puis remplacés par un total par mois (visites, clics par
+  store, passages de robots).
+- Sauvegardes chiffrées de la base, où ces compteurs figurent : durée à
+  porter dans la fiche des sauvegardes (lot « registre »).
 - Empreintes et sel : la journée en cours, en mémoire.
 - Cookie d'opposition (`dd_noaudience`) : 13 mois sur l'appareil du visiteur.
 
@@ -84,7 +87,9 @@ script tiers sur la page. Sous-traitant : l'hébergeur du serveur (voir
   `dd_noaudience` ; le visiteur n'est alors plus compté du tout. Les
   navigateurs qui envoient « Global Privacy Control » ou « Do Not Track » ne
   sont pas comptés non plus, sans rien avoir à faire. L'opposition est
-  vérifiée avant que l'adresse IP ou le `User-Agent` ne soient lus.
+  vérifiée avant que l'adresse IP ou le `User-Agent` ne soient lus par le
+  compteur (la page elle-même lit le `User-Agent` de chaque visiteur, sans
+  le garder, pour choisir le bouton du store à afficher).
 - Les droits d'accès, de rectification et d'effacement n'ont pas d'objet :
   aucune ligne ne peut être rattachée à une personne.
 
@@ -111,7 +116,11 @@ et les opérateurs de robots qui publient leurs plages d'adresses
 - Rien d'identifiant n'est écrit ; le compteur ne peut donc rien divulguer
   sur une personne, même en cas de fuite de la base.
 - Les valeurs écrites par celui qui envoie la requête (site d'origine, nom
-  de robot) sont nettoyées et plafonnées par jour.
+  de robot) sont nettoyées et plafonnées par jour. Le nom d'un robot n'est
+  gardé que s'il a la forme d'un nom de produit : un morceau d'adresse
+  e-mail ou d'URL trouvé dans un `User-Agent` est compté sous « other ».
+- La page d'opposition n'accepte un choix que de son propre formulaire : un
+  autre site ne peut ni opposer un visiteur ni lever son opposition.
 - Pas de journal d'accès du serveur web (Caddy) ; le journal de requêtes du
   backend n'existe qu'en développement.
 - Lecture des chiffres par un script SQL en lecture seule

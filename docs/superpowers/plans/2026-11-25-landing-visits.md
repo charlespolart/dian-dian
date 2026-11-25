@@ -33,7 +33,7 @@ La spec laisse ces points au constructeur. Charles a validé le plan et ces choi
 1. **Opposition : la visite n'est pas comptée du tout.** Cookie d'opposition, en-tête `Sec-GPC: 1` ou `DNT: 1` : aucune ligne, pas même un total. Coût : les totaux sont un peu sous le vrai (les navigateurs qui envoient ces signaux par défaut, Brave et Firefox en navigation privée surtout).
 2. **Les robots sont comptés à part, sans détail.** Une ligne par jour, famille, nom et vérification ; pas d'appareil, de pays ni d'origine pour eux.
 3. **Un `ChatGPT-User` hors des plages d'OpenAI garde son nom, marqué « non vérifié »**, et le script ne compte que les vérifiés dans « lectures demandées à une IA ».
-4. **Valeurs bornées.** Le site d'origine et le nom d'un robot viennent d'en-têtes que n'importe qui écrit. Par jour : au-delà de 100 sites d'origine nouveaux, les suivants sont « autre » ; de même au-delà de 200 noms de robots ; et au-delà de 2 000 lignes nouvelles, tout ce qui est nouveau tombe dans une ligne par type. Personne ne peut remplir la table. *(Modifié pendant la tâche 8 : la limite unique de 300 combinaisons, validée le 2026-11-25, aurait effacé l'origine des visites dès qu'une bonne journée dépasse 300 combinaisons de pays, d'appareils et de navigateurs — le jour où le détail compte le plus.)*
+4. **Valeurs bornées.** Le site d'origine et le nom d'un robot viennent d'en-têtes que n'importe qui écrit. Par jour : au-delà de 100 sites d'origine nouveaux, les suivants sont « autre » ; de même au-delà de 200 noms de robots ; et au-delà de 2 000 lignes nouvelles, tout ce qui est nouveau tombe dans une ligne par type. Personne ne peut remplir la table. Les sites que le compteur sert à mesurer (ensemble fermé) sont hors de ces plafonds. *(Modifié pendant la tâche 8 : la limite unique de 300 combinaisons, validée le 2026-11-25, aurait effacé l'origine des visites dès qu'une bonne journée dépasse 300 combinaisons de pays, d'appareils et de navigateurs — le jour où le détail compte le plus.)*
 5. **Écriture toutes les 5 secondes.** Les comptes s'additionnent en mémoire et partent en une requête. Un redémarrage du serveur perd au plus 5 secondes de visites (et recommence les visiteurs uniques du jour, déjà accepté par la spec).
 6. **Chemins inconnus : une page 404 pour le site, du JSON 404 pour `/api/*`.**
 7. **Page d'opposition : `/privacy/audience`**, un bouton qui pose ou retire le cookie (`dd_noaudience`, 13 mois).
@@ -472,6 +472,41 @@ La section dit, dans chaque langue : ce qui est compté (visites, clics vers les
 - [ ] **Step 1: Changelog et documents.** Ce que Charles fait après le déploiement : demander à Vultr son avenant de traitement et le citer au registre ; lancer `prod-landing.sql` une semaine après et vérifier que les pays sont variés ; relire la table des robots chaque trimestre.
 - [ ] **Step 2: La fiche du playbook** : liste de contrôle CNIL, texte de politique de confidentialité, forme des tables, règles du classifieur de robots, rafraîchissement des listes et de la base des pays, script de lecture.
 - [ ] **Step 3: `make test` et la suite smoke sur l'arbre final, commit.**
+
+## Après la relecture (2026-11-25)
+
+La relecture indépendante de toute la branche a trouvé un point critique,
+trois importants et vingt-cinq mineurs ; tous sont corrigés. Ce qui change
+par rapport au texte ci-dessus :
+
+- **La page d'opposition refusait son propre bouton** dans un vrai
+  navigateur (sous `no-referrer`, le formulaire part avec `Origin: null`).
+  Elle se fie maintenant à `Sec-Fetch-Site`, est servie avec
+  `Referrer-Policy: same-origin`, et le bouton a été pressé dans Chrome.
+- **Conservation** : le mois en cours et les 24 précédents, donc jamais plus
+  de 25 mois (le premier calcul gardait jusqu'à 26 mois).
+- **Choix 4** : les sites que le compteur sert à mesurer (Pinterest,
+  ChatGPT, Google… un ensemble fermé) sont hors des plafonds du jour, et
+  gardent leur nom même au-delà du plafond de lignes.
+- **Un site, un nom** : `www.pinterest.co.uk`, `fr.pinterest.com`,
+  `l.instagram.com`, `t.co`… sont comptés sous le nom de leur site.
+- **`Referrer-Policy`** (tâche 10) : la page garde `no-referrer` ; seuls les
+  boutons des stores (`referrerpolicy`) et la redirection `/go/*` disent
+  d'où vient le visiteur. Les polices Google de la page n'apprennent rien.
+- **Boutons des stores** : ils portent la langue de la page et s'ouvrent
+  dans le même onglet.
+- **Téléchargements** : premier essai quelques secondes après le démarrage,
+  nouvel essai toutes les 15 minutes après un échec ; les contrôles de
+  release les activent et la suite smoke vérifie un pays sur la vraie base.
+- **Textes** : la politique dit le lien marqué, l'origine déduite du lien,
+  l'empreinte du jour et les sauvegardes ; sa date est celle de ce
+  changement.
+
+Laissé tel quel, avec sa raison, dans le registre de l'exécution : les
+visites dont le `User-Agent` est celui d'un navigateur sont comptées comme
+des personnes, même venues d'un script ; un changement de langue recharge la
+page et compte une visite sans origine ; le nom d'hôte entier du `Referer`
+est gardé hors des familles connues ; pas de limite de débit sur `/`.
 
 ## Hors périmètre
 

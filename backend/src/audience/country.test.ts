@@ -26,7 +26,7 @@ function setup(answers: Record<string, () => Response>, start = '2026-11-25T10:0
     const answer = answers[String(url)];
     return answer ? answer() : new Response('not found', { status: 404 });
   }) as typeof fetch;
-  const countries = createCountries({ fetch: fetcher, now: () => now, open, warn: (message) => warnings.push(message), maxBytes: 1_000_000 });
+  const countries = createCountries({ fetch: fetcher, now: () => now, open, warn: (message) => warnings.push(message), maxBytes: 1_000_000, maxPackedBytes: 500_000 });
   return { countries, asked, warnings, at: (iso: string) => { now = new Date(iso); } };
 }
 const ok = (body: Buffer) => () => new Response(new Uint8Array(body), { status: 200 });
@@ -106,7 +106,7 @@ for (const [what, body] of [
   ['is not compressed', Buffer.from(JSON.stringify({ '203.0.113.7': { country: { iso_code: 'XX' } } }))],
   ['is not a database once unpacked', gzipSync(Buffer.from('not a database'))],
   ['unpacks to more than the limit', gzipSync(Buffer.alloc(1_000_001, 0x20))],
-  ['is larger than the limit as sent', Buffer.alloc(1_000_001, 1)],
+  ['is larger than the limit as sent', Buffer.alloc(500_001, 1)],
 ] as Array<[string, Buffer]>) {
   test(`a file that ${what} is refused: no exception, the database loaded before stays`, async () => {
     const { countries, warnings, at } = setup({ [NOV]: ok(FRANCE), [DEC]: ok(body) });
@@ -118,9 +118,17 @@ for (const [what, body] of [
   });
 }
 
+test('refresh says whether a database is in service for this month', async () => {
+  const { countries, at } = setup({ [NOV]: ok(FRANCE) });
+  assert.equal(await countries.refresh(), true);
+  assert.equal(await countries.refresh(), true, 'already loaded');
+  at('2026-12-02T10:00:00Z');
+  assert.equal(await countries.refresh(), false, 'the new month is not there: worth trying again soon');
+});
+
 test('with nothing loaded and nothing to load, countries stay unknown', async () => {
   const { countries, asked, warnings } = setup({});
-  await countries.refresh();
+  assert.equal(await countries.refresh(), false);
   assert.deepEqual(asked, [NOV, OCT]);
   assert.equal(countries.countryOf('203.0.113.7'), '');
   assert.equal(warnings.length, 1);

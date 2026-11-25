@@ -69,3 +69,17 @@ test('memory is bounded: past the limit nobody is new any more', () => {
   assert.equal(visitors.isNew(SITE, '4', UA), false, 'the fourth is not counted');
   assert.equal(visitors.isNew(SITE, '1', UA), false, 'and those seen are still seen');
 });
+
+test('once the day is over its fingerprints and its salt are dropped, without waiting for the next visitor', () => {
+  const { visitors, at, salts } = setup();
+  visitors.isNew(SITE, '203.0.113.7', UA);
+  visitors.isNew(SITE, '203.0.113.8', UA);
+  assert.equal(visitors.held(), 2);
+  visitors.expire();
+  assert.equal(visitors.held(), 2, 'the day is not over');
+  at('2026-11-26T00:00:03Z');
+  visitors.expire();
+  assert.equal(visitors.held(), 0, 'nothing of yesterday is left in memory');
+  assert.equal(visitors.isNew(SITE, '203.0.113.7', UA), true);
+  assert.equal(salts(), 2, 'a new salt for the new day');
+});

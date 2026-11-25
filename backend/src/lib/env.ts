@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { envFlag } from './envFlag.js';
 
 function required(key: string): string {
   const value = process.env[key];
@@ -29,9 +30,9 @@ export const env = {
   // The site's audience counter (src/audience). Without a Referer, a
   // `utm_source` of a closed list is read as the site of origin; `off`
   // turns that fallback off.
-  AUDIENCE_TAG_FALLBACK: process.env.AUDIENCE_TAG_FALLBACK !== 'off',
+  AUDIENCE_TAG_FALLBACK: envFlag(process.env.AUDIENCE_TAG_FALLBACK, true),
   // Whether the counter downloads the robots' IP ranges and the country
   // database (DB-IP, 4 MB) at start. In production only, unless set to `on`
   // or `off`: a dev server restarts at every save.
-  AUDIENCE_DOWNLOADS: process.env.AUDIENCE_DOWNLOADS ? process.env.AUDIENCE_DOWNLOADS === 'on' : process.env.NODE_ENV === 'production',
+  AUDIENCE_DOWNLOADS: envFlag(process.env.AUDIENCE_DOWNLOADS, process.env.NODE_ENV === 'production'),
 };

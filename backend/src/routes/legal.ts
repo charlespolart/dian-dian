@@ -1,5 +1,5 @@
 import express, { Router, Request } from 'express';
-import { OPT_OUT_COOKIE } from '../audience/index.js';
+import { OPT_OUT_COOKIE, objection } from '../audience/index.js';
 
 const router = Router();
 
@@ -7,7 +7,8 @@ type Lang = 'en' | 'fr' | 'zh-CN' | 'zh-TW';
 const SUPPORTED: Lang[] = ['en', 'fr', 'zh-CN', 'zh-TW'];
 
 export function detectLang(req: Request): Lang {
-  const q = String(req.query.lang || '');
+  // Only a plain string: `?lang[toString]=x` gives an object that cannot be converted to text.
+  const q = typeof req.query.lang === 'string' ? req.query.lang : '';
   if (SUPPORTED.includes(q as Lang)) return q as Lang;
   const accept = req.headers['accept-language'] || '';
   for (const part of accept.split(',')) {
@@ -145,7 +146,7 @@ function layout(title: string, content: string, lang: Lang): string {
 const privacy: Record<Lang, string> = {
   en: `
     <h1>Privacy Policy</h1>
-    <p class="subtitle">Last updated: August 21, 2026</p>
+    <p class="subtitle">Last updated: November 25, 2026</p>
     <h2>1. Introduction</h2>
     <p>Dian Dian is published by OVERRIDE, SASU with a capital of 1 euro, registered under SIREN 953 122 868. This Privacy Policy explains how we collect, use, and protect your personal information.</p>
     <h2>2. Data We Collect</h2>
@@ -168,15 +169,14 @@ const privacy: Record<Lang, string> = {
     </ul>
     <p>We do <strong>not</strong> use any other third-party analytics or tracking scripts. No personal data is shared with or sold to third parties.</p>
     <h2>5. Cookies</h2>
-    <p>We use cookies <strong>solely for authentication</strong> (session tokens). No tracking or advertising cookies are used on the website.</p>
-    <p>If you refuse the website's audience measurement, one cookie records that choice (<code>dd_noaudience</code>, kept 13 months). It is used for nothing else.</p>
+    <p>We use cookies for two things only: <strong>authentication</strong> (session tokens) and, if you refuse the website's audience measurement, remembering that choice (<code>dd_noaudience</code>, kept 13 months). No tracking or advertising cookies are used on the website.</p>
     <h2>6. Website Audience Measurement</h2>
     <p>We count the visits to this website ourselves, to know how many people come, from which site, and how many tap a store button. This measurement uses <strong>no cookie and no third-party tool</strong>.</p>
     <ul>
-      <li><strong>What is counted:</strong> page views and taps on the store buttons, per day, with the site you came from (its domain name only), the type of device and browser, the page language and the country.</li>
-      <li><strong>What is not kept:</strong> your IP address and your browser's full identification are used for an instant, to find the country and to tell the visitors of one day apart, then discarded. Nothing is linked to an account, and no visitor can be followed from one day to the next.</li>
-      <li><strong>How long:</strong> daily counts are kept 25 months; after that only monthly totals remain.</li>
-      <li><strong>Where:</strong> on our server, in France. These figures are for Dian Dian only and are never shared.</li>
+      <li><strong>What is counted:</strong> page views and taps on the store buttons, per day, with the site you came from (its domain name only, as your browser gives it or as the link you followed names it), whether that link carried a campaign tag (not the tag itself), the type of device and browser, the page language and the country.</li>
+      <li><strong>What is not kept:</strong> your IP address and your browser's full identification are never written anywhere. They are used to find the country and, mixed with a random value that changes every day, to tell the visitors of one day apart; that mix stays in the server's memory until the end of the day at the latest. Nothing is linked to an account, and no visitor can be followed from one day to the next.</li>
+      <li><strong>How long:</strong> daily counts are kept 25 months at most; after that only monthly totals remain.</li>
+      <li><strong>Where:</strong> on our server, in France, and in the encrypted backups of its database. These figures are for Dian Dian only and are never shared.</li>
     </ul>
     <p>You can <a href="/privacy/audience?lang=en">refuse to be counted</a>. If your browser sends the "Global Privacy Control" or "Do Not Track" signal, you are not counted at all. The country is found with the database <a href="https://db-ip.com" target="_blank" rel="noopener">IP Geolocation by DB-IP</a>.</p>
     <h2>7. Data Storage &amp; Security</h2>
@@ -191,7 +191,7 @@ const privacy: Record<Lang, string> = {
     <p>Questions? <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a></p>`,
   fr: `
     <h1>Politique de confidentialité</h1>
-    <p class="subtitle">Dernière mise à jour : 21 août 2026</p>
+    <p class="subtitle">Dernière mise à jour : 25 novembre 2026</p>
     <h2>1. Introduction</h2>
     <p>Dian Dian est édité par OVERRIDE, SASU au capital de 1 euro, immatriculée sous le SIREN 953 122 868. Cette politique explique comment nous collectons, utilisons et protégeons vos données personnelles.</p>
     <h2>2. Données collectées</h2>
@@ -212,17 +212,16 @@ const privacy: Record<Lang, string> = {
       <li><strong>Google AdMob :</strong> la version gratuite de l'application affiche des bannières publicitaires via Google AdMob. AdMob peut collecter des identifiants d'appareil et des données d'utilisation conformément à la <a href="https://policies.google.com/privacy" target="_blank">Politique de confidentialité de Google</a>. Les utilisateurs Premium ne voient pas de publicités.</li>
       <li><strong>Achats intégrés (Apple et Google) :</strong> les abonnements et achats sont traités par Apple (App Store) ou Google (Google Play), selon votre appareil. Nous n'avons pas accès à vos informations de paiement. Voir la <a href="https://www.apple.com/legal/privacy/" target="_blank">Politique de confidentialité d'Apple</a> et la <a href="https://policies.google.com/privacy" target="_blank">Politique de confidentialité de Google</a>.</li>
     </ul>
-    <p>Nous n'utilisons <strong>aucun</strong> outil d'analyse tiers ni script de suivi. Aucune donnée personnelle n'est partagée ou vendue à des tiers.</p>
+    <p>Nous n'utilisons <strong>aucun</strong> autre outil d'analyse tiers ni script de suivi. Aucune donnée personnelle n'est partagée ou vendue à des tiers.</p>
     <h2>5. Cookies</h2>
-    <p>Nous utilisons des cookies <strong>uniquement pour l'authentification</strong> (jetons de session). Aucun cookie de suivi ou publicitaire n'est utilisé sur le site web.</p>
-    <p>Si vous refusez la mesure d'audience du site, un cookie retient ce choix (<code>dd_noaudience</code>, gardé 13 mois). Il ne sert à rien d'autre.</p>
+    <p>Nous utilisons des cookies pour deux choses seulement : <strong>l'authentification</strong> (jetons de session) et, si vous refusez la mesure d'audience du site, retenir ce choix (<code>dd_noaudience</code>, gardé 13 mois). Aucun cookie de suivi ou publicitaire n'est utilisé sur le site web.</p>
     <h2>6. Mesure d'audience du site</h2>
     <p>Nous comptons nous-mêmes les visites de ce site, pour savoir combien de personnes viennent, depuis quel site, et combien touchent un bouton vers un store. Cette mesure n'utilise <strong>aucun cookie ni outil tiers</strong>.</p>
     <ul>
-      <li><strong>Ce qui est compté :</strong> les affichages de la page et les clics vers les stores, par jour, avec le site d'où vous venez (son nom de domaine seulement), le type d'appareil et de navigateur, la langue de la page et le pays.</li>
-      <li><strong>Ce qui n'est pas gardé :</strong> votre adresse IP et l'identification complète de votre navigateur servent un instant, à trouver le pays et à distinguer les visiteurs d'une même journée, puis sont jetées. Rien n'est relié à un compte, et aucun visiteur ne peut être suivi d'un jour à l'autre.</li>
-      <li><strong>Combien de temps :</strong> les comptes par jour sont gardés 25 mois ; ensuite il ne reste que des totaux par mois.</li>
-      <li><strong>Où :</strong> sur notre serveur, en France. Ces chiffres ne servent qu'à Dian Dian et ne sont jamais partagés.</li>
+      <li><strong>Ce qui est compté :</strong> les affichages de la page et les clics vers les stores, par jour, avec le site d'où vous venez (son nom de domaine seulement, tel que votre navigateur le donne ou que le lien suivi le désigne), le fait que ce lien portait ou non un marquage de campagne (pas le marquage lui-même), le type d'appareil et de navigateur, la langue de la page et le pays.</li>
+      <li><strong>Ce qui n'est pas gardé :</strong> votre adresse IP et l'identification complète de votre navigateur ne sont jamais écrites nulle part. Elles servent à trouver le pays et, mêlées à une valeur tirée au hasard qui change chaque jour, à distinguer les visiteurs d'une même journée ; ce mélange reste dans la mémoire du serveur jusqu'à la fin de la journée au plus tard. Rien n'est relié à un compte, et aucun visiteur ne peut être suivi d'un jour à l'autre.</li>
+      <li><strong>Combien de temps :</strong> les comptes par jour sont gardés 25 mois au plus ; ensuite il ne reste que des totaux par mois.</li>
+      <li><strong>Où :</strong> sur notre serveur, en France, et dans les sauvegardes chiffrées de sa base de données. Ces chiffres ne servent qu'à Dian Dian et ne sont jamais partagés.</li>
     </ul>
     <p>Vous pouvez <a href="/privacy/audience?lang=fr">refuser d'être compté</a>. Si votre navigateur envoie le signal « Global Privacy Control » ou « Do Not Track », vous n'êtes pas compté du tout. Le pays est trouvé avec la base <a href="https://db-ip.com" target="_blank" rel="noopener">IP Geolocation by DB-IP</a>.</p>
     <h2>7. Stockage et sécurité</h2>
@@ -237,7 +236,7 @@ const privacy: Record<Lang, string> = {
     <p>Questions ? <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a></p>`,
   'zh-CN': `
     <h1>隐私政策</h1>
-    <p class="subtitle">最后更新：2026年8月21日</p>
+    <p class="subtitle">最后更新：2026年11月25日</p>
     <h2>1. 简介</h2>
     <p>点点由 OVERRIDE 公司（SASU，注册资本1欧元，SIREN 953 122 868）发布。本隐私政策说明我们如何收集、使用和保护您的个人信息。</p>
     <h2>2. 收集的数据</h2>
@@ -260,15 +259,14 @@ const privacy: Record<Lang, string> = {
     </ul>
     <p>我们<strong>不使用</strong>任何其他第三方分析工具或追踪脚本。不会与第三方共享或出售个人数据。</p>
     <h2>5. Cookie</h2>
-    <p>我们<strong>仅将 Cookie 用于身份验证</strong>（会话令牌）。网站上不使用追踪或广告 Cookie。</p>
-    <p>如果您拒绝网站访问统计，将有一个 Cookie 记录该选择（<code>dd_noaudience</code>，保留 13 个月）。它不作其他用途。</p>
+    <p>我们仅将 Cookie 用于两个用途：<strong>身份验证</strong>（会话令牌），以及在您拒绝网站访问统计时记住该选择（<code>dd_noaudience</code>，保留 13 个月）。网站上不使用追踪或广告 Cookie。</p>
     <h2>6. 网站访问统计</h2>
     <p>我们自行统计本网站的访问量，以了解有多少人访问、来自哪个网站，以及有多少人点击了应用商店按钮。此统计<strong>不使用任何 Cookie 或第三方工具</strong>。</p>
     <ul>
-      <li><strong>统计内容：</strong>每天的页面浏览次数和应用商店按钮点击次数，以及来源网站（仅域名）、设备和浏览器类型、页面语言和国家/地区。</li>
-      <li><strong>不保留的内容：</strong>您的 IP 地址和浏览器的完整标识仅在瞬间使用，用于确定国家/地区并区分同一天的访客，随后即被丢弃。任何数据都不会与账户关联，也无法跨天追踪任何访客。</li>
-      <li><strong>保留期限：</strong>每日统计保留 25 个月，之后仅保留每月总数。</li>
-      <li><strong>存储位置：</strong>我们位于法国的服务器。这些数据仅供点点使用，绝不与他人分享。</li>
+      <li><strong>统计内容：</strong>每天的页面浏览次数和应用商店按钮点击次数，以及来源网站（仅域名，由您的浏览器提供或由您点击的链接指明）、该链接是否带有推广标记（不记录标记本身）、设备和浏览器类型、页面语言和国家/地区。</li>
+      <li><strong>不保留的内容：</strong>您的 IP 地址和浏览器的完整标识不会被写入任何地方。它们用于确定国家/地区，并与一个每天更换的随机值混合后，用于区分同一天的访客；该混合值最迟在当天结束时从服务器内存中清除。任何数据都不会与账户关联，也无法跨天追踪任何访客。</li>
+      <li><strong>保留期限：</strong>每日统计最多保留 25 个月，之后仅保留每月总数。</li>
+      <li><strong>存储位置：</strong>我们位于法国的服务器，以及其数据库的加密备份。这些数据仅供点点使用，绝不与他人分享。</li>
     </ul>
     <p>您可以<a href="/privacy/audience?lang=zh-CN">拒绝被统计</a>。如果您的浏览器发送“Global Privacy Control”或“Do Not Track”信号，您将完全不被统计。国家/地区查询使用 <a href="https://db-ip.com" target="_blank" rel="noopener">IP Geolocation by DB-IP</a> 数据库。</p>
     <h2>7. 数据存储与安全</h2>
@@ -283,7 +281,7 @@ const privacy: Record<Lang, string> = {
     <p>有问题？<a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a></p>`,
   'zh-TW': `
     <h1>隱私權政策</h1>
-    <p class="subtitle">最後更新：2026年8月21日</p>
+    <p class="subtitle">最後更新：2026年11月25日</p>
     <h2>1. 簡介</h2>
     <p>點點由 OVERRIDE 公司（SASU，註冊資本1歐元，SIREN 953 122 868）發布。本隱私權政策說明我們如何收集、使用和保護您的個人資訊。</p>
     <h2>2. 收集的資料</h2>
@@ -306,15 +304,14 @@ const privacy: Record<Lang, string> = {
     </ul>
     <p>我們<strong>不使用</strong>任何其他第三方分析工具或追蹤指令碼。不會與第三方分享或出售個人資料。</p>
     <h2>5. Cookie</h2>
-    <p>我們<strong>僅將 Cookie 用於身分驗證</strong>（工作階段權杖）。網站上不使用追蹤或廣告 Cookie。</p>
-    <p>如果您拒絕網站訪問統計，將有一個 Cookie 記錄該選擇（<code>dd_noaudience</code>，保留 13 個月）。它不作其他用途。</p>
-    <h2>6. 網站訪問統計</h2>
-    <p>我們自行統計本網站的訪問量，以了解有多少人造訪、來自哪個網站，以及有多少人點擊了應用程式商店按鈕。此統計<strong>不使用任何 Cookie 或第三方工具</strong>。</p>
+    <p>我們僅將 Cookie 用於兩個用途：<strong>身分驗證</strong>（工作階段權杖），以及在您拒絕網站流量統計時記住該選擇（<code>dd_noaudience</code>，保留 13 個月）。網站上不使用追蹤或廣告 Cookie。</p>
+    <h2>6. 網站流量統計</h2>
+    <p>我們自行統計本網站的造訪次數，以了解有多少人造訪、來自哪個網站，以及有多少人點擊了應用程式商店按鈕。此統計<strong>不使用任何 Cookie 或第三方工具</strong>。</p>
     <ul>
-      <li><strong>統計內容：</strong>每天的頁面瀏覽次數和應用程式商店按鈕點擊次數，以及來源網站（僅網域名稱）、裝置和瀏覽器類型、頁面語言和國家/地區。</li>
-      <li><strong>不保留的內容：</strong>您的 IP 位址和瀏覽器的完整識別資訊僅在瞬間使用，用於判斷國家/地區並區分同一天的訪客，隨後即被丟棄。任何資料都不會與帳號關聯，也無法跨天追蹤任何訪客。</li>
-      <li><strong>保留期限：</strong>每日統計保留 25 個月，之後僅保留每月總數。</li>
-      <li><strong>儲存位置：</strong>我們位於法國的伺服器。這些資料僅供點點使用，絕不與他人分享。</li>
+      <li><strong>統計內容：</strong>每天的頁面瀏覽次數和應用程式商店按鈕點擊次數，以及來源網站（僅網域名稱，由您的瀏覽器提供或由您點擊的連結指明）、該連結是否帶有推廣標記（不記錄標記本身）、裝置和瀏覽器類型、頁面語言和國家/地區。</li>
+      <li><strong>不保留的內容：</strong>您的 IP 位址和瀏覽器的完整識別資訊不會被寫入任何地方。它們用於判斷國家/地區，並與一個每天更換的隨機值混合後，用於區分同一天的訪客；該混合值最遲在當天結束時從伺服器記憶體中清除。任何資料都不會與帳號關聯，也無法跨天追蹤任何訪客。</li>
+      <li><strong>保留期限：</strong>每日統計最多保留 25 個月，之後僅保留每月總數。</li>
+      <li><strong>儲存位置：</strong>我們位於法國的伺服器，以及其資料庫的加密備份。這些資料僅供點點使用，絕不與他人分享。</li>
     </ul>
     <p>您可以<a href="/privacy/audience?lang=zh-TW">拒絕被統計</a>。如果您的瀏覽器傳送「Global Privacy Control」或「Do Not Track」訊號，您將完全不被統計。國家/地區查詢使用 <a href="https://db-ip.com" target="_blank" rel="noopener">IP Geolocation by DB-IP</a> 資料庫。</p>
     <h2>7. 資料儲存與安全</h2>
@@ -335,28 +332,28 @@ const privacy: Record<Lang, string> = {
 // counter leaves its bearer out. A browser that sends Global Privacy Control
 // or Do Not Track is left out already, with nothing to do.
 const optOut = {
-  title: { en: 'Audience measurement', fr: "Mesure d'audience", 'zh-CN': '访问统计', 'zh-TW': '訪問統計' },
+  title: { en: 'Audience measurement', fr: "Mesure d'audience", 'zh-CN': '访问统计', 'zh-TW': '流量統計' },
   intro: {
     en: 'This website counts its visits without cookies and without keeping your IP address (see the <a href="/privacy?lang=en">privacy policy</a>). You can ask not to be counted at all.',
     fr: 'Ce site compte ses visites sans cookie et sans garder votre adresse IP (voir la <a href="/privacy?lang=fr">politique de confidentialité</a>). Vous pouvez demander à ne pas être compté du tout.',
     'zh-CN': '本网站统计访问量时不使用 Cookie，也不保留您的 IP 地址（参见<a href="/privacy?lang=zh-CN">隐私政策</a>）。您可以要求完全不被统计。',
-    'zh-TW': '本網站統計訪問量時不使用 Cookie，也不保留您的 IP 位址（參見<a href="/privacy?lang=zh-TW">隱私權政策</a>）。您可以要求完全不被統計。',
+    'zh-TW': '本網站統計造訪次數時不使用 Cookie，也不保留您的 IP 位址（參見<a href="/privacy?lang=zh-TW">隱私權政策</a>）。您可以要求完全不被統計。',
   },
-  counted: { en: 'Your visits are counted.', fr: 'Vos visites sont comptées.', 'zh-CN': '目前您的访问会被统计。', 'zh-TW': '目前您的訪問會被統計。' },
+  counted: { en: 'Your visits are counted.', fr: 'Vos visites sont comptées.', 'zh-CN': '目前您的访问会被统计。', 'zh-TW': '目前您的造訪會被統計。' },
   notCounted: {
     en: 'Your visits are not counted. A cookie on this device remembers your choice for 13 months.',
     fr: 'Vos visites ne sont pas comptées. Un cookie sur cet appareil retient votre choix pendant 13 mois.',
     'zh-CN': '您的访问不会被统计。本设备上的一个 Cookie 会将您的选择保留 13 个月。',
-    'zh-TW': '您的訪問不會被統計。本裝置上的一個 Cookie 會將您的選擇保留 13 個月。',
+    'zh-TW': '您的造訪不會被統計。本裝置上的一個 Cookie 會將您的選擇保留 13 個月。',
   },
   signal: {
     en: 'Your browser asks not to be tracked (Global Privacy Control or Do Not Track): your visits are not counted, and there is nothing to do.',
     fr: "Votre navigateur demande à ne pas être suivi (Global Privacy Control ou Do Not Track) : vos visites ne sont pas comptées, et il n'y a rien à faire.",
     'zh-CN': '您的浏览器已要求不被追踪（Global Privacy Control 或 Do Not Track）：您的访问不会被统计，无需任何操作。',
-    'zh-TW': '您的瀏覽器已要求不被追蹤（Global Privacy Control 或 Do Not Track）：您的訪問不會被統計，無需任何操作。',
+    'zh-TW': '您的瀏覽器已要求不被追蹤（Global Privacy Control 或 Do Not Track）：您的造訪不會被統計，無需任何操作。',
   },
-  stop: { en: 'Do not count my visits', fr: 'Ne plus compter mes visites', 'zh-CN': '不再统计我的访问', 'zh-TW': '不再統計我的訪問' },
-  resume: { en: 'Count my visits again', fr: 'Compter à nouveau mes visites', 'zh-CN': '重新统计我的访问', 'zh-TW': '重新統計我的訪問' },
+  stop: { en: 'Do not count my visits', fr: 'Ne plus compter mes visites', 'zh-CN': '不再统计我的访问', 'zh-TW': '不再統計我的造訪' },
+  resume: { en: 'Count my visits again', fr: 'Compter à nouveau mes visites', 'zh-CN': '重新统计我的访问', 'zh-TW': '重新統計我的造訪' },
 };
 
 // 13 months: the lifetime the CNIL's guidelines give an audience tracker. The
@@ -364,22 +361,36 @@ const optOut = {
 const OPT_OUT_MAX_AGE_MS = 395 * 24 * 60 * 60 * 1000;
 const optOutCookie = (req: Request) => ({ httpOnly: true, sameSite: 'lax' as const, secure: req.secure, path: '/' });
 
+function fromThisSite(req: Request): boolean {
+  const fetchSite = req.get('sec-fetch-site');
+  if (fetchSite !== undefined) return fetchSite === 'same-origin';
+  const origin = req.get('origin');
+  if (origin === undefined) return true; // neither header: not a browser a page could have steered
+  try {
+    return new URL(origin).host === req.get('host');
+  } catch {
+    return false; // `null`, or anything that is not an origin
+  }
+}
+
 router.get('/privacy/audience', (req, res) => {
   const lang = detectLang(req);
-  const signal = req.get('sec-gpc') === '1' || req.get('dnt') === '1';
-  const out = req.cookies?.[OPT_OUT_COOKIE] === '1';
+  const why = objection(req);
   const button = (choice: 'out' | 'in', label: string) => `
     <form method="post" action="/privacy/audience?lang=${lang}" style="margin-top:20px;text-align:center;">
       <input type="hidden" name="choice" value="${choice}" />
       <button type="submit" style="padding:12px 28px;background:#d8e8c8;border:2px solid #b0c8a0;border-radius:10px;color:#708060;font:inherit;font-weight:600;cursor:pointer;">${label}</button>
     </form>`;
-  const state = signal
+  const state = why === 'signal'
     ? `<p><strong>${optOut.signal[lang]}</strong></p>`
-    : out
+    : why === 'cookie'
       ? `<p><strong>${optOut.notCounted[lang]}</strong></p>${button('in', optOut.resume[lang])}`
       : `<p><strong>${optOut.counted[lang]}</strong></p>${button('out', optOut.stop[lang])}`;
   // The page depends on the visitor's cookie and browser: never cached.
   res.set('Cache-Control', 'no-store');
+  // Under the site's `no-referrer`, a browser sends `Origin: null` with the
+  // form below, and the handler could not know the request is this page's.
+  res.set('Referrer-Policy', 'same-origin');
   res.type('html').send(layout(optOut.title[lang], `<h1>${optOut.title[lang]}</h1>
     <p>${optOut.intro[lang]}</p>
     ${state}`, lang));
@@ -387,17 +398,11 @@ router.get('/privacy/audience', (req, res) => {
 
 router.post('/privacy/audience', express.urlencoded({ extended: false, limit: '1kb' }), (req, res) => {
   // Only this site's own page may make the choice: a form on another site
-  // must not be able to opt a visitor back in, or out.
-  const origin = req.get('origin');
-  let sameSite = req.get('sec-fetch-site') === undefined || req.get('sec-fetch-site') === 'same-origin';
-  if (origin !== undefined) {
-    try {
-      sameSite = sameSite && new URL(origin).host === req.get('host');
-    } catch {
-      sameSite = false;
-    }
-  }
-  if (!sameSite) {
+  // must not be able to opt a visitor back in, or out. Browsers say where a
+  // request comes from in Sec-Fetch-Site, which a page cannot forge: when it
+  // is there it is what is believed (Origin may be `null` even for our own
+  // form). A browser too old to send it has its Origin compared instead.
+  if (!fromThisSite(req)) {
     res.status(403).type('text').send('Forbidden');
     return;
   }

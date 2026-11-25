@@ -21,17 +21,36 @@ export function createVisitors(deps: {
 }): {
   /** True the first time of the UTC day for this domain, this address and this User-Agent. */
   isNew(domain: string, ip: string, userAgent: string): boolean;
+  /**
+   * Drops the fingerprints and the salt of a day that is over. Called every
+   * few seconds: on a quiet night they would otherwise stay in memory until
+   * the next visitor.
+   */
+  expire(): void;
+  /** How many fingerprints are in memory. */
+  held(): number;
 } {
   const max = deps.max ?? 200_000;
   let day = '';
   let salt: Buffer = Buffer.alloc(0);
   let seen = new Set<string>();
 
+  const today = () => deps.now().toISOString().slice(0, 10);
+
   return {
+    expire() {
+      if (day !== '' && today() !== day) {
+        day = '';
+        salt = Buffer.alloc(0);
+        seen = new Set();
+      }
+    },
+
+    held: () => seen.size,
+
     isNew(domain, ip, userAgent) {
-      const today = deps.now().toISOString().slice(0, 10);
-      if (today !== day) {
-        day = today;
+      if (today() !== day) {
+        day = today();
         salt = deps.randomBytes(32);
         seen = new Set();
       }

@@ -107,3 +107,24 @@ test('a refreshed list replaces the one before it', async () => {
   assert.equal(ranges.check('one', '192.0.2.9'), 'verified');
   assert.equal(ranges.check('one', '203.0.113.7'), 'unverified', 'a range the operator dropped no longer verifies');
 });
+
+test('a prefix that would cover the whole Internet, or whose length is missing, is not a range', async () => {
+  const { ranges } = await loaded(() => json({ prefixes: [
+    { ipv4Prefix: '192.0.2.0/' }, { ipv4Prefix: '0.0.0.0/0' }, { ipv4Prefix: '10.0.0.0/7' }, { ipv4Prefix: '203.0.113.0/2e1' },
+    { ipv6Prefix: '::/0' }, { ipv6Prefix: '2001:db8::/' }, { ipv6Prefix: '2001::/12' }, { ipv4Prefix: '198.51.100.0/24' },
+  ] }));
+  assert.equal(ranges.check('one', '8.8.8.8'), 'unverified');
+  assert.equal(ranges.check('one', '10.1.2.3'), 'unverified');
+  assert.equal(ranges.check('one', '203.0.113.7'), 'unverified');
+  assert.equal(ranges.check('one', '2001:db8::1'), 'unverified');
+  assert.equal(ranges.check('one', '198.51.100.9'), 'verified', 'the one real range of the file');
+});
+
+test('refresh says whether every list was loaded', async () => {
+  let fail = false;
+  const { fetcher } = fakeFetch({ [SOURCES.one]: () => (fail ? json(LIST, 500) : json(LIST)), [SOURCES.two]: () => json(LIST) });
+  const ranges = createIpRanges({ fetch: fetcher, sources: SOURCES, warn: () => {} });
+  assert.equal(await ranges.refresh(), true);
+  fail = true;
+  assert.equal(await ranges.refresh(), false, 'one list failed: worth trying again soon');
+});

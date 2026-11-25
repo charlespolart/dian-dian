@@ -19,7 +19,8 @@ import { classifyClient } from './classify.js';
 import { createCounter, rollUpOldDays, writeBatch, type Hit } from './counter.js';
 import { createCountries } from './country.js';
 import { createIpRanges, type BotCheck } from './ipRanges.js';
-import { originOf } from './origin.js';
+import { KNOWN_ORIGINS, originOf } from './origin.js';
+import { keepFresh } from './schedule.js';
 import { createVisitors } from './visitors.js';
 
 export type AudienceConfig = {
@@ -54,6 +55,21 @@ export type Audience = {
 
 const first = (value: string | string[] | undefined): string | undefined => (Array.isArray(value) ? value[0] : value);
 
+/**
+ * Why a visitor is not counted, if they are not: their browser says so
+ * (`signal`: Global Privacy Control or Do Not Track, nothing for them to do
+ * or undo), or they asked on the opt-out page (`cookie`). Null when they are
+ * counted. The one definition, for the counter and for that page.
+ */
+export function objection(req: AudienceRequest): 'signal' | 'cookie' | null {
+  try {
+    if (first(req.headers?.['sec-gpc']) === '1' || first(req.headers?.dnt) === '1') return 'signal';
+    return req.cookies?.[OPT_OUT_COOKIE] === '1' ? 'cookie' : null;
+  } catch {
+    return null;
+  }
+}
+
 /** A browser fetching the page ahead of a visit that may never happen, or to draw a preview. */
 function isPrefetch(headers: AudienceRequest['headers']): boolean {
   return /prefetch|prerender/i.test(first(headers['sec-purpose']) ?? '')
@@ -70,9 +86,7 @@ export function createAudience(config: AudienceConfig, deps: {
   ipRanges: { check(ranges: string | null, ip: string | undefined): BotCheck };
   countries: { countryOf(ip: string | undefined): string };
 }): Audience {
-  function objects(req: AudienceRequest): boolean {
-    return req?.cookies?.[OPT_OUT_COOKIE] === '1' || first(req?.headers?.['sec-gpc']) === '1' || first(req?.headers?.dnt) === '1';
-  }
+  const objects = (req: AudienceRequest): boolean => objection(req) !== null;
 
   function record(req: AudienceRequest, kind: Hit['kind'], store: Hit['store'], lang: string): void {
     try {
@@ -111,13 +125,7 @@ export function createAudience(config: AudienceConfig, deps: {
   return {
     visit: (req, lang) => record(req, 'visit', '', lang),
     storeTap: (req, store, lang) => record(req, 'store_tap', store, lang),
-    objects: (req) => {
-      try {
-        return objects(req);
-      } catch {
-        return false;
-      }
-    },
+    objects,
   };
 }
 
@@ -134,21 +142,27 @@ const DAY = 24 * 60 * 60 * 1000;
  */
 export function startAudience(config: AudienceConfig & { downloads: boolean }, db: typeof database): Audience {
   const now = () => new Date();
-  const counter = createCounter({ write: writeBatch(db), now });
+  const counter = createCounter({ write: writeBatch(db), now, knownOrigins: KNOWN_ORIGINS });
+  const visitors = createVisitors({ now, randomBytes });
   const ipRanges = createIpRanges({ fetch });
   const countries = createCountries({ fetch, now });
 
   const every = (ms: number, task: () => Promise<void>) => {
-    const run = () => { task().catch((err) => console.error('Audience: background task failed:', err)); };
+    const run = () => { task().catch((err) => console.error('Audience: background task failed:', err instanceof Error ? err.message.slice(0, 160) : err)); };
     setInterval(run, ms).unref();
     return run;
   };
-  every(5_000, () => counter.flush());
+  every(5_000, async () => {
+    visitors.expire();
+    await counter.flush();
+  });
   every(DAY, () => rollUpOldDays(db, now()))();
   if (config.downloads) {
-    every(DAY, () => ipRanges.refresh())();
-    every(DAY, () => countries.refresh())();
+    // A few seconds after start, then daily; a failure is tried again every quarter of an hour.
+    const times = { first: 3_000, every: DAY, retry: 15 * 60 * 1000 };
+    keepFresh(() => ipRanges.refresh(), times);
+    keepFresh(() => countries.refresh(), times);
   }
 
-  return createAudience(config, { counter, visitors: createVisitors({ now, randomBytes }), ipRanges, countries });
+  return createAudience(config, { counter, visitors, ipRanges, countries });
 }

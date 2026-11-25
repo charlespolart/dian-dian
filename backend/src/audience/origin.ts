@@ -39,9 +39,45 @@ export const KNOWN_SITES: Record<string, string> = {
   x: 'x.com', xcom: 'x.com', twitter: 'x.com', twittercom: 'x.com',
 };
 
-/** The same cleaning as `campaignParam` in routes/landing.ts. */
+/**
+ * Sites that live on several hosts, and the one name each is counted under:
+ * Pinterest has a host per country (`www.pinterest.co.uk`, `fr.pinterest.com`),
+ * Google too, and others have link or mobile hosts (`l.instagram.com`,
+ * `t.co`). Without this a single source is a handful of small lines that
+ * cannot be added up. The patterns are anchored: `pinterest.evil.example`
+ * is not Pinterest. The first that matches wins.
+ */
+const TLD = '(com|[a-z]{2,3}|co\\.[a-z]{2}|com\\.[a-z]{2})';
+const FAMILIES: Array<[RegExp, string]> = [
+  [new RegExp(`(^|\\.)pinterest\\.${TLD}$`), 'pinterest.com'],
+  [/^pin\.it$/, 'pinterest.com'],
+  [/^gemini\.google\.com$/, 'gemini.google.com'],
+  [new RegExp(`(^|\\.)google\\.${TLD}$`), 'google.com'],
+  [/(^|\.)chatgpt\.com$|^chat\.openai\.com$/, 'chatgpt.com'],
+  [/(^|\.)perplexity\.ai$/, 'perplexity.ai'],
+  [/(^|\.)claude\.ai$/, 'claude.ai'],
+  [/(^|\.)facebook\.com$/, 'facebook.com'],
+  [/(^|\.)instagram\.com$/, 'instagram.com'],
+  [/(^|\.)tiktok\.com$/, 'tiktok.com'],
+  [/(^|\.)youtube\.com$|^youtu\.be$/, 'youtube.com'],
+  [/(^|\.)reddit\.com$/, 'reddit.com'],
+  [/(^|\.)(twitter|x)\.com$|^t\.co$/, 'x.com'],
+  [/(^|\.)bing\.com$/, 'bing.com'],
+  [/(^|\.)duckduckgo\.com$/, 'duckduckgo.com'],
+];
+
+/**
+ * Every site a tag or a family can name: a closed set. The counter keeps
+ * these out of its daily limits (see counter.ts).
+ */
+export const KNOWN_ORIGINS: ReadonlySet<string> = new Set([...Object.values(KNOWN_SITES), ...FAMILIES.map(([, site]) => site)]);
+
+/**
+ * The same cleaning as `campaignParam` in lib/storeLinks.ts. Only a plain
+ * string is a tag: a parameter given twice or with brackets is not one.
+ */
 function cleanTag(value: unknown): string {
-  return String(value ?? '').slice(0, 40).replace(/[^a-zA-Z0-9_-]/g, '').toLowerCase();
+  return typeof value === 'string' ? value.slice(0, 40).replace(/[^a-zA-Z0-9_-]/g, '').toLowerCase() : '';
 }
 
 /** No browser sends a longer Referer; one that long is not read. */
@@ -67,7 +103,7 @@ function refererSite(referer: string | undefined): string | null {
   const host = bare(url.hostname);
   // Written by whoever sends the request: only what looks like a domain is kept as one.
   if (host.length > 60 || IPV4.test(host) || !DOMAIN.test(host)) return 'other';
-  return host;
+  return FAMILIES.find(([pattern]) => pattern.test(host))?.[1] ?? host;
 }
 
 export function originOf(input: {
@@ -83,6 +119,6 @@ export function originOf(input: {
   // The site is never its own origin: its language links reload the page,
   // and the store redirections are reached from it.
   if (site !== null && site !== bare(input.ownHost)) return { site, from: 'referer', tagged };
-  const known = input.tagFallback && typeof input.utmSource === 'string' && Object.hasOwn(input.knownSites, tag) ? input.knownSites[tag] : undefined;
+  const known = input.tagFallback && Object.hasOwn(input.knownSites, tag) ? input.knownSites[tag] : undefined;
   return known === undefined ? { site: '', from: '', tagged } : { site: known, from: 'tag', tagged };
 }

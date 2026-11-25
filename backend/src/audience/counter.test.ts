@@ -12,14 +12,14 @@ const robot: Hit = {
 };
 const tap = (store: 'apple' | 'play', more: Partial<Hit> = {}): Hit => ({ ...person, kind: 'store_tap', store, origin: '', originFrom: '', ...more });
 
-function setup(limits: { maxOrigins?: number; maxBotNames?: number; maxRows?: number } = {}) {
+function setup(limits: { maxOrigins?: number; maxBotNames?: number; maxRows?: number; knownOrigins?: Set<string>; failWith?: unknown } = {}) {
   let now = new Date('2026-11-25T10:00:00Z');
   const written: Batch[] = [];
   const warnings: string[] = [];
   let failing = false;
   const counter = createCounter({
     write: async (batch) => {
-      if (failing) throw new Error('database down');
+      if (failing) throw limits.failWith ?? new Error('database down');
       written.push(batch);
     },
     now: () => now,
@@ -185,10 +185,49 @@ test('add never throws, whatever it is given', () => {
   assert.doesNotThrow(() => counter.add({} as Hit, true));
 });
 
-test('daily rows are kept 25 full months: the days before that month are rolled up', () => {
-  assert.equal(rollUpBefore(new Date('2026-11-25T10:00:00Z')), '2024-10-01');
-  assert.equal(rollUpBefore(new Date('2026-11-01T00:00:00Z')), '2024-10-01');
-  assert.equal(rollUpBefore(new Date('2026-11-30T23:59:59Z')), '2024-10-01');
-  assert.equal(rollUpBefore(new Date('2027-01-15T10:00:00Z')), '2024-12-01');
-  assert.equal(rollUpBefore(new Date('2027-02-01T00:00:00Z')), '2025-01-01');
+test('no daily row is ever older than 25 months: the current month and the 24 before it are kept', () => {
+  // On 2026-11-30 the oldest day kept is 2024-11-01, 24 months and 29 days old.
+  assert.equal(rollUpBefore(new Date('2026-11-25T10:00:00Z')), '2024-11-01');
+  assert.equal(rollUpBefore(new Date('2026-11-01T00:00:00Z')), '2024-11-01');
+  assert.equal(rollUpBefore(new Date('2026-11-30T23:59:59Z')), '2024-11-01');
+  assert.equal(rollUpBefore(new Date('2027-01-15T10:00:00Z')), '2025-01-01');
+  assert.equal(rollUpBefore(new Date('2027-02-01T00:00:00Z')), '2025-02-01');
+});
+
+test('the sites the counter exists to measure are never folded, whatever came before them', async () => {
+  const { counter, written } = setup({ maxOrigins: 2, knownOrigins: new Set(['pinterest.com', 'chatgpt.com']) });
+  for (const site of ['junk-1.example', 'junk-2.example', 'junk-3.example']) counter.add({ ...person, origin: site }, false);
+  counter.add({ ...person, origin: 'pinterest.com' }, false);
+  counter.add({ ...person, origin: 'pinterest.com' }, false);
+  counter.add({ ...person, origin: 'chatgpt.com', originFrom: 'tag', tagged: true }, false);
+  await counter.flush();
+  assert.deepEqual(rows(written[0]), [
+    '2026-11-25 visit chatgpt.com 1', '2026-11-25 visit junk-1.example 1', '2026-11-25 visit junk-2.example 1',
+    '2026-11-25 visit other 1', '2026-11-25 visit pinterest.com 2',
+  ]);
+});
+
+test('past the limit of rows, a known site keeps its name: only the detail is dropped', async () => {
+  const { counter, written } = setup({ maxRows: 1, knownOrigins: new Set(['pinterest.com']) });
+  counter.add({ ...person, origin: 'a.example', country: 'FR' }, false);
+  counter.add({ ...person, origin: 'pinterest.com', originFrom: 'tag', tagged: true, country: 'BE' }, false);
+  counter.add({ ...person, origin: 'pinterest.com', originFrom: 'tag', tagged: true, country: 'CH' }, false);
+  counter.add({ ...person, origin: 'b.example', country: 'CA' }, false);
+  await counter.flush();
+  const folded = written[0].counts.filter((row) => row.device === 'other').map((row) => `${row.origin} ${row.originFrom} ${row.tagged} ${row.country} ${row.count}`).sort();
+  assert.deepEqual(folded, ['other  false  1', 'pinterest.com tag true  2']);
+});
+
+test('the warning for a dropped batch is short, whatever the database said', async () => {
+  // drizzle's error message is the whole INSERT with every value.
+  const huge = Object.assign(new Error(`Failed query: insert into audience_counts ${'x'.repeat(50_000)}`), { cause: new Error('connection refused') });
+  const { counter, warnings, fail } = setup({ failWith: huge });
+  fail(true);
+  for (let i = 0; i < 10; i++) {
+    counter.add(person, false);
+    await counter.flush();
+  }
+  assert.equal(warnings.length, 1);
+  assert.ok(warnings[0].length < 300, `${warnings[0].length} characters`);
+  assert.match(warnings[0], /connection refused/);
 });

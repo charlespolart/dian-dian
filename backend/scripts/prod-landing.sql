@@ -40,21 +40,29 @@ WHERE day >= (now() AT TIME ZONE 'utc')::date - 29
 ORDER BY day;
 
 \echo === Par mois, 12 derniers : personnes seulement ===
-\echo (visiteurs_par_jour = moyenne des visiteurs du jour ; les visiteurs ne s additionnent pas d un jour à l autre.)
-SELECT to_char(date_trunc('month', day), 'YYYY-MM')                                 AS mois,
-       sum(visits)                                                                  AS visites,
-       round(avg(visitors), 1)                                                      AS visiteurs_par_jour,
-       sum(taps_apple)                                                              AS clics_app_store,
-       sum(taps_play)                                                               AS clics_google_play,
-       round(100.0 * sum(taps_apple + taps_play) / nullif(sum(visits), 0), 1)       AS clics_pct
-FROM audience_totals
-WHERE day >= date_trunc('month', now() AT TIME ZONE 'utc')::date - interval '11 months'
-GROUP BY 1
-ORDER BY 1;
+\echo (visiteurs_par_jour = visiteurs du jour, en moyenne sur les jours du mois écoulés, jours sans visite compris ; ils ne s additionnent pas d un jour à l autre.)
+-- visiteurs_par_jour: over the days of the month so far, not over the days
+-- that have a row — a day without a visit is a day.
+WITH m AS (
+  SELECT date_trunc('month', day)::date AS month,
+         sum(visits) AS visits, sum(visitors) AS visitors, sum(taps_apple) AS taps_apple, sum(taps_play) AS taps_play
+  FROM audience_totals
+  WHERE day >= date_trunc('month', now() AT TIME ZONE 'utc')::date - interval '11 months'
+  GROUP BY 1)
+SELECT to_char(month, 'YYYY-MM')                                                    AS mois,
+       visits                                                                       AS visites,
+       round(visitors::numeric
+             / (least((month + interval '1 month' - interval '1 day')::date, (now() AT TIME ZONE 'utc')::date) - month + 1), 1) AS visiteurs_par_jour,
+       taps_apple                                                                   AS clics_app_store,
+       taps_play                                                                    AS clics_google_play,
+       round(100.0 * (taps_apple + taps_play) / nullif(visits, 0), 1)               AS clics_pct
+FROM m
+ORDER BY month;
 
 \echo (Dans toutes les sections par mois qui suivent, 6 derniers mois, « <10 » remplace un nombre sous dix.)
 \echo === Par mois et site d origine (visites de personnes, 6 derniers mois) ===
 \echo (lu_dans : « Referer » = dit par le navigateur ; « repli » = déduit d un utm_source de la liste fermée. « (aucun) » = ni l un ni l autre.)
+\echo (« other » regroupe trois cas : un hôte qui n est pas un nom de domaine, un site arrivé après les 100 nouveaux sites du jour, une ligne arrivée après les 2000 lignes du jour.)
 WITH v AS (
   SELECT to_char(date_trunc('month', day), 'YYYY-MM') AS mois, origin, origin_from, sum(count) AS n
   FROM audience_counts
@@ -126,8 +134,9 @@ WITH v AS (
   WHERE kind = 'visit' AND bot_family = ''
     AND day >= date_trunc('month', now() AT TIME ZONE 'utc')::date - interval '5 months'
   GROUP BY 1, 2)
-SELECT mois, lang AS langue,
-       CASE WHEN n < 10 THEN '<10' ELSE n::text END AS visites
+SELECT mois,
+       CASE WHEN lang = '' THEN '(non détaillé)' ELSE lang END AS langue,
+       CASE WHEN n < 10 THEN '<10' ELSE n::text END            AS visites
 FROM v
 ORDER BY mois, n DESC;
 
@@ -153,7 +162,7 @@ WITH t AS (
     AND day >= date_trunc('month', now() AT TIME ZONE 'utc')::date - interval '5 months'
   GROUP BY 1, 2, 3, 4)
 SELECT mois, store,
-       CASE WHEN origin <> '' THEN origin WHEN tagged THEN '(lien marqué, hors liste)' ELSE '(lien nu)' END AS origine,
+       CASE WHEN origin <> '' THEN origin WHEN tagged THEN '(lien marqué, origine non lue)' ELSE '(lien nu)' END AS origine,
        CASE WHEN n < 10 THEN '<10' ELSE n::text END AS clics
 FROM t
 ORDER BY mois, n DESC, store;
@@ -165,7 +174,7 @@ SELECT to_char(date_trunc('month', day), 'YYYY-MM') AS mois,
        bot_name                                     AS nom,
        bot_check                                    AS verification,
        sum(count)                                   AS passages,
-       sum(count) FILTER (WHERE kind = 'store_tap') AS dont_boutons_store
+       coalesce(sum(count) FILTER (WHERE kind = 'store_tap'), 0) AS dont_boutons_store
 FROM audience_counts
 WHERE bot_family <> ''
   AND day >= date_trunc('month', now() AT TIME ZONE 'utc')::date - interval '5 months'

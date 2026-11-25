@@ -26,7 +26,10 @@ test('without a provider token the App Store link stays plain', () => {
 
 test('a campaign is cleaned before it is relayed', () => {
   assert.equal(storeLinks({ utm_source: 'Pin<script>', utm_campaign: 'a b&c=d' }, 'PT123').apple, `${APP_STORE_URL}?pt=PT123&ct=pinscript&mt=8`);
-  assert.equal(storeLinks({ utm_source: ['a', 'b'] }, '').play, `${PLAY_STORE_URL}&referrer=utm_source%3Dab`);
+  assert.equal(storeLinks({ utm_source: ['a', 'b'] }, '').play, PLAY_STORE_URL, 'only a plain string is a campaign');
+  // What Express makes of ?utm_source[toString]=x: an object String() cannot convert.
+  assert.deepEqual(storeLinks({ utm_source: { toString: 'x' }, utm_campaign: { toString: 'y' } }, 'PT123'), { apple: APP_STORE_URL, play: PLAY_STORE_URL });
+  assert.equal(campaignQuery({ utm_source: { toString: 'x' } }), '');
   assert.equal(storeLinks({ utm_source: 'x'.repeat(100) }, '').play, `${PLAY_STORE_URL}&referrer=utm_source%3D${'x'.repeat(40)}`);
 });
 

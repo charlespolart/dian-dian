@@ -47,6 +47,11 @@ jobs:
       # Shared by the server and the smoke suite, which posts made-up
       # RevenueCat events to the webhook of the throwaway server.
       REVENUECAT_WEBHOOK_SECRET: release-checks-webhook-secret
+      # The audience counter downloads its real data (DB-IP's country
+      # database, the robots' IP ranges) in the throwaway server, and the
+      # smoke suite checks a country with it. If DB-IP cannot be reached the
+      # check fails: run the job again.
+      AUDIENCE_DOWNLOADS: 'on'
       PORT: 3001
       NODE_ENV: test
     defaults:

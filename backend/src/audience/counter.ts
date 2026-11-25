@@ -13,6 +13,12 @@
  * are filed under 'other'. And past a number of rows in a day, whatever is
  * new falls into one row per kind — nobody can fill the table, and a busy
  * day keeps its detail far longer than an attack needs to be cut off.
+ *
+ * The sites the counter exists to measure (`knownOrigins`: Pinterest,
+ * ChatGPT… a closed set) are outside those limits: a hundred junk Referers
+ * sent at midnight must not cost the day its real origins. Past the limit
+ * of rows a visit from one of them still keeps the site, and loses only its
+ * detail.
  */
 import { lt, sql } from 'drizzle-orm';
 import type { db as database } from '../db/index.js';
@@ -54,6 +60,8 @@ export function createCounter(deps: {
   maxBotNames?: number;
   /** New rows a day may bring before the next fall into one row per kind. */
   maxRows?: number;
+  /** Sites of origin that are never folded: a closed set, bounded by construction. */
+  knownOrigins?: ReadonlySet<string>;
 }): {
   /** Counts one hit. `newVisitor`: the first visit of the day for this person. Never throws, no I/O. */
   add(hit: Hit, newVisitor: boolean): void;
@@ -64,6 +72,7 @@ export function createCounter(deps: {
   const maxOrigins = deps.maxOrigins ?? 100;
   const maxBotNames = deps.maxBotNames ?? 200;
   const maxRows = deps.maxRows ?? 2000;
+  const knownOrigins = deps.knownOrigins ?? new Set<string>();
 
   let pending = new Map<string, Hit & { day: string; count: number }>();
   let totals = new Map<string, Total>();
@@ -79,7 +88,7 @@ export function createCounter(deps: {
   function bounded(today: string, hit: Hit): Hit {
     let kept = hit;
     if (kept.botFamily === '') {
-      if (kept.origin !== '' && kept.origin !== 'other' && !origins.has(kept.origin)) {
+      if (kept.origin !== '' && kept.origin !== 'other' && !knownOrigins.has(kept.origin) && !origins.has(kept.origin)) {
         if (origins.size < maxOrigins) origins.add(kept.origin);
         else kept = { ...kept, origin: 'other' };
       }
@@ -93,11 +102,15 @@ export function createCounter(deps: {
       rowsOfDay.add(key);
       return kept;
     }
-    // Past the limit of the day: one row per kind, store and, for a robot, family.
+    // Past the limit of the day: one row per kind, store and, for a robot,
+    // family. A known site of origin stays named (with how it was read):
+    // that is a handful of rows more, and the question the counter is for.
     const blank = { origin: '', originFrom: '', tagged: false, device: '', browser: '', inApp: '', lang: '', country: '', botCheck: '' } as const;
-    return kept.botFamily === ''
-      ? { ...blank, kind: kept.kind, store: kept.store, origin: 'other', device: 'other', browser: 'other', botFamily: '', botName: '' }
-      : { ...blank, kind: kept.kind, store: kept.store, botFamily: kept.botFamily, botName: 'other' };
+    if (kept.botFamily !== '') return { ...blank, kind: kept.kind, store: kept.store, botFamily: kept.botFamily, botName: 'other' };
+    const person = { ...blank, kind: kept.kind, store: kept.store, device: 'other', browser: 'other', botFamily: '', botName: '' };
+    return knownOrigins.has(kept.origin)
+      ? { ...person, origin: kept.origin, originFrom: kept.originFrom, tagged: kept.tagged }
+      : { ...person, origin: 'other' };
   }
 
   return {
@@ -142,7 +155,7 @@ export function createCounter(deps: {
         failures++;
         if (failures >= 10) {
           const lost = batch.counts.reduce((sum, row) => sum + row.count, 0);
-          warn(`Audience: ${lost} visits and taps dropped after ${failures} failed writes: ${err instanceof Error ? err.message : String(err)}`);
+          warn(`Audience: ${lost} visits and taps dropped after ${failures} failed writes: ${reason(err)}`);
           failures = 0;
         } else {
           // Back in the queue, under what was counted while the write was tried.
@@ -167,6 +180,15 @@ export function createCounter(deps: {
       }
     },
   };
+}
+
+/**
+ * Why a write failed, in a few words. drizzle's own message is the whole
+ * INSERT with every value: the cause underneath is what says something.
+ */
+function reason(err: unknown): string {
+  const cause = (err as { cause?: unknown } | null | undefined)?.cause ?? err;
+  return (cause instanceof Error ? cause.message : String(cause)).slice(0, 160);
 }
 
 /** How many rows one INSERT carries: 15 values each, far under PostgreSQL's 65 535 parameters. */
@@ -204,13 +226,17 @@ export function writeBatch(db: Db): (batch: Batch) => Promise<void> {
   };
 }
 
-/** The first day of the month 25 months before the month of `now` (UTC): days before it are rolled up. */
+/**
+ * The first day kept: the first of the month 24 months before the month of
+ * `now` (UTC). The current month and the 24 before it stay, so that no daily
+ * row is ever older than 25 months; the days before are rolled up.
+ */
 export function rollUpBefore(now: Date): string {
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 25, 1)).toISOString().slice(0, 10);
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 24, 1)).toISOString().slice(0, 10);
 }
 
 /**
- * Daily rows are kept 25 months. Older days become one total per month
+ * Daily rows are kept 25 months at most. Older days become one total per month
  * (visits and taps of people, hits of robots) and are deleted, in one
  * transaction. The visitors of a day cannot be added across days: they are
  * not carried over.

@@ -5,7 +5,7 @@
  * The database is DB-IP's IP-to-Country Lite (CC BY 4.0, no account; the
  * licence asks for a link "IP Geolocation by DB-IP" on the pages that use
  * it — the site's footer carries it). One file a month, about 4 MB
- * compressed and 8 MB in memory. The server's image has no disk to keep it
+ * compressed and 21 MB in memory. The server's image has no disk to keep it
  * on, so it is downloaded at start and held in memory, and asked for again
  * when the month changes. Until it is there, and whenever an address is not
  * in it, the country is unknown ('').
@@ -33,22 +33,29 @@ export function createCountries(deps: {
   /** Opens an unpacked database file; the default reads the MMDB format. Throws on a file it cannot read. */
   open?: (database: Buffer) => Database;
   warn?: (message: string) => void;
-  /** The most a file may weigh, as sent and once unpacked. */
+  /** The most a file may weigh once unpacked. */
   maxBytes?: number;
+  /** The most it may weigh as sent. The real file is 4 MB: more than a few times that is not it. */
+  maxPackedBytes?: number;
 }): {
-  /** Loads the file of the month unless it is the one in service. A failure keeps what was loaded. Never throws. */
-  refresh(): Promise<void>;
+  /**
+   * Loads the file of the month unless it is the one in service. A failure
+   * keeps what was loaded. Never throws. True when the file of the month, or
+   * last month's standing in for it on first load, is in service.
+   */
+  refresh(): Promise<boolean>;
   /** 'FR', or '' when unknown. */
   countryOf(ip: string | undefined): string;
 } {
   const open = deps.open ?? ((database: Buffer): Database => new Reader(database));
   const warn = deps.warn ?? ((message: string) => console.error(message));
   const maxBytes = deps.maxBytes ?? 64_000_000;
+  const maxPackedBytes = deps.maxPackedBytes ?? 16_000_000;
   let database: Database | null = null;
   let loaded = '';
 
   async function load(url: string): Promise<Database | null> {
-    const packed = await download(deps.fetch, url, { maxBytes, timeoutMs: 60_000 });
+    const packed = await download(deps.fetch, url, { maxBytes: maxPackedBytes, timeoutMs: 60_000 });
     if (packed === null) return null;
     try {
       return open(await unpack(packed, { maxOutputLength: maxBytes }));
@@ -61,7 +68,7 @@ export function createCountries(deps: {
     async refresh() {
       const now = deps.now();
       const wanted = countryDatabaseUrl(now);
-      if (loaded === wanted) return;
+      if (loaded === wanted) return true;
       // On the first days of a month its file may not be out yet: last
       // month's will do, unless it is the one already in service.
       const before = countryDatabaseUrl(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)));
@@ -70,10 +77,11 @@ export function createCountries(deps: {
         if (opened !== null) {
           database = opened;
           loaded = url;
-          return;
+          return true;
         }
       }
       warn(`Audience: country database not loaded: ${wanted}`);
+      return false;
     },
 
     countryOf(ip) {

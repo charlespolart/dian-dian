@@ -9,7 +9,8 @@ type Lang = 'en' | 'fr' | 'zh-CN' | 'zh-TW';
 const SUPPORTED: Lang[] = ['en', 'fr', 'zh-CN', 'zh-TW'];
 
 function detectLang(req: Request): Lang {
-  const q = String(req.query.lang || '');
+  // Only a plain string: `?lang[toString]=x` gives an object that cannot be converted to text.
+  const q = typeof req.query.lang === 'string' ? req.query.lang : '';
   if (SUPPORTED.includes(q as Lang)) return q as Lang;
   const accept = req.headers['accept-language'] || '';
   for (const part of accept.split(',')) {
@@ -33,7 +34,10 @@ const APPLE_CAMPAIGN_PT = process.env.APPLE_CAMPAIGN_PT || '';
 
 // The stores are told the visitor comes from this site (its origin alone,
 // never the page or its query): App Store Connect shows it as the "Web
-// referrer". Everywhere else the site keeps helmet's `no-referrer`.
+// referrer". Only the store buttons say so — by their `referrerpolicy`
+// attribute, then by the header of the redirection they lead to. The page
+// itself keeps helmet's `no-referrer`, so that nothing else it loads (the
+// fonts) learns which site the visitor is on.
 const REFERRER_POLICY = 'strict-origin-when-cross-origin';
 
 // App Store screenshots shipped under /shots (see backend/public/shots).
@@ -179,7 +183,7 @@ const t: Record<Lang, Copy> = {
     legal: '法律聲明',
     contact: '聯繫',
     made: '由 OVERRIDE 用心打造——一次一個像素。',
-    audience: '無 Cookie 訪問統計',
+    audience: '無 Cookie 流量統計',
   },
 };
 
@@ -193,12 +197,17 @@ const PLAY_GLYPH =
 // The store buttons for the visitor's platform: the App Store on an iPhone,
 // Google Play on Android, both when it can't be told (see storePlatform).
 // `campaign` is what `campaignQuery` returns: '' or a query of cleaned
-// values, safe in HTML once its `&` is written as an entity. `nofollow`:
-// these are redirections, not pages (robots.txt keeps polite robots off them).
-function storeButton(c: Copy, campaign: string, platform: StorePlatform): string {
-  const query = campaign.replace(/&/g, '&amp;');
-  const apple = `<a class="btn-store" href="/go/apple${query}" target="_blank" rel="nofollow noopener">${APPLE_GLYPH}<span>${c.cta}</span></a>`;
-  const play = `<a class="btn-store" href="/go/play${query}" target="_blank" rel="nofollow noopener">${PLAY_GLYPH}<span>${c.ctaPlay}</span></a>`;
+// values, safe in HTML once its `&` is written as an entity. The page's
+// language goes with it, so that a tap is counted in the language the
+// visitor was reading. `nofollow`: these are redirections, not pages
+// (robots.txt keeps polite robots off them). No `target="_blank"`: a new tab
+// that only redirects to a store stays behind, empty, and the built-in
+// browsers of apps (Pinterest, Instagram) handle new tabs badly.
+function storeButton(c: Copy, lang: Lang, campaign: string, platform: StorePlatform): string {
+  const query = `?lang=${lang}${campaign.replace(/^\?/, '&').replace(/&/g, '&amp;')}`;
+  const link = (store: 'apple' | 'play') => `class="btn-store" href="/go/${store}${query}" rel="nofollow noopener" referrerpolicy="${REFERRER_POLICY}"`;
+  const apple = `<a ${link('apple')}>${APPLE_GLYPH}<span>${c.cta}</span></a>`;
+  const play = `<a ${link('play')}>${PLAY_GLYPH}<span>${c.ctaPlay}</span></a>`;
   if (platform === 'ios') return apple;
   if (platform === 'android') return play;
   return `${apple}
@@ -405,7 +414,7 @@ function page(lang: Lang, campaign = '', platform: StorePlatform = 'unknown'): s
         <h1>${c.h1}</h1>
         <p class="sub">${c.sub}</p>
         <div class="cta-row">
-          ${storeButton(c, campaign, platform)}
+          ${storeButton(c, lang, campaign, platform)}
           <span class="note">${c.note}</span>
         </div>
         <div class="dots" aria-hidden="true">${heroDots}</div>
@@ -434,7 +443,7 @@ function page(lang: Lang, campaign = '', platform: StorePlatform = 'unknown'): s
     <section class="wrap final reveal">
       <h2>${c.finalH}</h2>
       <div class="cta-row" style="justify-content:center">
-        ${storeButton(c, campaign, platform)}
+        ${storeButton(c, lang, campaign, platform)}
         <span class="note">${c.note}</span>
       </div>
     </section>
@@ -489,7 +498,6 @@ router.get('/', (req, res) => {
   // The buttons depend on the User-Agent: no cache may serve one device's
   // page to another.
   res.vary('User-Agent');
-  res.set('Referrer-Policy', REFERRER_POLICY);
   res.type('html').send(page(lang, campaignQuery(req.query), storePlatform(req.get('user-agent'))));
   // Counted once the page is on its way: no I/O, and it cannot fail the response.
   siteAudience.visit(req, lang);
