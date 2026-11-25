@@ -26,9 +26,9 @@
 - Jamais « validé par la CNIL » dans un texte.
 - Changelog : une entrée sous « Unreleased » dans `backend/CHANGELOG.md`, en anglais.
 
-## Choix de Fable, à valider
+## Choix de Fable (validés par Charles le 2026-11-25)
 
-La spec laisse ces points au constructeur. Chacun est *mon choix* ; dites-le si l'un doit changer.
+La spec laisse ces points au constructeur. Charles a validé le plan et ces choix (« oui go »), avec un changement au point 9 : la fiche du playbook s'écrit directement dans le playbook (« pour le playbook tu peux modifier »).
 
 1. **Opposition : la visite n'est pas comptée du tout.** Cookie d'opposition, en-tête `Sec-GPC: 1` ou `DNT: 1` : aucune ligne, pas même un total. Coût : les totaux sont un peu sous le vrai (les navigateurs qui envoient ces signaux par défaut, Brave et Firefox en navigation privée surtout).
 2. **Les robots sont comptés à part, sans détail.** Une ligne par jour, famille, nom et vérification ; pas d'appareil, de pays ni d'origine pour eux.
@@ -38,7 +38,7 @@ La spec laisse ces points au constructeur. Chacun est *mon choix* ; dites-le si 
 6. **Chemins inconnus : une page 404 pour le site, du JSON 404 pour `/api/*`.**
 7. **Page d'opposition : `/privacy/audience`**, un bouton qui pose ou retire le cookie (`dd_noaudience`, 13 mois).
 8. **Le registre commence ici** : `docs/REGISTRE.md` avec la seule fiche « Mesure d'audience du site » ; le lot suivant (registre complet) ajoute les autres.
-9. **La fiche du playbook est écrite en brouillon dans ce dépôt** (`docs/playbook-draft-audience.md`) et vous est proposée à la fin : elle n'entre dans le playbook qu'avec votre accord.
+9. **La fiche du playbook est écrite directement dans le playbook** (`~/Documents/Coding/playbook/infrastructure/mesure-audience.md`, avec un renvoi depuis `legal/rgpd.md` et l'index du `README.md`), laissée non committée là-bas et signalée à Charles.
 10. **Conservation** : lignes du jour gardées 25 mois, puis remplacées par un total par mois (visites, clics par store, passages de robots). Les visiteurs uniques ne s'additionnent pas d'un jour à l'autre : ils ne sont pas repris dans le total mensuel.
 
 ## Review Focus
@@ -467,10 +467,10 @@ La section dit, dans chaque langue : ce qui est compté (visites, clics vers les
 
 **Files:**
 - Modify: `backend/CHANGELOG.md`, `README.md`, `docs/ROADMAP.md` §3, `docs/FABLE.md` (« Ce que Charles fait »)
-- Create: `docs/playbook-draft-audience.md`
+- Create (hors de ce dépôt) : `~/Documents/Coding/playbook/infrastructure/mesure-audience.md` ; modifier là-bas `legal/rgpd.md` et `README.md` (renvois)
 
 - [ ] **Step 1: Changelog et documents.** Ce que Charles fait après le déploiement : demander à Vultr son avenant de traitement et le citer au registre ; lancer `prod-landing.sql` une semaine après et vérifier que les pays sont variés ; relire la table des robots chaque trimestre.
-- [ ] **Step 2: Le brouillon de la fiche du playbook** : liste de contrôle CNIL, texte de politique de confidentialité, forme des tables, règles du classifieur de robots, rafraîchissement des listes et de la base des pays, script de lecture.
+- [ ] **Step 2: La fiche du playbook** : liste de contrôle CNIL, texte de politique de confidentialité, forme des tables, règles du classifieur de robots, rafraîchissement des listes et de la base des pays, script de lecture.
 - [ ] **Step 3: `make test` et la suite smoke sur l'arbre final, commit.**
 
 ## Hors périmètre
