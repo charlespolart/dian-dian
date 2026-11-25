@@ -53,7 +53,8 @@ dian-dian/
 │   │   └── routes/      # auth, bootstrap (one-shot app state), pages, cells, legends,
 │   │                    # stats (all-time days), purchase (RC webhook), legal
 │   ├── drizzle/         # Generated SQL migrations
-│   ├── scripts/         # seed-demo-local, smoke (end-to-end against a running backend)
+│   ├── scripts/         # seed-demo-local, smoke (end-to-end against a running backend),
+│   │                    # prod-*.sql (read-only stats: accounts, trackers, activation, events, purchases)
 │   └── Dockerfile       # Multi-stage: builder / runtime / development
 ├── flutter_app/
 │   ├── lib/
@@ -112,6 +113,7 @@ make help      # List all targets
 ```bash
 cd flutter_app && flutter analyze && flutter test            # hermetic unit tests
 cd backend && npx tsx scripts/smoke.ts                        # backend end-to-end (needs `make back`)
+                                                              # webhook checks need the same REVENUECAT_WEBHOOK_SECRET on the server and here
 cd flutter_app && flutter test integration/backend_e2e_test.dart   # real client data layer vs local backend
 cd backend && npx tsx scripts/seed-demo-local.ts              # demo@diandian.app / password with 9 trackers
 ```

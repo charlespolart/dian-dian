@@ -27,3 +27,15 @@ SELECT e.name, count(*) AS occurrences, count(DISTINCT e.user_id) AS comptes
 FROM events e JOIN users u ON u.id = e.user_id
 WHERE NOT (u.vip OR u.email ILIKE '%@example.com' OR u.email ILIKE '%@overridedev.com' OR u.email = 'demo@diandian.app' OR u.email ILIKE '%@mydiandian.app')
 GROUP BY 1 ORDER BY 2 DESC;
+
+\echo === Par plateforme et version, 8 dernières semaines (vide = app 1.4.0 ou plus ancienne) ===
+SELECT coalesce(e.platform, '-')    AS plateforme,
+       coalesce(e.app_version, '-') AS version,
+       e.name,
+       count(*)                     AS occurrences,
+       count(DISTINCT e.user_id)    AS comptes
+FROM events e JOIN users u ON u.id = e.user_id
+WHERE NOT (u.vip OR u.email ILIKE '%@example.com' OR u.email ILIKE '%@overridedev.com' OR u.email = 'demo@diandian.app' OR u.email ILIKE '%@mydiandian.app')
+  AND e.created_at >= date_trunc('week', now()) - interval '7 weeks'
+GROUP BY 1, 2, 3
+ORDER BY 1, 2, 4 DESC;

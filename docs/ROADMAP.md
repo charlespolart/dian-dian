@@ -85,9 +85,12 @@ version de l'app sur les événements ; les étapes du parcours d'achat
 RevenueCat qui ignore `CANCELLATION` et jette période (essai ou non), prix,
 devise, raison d'annulation et environnement (sandbox) — garder chaque
 événement brut dans une table à part ; une ouverture d'app.
-Réparti le 2026-11-25 (`docs/CONFIRMATION.md`, point 10) : la table brute
-du webhook et la plateforme sur les événements dans un petit lot backend
-(chantier 0 de `docs/FABLE.md`) ; les étapes du
+**Fait le 2026-11-25, à sortir avec la release unique** (chantier 0 de
+`docs/FABLE.md`, branche `feat/purchase-measurement`) : la table
+`subscription_events` garde chaque événement RevenueCat (lecture :
+`backend/scripts/prod-purchases.sql`), et chaque événement de l'app porte sa
+plateforme et sa version. Restent, réparti le 2026-11-25
+(`docs/CONFIRMATION.md`, point 10) : les étapes du
 parcours d'achat avec la refonte du paywall ; l'ouverture d'app avec les
 rappels.
 

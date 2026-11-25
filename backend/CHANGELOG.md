@@ -10,6 +10,17 @@ working against the new backend.
 
 ## [Unreleased]
 
+### Added
+- Table `subscription_events` (migration 0017): the RevenueCat webhook keeps every event as it arrives, next to `subscriptions` which stays the current state — type, environment (sandbox or production), store, product, period type (trial or not), price in USD and in the purchase currency, country, cancel and expiration reasons, trial conversion, dates, and the whole payload without the subscriber attributes. One row per RevenueCat event id, so a retried delivery is not counted twice; rows go with the account when it is deleted. Reading an event is pure, unit-tested code (`src/lib/rcEvent.ts`).
+- `scripts/prod-purchases.sql`: trials started, converted and cancelled (and on which day of the trial), paid sales by product, store and currency, revenue per month, refunds, why subscriptions end — production events of real accounts only, with a last section counting what was left out (sandbox, test accounts, events with no account).
+- `POST /api/events` accepts `platform` (`ios`, `android`, `web`) and `appVersion` (`X.Y.Z`), kept in `events.platform` and `events.app_version` (migration 0017). Both optional: apps ≤ 1.4.0 send the name alone, and a value the server does not know is dropped without refusing the event. `scripts/prod-events.sql` gains a section per platform and version.
+
+### Fixed
+- RevenueCat webhook: an event the server can read but has no account for is answered 200 instead of making RevenueCat retry it — a `TRANSFER`, which carries no `app_user_id` (was 400), and a purchase for an account that no longer exists (was 500 on the foreign key).
+
+### Changed
+- The smoke suite posts sandbox RevenueCat events to the local server and reads the result in the database; it never does so when `SMOKE_BASE` is set. It needs `REVENUECAT_WEBHOOK_SECRET` in its environment as well as the server's (CI sets both), and skips these checks with a message otherwise.
+
 ## [1.2.1] - 2026-11-23
 
 ### Changed

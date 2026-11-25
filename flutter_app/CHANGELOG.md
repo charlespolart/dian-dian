@@ -12,6 +12,9 @@ count of the tagged commit (same on iOS and Android).
 
 ## [Unreleased]
 
+### Added
+- Product events say where they come from: `EventsService` sends the platform (`ios`, `android`, `web`) and the installed version with each event, so the iOS and Android funnels can be compared. Needs the backend of the same release to be kept; an older backend ignores them.
+
 ### Changed
 - A dot that carries a comment wears a small badge astride its top-right edge instead of the ring with a hole, which read as a button and, across a year, as a field of holes: the dot's own colour mixed 45 % into the screen's, ringed by the screen colour, so it stays quieter than the dot on light and dark themes alike; drawn the same on the grid (again over the today ring, which would cut it), under the pop and through the morph (`CommentBadge` in `lib/widgets/grid_geometry.dart`).
 
