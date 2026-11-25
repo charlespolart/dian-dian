@@ -44,6 +44,9 @@ jobs:
       DATABASE_URL: postgres://postgres:password@localhost:5432/dian_dian_test
       JWT_SECRET: release-checks-secret-0123456789abcdef0123456789
       RESEND_API_KEY: re_release_checks_placeholder
+      # Shared by the server and the smoke suite, which posts made-up
+      # RevenueCat events to the webhook of the throwaway server.
+      REVENUECAT_WEBHOOK_SECRET: release-checks-webhook-secret
       PORT: 3001
       NODE_ENV: test
     defaults:

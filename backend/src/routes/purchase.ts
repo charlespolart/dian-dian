@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import { timingSafeEqual } from 'node:crypto';
 import { db } from '../db/index.js';
-import { subscriptions } from '../db/schema.js';
+import { subscriptions, subscriptionEvents, users } from '../db/schema.js';
 import { requireAuth } from '../middleware/auth.js';
 import { env } from '../lib/env.js';
+import { entitlementAction, parseRcEvent, rcEventAccountId, subscriptionEventRow, type EntitlementAction, type RcEvent } from '../lib/rcEvent.js';
 import { eq, and } from 'drizzle-orm';
 
 const router = Router();
@@ -51,37 +52,20 @@ router.get('/status', requireAuth, async (req, res) => {
 // Authorization header.
 // Docs: https://www.revenuecat.com/docs/integrations/webhooks
 //
-// Note: RC does NOT sign the body with HMAC. The only auth is the static
-// secret echoed back in the `Authorization` header. See:
-//   ~/Documents/Coding/playbook/third-party/revenuecat.md
+// Auth: RevenueCat sends the value typed in its dashboard verbatim in the
+// `Authorization` header, and that static secret is what is checked here.
+// See ~/Documents/Coding/playbook/third-party/revenuecat.md
+//
+// Every authenticated event is first kept as it arrived in
+// `subscription_events` (what was bought, at what price, trial or not, why
+// it ended), then applied to `subscriptions`, the current state. Reading
+// the event is in lib/rcEvent.ts.
+//
+// RevenueCat retries anything but a 200 (5 times, over about 80 minutes),
+// so an event this server can read but has nothing to do with — an account
+// it does not know, a type it does not handle, a transfer, which carries no
+// `app_user_id` — is answered 200, not refused.
 // ---------------------------------------------------------------------------
-type RcEventType =
-  | 'INITIAL_PURCHASE'
-  | 'RENEWAL'
-  | 'NON_RENEWING_PURCHASE'
-  | 'PRODUCT_CHANGE'
-  | 'CANCELLATION'
-  | 'UNCANCELLATION'
-  | 'EXPIRATION'
-  | 'BILLING_ISSUE'
-  | 'SUBSCRIPTION_PAUSED'
-  | 'SUBSCRIPTION_EXTENDED'
-  | 'TRANSFER'
-  | 'SUBSCRIBER_ALIAS'
-  | 'TEST';
-
-interface RcEvent {
-  type: RcEventType;
-  app_user_id: string;
-  original_app_user_id?: string;
-  product_id?: string;
-  store?: string;
-  expiration_at_ms?: number;
-  purchased_at_ms?: number;
-  original_transaction_id?: string;
-  transaction_id?: string;
-}
-
 /// Constant-time comparison of the `Authorization` header against the
 /// configured secret. Fails closed (returns false) when either is missing —
 /// which yields a 401 from the handler so RC stops retrying instead of
@@ -105,14 +89,21 @@ router.post('/webhook', async (req, res) => {
     return;
   }
 
-  const event = req.body?.event as RcEvent | undefined;
-  if (!event || !event.type || !event.app_user_id) {
+  const event = parseRcEvent(req.body);
+  if (!event) {
     res.status(400).json({ error: 'Invalid event' });
     return;
   }
 
   try {
-    await handleRcEvent(event);
+    // The account the event is about, when it is one of ours and still
+    // exists: not an anonymous RevenueCat id (a device not logged in yet),
+    // not an account deleted since.
+    const accountId = rcEventAccountId(event);
+    const userId = accountId !== null && (await accountExists(accountId)) ? accountId : null;
+
+    await recordEvent(event, userId);
+    await applyEntitlement(entitlementAction(event), userId);
     res.json({ ok: true });
   } catch (err) {
     console.error('RC webhook error:', err);
@@ -120,43 +111,45 @@ router.post('/webhook', async (req, res) => {
   }
 });
 
-async function handleRcEvent(event: RcEvent): Promise<void> {
-  const userId = event.app_user_id;
-  // RC sends anonymous IDs for unidentified users — ignore until logIn happens.
-  if (userId.startsWith('$RCAnonymousID:')) return;
+async function accountExists(id: string): Promise<boolean> {
+  const [row] = await db.select({ id: users.id }).from(users).where(eq(users.id, id)).limit(1);
+  return row !== undefined;
+}
 
-  const productId = event.product_id || '';
-  const store = mapStore(event.store);
-  const txId = event.original_transaction_id || event.transaction_id || '';
-  const expiresAt = event.expiration_at_ms ? new Date(event.expiration_at_ms) : null;
+/// Keeps the event as it arrived. A retried delivery reuses the event's id
+/// and is one row. This is measurement: a failure is logged and goes no
+/// further, so it can neither fail a purchase nor make RevenueCat retry it.
+async function recordEvent(event: RcEvent, userId: string | null): Promise<void> {
+  const row = subscriptionEventRow(event, new Date());
+  if (!row) return;
+  try {
+    await db.insert(subscriptionEvents)
+      .values({ ...row, userId })
+      .onConflictDoNothing({ target: subscriptionEvents.rcEventId });
+  } catch (err) {
+    console.error('RC webhook: event not recorded:', err);
+  }
+}
 
-  switch (event.type) {
-    case 'INITIAL_PURCHASE':
-    case 'RENEWAL':
-    case 'NON_RENEWING_PURCHASE':
-    case 'PRODUCT_CHANGE':
-    case 'UNCANCELLATION':
-    case 'SUBSCRIPTION_EXTENDED':
-      await upsertSubscription({ userId, store, productId, txId, expiresAt, active: true });
-      break;
-
-    case 'CANCELLATION':
-      // User turned off auto-renew but is still entitled until expiration —
-      // keep active=true; expiration handled by EXPIRATION.
-      break;
-
-    case 'EXPIRATION':
-    case 'BILLING_ISSUE':
-    case 'SUBSCRIPTION_PAUSED':
-      await deactivateByTransaction(txId);
-      break;
-
-    case 'TRANSFER':
-    case 'SUBSCRIBER_ALIAS':
-    case 'TEST':
-      // No-op: alias / transfer / test events don't change entitlement state
-      // for the destination user — purchase events follow.
-      break;
+async function applyEntitlement(action: EntitlementAction, userId: string | null): Promise<void> {
+  switch (action.kind) {
+    case 'upsert':
+      // A purchase with no account of ours behind it has no one to entitle.
+      if (userId === null) return;
+      await upsertSubscription({
+        userId,
+        store: action.store,
+        productId: action.productId,
+        txId: action.txId,
+        expiresAt: action.expiresAt,
+        active: true,
+      });
+      return;
+    case 'deactivate':
+      await deactivateByTransaction(action.txId);
+      return;
+    case 'none':
+      return;
   }
 }
 
@@ -201,12 +194,6 @@ async function deactivateByTransaction(txId: string): Promise<void> {
   await db.update(subscriptions)
     .set({ active: false, updatedAt: new Date() })
     .where(eq(subscriptions.originalTransactionId, txId));
-}
-
-function mapStore(rcStore: string | undefined): string {
-  if (rcStore === 'APP_STORE' || rcStore === 'MAC_APP_STORE') return 'apple';
-  if (rcStore === 'PLAY_STORE') return 'google';
-  return rcStore?.toLowerCase() || 'unknown';
 }
 
 // `env` is imported to fail fast at startup if env loading regresses; the

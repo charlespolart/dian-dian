@@ -6,11 +6,25 @@
  *
  * Run: cd backend && npx tsx scripts/smoke.ts
  *      SMOKE_BASE=https://diandian.overridedev.com npx tsx scripts/smoke.ts
+ *
+ * The RevenueCat webhook checks post made-up purchase events and read the
+ * database directly: they only run against the local server (never when
+ * SMOKE_BASE is set), and need the server's REVENUECAT_WEBHOOK_SECRET in
+ * this process too:
+ *      REVENUECAT_WEBHOOK_SECRET=local-smoke npm run dev
+ *      REVENUECAT_WEBHOOK_SECRET=local-smoke npx tsx scripts/smoke.ts
  */
+import 'dotenv/config';
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import postgres from 'postgres';
 
 const BASE = process.env.SMOKE_BASE ?? 'http://localhost:3001';
+// What no route shows (the raw purchase events, the columns of a product
+// event) is read straight from the database — the local one only.
+const sql = !process.env.SMOKE_BASE && process.env.DATABASE_URL ? postgres(process.env.DATABASE_URL, { max: 1 }) : null;
+const webhookSecret = process.env.SMOKE_BASE ? undefined : process.env.REVENUECAT_WEBHOOK_SECRET;
 // The version this checkout would run; only compared against the server when
 // the server IS this checkout (local dev, CI) — not when SMOKE_BASE points at prod.
 const localVersion = (JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string }).version;
@@ -35,6 +49,16 @@ async function call(method: string, path: string, body?: unknown, auth = true): 
   let json: Json = null;
   try { json = JSON.parse(text); } catch { /* non-JSON body */ }
   return { status: res.status, json };
+}
+
+/** Posts one RevenueCat event to the webhook; `authorization: null` sends none. */
+async function webhook(event: Record<string, unknown>, authorization: string | null = webhookSecret ?? null): Promise<number> {
+  const res = await fetch(`${BASE}/api/purchase/webhook`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(authorization ? { Authorization: authorization } : {}) },
+    body: JSON.stringify({ api_version: '1.0', event }),
+  });
+  return res.status;
 }
 
 async function main() {
@@ -251,9 +275,87 @@ async function main() {
   r = await call('POST', '/api/events', { name: 'paywall.tracker_limit' }, false);
   assert.equal(r.status, 401, 'events need a session');
 
+  // --- RevenueCat webhook: every event is kept, the entitlement follows -----
+  if (process.env.CI && !process.env.SMOKE_BASE) {
+    assert.ok(webhookSecret && sql, 'CI runs the webhook checks: REVENUECAT_WEBHOOK_SECRET and DATABASE_URL must be set');
+  }
+  if (!webhookSecret || !sql) {
+    console.log('smoke: webhook checks skipped (SMOKE_BASE is set, or REVENUECAT_WEBHOOK_SECRET / DATABASE_URL is missing)');
+  } else {
+    const run = `smoke-${Date.now()}`;
+    const now = Date.now();
+    const week = 7 * 24 * 60 * 60 * 1000;
+    const premium = async () => (await call('GET', '/api/purchase/status')).json.premium;
+    // Everything is a sandbox event of this throwaway account.
+    const mine = {
+      app_user_id: userId, environment: 'SANDBOX', store: 'APP_STORE', product_id: 'premium_yearly',
+      original_transaction_id: `${run}-tx`, transaction_id: `${run}-tx`, currency: 'EUR', country_code: 'FR',
+      event_timestamp_ms: now,
+    };
+    const trialStart = {
+      ...mine, type: 'INITIAL_PURCHASE', id: `${run}-purchase`, period_type: 'TRIAL',
+      price: 0, price_in_purchased_currency: 0, purchased_at_ms: now, expiration_at_ms: now + week,
+    };
+
+    assert.equal(await webhook(trialStart, null), 401, 'the webhook needs its secret');
+    assert.equal(await premium(), false, 'an unauthenticated event changes nothing');
+    assert.equal(await webhook(trialStart), 200, 'trial start');
+    assert.equal(await premium(), true, 'a trial start makes the account premium');
+    assert.equal(await webhook(trialStart), 200, 'a retried delivery is accepted');
+    assert.equal(await webhook({
+      ...mine, type: 'CANCELLATION', id: `${run}-cancel`, period_type: 'TRIAL', cancel_reason: 'UNSUBSCRIBE', expiration_at_ms: now + week,
+    }), 200, 'cancellation');
+    assert.equal(await premium(), true, 'a cancelled trial runs to its end');
+
+    // Events that name no account of ours: accepted, kept, and nothing else.
+    const transferId = `${run}-transfer`;
+    assert.equal(await webhook({
+      type: 'TRANSFER', id: transferId, event_timestamp_ms: now, environment: 'SANDBOX', store: 'APP_STORE',
+      transferred_from: [randomUUID()], transferred_to: [randomUUID()],
+    }), 200, 'an event without app_user_id (a transfer) is accepted');
+    const strangerId = `${run}-stranger`;
+    assert.equal(await webhook({
+      ...trialStart, id: strangerId, app_user_id: randomUUID(), original_transaction_id: `${run}-tx2`, transaction_id: `${run}-tx2`,
+    }), 200, 'a purchase for an account we do not know is accepted');
+    assert.equal(await webhook({ ...mine, type: 'REFUND_REVERSED', id: `${run}-unknown` }), 200, 'a type this server does not know is accepted');
+    assert.equal(await premium(), true, 'none of them touched the subscription');
+
+    assert.equal(await webhook({
+      ...mine, type: 'EXPIRATION', id: `${run}-expire`, period_type: 'TRIAL', expiration_reason: 'UNSUBSCRIBE', expiration_at_ms: now,
+    }), 200, 'expiration');
+    assert.equal(await premium(), false, 'the expiration ends premium');
+
+    const kept = await sql`
+      select type, period_type, environment, price_usd, currency, cancel_reason, expiration_reason
+      from subscription_events where user_id = ${userId}`;
+    assert.deepEqual(
+      kept.map((e) => e.type).sort(),
+      ['CANCELLATION', 'EXPIRATION', 'INITIAL_PURCHASE', 'REFUND_REVERSED'],
+      'one row per event of the account: the retried purchase is one row',
+    );
+    const start = kept.find((e) => e.type === 'INITIAL_PURCHASE')!;
+    assert.deepEqual(
+      { period: start.period_type, env: start.environment, price: start.price_usd, currency: start.currency },
+      { period: 'TRIAL', env: 'SANDBOX', price: 0, currency: 'EUR' },
+      'the trial start keeps its period, environment and price',
+    );
+    assert.equal(kept.find((e) => e.type === 'CANCELLATION')!.cancel_reason, 'UNSUBSCRIBE');
+    assert.equal(kept.find((e) => e.type === 'EXPIRATION')!.expiration_reason, 'UNSUBSCRIBE');
+    const orphans = await sql`
+      select rc_event_id from subscription_events
+      where user_id is null and rc_event_id in ${sql([transferId, strangerId])}`;
+    assert.equal(orphans.length, 2, 'events for unknown accounts are kept without an account');
+    await sql`delete from subscription_events where rc_event_id in ${sql([transferId, strangerId])}`;
+  }
+
   // --- cleanup --------------------------------------------------------------
   r = await call('DELETE', '/api/auth/account');
   assert.equal(r.status, 200);
+  if (sql) {
+    const [{ n }] = await sql`select count(*)::int as n from subscription_events where user_id = ${userId}`;
+    assert.equal(n, 0, 'deleting the account deletes its purchase events');
+    await sql.end();
+  }
   console.log('smoke: OK');
 }
 
