@@ -367,12 +367,14 @@ les astuces (chantier suivant, brainstorm en cours le 2026-11-25). Cette spec
 ne crée pas d'astuce ; elle note seulement chaque usage pour qu'une astuce
 ne montre jamais ce qu'on sait déjà faire :
 
-- sur l'appareil, par compte : un ensemble de noms dans les préférences,
-  clé `features_used_<userId>` (même forme que `first_tracker_done_<userId>`) ;
+- sur l'appareil, par compte : un compteur par nom dans les préférences,
+  clé `features_used_<userId>` (forme exacte dans
+  `2026-11-25-feature-tips-design.md`, section « Le relevé ») ;
 - noms : `zoom.pinch`, `zoom.selector`, `zoom.letter`, `page.swipe`,
-  `page.arrows`, `sidebar.swipe`, `sidebar.chevron` ;
-- un nom s'ajoute la première fois et ne s'enlève jamais. La spec des
-  astuces reprend cette clé et y ajoute ses propres noms.
+  `page.arrows`, `sidebar.swipe`, `sidebar.chevron`, `view.zoomed` ;
+- un nom ne s'enlève jamais. Si les astuces se construisent avant le zoom,
+  le zoom reprend leur relevé ; sinon le zoom le crée et les astuces y
+  ajoutent leurs noms.
 
 ## Données et serveur
 
@@ -418,12 +420,12 @@ Rien sur le serveur. Sur l'appareil : les usages notés pour les astuces
   chemin fixe, longueur Moyen ; pas de barre pliée d'office ; glissement sur
   la barre dans les trois vues (Charles, 2026-11-24 et 2026-11-25).
 
-## Question ouverte
+## Gratuit
 
-- **Gratuit ou Premium ?** La spec suppose les vues Mois et Semaine
-  gratuites, sans verrou ni aperçu (*ma recommandation* : c'est la façon de
-  lire son propre tracker ; Premium garde les stats, les thèmes, l'export).
-  À confirmer par Charles.
+Les vues Mois et Semaine sont gratuites, sans verrou ni aperçu : c'est la
+façon de lire son propre tracker ; Premium garde les stats, les thèmes,
+l'export (recommandation acceptée par Charles le 2026-11-25, « ça me paraît
+pas mal tout ça »).
 
 ## Relecture du 2026-11-25
 
@@ -433,7 +435,8 @@ liste suit les mois et les semaines, la largeur en vue Mois et Semaine, pas
 de limite de navigation, l'état de la barre (pas gardé, la contradiction est
 levée), les sons repris de l'existant, la forme du relevé des usages, la
 branche de départ, la semaine à cheval sur deux années, les deux couleurs à
-tirer des thèmes. Reste la question ouverte ci-dessus.
+tirer des thèmes. La question qui restait (gratuit ou Premium) est close :
+gratuit.
 
 ## Laissé au constructeur
 

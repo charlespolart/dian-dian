@@ -333,17 +333,36 @@ commentaires entiers) ; sélecteur dans la barre, lettre du mois, et
 pincement sur un chemin fixe que l'écart des doigts fait avancer (longueur
 Moyen, moitié du chemin pour lâcher) ; glissement d'une page à l'autre en
 Mois et Semaine ; la barre de gauche ne se plie jamais seule mais se plie et
-se déplie d'un glissement sur elle-même, dans les trois vues. Question
-ouverte : gratuit ou Premium (recommandé : gratuit).
+se déplie d'un glissement sur elle-même, dans les trois vues. Gratuit
+(Charles, 2026-11-25).
 
-### 12. Astuces : montrer les fonctions cachées — brainstorm en cours
+### 12. Astuces : montrer les fonctions cachées — spécifié le 2026-11-25
 Demandé par Charles le 2026-11-25 : après l'accueil, un chemin complet qui
-montre une à une les fonctions qui ne se devinent pas (les trois façons de
-colorier, le commentaire, le pincement, les pages, la barre…), jamais toutes
-d'un coup, jamais pour ce qu'on sait déjà faire. Maquettes et proposition :
-https://claude.ai/artifact/3HsujtgXLrre5FbtaViGmE (neuf astuces, une par
-ouverture de l'app au plus, cadre qui clignote + bulle, doigts fantômes pour
-les gestes). Spec à écrire après les retours de Charles.
+montre une à une les fonctions qui ne se devinent pas, jamais toutes d'un
+coup, jamais pour ce qu'on sait déjà faire. Spec :
+`docs/superpowers/specs/2026-11-25-feature-tips-design.md` ; maquettes
+validées (« ça me paraît pas mal tout ça ») :
+https://claude.ai/artifact/3HsujtgXLrre5FbtaViGmE.
+- Neuf astuces, dans l'ordre :
+  - colorier un autre jour ;
+  - le bouton du jour ;
+  - le pinceau, en deux temps ;
+  - le commentaire ;
+  - ouvrir un mois en pinçant ;
+  - tourner les pages ;
+  - plier la barre ;
+  - la légende ;
+  - un deuxième tracker.
+- La forme : un cadre qui clignote, une bulle d'une phrase, des doigts
+  fantômes pour les gestes, une réussite quand le geste est fait.
+- Le rythme : au plus une astuce par ouverture de l'app, jamais le jour
+  d'une autre fenêtre, aucune ne vend Premium.
+- Le relevé des usages est sur l'appareil ; deux champs du bootstrap
+  (`cells_total`, `has_comment`) servent à reconnaître les comptes anciens.
+- Les astuces 1 à 3 ne visent que les trackers « tous les jours ».
+- En plus : un carnet d'astuces dans les réglages, et trois événements par
+  astuce.
+- Deux lots : sans le zoom, puis avec.
 
 ## Fait récemment
 - 2026-11-23 : audit de conversion, `docs/PRICING.md`, specs des rappels et
