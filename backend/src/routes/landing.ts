@@ -61,6 +61,7 @@ type Copy = {
   legal: string;
   contact: string;
   made: string;
+  audience: string;
 };
 
 const t: Record<Lang, Copy> = {
@@ -91,6 +92,7 @@ const t: Record<Lang, Copy> = {
     legal: 'Legal Notice',
     contact: 'Contact',
     made: 'Made with care by OVERRIDE — one pixel at a time.',
+    audience: 'Audience measured without cookies',
   },
   fr: {
     title: 'Dian Dian — Tracker annuel',
@@ -119,6 +121,7 @@ const t: Record<Lang, Copy> = {
     legal: 'Mentions légales',
     contact: 'Contact',
     made: 'Fait avec soin par OVERRIDE — un pixel à la fois.',
+    audience: 'Mesure d’audience sans cookie',
   },
   'zh-CN': {
     title: '点点 — 年度追踪器',
@@ -147,6 +150,7 @@ const t: Record<Lang, Copy> = {
     legal: '法律声明',
     contact: '联系',
     made: '由 OVERRIDE 用心打造——一次一个像素。',
+    audience: '无 Cookie 访问统计',
   },
   'zh-TW': {
     title: '點點 — 年度追蹤器',
@@ -175,6 +179,7 @@ const t: Record<Lang, Copy> = {
     legal: '法律聲明',
     contact: '聯繫',
     made: '由 OVERRIDE 用心打造——一次一個像素。',
+    audience: '無 Cookie 訪問統計',
   },
 };
 
@@ -360,6 +365,8 @@ function page(lang: Lang, campaign = '', platform: StorePlatform = 'unknown'): s
     .foot-links a:hover{color:var(--head)}
     .foot-brand{font-family:'Silkscreen',monospace;color:var(--head);font-size:15px;margin-top:26px;letter-spacing:1px}
     .foot-made{margin-top:12px;font-size:12.5px;color:var(--muted)}
+    .foot-note{font-size:11.5px}
+    .foot-note a{color:inherit}
 
     a:focus-visible,.btn-store:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:9px}
 
@@ -443,6 +450,7 @@ function page(lang: Lang, campaign = '', platform: StorePlatform = 'unknown'): s
       </nav>
       <div class="foot-brand">点点 · Dian Dian</div>
       <p class="foot-made">${c.made}</p>
+      <p class="foot-made foot-note"><a href="/privacy/audience?lang=${lang}">${c.audience}</a> · <a href="https://db-ip.com" target="_blank" rel="noopener">IP Geolocation by DB-IP</a></p>
     </div>
   </footer>
 

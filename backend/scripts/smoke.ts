@@ -230,6 +230,47 @@ async function main() {
     const contact = await (await site('/contact?lang=fr')).text();
     assert.ok(contact.includes('id="contact-form"') && contact.includes('/api/contact'), 'contact page has the form');
 
+    // The privacy policy says what the site counts and where to object, in its four languages.
+    for (const [lang, title] of [['en', 'Website Audience Measurement'], ['fr', "Mesure d'audience du site"], ['zh-CN', '网站访问统计'], ['zh-TW', '網站訪問統計']]) {
+      const policy = await (await site(`/privacy?lang=${lang}`)).text();
+      assert.ok(policy.includes(title), `the ${lang} policy has its audience section`);
+      assert.ok(policy.includes(`href="/privacy/audience?lang=${lang}"`), `the ${lang} policy links to the opt-out page`);
+      assert.ok(policy.includes('dd_noaudience'), `the ${lang} policy names the opt-out cookie`);
+      assert.ok(policy.includes('IP Geolocation by DB-IP'), `the ${lang} policy credits the country database`);
+    }
+    assert.ok(!(await (await site('/privacy?lang=fr')).text()).includes("autre outil d'analyse"), 'the policy no longer says there is no analytics tool');
+    assert.ok(plain.includes('href="https://db-ip.com"') && plain.includes('IP Geolocation by DB-IP'), 'the site credits the country database (its licence asks for the link)');
+    assert.ok(plain.includes('href="/privacy/audience?lang=en"'), 'the site\'s footer leads to the opt-out page');
+
+    // The opt-out page: a button sets a cookie, and the counter leaves its bearer out.
+    const optOutPage = (headers: Record<string, string> = {}) => fetch(`${BASE}/privacy/audience?lang=fr`, { headers });
+    const choose = (choice: string, headers: Record<string, string> = {}) => fetch(`${BASE}/privacy/audience?lang=fr`, {
+      method: 'POST', redirect: 'manual',
+      headers: { 'content-type': 'application/x-www-form-urlencoded', origin: new URL(BASE).origin, ...headers },
+      body: `choice=${choice}`,
+    });
+    let optOut = await optOutPage();
+    assert.equal(optOut.status, 200, 'the opt-out page');
+    let optOutHtml = await optOut.text();
+    assert.ok(optOutHtml.includes('Ne plus compter mes visites') && !optOutHtml.includes('Compter à nouveau mes visites'), 'someone who is counted is offered to stop');
+    optOut = await choose('out');
+    assert.equal(optOut.status, 303, 'the choice is recorded, then the page is shown again');
+    assert.equal(optOut.headers.get('location'), '/privacy/audience?lang=fr');
+    const cookie = optOut.headers.get('set-cookie') ?? '';
+    assert.ok(cookie.startsWith('dd_noaudience=1;'), cookie);
+    assert.ok(/Max-Age=34128000/.test(cookie) && /HttpOnly/i.test(cookie) && /SameSite=Lax/i.test(cookie) && /Path=\//.test(cookie), `13 months, not readable by scripts, sent on a link from another site: ${cookie}`);
+    optOutHtml = await (await optOutPage({ cookie: 'dd_noaudience=1' })).text();
+    assert.ok(optOutHtml.includes('Compter à nouveau mes visites') && !optOutHtml.includes('Ne plus compter mes visites'), 'someone who opted out is offered to come back');
+    optOutHtml = await (await optOutPage({ 'sec-gpc': '1' })).text();
+    assert.ok(!optOutHtml.includes('Ne plus compter mes visites') && !optOutHtml.includes('Compter à nouveau mes visites'), 'a browser that already objects has nothing to do');
+    optOut = await choose('in', { cookie: 'dd_noaudience=1' });
+    assert.equal(optOut.status, 303);
+    assert.ok(/^dd_noaudience=;/.test(optOut.headers.get('set-cookie') ?? ''), 'coming back removes the cookie');
+    optOut = await choose('out', { origin: 'https://elsewhere.example' });
+    assert.equal(optOut.status, 403, 'another site cannot make the choice for a visitor');
+    assert.equal(optOut.headers.get('set-cookie'), null);
+    assert.equal((await choose('maybe')).status, 400, 'a choice is out or in');
+
     // The audience counter, read in the database: local only.
     if (sql) {
       const run = `smoke-${Date.now()}`;
@@ -263,6 +304,7 @@ async function main() {
       await fetch(`${BASE}/go/apple`, { redirect: 'manual', headers: { 'user-agent': IPHONE } });
       await visit({ ...person, dnt: '1' });
       await visit({ ...person, 'sec-gpc': '1' });
+      await visit({ ...person, cookie: 'dd_noaudience=1' });
       await fetch(`${BASE}/`, { method: 'HEAD', headers: person });
       await written(1);
       const [row] = await sql`
