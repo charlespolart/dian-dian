@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, smallint, integer, boolean, timestamp, primaryKey, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, smallint, integer, boolean, timestamp, doublePrecision, jsonb, primaryKey, index, uniqueIndex } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -128,7 +128,50 @@ export const events = pgTable('events', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
+  // Where the event comes from, so the iOS and Android funnels can be told
+  // apart: `ios` | `android` | `web`, and the app's `X.Y.Z`. Null for apps
+  // ≤ 1.4.0, which send the name alone.
+  platform: text('platform'),
+  appVersion: text('app_version'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   index('events_name_created_at_idx').on(t.name, t.createdAt),
 ]);
+
+// Every RevenueCat webhook event as it arrived, next to `subscriptions`
+// (the current state). What the state alone cannot tell: whether a period
+// was a trial, what was paid and in which currency, why and when a
+// subscription was cancelled, and whether the purchase was a sandbox one.
+// The columns are the fields scripts/prod-purchases.sql reads; `payload` is
+// the whole event (minus subscriber attributes) for whatever else is needed
+// later. `user_id` is null when the event names no account we know (an
+// anonymous RevenueCat id, a deleted account, a test event).
+export const subscriptionEvents = pgTable('subscription_events', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  // RevenueCat's own event id: a retried delivery reuses it.
+  rcEventId: text('rc_event_id').notNull().unique(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  type: text('type').notNull(),
+  environment: text('environment'), // 'PRODUCTION' | 'SANDBOX'
+  store: text('store'),
+  productId: text('product_id'),
+  periodType: text('period_type'), // 'TRIAL' | 'INTRO' | 'NORMAL' | …
+  priceUsd: doublePrecision('price_usd'),
+  priceLocal: doublePrecision('price_local'),
+  currency: text('currency'),
+  countryCode: text('country_code'),
+  cancelReason: text('cancel_reason'),
+  expirationReason: text('expiration_reason'),
+  isTrialConversion: boolean('is_trial_conversion'),
+  originalTransactionId: text('original_transaction_id'),
+  eventAt: timestamp('event_at', { withTimezone: true }).notNull(),
+  purchasedAt: timestamp('purchased_at', { withTimezone: true }),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  payload: jsonb('payload').notNull(),
+  receivedAt: timestamp('received_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('subscription_events_user_id_idx').on(t.userId),
+  index('subscription_events_type_event_at_idx').on(t.type, t.eventAt),
+]);
+
+export type NewSubscriptionEvent = typeof subscriptionEvents.$inferInsert;

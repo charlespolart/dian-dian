@@ -120,6 +120,13 @@
       "when": 1792146006379,
       "tag": "0016_pages_client_id",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1795575944748,
+      "tag": "0017_purchase_measurement",
+      "breakpoints": true
     }
   ]
 }
