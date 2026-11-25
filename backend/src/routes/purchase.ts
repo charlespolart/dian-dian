@@ -5,7 +5,7 @@ import { subscriptions, subscriptionEvents, users } from '../db/schema.js';
 import { requireAuth } from '../middleware/auth.js';
 import { env } from '../lib/env.js';
 import { entitlementAction, parseRcEvent, rcEventAccountId, subscriptionEventRow, type EntitlementAction, type RcEvent } from '../lib/rcEvent.js';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray, lt } from 'drizzle-orm';
 
 const router = Router();
 
@@ -148,8 +148,32 @@ async function applyEntitlement(action: EntitlementAction, userId: string | null
     case 'deactivate':
       await deactivateByTransaction(action.txId);
       return;
+    case 'extend':
+      // Only ever later, and never on a purchase with no end (a lifetime's
+      // `expires_at` is null, which `lt` does not match). The subscription
+      // is reopened too: GET /status closes a period it sees expired, and
+      // the app may well ask before RevenueCat's event gets here.
+      await db.update(subscriptions)
+        .set({ expiresAt: action.until, active: true, updatedAt: new Date() })
+        .where(and(
+          eq(subscriptions.originalTransactionId, action.txId),
+          lt(subscriptions.expiresAt, action.until),
+        ));
+      return;
+    case 'transfer':
+      // `userId` is the transfer's destination when that account exists.
+      if (userId !== action.to) return;
+      await db.update(subscriptions)
+        .set({ userId: action.to, updatedAt: new Date() })
+        .where(inArray(subscriptions.userId, action.from));
+      return;
     case 'none':
       return;
+    default: {
+      // A new kind of action must be handled here: the compiler says so.
+      const unhandled: never = action;
+      throw new Error(`Unhandled entitlement action: ${JSON.stringify(unhandled)}`);
+    }
   }
 }
 

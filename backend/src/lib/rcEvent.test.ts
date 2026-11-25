@@ -157,16 +157,56 @@ test('the transaction is the original one, else the event\'s own', () => {
   assert.equal(tx({ original_transaction_id: undefined, transaction_id: 'T2' }), 'T2');
 });
 
-test('an expiration, a billing issue or a pause ends the subscription', () => {
-  for (const type of ['EXPIRATION', 'BILLING_ISSUE', 'SUBSCRIPTION_PAUSED']) {
-    assert.deepEqual(entitlementAction(of(type)), { kind: 'deactivate', txId: 'TX-1' }, type);
+test('an expiration ends the subscription', () => {
+  assert.deepEqual(entitlementAction(of('EXPIRATION')), { kind: 'deactivate', txId: 'TX-1' });
+  assert.deepEqual(entitlementAction(of('EXPIRATION', { expiration_reason: 'SUBSCRIPTION_PAUSED' })), { kind: 'deactivate', txId: 'TX-1' });
+});
+
+test('a billing issue keeps the subscription until the end of its grace period', () => {
+  const grace = 1764864000000;
+  assert.deepEqual(
+    entitlementAction(of('BILLING_ISSUE', { grace_period_expiration_at_ms: grace })),
+    { kind: 'extend', txId: 'TX-1', until: new Date(grace) },
+  );
+});
+
+test('a billing issue without a grace period changes nothing: the period paid for runs to its end', () => {
+  assert.deepEqual(entitlementAction(of('BILLING_ISSUE', { grace_period_expiration_at_ms: null })), { kind: 'none' });
+  assert.deepEqual(entitlementAction(of('BILLING_ISSUE')), { kind: 'none' });
+});
+
+test('a pause changes nothing: access ends at the expiration that follows', () => {
+  assert.deepEqual(entitlementAction(of('SUBSCRIPTION_PAUSED')), { kind: 'none' });
+});
+
+test('a cancellation, an alias, a test or an unknown type changes nothing', () => {
+  for (const type of ['CANCELLATION', 'SUBSCRIBER_ALIAS', 'TEST', 'REFUND_REVERSED']) {
+    assert.deepEqual(entitlementAction(of(type)), { kind: 'none' }, type);
   }
 });
 
-test('a cancellation, a transfer, an alias, a test or an unknown type changes nothing', () => {
-  for (const type of ['CANCELLATION', 'TRANSFER', 'SUBSCRIBER_ALIAS', 'TEST', 'REFUND_REVERSED']) {
-    assert.deepEqual(entitlementAction(of(type)), { kind: 'none' }, type);
-  }
+const OTHER = '00005a1c-6091-4f81-be77-f0a83a271ab6';
+const transfer = (from: unknown, to: unknown): RcEvent => ({ type: 'TRANSFER', id: 'EVT-T', transferred_from: from, transferred_to: to });
+
+test('a transfer moves the purchases of the accounts it leaves to the account it reaches', () => {
+  assert.deepEqual(entitlementAction(transfer([OTHER], [ACCOUNT])), { kind: 'transfer', from: [OTHER], to: ACCOUNT });
+});
+
+test('a transfer only knows our accounts: anonymous ids and aliases are skipped', () => {
+  assert.deepEqual(
+    entitlementAction(transfer(['$RCAnonymousID:old', OTHER.toUpperCase()], ['$RCAnonymousID:new', ACCOUNT])),
+    { kind: 'transfer', from: [OTHER], to: ACCOUNT },
+  );
+  assert.equal(rcEventAccountId(transfer([OTHER], ['$RCAnonymousID:new', ACCOUNT])), ACCOUNT);
+});
+
+test('a transfer from or to no account of ours changes nothing', () => {
+  assert.deepEqual(entitlementAction(transfer([], [ACCOUNT])), { kind: 'none' });
+  assert.deepEqual(entitlementAction(transfer([OTHER], [])), { kind: 'none' });
+  assert.deepEqual(entitlementAction(transfer([OTHER], ['$RCAnonymousID:new'])), { kind: 'none' });
+  assert.deepEqual(entitlementAction(transfer(['$RCAnonymousID:old'], [ACCOUNT])), { kind: 'none' });
+  assert.deepEqual(entitlementAction(transfer('x', undefined)), { kind: 'none' });
+  assert.deepEqual(entitlementAction(transfer([ACCOUNT], [ACCOUNT])), { kind: 'none' }, 'to itself');
 });
 
 test('without a transaction id nothing can be set or ended', () => {

@@ -33,19 +33,29 @@ export function parseRcEvent(body: unknown): RcEvent | null {
   return str((event as { type?: unknown }).type) === null ? null : (event as RcEvent);
 }
 
+/** `value` when it is one of our account ids (a uuid), lower-cased; else null. */
+function accountId(value: unknown): string | null {
+  const id = str(value);
+  return id !== null && UUID.test(id) ? id.toLowerCase() : null;
+}
+
+/** The account ids of ours in a list RevenueCat sends (ids and their aliases). */
+function accountIds(list: unknown): string[] {
+  if (!Array.isArray(list)) return [];
+  return list.map(accountId).filter((id): id is string => id !== null);
+}
+
 /**
  * The account of ours the event is about: its `app_user_id`, or for a
- * TRANSFER (which has none) the first account the purchase goes to. Null
- * when there is none, when it is one of RevenueCat's anonymous ids
+ * TRANSFER (which has none) the first account of ours the purchase goes to.
+ * Null when there is none, when it is one of RevenueCat's anonymous ids
  * (`$RCAnonymousID:…`, a device not logged in yet) or anything else that is
  * not one of our uuids. Whether that account still exists is the caller's
  * question.
  */
 export function rcEventAccountId(event: RcEvent): string | null {
-  const to = event.transferred_to;
-  const candidate = event.type === 'TRANSFER' && Array.isArray(to) ? to[0] : event.app_user_id;
-  const id = str(candidate);
-  return id !== null && UUID.test(id) ? id.toLowerCase() : null;
+  if (event.type === 'TRANSFER') return accountIds(event.transferred_to)[0] ?? null;
+  return accountId(event.app_user_id);
 }
 
 /**
@@ -88,6 +98,10 @@ export type EntitlementAction =
   | { kind: 'upsert'; store: string; productId: string; txId: string; expiresAt: Date | null }
   /** The subscription of this transaction is over. */
   | { kind: 'deactivate'; txId: string }
+  /** The subscription of this transaction stays open until `until` (a grace period). */
+  | { kind: 'extend'; txId: string; until: Date }
+  /** The purchases of the accounts `from` now belong to the account `to`. */
+  | { kind: 'transfer'; from: string[]; to: string }
   | { kind: 'none' };
 
 const NONE: EntitlementAction = { kind: 'none' };
@@ -99,6 +113,17 @@ function storeName(rcStore: unknown): string {
 }
 
 export function entitlementAction(event: RcEvent): EntitlementAction {
+  // Someone restored a purchase on another account: RevenueCat moved the
+  // entitlement, and so do we — when both ends are accounts of ours. A
+  // transfer to an anonymous id (a device not logged in) is left alone:
+  // taking premium away on that would cut off a customer who paid.
+  if (event.type === 'TRANSFER') {
+    const to = accountIds(event.transferred_to)[0];
+    if (to === undefined) return NONE;
+    const from = accountIds(event.transferred_from).filter((id) => id !== to);
+    return from.length === 0 ? NONE : { kind: 'transfer', from, to };
+  }
+
   // A subscription is keyed by its original transaction; without one there
   // is nothing to set or to end.
   const txId = str(event.original_transaction_id) ?? str(event.transaction_id);
@@ -120,13 +145,21 @@ export function entitlementAction(event: RcEvent): EntitlementAction {
       };
 
     case 'EXPIRATION':
-    case 'BILLING_ISSUE':
-    case 'SUBSCRIPTION_PAUSED':
       return { kind: 'deactivate', txId };
 
+    // A payment failed. With a grace period (set in the store), the customer
+    // keeps access until its end while the store retries; without one the
+    // period paid for simply runs out. Either way access is not cut here:
+    // an EXPIRATION says when it is over.
+    case 'BILLING_ISSUE': {
+      const until = date(event.grace_period_expiration_at_ms);
+      return until === null ? NONE : { kind: 'extend', txId, until };
+    }
+
     // CANCELLATION: auto-renew is off but the period already paid for runs
-    // to its end, where an EXPIRATION follows. TRANSFER, SUBSCRIBER_ALIAS,
-    // TEST and any type this code does not know change nothing.
+    // to its end, where an EXPIRATION follows. SUBSCRIPTION_PAUSED: the same,
+    // the pause starts at an EXPIRATION. SUBSCRIBER_ALIAS, TEST and any type
+    // this code does not know change nothing.
     default:
       return NONE;
   }

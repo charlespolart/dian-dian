@@ -17,6 +17,9 @@ working against the new backend.
 
 ### Fixed
 - RevenueCat webhook: an event the server can read but has no account for is answered 200 instead of making RevenueCat retry it — a `TRANSFER`, which carries no `app_user_id` (was 400), and a purchase for an account that no longer exists (was 500 on the foreign key).
+- RevenueCat webhook, a purchase restored on another account (`TRANSFER`): the subscriptions follow to the account the purchase reaches. Before, the server did nothing, so the new account stayed free on the server while the app showed it premium — its 4th tracker was refused (403). A transfer with no account of ours at one end changes nothing.
+- RevenueCat webhook, a failed payment (`BILLING_ISSUE`): premium is no longer cut at once. With a grace period, the subscription stays open until the end of that period (`grace_period_expiration_at_ms`), reopened if `GET /api/purchase/status` had already closed the period it saw expired; without one, the period paid for runs to its end. The `EXPIRATION` that follows ends it.
+- RevenueCat webhook, a paused subscription (`SUBSCRIPTION_PAUSED`, Google Play): premium is no longer cut when the pause is scheduled; it ends at the `EXPIRATION` that starts the pause.
 
 ### Changed
 - The smoke suite posts sandbox RevenueCat events to the local server and reads the result in the database; it never does so when `SMOKE_BASE` is set. It needs `REVENUECAT_WEBHOOK_SECRET` in its environment as well as the server's (CI sets both), and skips these checks with a message otherwise.
