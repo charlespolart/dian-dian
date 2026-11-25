@@ -196,6 +196,9 @@ Listed in `backend/.env.example`. Required:
 | `APPLE_BUNDLE_IDS` | Comma-separated bundle ids accepted as Apple identity-token `aud` |
 | `GOOGLE_CLIENT_IDS` | Comma-separated Google OAuth client ids accepted as ID-token `aud` |
 | `REVENUECAT_WEBHOOK_SECRET` | Static value RC echoes in the `Authorization` header for webhook calls |
+| `APPLE_CAMPAIGN_PT` | Optional. App Store campaign provider token: with it, the site's App Store button carries `pt` and `ct=<utm_source>` |
+| `AUDIENCE_TAG_FALLBACK` | Optional. `off` stops the site's audience counter from reading a known `utm_source` as the site of origin when there is no Referer |
+| `AUDIENCE_DOWNLOADS` | Optional. `on` / `off`: whether the audience counter downloads the robots' IP ranges and the country database. Default: on in production only |
 
 ## Deployment
 

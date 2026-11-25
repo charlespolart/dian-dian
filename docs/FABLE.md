@@ -146,8 +146,16 @@ release ; un correctif urgent de la production part du tag.
   Yearly).
 - Google Play : bannière d'essai à vérifier sur un téléphone, abonnement à
   renommer « Dian Dian Premium », délai de grâce, packages RevenueCat.
-- Demander à Vultr son avenant de traitement des données (DPA).
+- Demander à Vultr son avenant de traitement des données (DPA), puis le
+  citer avec sa date dans `docs/REGISTRE.md` (fiche 1, « Hébergement »).
 - Tester le bouton App Store depuis une épingle Pinterest sur iPhone.
+- Compteur de visites, après le déploiement de la release : porter la date
+  de mise en service dans `docs/REGISTRE.md` ; une semaine plus tard, lancer
+  `backend/scripts/prod-landing.sql` et vérifier que plusieurs pays
+  apparaissent (un seul pays, ou « ?? » partout, voudrait dire que le
+  serveur ne voit pas l'adresse des visiteurs ou n'a pas pu charger la base
+  des pays) ; chaque trimestre, relire la table des robots
+  (`backend/src/audience/bots.ts`) face aux listes citées dans son en-tête.
 - Avant la sortie du paywall refait : mettre à jour les étiquettes de
   confidentialité de l'App Store et la sécurité des données de Google Play
   (événements du parcours d'achat liés au compte).

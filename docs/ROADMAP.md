@@ -116,12 +116,12 @@ landing (`storeLinks()` dans `backend/src/routes/landing.ts`) fait
 téléchargements dans les 24 h du clic : les téléchargements Pinterest sont
 éparpillés sous le seuil. À faire avec Fable : un `ct` par source (`pinterest`)
 ou par source et langue (`pinterest-en`), le détail par épingle restant dans
-le referrer Play. Retenu le 2026-11-25 : un `ct` par source. En face, ChatGPT cite la landing avec
+le referrer Play. Retenu le 2026-11-25 : un `ct` par source ; fait le même jour avec le compteur de visites (`backend/src/lib/storeLinks.ts`), à sortir avec la release unique. En face, ChatGPT cite la landing avec
 `utm_source=chatgpt.com`, sans campagne : une seule ligne `chatgptcom`, 34
 vues de la page App Store et 10 téléchargements entre mi-octobre et le
 22 novembre. La landing n'a pas de journal de visites (Caddy sans log
 d'accès) : ses visites ne se comptent pas.
-**Compteur de visites du site — spécifié le 2026-11-23**, révisé après la
+**Compteur de visites du site — construit le 2026-11-25** (chantier 1, plan `docs/superpowers/plans/2026-11-25-landing-visits.md`, à sortir avec la release unique ; lecture par `backend/scripts/prod-landing.sql`, fiche du registre dans `docs/REGISTRE.md`). Spécifié le 2026-11-23, révisé après la
 recherche `docs/research/reports/Mesure de trafic auto hébergée.md` :
 `docs/superpowers/specs/2026-11-23-landing-visits-design.md`. Compteur maison
 dans le backend (aucun outil open source ne tient sur le VPS en nommant les
