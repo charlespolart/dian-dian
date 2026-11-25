@@ -146,6 +146,14 @@ release ; un correctif urgent de la production part du tag.
   Yearly).
 - Google Play : bannière d'essai à vérifier sur un téléphone, abonnement à
   renommer « Dian Dian Premium », délai de grâce, packages RevenueCat.
+- Vérifier dans RevenueCat que l'achat à vie Android est déclaré
+  « non-consumable » : sinon le SDK le consomme, Google le laisse racheter et
+  « Restaurer » ne le retrouve plus (trouvé par la recherche du 2026-11-25,
+  `docs/research/2026-11-25-hors-connexion-et-sans-compte.md`).
+- Relever les premiers téléchargements iOS et les nouveaux utilisateurs
+  Android du 28 septembre au 22 novembre, pour mesurer combien de personnes
+  s'arrêtent à l'écran de connexion (même document, « Ce que je
+  recommande »).
 - Demander à Vultr son avenant de traitement des données (DPA), puis le
   citer avec sa date dans `docs/REGISTRE.md` (fiche 1, « Hébergement »).
 - Tester le bouton App Store depuis une épingle Pinterest sur iPhone, et
