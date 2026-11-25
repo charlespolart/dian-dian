@@ -18,7 +18,7 @@
 - **Le comptage ne coûte rien à la page** : il ne retarde pas la réponse et ne peut pas la faire échouer. Base en panne, liste introuvable, valeur imprévue : la page et les redirections répondent comme si le compteur n'existait pas.
 - Le sel du jour et les empreintes vivent en mémoire seulement ; le sel est tiré au hasard, jamais dérivé d'un secret ni de la date, jamais écrit.
 - Le dossier `audience/` ne dépend de Dian Dian que par la connexion à la base (`Db`, le type de `db` dans `src/db/index.ts`) et par une configuration passée à sa création (domaine, sites d'origine connus, réglage du repli).
-- Le VPS a environ 490 Mo libres : le compteur tient dans une trentaine de Mo (la base des pays, 8 Mo, est le gros morceau) et toutes ses structures en mémoire ont un plafond.
+- Le VPS a environ 490 Mo libres. Mesuré le 2026-11-25 (tâche 7) : la base des pays occupe 21 Mo une fois dépliée (4 Mo téléchargés), et le processus grossit d'environ 60 Mo au chargement ; pendant le rechargement mensuel, l'ancienne et la nouvelle coexistent un instant. Toutes les autres structures en mémoire ont un plafond.
 - Pas `ua-parser-js` (AGPL), pas MaxMind GeoLite.
 - Migration générée par `npx drizzle-kit generate`, jamais écrite à la main.
 - Les apps 1.4.0 installées ne voient aucun changement (elles n'appellent que `/api/*`).
