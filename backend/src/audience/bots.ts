@@ -65,6 +65,9 @@ const TABLE = [
   // The longest first, so that `Applebot-Extended` is not read as `Applebot`.
 ].sort((a, b) => b.token.length - a.token.length);
 
+/** Every list of ranges the table names: ipRanges.ts must have a source for each. */
+export const BOT_RANGES: string[] = [...new Set(TABLE.map((entry) => entry.ranges).filter((ranges): ranges is string => ranges !== null))];
+
 /** As in classify.ts: no expression and no search ever sees a longer string. */
 const MAX_LENGTH = 512;
 const NAME = /[A-Za-z0-9._-]/;
