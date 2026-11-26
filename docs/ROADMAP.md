@@ -212,7 +212,7 @@ Un seul paint au lieu de ~2000 widgets par tap. Gain réel sur les
 appareils lents, risque visuel : à faire isolément, avec comparaison
 pixel-à-pixel.
 
-### 6. Toolchain Android
+### 6. Toolchain Android — construit le 2026-11-26
 Remarques Play Console : bannière AdMob sous la navigation 3 boutons à
 vérifier, puis AGP 9.1 / Gradle 9.3.1 (et non 9.1) / Kotlin 2.3 + R8 dans une release
 dédiée testée sur appareil. Détail : `ANDROID_RELEASE_PLAN.md` §8.
@@ -223,6 +223,10 @@ exige AGP ≥ 9.1.1).
 Vérifié le 2026-11-25 : le projet est déjà en Flutter 3.47.5 et Dart 3.13.4
 (rien à faire pour Dart) ; AGP 8.11.1 est le plancher de ce Flutter, donc
 pas de mise à jour de Flutter avant ce chantier.
+Construit le 2026-11-26 (chantier 3) : AGP 9.1.1, Gradle 9.3.1, Kotlin 2.4.0,
+`compileSdk` 37 ; R8 était déjà actif (Flutter le met sur tout build
+release) ; bannière au-dessus de la barre système, sur Android et iPhone.
+Reste l'essai sur appareil de Charles.
 
 ### 7. Esthétique : animations, sons, vibrations, écran de lancement — fusionné sur master le 2026-10-28
 Brainstormé et spécifié le 2026-10-22 :

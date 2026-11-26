@@ -70,7 +70,7 @@ RevenueCat) sont en anglais ; les textes de l'app vouvoient.
 | 0 | Mesure des achats : table brute du webhook RevenueCat (chaque événement, avec la période d'essai, le prix, la devise, l'environnement et les raisons), plateforme et version de l'app acceptées sur `events` | audit, « Trous de mesure » 1 et 2 ; `docs/CONFIRMATION.md`, point 10 | rien (backend seul) | ½ à 1 jour |
 | 1 | Compteur de visites du site, avec le regroupement du `ct` Apple par source | `2026-11-23-landing-visits-design.md`, ROADMAP §3 | rien (backend seul) | 3 à 4 jours |
 | 2 | Refonte du paywall et du mur des 3 trackers (un seul écran par mur, essai affiché selon l'éligibilité), événements du parcours d'achat ; dans la même version de l'app, le correctif des jours invalides de l'éditeur de jour (`docs/CONFIRMATION.md`, point 27) | `docs/PRICING.md` | les prix en stores (Charles, 1er décembre) | à estimer |
-| 3 | Outillage Android : AGP 9.1, Gradle ≥ 9.3.1, Kotlin 2.3, `compileSdk = 37` écrit à la main, R8 (Dart ≥ 3.12 est acquis : Flutter 3.47.5, Dart 3.13.4) ; fait tôt et testé sur appareil avant d'empiler le reste (plus de release dédiée, voir « Une seule release ») | `ANDROID_RELEASE_PLAN.md` §8 | rien | à estimer |
+| 3 | Outillage Android : AGP 9.1, Gradle ≥ 9.3.1, Kotlin 2.3, `compileSdk = 37` écrit à la main, R8 (Dart ≥ 3.12 est acquis : Flutter 3.47.5, Dart 3.13.4) ; fait tôt et testé sur appareil avant d'empiler le reste (plus de release dédiée, voir « Une seule release ») | `ANDROID_RELEASE_PLAN.md` §8 | rien | fait le 2026-11-26 (plan `docs/superpowers/plans/2026-11-26-android-tooling.md`) ; R8 était déjà actif ; reste l'essai sur appareil |
 | 4 | Rappels (notifications locales, matin et soir, section Rappels, écran de demande) | `2026-11-23-reminders-design.md` | 3 (le plugin le plus récent exige AGP 9) ; 5, lot 1 (le remplissage et le moment du rappel se règlent à la création et dans les réglages du tracker) ; la date de création du compte dans le bootstrap (backend, avant l'app) | à estimer |
 | 5 | Stats plus utiles, en trois lots : réglages et création, avec le chargement de l'année précédente (lot 1), page Stats (lot 2), estimation et liens (lot 3) | `2026-11-24-stats-design.md` | lot 1 : rien ; lots 2 et 3 : le lot 1 | à estimer |
 | 6 | Pop-up premium occasionnelle | `2026-11-23-premium-popup-design.md` | 4 (passe après l'écran des rappels), 5 lot 2 (`stats_ready` dévoile une stat Premium prête) et lot 3 (`link_found`) | à estimer |
@@ -130,10 +130,12 @@ release ; un correctif urgent de la production part du tag.
 - **Jamais `dart format`** dans `flutter_app` (pas de `page_width`, lignes
   posées à la main jusqu'à ~140 colonnes). Les garde-fous sont
   `flutter analyze`, les tests et `git diff --stat`.
-- **Ne pas mettre Flutter à jour avant le chantier 3** : AGP 8.11.1 est le
-  plancher de Flutter 3.47.5 (la version de la CI et de la machine de
-  Charles) ; un Flutter plus récent risque de refuser de construire l'app
-  Android.
+- **Mettre Flutter à jour** est possible depuis le chantier 3 (AGP 9.1.1,
+  Gradle 9.3.1, Kotlin 2.4.0), comme un chantier à part, testé sur
+  appareil : à chaque montée, revoir `compileSdk` (écrit à la main à 37
+  tant que Flutter fixe moins), `android.newDsl` et `android.builtInKotlin`
+  (`flutter_app/android/gradle.properties`), et aligner les fichiers
+  Gradle sur le modèle d'app du nouveau Flutter.
 - **Aucun déploiement automatique.** Backend : `./release-backend.sh
   patch|minor|major` puis `./deploy-prod.sh` (interactifs, lancés par
   Charles dans un terminal), `./rollback-prod.sh` en secours. App :

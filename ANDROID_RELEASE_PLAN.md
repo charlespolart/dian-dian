@@ -229,6 +229,17 @@ flutter build apk --release   # pour test local uniquement
 
 ## 8. Après la 1.3.0 — remarques Play Console (15/10/2026, build 1.2.0 (5))
 
+**Fait le 2026-11-26 (chantier 3, plan `docs/superpowers/plans/2026-11-26-android-tooling.md`)** :
+AGP 9.1.1, Gradle 9.3.1, Kotlin 2.4.0, `compileSdk = 37` à la main, selon le
+modèle d'app de Flutter 3.47.5 ; la bannière au-dessus de la barre système
+(Android et iPhone) et la grille du tracker au-dessus d'elle. **R8 était
+déjà actif** : le plugin Gradle de Flutter minifie, obscurcit et réduit les
+ressources de tout build release (sauf `--no-shrink`) ; le bundle 1.4.0
+était passé par R8 8.11 et portait son fichier de correspondance. Ce qui est
+écrit plus bas sur R8 « absent » était faux. Reste à vérifier sur appareil
+(Charles) et à relire dans la Play Console si la remarque « R8 » s'affiche
+encore pour la 1.4.0.
+
 Deux « actions recommandées » affichées par la Play Console. Aucune n'est
 bloquante ; à traiter dans une release « toolchain Android » dédiée, à part
 des évolutions produit, testée sur appareil réel (achat, pub, Google Sign-In).
