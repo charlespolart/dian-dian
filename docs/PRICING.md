@@ -215,7 +215,12 @@ de mesure ») ; les ajouter avec cette refonte.
   qui dit aujourd'hui « pas d'analytics » et ne mentionne aucun événement),
   conservation 13 mois, aucun partage ; Charles met à jour les étiquettes de
   confidentialité de l'App Store et la section « sécurité des données » de
-  Google Play avant la sortie. Même lot que le registre RGPD.
+  Google Play avant la sortie. Même lot que le registre RGPD. **Fait le
+  2026-11-26** (plan `docs/superpowers/plans/2026-11-26-rgpd-register.md`) :
+  section 7 de la politique (`/privacy#events`), fiche 7 de
+  `docs/REGISTRE.md`, purge à 13 mois, et un moyen de tenir une opposition
+  (`users.events_opt_out`). Chaque nouvel événement du parcours d'achat
+  s'ajoute à la fiche 7.
 
 ### Passe de confirmation du 2026-11-25
 
@@ -250,8 +255,9 @@ Comparé à `master` (app 1.4.0). Détail : `docs/CONFIRMATION.md`, points 8
 - **Le prix par mois de l'annuel** se calcule (prix ÷ 12, dans la devise
   du store) ; le projet n'a pas le paquet `intl` : l'ajouter, ou reprendre
   la mise en forme de `priceString`. Au plan.
-- **Conservation** : rien n'efface la table `events` aujourd'hui ; la
-  purge à 13 mois se construit avec le registre.
+- **Conservation** : construit le 2026-11-26 avec le registre
+  (`backend/src/lib/retention.ts`) : le mois en cours et les 12 précédents
+  sont gardés, la purge tourne au démarrage puis chaque jour.
 
 ### Trouvé pendant le chantier 0 (2026-11-25), pour ce chantier
 

@@ -55,7 +55,8 @@ dian-dian/
 │   ├── drizzle/         # Generated SQL migrations
 │   ├── scripts/         # seed-demo-local, smoke (end-to-end against a running backend),
 │   │                    # prod-*.sql (read-only stats: accounts, trackers, activation, events, purchases,
-│   │                    # and landing: the site's visits, taps on the store buttons, origins and robots)
+│   │                    # and landing: the site's visits, taps on the store buttons, origins and robots),
+│   │                    # fetch-fonts (brings the site's fonts into public/fonts; run only to change one)
 │   └── Dockerfile       # Multi-stage: builder / runtime / development
 ├── flutter_app/
 │   ├── lib/

@@ -78,11 +78,25 @@ RevenueCat) sont en anglais ; les textes de l'app vouvoient.
 | 8 | Astuces : les fonctions cachées montrées une à une, carnet d'astuces, événements | `2026-11-25-feature-tips-design.md` ; maquettes https://claude.ai/artifact/3HsujtgXLrre5FbtaViGmE | lot 1 : deux champs du bootstrap (backend, avant l'app) ; 5 lot 1 si déjà là (la roue des réglages pour l'astuce 8) ; lot 2 (astuces du zoom) : 7 ; les événements avec le registre RGPD ; le lot 1 juste après les rappels (4), *mon choix* du 2026-11-25 | à estimer |
 | 9 | Entrer sans mur : compte sans identité créé en coulisse, écran d'accueil à quatre boutons, e-mail par code, créer son compte ou rejoindre le sien, Premium sans compte (achat, restauration, reprise des trackers par l'achat), annonces entre deux téléphones, clé dans le trousseau iCloud, écran « Mes données », clé de restauration Android en dernier lot | `2026-11-25-account-later-design.md` ; cas illustrés `2026-11-26-sans-compte-hors-ligne-stories.html` | 10 (il s'appuie sur la copie du téléphone) ; passe avant 2 (le paywall doit connaître le compte invisible) | à estimer, gros ; le plan commence par les vérifications RevenueCat en bac à sable et sur appareils |
 | 10 | Utiliser l'app sans réseau, avec ou sans compte : copie complète sur le téléphone, file des modifications, « le serveur gagne » en cas de conflit, sessions qui durent | `2026-11-26-offline-sync-design.md` ; mêmes cas illustrés | 3 | à estimer, le plus gros de la release : toute la couche de données de l'app est refaite |
-| — | Registre RGPD du projet et politique de confidentialité (événements produit, compteur de visites), en quatre langues ; purge des événements produit au-delà de 13 mois (rien ne les efface aujourd'hui) | specs du compteur et `docs/PRICING.md` (« Relecture ») | avant ou avec 1 et 2 | ½ jour |
+| 11 | Consentement publicitaire : le formulaire de Google affiché avant la première bannière AdMob là où il est requis (Espace économique européen, Royaume-Uni, Suisse), un moyen de revenir sur son choix dans les réglages, et l'écran de suivi d'Apple si le formulaire le demande. Ajouté le 2026-11-26 : l'app affiche aujourd'hui la publicité sans rien demander | spec à écrire ; le constat et ses sources : `docs/REGISTRE.md`, fiche 9 | 9 (son écran d'accueil décide du moment où la première bannière peut apparaître) ; un message de consentement créé par Charles dans AdMob | à estimer, petit |
+| — | Registre RGPD du projet et politique de confidentialité, en quatre langues ; purge des événements produit au-delà de 13 mois. **Construit le 2026-11-26** : `docs/REGISTRE.md` (onze fiches, les écarts connus), la politique réécrite, la purge, un moyen de tenir une opposition aux événements, les polices du site servies par le site | plan `docs/superpowers/plans/2026-11-26-rgpd-register.md` | — | fait |
 
 Chaque spec finit par une section « Relecture » (du 2026-11-23, ou du
 2026-11-24 pour les stats) : les trous trouvés en la relisant comme un
 constructeur, réglés ou laissés à Charles.
+
+**Le registre se tient à jour avec le code.** Un chantier qui ajoute une
+table, un événement produit, un fournisseur ou une durée complète sa fiche
+de `docs/REGISTRE.md` et la politique de confidentialité (quatre langues,
+`PRIVACY_UPDATED`) dans le même lot ; `backend/src/lib/registre.test.ts`
+échoue tant qu'une table n'est nommée dans aucune fiche.
+
+**Ajouté au chantier 9 par le lot registre (2026-11-26).** Supprimer un
+compte doit aussi demander à RevenueCat d'effacer le client : aujourd'hui
+il y reste, avec l'identifiant du compte et l'historique d'achat
+(`docs/REGISTRE.md`, fiche 4). Le chantier 9 apporte la clé d'API qui le
+permet. Il décide aussi du sort de la table `email_verification_tokens`,
+vide aujourd'hui.
 
 Calendrier à garder en tête : les prix changent le **1er décembre** ; le pic
 de l'année est le **Nouvel An** (une année en pixels commence le 1er
@@ -102,8 +116,8 @@ reste qu'un ordre de construction (*mon choix*, Fable) : 0, 1 et le
 registre, qui sont du backend ; 3, l'outillage Android, tôt, pour que
 tout le reste soit testé dessus ; puis 10 et 9 (ajoutés le 2026-11-26,
 validés par Charles : le hors-ligne d'abord, le compte ensuite, tous deux
-avant le paywall) ; puis 2, 5 lot 1, 4, 8 lot 1, 5 lots 2 et 3, 6, 7,
-8 lot 2. Charles sait que l'ensemble ne sortira sans doute pas avant le
+avant le paywall) ; puis 11, le consentement publicitaire (ajouté le
+2026-11-26) ; puis 2, 5 lot 1, 4, 8 lot 1, 5 lots 2 et 3, 6, 7, 8 lot 2. Charles sait que l'ensemble ne sortira sans doute pas avant le
 Nouvel An. Ce que cela change dans les specs est dans
 `docs/CONFIRMATION.md`, « Une seule release ». `master` avance sans
 release ; un correctif urgent de la production part du tag.
@@ -167,7 +181,26 @@ release ; un correctif urgent de la production part du tag.
   s'arrêtent à l'écran de connexion (même document, « Ce que je
   recommande »).
 - Demander à Vultr son avenant de traitement des données (DPA), puis le
-  citer avec sa date dans `docs/REGISTRE.md` (fiche 1, « Hébergement »).
+  citer avec sa date dans `docs/REGISTRE.md` (« Sous-traitants et
+  destinataires »).
+- Registre, sur le serveur (`docs/REGISTRE.md`, « Écarts connus ») :
+  supprimer les dix anciens fichiers `pg-2026-07-25.sql.age` et suivants
+  de `/srv/dian-dian/backups/` ; donner une durée maximale aux journaux
+  (`MaxRetentionSec=6month` dans journald, et le pilote `journald` pour
+  Docker), ou demander à Fable de le faire.
+- Registre, à relever et à lui donner : les sauvegardes automatiques et
+  les instantanés de Vultr sont-ils activés pour le serveur ; chez qui est
+  la boîte Outlook de l'adresse de contact (compte personnel ou
+  professionnel).
+- Registre, à décider : des données de santé peuvent être notées dans un
+  tracker, qui est un contenu libre (fiche 3) ; au besoin avec un juriste.
+- Une fois par an : effacer de la boîte de contact les échanges de plus de
+  3 ans (fiche 6).
+- Si quelqu'un s'oppose aux événements produit : les deux requêtes de la
+  fiche 7 du registre.
+- Pour le chantier 11 : créer dans AdMob le message de consentement
+  européen (« Confidentialité et messages »), que le formulaire de l'app
+  affichera.
 - Tester le bouton App Store depuis une épingle Pinterest sur iPhone, et
   depuis Safari : depuis le chantier 1 il passe par `/go/apple` et s'ouvre
   dans le même onglet (plus de nouvel onglet).
@@ -201,6 +234,15 @@ release ; un correctif urgent de la production part du tag.
 
 - Le relais des `utm_*` vers les liens stores (en production depuis le
   15 octobre) demande-t-il un avis juridique ? (spec du compteur)
+
+Tranché le 2026-11-26 avec le plan du lot registre (Charles : « fait
+selon tes recommandations, go », donc des *mon choix* de Fable) : 13 mois
+aussi pour les événements d'achat sans compte ; une opposition aux
+événements produit se fait en nous écrivant et se tient par un drapeau
+posé à la main ; les polices du site sont servies par le site ; les
+messages de contact sont gardés 3 ans au plus ; le consentement
+publicitaire devient le chantier 11 de la release ; l'effacement du client
+RevenueCat entre dans le chantier 9.
 
 Tranché le 2026-11-23 après les relectures (détail dans chaque spec) :
 « Nommer mes trackers » désactivé par défaut ; pas de bilan ni de jalon de

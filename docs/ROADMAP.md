@@ -416,7 +416,23 @@ illustrés : https://claude.ai/artifact/RjAYoZx4Cid4tWpgKkY7xj.
   Google Play en avril 2027).
 - Chantier 9, construit après le hors-ligne et avant le paywall.
 
+### 15. Consentement publicitaire — décidé le 2026-11-26
+Trouvé en écrivant le registre RGPD : l'app affiche les bannières AdMob
+sans rien demander. En France, lire l'identifiant publicitaire demande un
+consentement, et Google ne sert que des annonces limitées en Europe sans
+formulaire certifié. Charles : le chantier entre dans la release unique.
+- Le formulaire de Google (déjà dans le paquet `google_mobile_ads`),
+  affiché avant la première bannière là où il est requis ; un moyen de
+  revenir sur son choix dans les réglages.
+- Spec à écrire. Chantier 11, construit après le compte (9), dont l'écran
+  d'accueil décide du moment où la première bannière peut apparaître.
+- Le constat et sa source : `docs/REGISTRE.md`, fiche 9.
+
 ## Fait récemment
+- 2026-11-26 : registre RGPD complet (`docs/REGISTRE.md`, onze fiches, les
+  écarts connus), politique de confidentialité réécrite en quatre langues,
+  événements produit effacés à 13 mois, polices du site servies par le site
+  au lieu de Google Fonts ; à sortir avec la release unique.
 - 2026-11-23 : audit de conversion, `docs/PRICING.md`, specs des rappels et
   de la pop-up premium, essais gratuits Android, images App Store ; branche
   `docs/conversion-retention`. Branche `feat/comment-badge` (non fusionnée) :
