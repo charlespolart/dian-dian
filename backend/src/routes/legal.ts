@@ -141,35 +141,52 @@ function layout(title: string, content: string, lang: Lang): string {
 
 // ── Privacy Policy ──
 
+// The day the policy's text last changed, written out in each language. One
+// date for the four: change it with the text, nowhere else.
+export const PRIVACY_UPDATED = '2026-11-26';
+const updatedOn = (locale: string) => new Intl.DateTimeFormat(locale, { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(`${PRIVACY_UPDATED}T00:00:00Z`));
+
+// What it says is what docs/REGISTRE.md records: a change to one is a change
+// to the other, in the four languages.
 const privacy: Record<Lang, string> = {
   en: `
     <h1>Privacy Policy</h1>
-    <p class="subtitle">Last updated: November 25, 2026</p>
+    <p class="subtitle">Last updated: ${updatedOn('en-US')}</p>
     <h2>1. Introduction</h2>
-    <p>Dian Dian is published by OVERRIDE, SASU with a capital of 1 euro, registered under SIREN 953 122 868. This Privacy Policy explains how we collect, use, and protect your personal information.</p>
-    <h2>2. Data We Collect</h2>
+    <p>Dian Dian is published by OVERRIDE, SASU with a capital of 1 euro, registered under SIREN 953 122 868, which is the controller of your data. This Privacy Policy explains which data we process, why, who it is entrusted to and how long we keep it. Any question: <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a>.</p>
+    <h2>2. Data We Process</h2>
     <ul>
-      <li><strong>Account information:</strong> email address and password (stored securely hashed).</li>
-      <li><strong>Tracker data:</strong> the pages, day cells, colors, and legend entries you create.</li>
-      <li><strong>Technical data:</strong> basic server logs (IP address, timestamps) for security.</li>
+      <li><strong>Account:</strong> your email address and, if you chose a password, its hash (the password itself is never kept). If you sign in with Apple or Google, we receive your email address and an identifier that service gives us for you, nothing else from your profile.</li>
+      <li><strong>Tracker content:</strong> the trackers, colored days, legend entries and comments you create. You choose what you write in them.</li>
+      <li><strong>Settings:</strong> the theme, language and cursor you chose.</li>
+      <li><strong>Purchases:</strong> the plan you bought, the store, the dates, the price and the store's country. We never have access to your payment information.</li>
+      <li><strong>Product events:</strong> see section 7.</li>
+      <li><strong>Technical data:</strong> your IP address is used to limit abuse (counted in memory for 15 minutes) and is written to the server's log when a sign-in is refused.</li>
+      <li><strong>Messages:</strong> what you write to us through the contact form or by email.</li>
     </ul>
-    <h2>3. How We Use Your Data</h2>
+    <h2>3. Why, and on What Basis</h2>
     <ul>
-      <li>To provide and maintain the service.</li>
-      <li>To authenticate you and keep your account secure.</li>
-      <li>To sync your tracker data across devices.</li>
+      <li><strong>To provide the service</strong> (performance of the contract): create your account, sign you in, keep your trackers and sync them across your devices, give you Premium when you buy it, and send you the service's emails (reset code, deletion confirmation).</li>
+      <li><strong>To protect the service</strong> (legitimate interest): limit abuse and be able to notice an attack.</li>
+      <li><strong>To improve the app</strong> (legitimate interest): the product events and usage statistics of section 7, the website audience measurement of section 6, and the measurement of sales.</li>
+      <li><strong>To answer you</strong> (legitimate interest) when you write to us.</li>
     </ul>
-    <p>We do <strong>not</strong> sell your data or use it for profiling.</p>
-    <h2>4. Third-Party Services</h2>
+    <p>We do <strong>not</strong> sell your data or use it for profiling. We send no marketing email.</p>
+    <h2>4. Who Your Data Is Entrusted To</h2>
+    <p>Nobody but us reads your data. These companies host or carry it on our behalf:</p>
     <ul>
-      <li><strong>Google AdMob:</strong> the free version of the app displays banner ads via Google AdMob. AdMob may collect device identifiers and usage data according to <a href="https://policies.google.com/privacy" target="_blank">Google's Privacy Policy</a>. Premium users are not shown ads.</li>
-      <li><strong>In-App Purchases (Apple &amp; Google):</strong> subscriptions and purchases are processed by Apple (App Store) or Google (Google Play), depending on your device. We do not have access to your payment information. See <a href="https://www.apple.com/legal/privacy/" target="_blank">Apple's Privacy Policy</a> and <a href="https://policies.google.com/privacy" target="_blank">Google's Privacy Policy</a>.</li>
+      <li><strong>Vultr:</strong> the server, in France.</li>
+      <li><strong>Cloudflare:</strong> the backups of the database, encrypted before they leave our server and stored in the European Union; and the forwarding of the emails you write to us.</li>
+      <li><strong>Resend:</strong> the sending of our emails. Resend receives your address and the content of the email, and keeps them 30 days.</li>
+      <li><strong>RevenueCat:</strong> keeping track of purchases. RevenueCat receives your account's identifier and your purchase receipts, never your email address.</li>
     </ul>
-    <p>We do <strong>not</strong> use any other third-party analytics or tracking scripts. No personal data is shared with or sold to third parties.</p>
+    <p>Resend and RevenueCat are in the United States: these transfers are covered by the European Commission's standard contractual clauses.</p>
+    <p><strong>Apple and Google</strong> process on their own account what you entrust to them: signing in through them, if you choose to, and your purchases (App Store or Google Play, depending on your device). See <a href="https://www.apple.com/legal/privacy/" target="_blank">Apple's Privacy Policy</a> and <a href="https://policies.google.com/privacy" target="_blank">Google's Privacy Policy</a>.</p>
+    <p>We use <strong>no third-party analytics tool</strong> or tracking script. Apart from these companies and the advertising described in section 8, your data is disclosed to no one.</p>
     <h2>5. Cookies</h2>
     <p>We use cookies for two things only: <strong>authentication</strong> (session tokens) and, if you refuse the website's audience measurement, remembering that choice (<code>dd_noaudience</code>, kept 13 months). No tracking or advertising cookies are used on the website.</p>
     <h2>6. Website Audience Measurement</h2>
-    <p>We count the visits to this website ourselves, to know how many people come, from which site, and how many tap a store button. This measurement uses <strong>no cookie and no third-party tool</strong>.</p>
+    <p>We count the visits to this website ourselves, to know how many people come, from which site, and how many tap a store button. This measurement uses <strong>no cookie and no third-party tool</strong>. The site loads nothing from a third party: its fonts and images come from our own server.</p>
     <ul>
       <li><strong>What is counted:</strong> page views and taps on the store buttons, per day, with the site you came from (its domain name only, as your browser gives it or as the link you followed names it), whether that link carried a campaign tag (not the tag itself), the type of device and browser, the page language and the country.</li>
       <li><strong>What is not kept:</strong> your IP address and your browser's full identification are never written anywhere. They are used to find the country and, mixed with a random value that changes every day, to tell the visitors of one day apart; that mix stays in the server's memory until the end of the day at the latest. Nothing is linked to an account, and no visitor can be followed from one day to the next.</li>
@@ -177,44 +194,74 @@ const privacy: Record<Lang, string> = {
       <li><strong>Where:</strong> on our server, in France, and in the encrypted backups of its database. These figures are for Dian Dian only and are never shared.</li>
     </ul>
     <p>You can <a href="/privacy/audience?lang=en">refuse to be counted</a>. If your browser sends the "Global Privacy Control" or "Do Not Track" signal, you are not counted at all. The country is found with the database <a href="https://db-ip.com" target="_blank" rel="noopener">IP Geolocation by DB-IP</a>.</p>
-    <h2>7. Data Storage &amp; Security</h2>
-    <p>Your data is stored on servers hosted by Vultr. Passwords are hashed using Argon2. All connections are encrypted via HTTPS.</p>
-    <h2>8. Data Retention &amp; Deletion</h2>
-    <p>We retain your data while your account is active. You can <strong>delete your account and all data</strong> at any time from the app.</p>
-    <h2>9. Your Rights (GDPR)</h2>
-    <p>If you are in the EEA, you have the right to access, correct, delete, export, or restrict processing of your data. Contact us at <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a>.</p>
-    <h2>10. Changes</h2>
+    <h2 id="events">7. Product Events and Usage Statistics</h2>
+    <p>To know where the app stops its users, it reports a few events to us, linked to your account.</p>
+    <ul>
+      <li><strong>What is reported:</strong> the name of a screen or an action (today: a limit of the free version being shown), the platform (iOS, Android), the app's version and the date. Never the content of your trackers.</li>
+      <li><strong>Why:</strong> to adjust the limits of the free version and fix what gets in the way.</li>
+      <li><strong>How long:</strong> 13 months at most, then they are deleted. They are deleted with your account if you delete it.</li>
+      <li><strong>For whom:</strong> Dian Dian only. They are never shared.</li>
+      <li><strong>Objecting:</strong> write to us at <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a>. We then stop recording them for your account and delete those already received.</li>
+    </ul>
+    <p>We also compute statistics over all accounts together (number of accounts, of trackers, of days filled in, most common tracker titles) to decide how the app evolves. They describe no one in particular.</p>
+    <h2>8. Advertising</h2>
+    <p>The free version of the app displays banner ads via <strong>Google AdMob</strong>. AdMob may collect device identifiers and usage data, which Google processes on its own account according to <a href="https://policies.google.com/privacy" target="_blank">Google's Privacy Policy</a>. Premium users are not shown ads.</p>
+    <h2>9. Data Storage &amp; Security</h2>
+    <p>Your data is stored on our server, hosted by Vultr in France. Passwords are hashed using Argon2. All connections are encrypted via HTTPS. The database is backed up every day; the backups are encrypted, stored in the European Union and kept 7 days.</p>
+    <h2>10. Data Retention &amp; Deletion</h2>
+    <ul>
+      <li><strong>Account and content:</strong> as long as your account exists. You can <strong>delete your account and all data</strong> at any time from the app; the deletion is immediate.</li>
+      <li><strong>Backups:</strong> 7 days. A deleted account is therefore gone from the backups 7 days later.</li>
+      <li><strong>Product events:</strong> 13 months at most.</li>
+      <li><strong>Website audience measurement:</strong> daily counts for 25 months at most, then monthly totals only.</li>
+      <li><strong>Server log:</strong> the IP address of a refused sign-in stays there until the server's next update.</li>
+      <li><strong>Messages you write to us:</strong> 3 years at most after the last exchange.</li>
+      <li><strong>Purchases:</strong> as long as your account exists. Apple, Google and RevenueCat keep their own record of your purchases, under their own rules.</li>
+    </ul>
+    <h2>11. Your Rights</h2>
+    <p>You can access your data, have it corrected or deleted, receive a copy of it, have its processing restricted, and object to the processing based on our legitimate interest (sections 6 and 7). Write to us at <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a>: we answer within one month. If our answer does not satisfy you, you can lodge a complaint with the French data protection authority, the <a href="https://www.cnil.fr/fr/plaintes" target="_blank" rel="noopener">CNIL</a>, or with the authority of your country.</p>
+    <h2>12. Changes</h2>
     <p>We may update this policy. Material changes will be communicated via email.</p>
-    <h2>11. Contact</h2>
+    <h2>13. Contact</h2>
     <p>Questions? <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a></p>`,
   fr: `
     <h1>Politique de confidentialité</h1>
-    <p class="subtitle">Dernière mise à jour : 25 novembre 2026</p>
+    <p class="subtitle">Dernière mise à jour : ${updatedOn('fr-FR')}</p>
     <h2>1. Introduction</h2>
-    <p>Dian Dian est édité par OVERRIDE, SASU au capital de 1 euro, immatriculée sous le SIREN 953 122 868. Cette politique explique comment nous collectons, utilisons et protégeons vos données personnelles.</p>
-    <h2>2. Données collectées</h2>
+    <p>Dian Dian est édité par OVERRIDE, SASU au capital de 1 euro, immatriculée sous le SIREN 953 122 868, qui est responsable du traitement de vos données. Cette politique explique quelles données nous traitons, pourquoi, à qui elles sont confiées et combien de temps nous les gardons. Pour toute question : <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a>.</p>
+    <h2>2. Données que nous traitons</h2>
     <ul>
-      <li><strong>Informations de compte :</strong> adresse email et mot de passe (stocké de manière sécurisée, hashé).</li>
-      <li><strong>Données de suivi :</strong> les pages, cellules, couleurs et légendes que vous créez.</li>
-      <li><strong>Données techniques :</strong> journaux serveur basiques (adresse IP, horodatages) pour la sécurité.</li>
+      <li><strong>Compte :</strong> votre adresse e-mail et, si vous avez choisi un mot de passe, son empreinte (le mot de passe lui-même n'est jamais gardé). Si vous vous connectez avec Apple ou Google, nous recevons votre adresse e-mail et un identifiant que ce service nous donne pour vous, rien d'autre de votre profil.</li>
+      <li><strong>Contenu de vos trackers :</strong> les trackers, les jours coloriés, les légendes et les commentaires que vous créez. Vous choisissez ce que vous y notez.</li>
+      <li><strong>Réglages :</strong> le thème, la langue et le curseur choisis.</li>
+      <li><strong>Achats :</strong> la formule achetée, le store, les dates, le prix et le pays du store. Nous n'avons jamais accès à votre moyen de paiement.</li>
+      <li><strong>Événements produit :</strong> voir la section 7.</li>
+      <li><strong>Données techniques :</strong> votre adresse IP sert à limiter les abus (elle est comptée en mémoire pendant 15 minutes) et est écrite dans le journal du serveur quand une connexion est refusée.</li>
+      <li><strong>Messages :</strong> ce que vous nous écrivez par le formulaire de contact ou par e-mail.</li>
     </ul>
-    <h2>3. Utilisation des données</h2>
+    <h2>3. Pourquoi, et sur quelle base</h2>
     <ul>
-      <li>Fournir et maintenir le service.</li>
-      <li>Vous authentifier et sécuriser votre compte.</li>
-      <li>Synchroniser vos données entre appareils.</li>
+      <li><strong>Pour fournir le service</strong> (exécution du contrat) : créer votre compte, vous y connecter, garder vos trackers et les synchroniser entre vos appareils, vous donner Premium quand vous l'achetez, et vous envoyer les e-mails du service (code de réinitialisation, confirmation de suppression).</li>
+      <li><strong>Pour protéger le service</strong> (intérêt légitime) : limiter les abus et pouvoir constater une attaque.</li>
+      <li><strong>Pour améliorer l'app</strong> (intérêt légitime) : les événements produit et les statistiques d'usage de la section 7, la mesure d'audience du site de la section 6, et la mesure des ventes.</li>
+      <li><strong>Pour vous répondre</strong> (intérêt légitime) quand vous nous écrivez.</li>
     </ul>
-    <p>Nous ne <strong>vendons pas</strong> vos données et ne les utilisons pas à des fins de profilage.</p>
-    <h2>4. Services tiers</h2>
+    <p>Nous ne <strong>vendons pas</strong> vos données et ne les utilisons pas à des fins de profilage. Nous n'envoyons aucun e-mail publicitaire.</p>
+    <h2>4. À qui vos données sont confiées</h2>
+    <p>Personne d'autre que nous ne lit vos données. Ces sociétés les hébergent ou les transportent pour notre compte :</p>
     <ul>
-      <li><strong>Google AdMob :</strong> la version gratuite de l'application affiche des bannières publicitaires via Google AdMob. AdMob peut collecter des identifiants d'appareil et des données d'utilisation conformément à la <a href="https://policies.google.com/privacy" target="_blank">Politique de confidentialité de Google</a>. Les utilisateurs Premium ne voient pas de publicités.</li>
-      <li><strong>Achats intégrés (Apple et Google) :</strong> les abonnements et achats sont traités par Apple (App Store) ou Google (Google Play), selon votre appareil. Nous n'avons pas accès à vos informations de paiement. Voir la <a href="https://www.apple.com/legal/privacy/" target="_blank">Politique de confidentialité d'Apple</a> et la <a href="https://policies.google.com/privacy" target="_blank">Politique de confidentialité de Google</a>.</li>
+      <li><strong>Vultr :</strong> le serveur, en France.</li>
+      <li><strong>Cloudflare :</strong> les sauvegardes de la base, chiffrées avant de quitter notre serveur et stockées dans l'Union européenne ; et l'acheminement des e-mails que vous nous écrivez.</li>
+      <li><strong>Resend :</strong> l'envoi de nos e-mails. Resend reçoit votre adresse et le contenu de l'e-mail, et les garde 30 jours.</li>
+      <li><strong>RevenueCat :</strong> le suivi des achats. RevenueCat reçoit l'identifiant de votre compte et vos reçus d'achat, jamais votre adresse e-mail.</li>
     </ul>
-    <p>Nous n'utilisons <strong>aucun</strong> autre outil d'analyse tiers ni script de suivi. Aucune donnée personnelle n'est partagée ou vendue à des tiers.</p>
+    <p>Resend et RevenueCat sont aux États-Unis : ces transferts sont encadrés par les clauses contractuelles types de la Commission européenne.</p>
+    <p><strong>Apple et Google</strong> traitent pour leur propre compte ce que vous leur confiez : la connexion par leur service, si vous la choisissez, et vos achats (App Store ou Google Play, selon votre appareil). Voir la <a href="https://www.apple.com/legal/privacy/" target="_blank">Politique de confidentialité d'Apple</a> et la <a href="https://policies.google.com/privacy" target="_blank">Politique de confidentialité de Google</a>.</p>
+    <p>Nous n'utilisons <strong>aucun outil d'analyse tiers</strong> ni script de suivi. En dehors de ces sociétés et de la publicité décrite en section 8, vos données ne sont communiquées à personne.</p>
     <h2>5. Cookies</h2>
     <p>Nous utilisons des cookies pour deux choses seulement : <strong>l'authentification</strong> (jetons de session) et, si vous refusez la mesure d'audience du site, retenir ce choix (<code>dd_noaudience</code>, gardé 13 mois). Aucun cookie de suivi ou publicitaire n'est utilisé sur le site web.</p>
     <h2>6. Mesure d'audience du site</h2>
-    <p>Nous comptons nous-mêmes les visites de ce site, pour savoir combien de personnes viennent, depuis quel site, et combien touchent un bouton vers un store. Cette mesure n'utilise <strong>aucun cookie ni outil tiers</strong>.</p>
+    <p>Nous comptons nous-mêmes les visites de ce site, pour savoir combien de personnes viennent, depuis quel site, et combien touchent un bouton vers un store. Cette mesure n'utilise <strong>aucun cookie ni outil tiers</strong>. Le site ne charge rien chez un tiers : ses polices et ses images viennent de notre serveur.</p>
     <ul>
       <li><strong>Ce qui est compté :</strong> les affichages de la page et les clics vers les stores, par jour, avec le site d'où vous venez (son nom de domaine seulement, tel que votre navigateur le donne ou que le lien suivi le désigne), le fait que ce lien portait ou non un marquage de campagne (pas le marquage lui-même), le type d'appareil et de navigateur, la langue de la page et le pays.</li>
       <li><strong>Ce qui n'est pas gardé :</strong> votre adresse IP et l'identification complète de votre navigateur ne sont jamais écrites nulle part. Elles servent à trouver le pays et, mêlées à une valeur tirée au hasard qui change chaque jour, à distinguer les visiteurs d'une même journée ; ce mélange reste dans la mémoire du serveur jusqu'à la fin de la journée au plus tard. Rien n'est relié à un compte, et aucun visiteur ne peut être suivi d'un jour à l'autre.</li>
@@ -222,44 +269,74 @@ const privacy: Record<Lang, string> = {
       <li><strong>Où :</strong> sur notre serveur, en France, et dans les sauvegardes chiffrées de sa base de données. Ces chiffres ne servent qu'à Dian Dian et ne sont jamais partagés.</li>
     </ul>
     <p>Vous pouvez <a href="/privacy/audience?lang=fr">refuser d'être compté</a>. Si votre navigateur envoie le signal « Global Privacy Control » ou « Do Not Track », vous n'êtes pas compté du tout. Le pays est trouvé avec la base <a href="https://db-ip.com" target="_blank" rel="noopener">IP Geolocation by DB-IP</a>.</p>
-    <h2>7. Stockage et sécurité</h2>
-    <p>Vos données sont stockées sur des serveurs hébergés par Vultr. Les mots de passe sont hashés avec Argon2. Toutes les connexions sont chiffrées via HTTPS.</p>
-    <h2>8. Conservation et suppression</h2>
-    <p>Nous conservons vos données tant que votre compte est actif. Vous pouvez <strong>supprimer votre compte et toutes vos données</strong> à tout moment depuis l'application.</p>
-    <h2>9. Vos droits (RGPD)</h2>
-    <p>Si vous êtes dans l'EEE, vous avez le droit d'accéder, corriger, supprimer, exporter ou restreindre le traitement de vos données. Contactez-nous à <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a>.</p>
-    <h2>10. Modifications</h2>
-    <p>Nous pouvons mettre à jour cette politique. Les changements importants seront communiqués par email.</p>
-    <h2>11. Contact</h2>
+    <h2 id="events">7. Événements produit et statistiques d'usage</h2>
+    <p>Pour savoir où l'app arrête ses utilisateurs, elle nous signale quelques événements, liés à votre compte.</p>
+    <ul>
+      <li><strong>Ce qui est signalé :</strong> le nom d'un écran ou d'une action (aujourd'hui : l'affichage d'une limite de la version gratuite), la plateforme (iOS, Android), la version de l'app et la date. Jamais le contenu de vos trackers.</li>
+      <li><strong>Pourquoi :</strong> régler les limites de la version gratuite et corriger ce qui gêne.</li>
+      <li><strong>Combien de temps :</strong> 13 mois au plus, puis ils sont effacés. Ils sont effacés avec votre compte si vous le supprimez.</li>
+      <li><strong>Pour qui :</strong> Dian Dian seulement. Ils ne sont jamais partagés.</li>
+      <li><strong>Vous y opposer :</strong> écrivez-nous à <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a>. Nous arrêtons alors de les enregistrer pour votre compte et effaçons ceux déjà reçus.</li>
+    </ul>
+    <p>Nous calculons aussi des statistiques sur l'ensemble des comptes (nombre de comptes, de trackers, de jours remplis, titres de trackers les plus fréquents) pour décider de l'évolution de l'app. Elles ne décrivent personne en particulier.</p>
+    <h2>8. Publicité</h2>
+    <p>La version gratuite de l'application affiche des bannières publicitaires via <strong>Google AdMob</strong>. AdMob peut collecter des identifiants d'appareil et des données d'utilisation, que Google traite pour son propre compte conformément à la <a href="https://policies.google.com/privacy" target="_blank">Politique de confidentialité de Google</a>. Les utilisateurs Premium ne voient pas de publicités.</p>
+    <h2>9. Stockage et sécurité</h2>
+    <p>Vos données sont stockées sur notre serveur, hébergé par Vultr en France. Les mots de passe sont hachés avec Argon2. Toutes les connexions sont chiffrées via HTTPS. La base est sauvegardée chaque jour ; les sauvegardes sont chiffrées, stockées dans l'Union européenne et gardées 7 jours.</p>
+    <h2>10. Conservation et suppression</h2>
+    <ul>
+      <li><strong>Compte et contenu :</strong> tant que votre compte existe. Vous pouvez <strong>supprimer votre compte et toutes vos données</strong> à tout moment depuis l'application ; la suppression est immédiate.</li>
+      <li><strong>Sauvegardes :</strong> 7 jours. Un compte supprimé a donc disparu des sauvegardes 7 jours plus tard.</li>
+      <li><strong>Événements produit :</strong> 13 mois au plus.</li>
+      <li><strong>Mesure d'audience du site :</strong> les comptes par jour pendant 25 mois au plus, puis seulement des totaux par mois.</li>
+      <li><strong>Journal du serveur :</strong> l'adresse IP d'une connexion refusée y reste jusqu'à la mise à jour suivante du serveur.</li>
+      <li><strong>Messages que vous nous écrivez :</strong> 3 ans au plus après le dernier échange.</li>
+      <li><strong>Achats :</strong> tant que votre compte existe. Apple, Google et RevenueCat gardent leur propre historique de vos achats, selon leurs règles.</li>
+    </ul>
+    <h2>11. Vos droits</h2>
+    <p>Vous pouvez accéder à vos données, les faire corriger ou effacer, en recevoir une copie, en faire limiter le traitement, et vous opposer aux traitements fondés sur notre intérêt légitime (sections 6 et 7). Écrivez-nous à <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a> : nous répondons sous un mois. Si notre réponse ne vous convient pas, vous pouvez saisir la <a href="https://www.cnil.fr/fr/plaintes" target="_blank" rel="noopener">CNIL</a> ou l'autorité de protection des données de votre pays.</p>
+    <h2>12. Modifications</h2>
+    <p>Nous pouvons mettre à jour cette politique. Les changements importants seront communiqués par e-mail.</p>
+    <h2>13. Contact</h2>
     <p>Questions ? <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a></p>`,
   'zh-CN': `
     <h1>隐私政策</h1>
-    <p class="subtitle">最后更新：2026年11月25日</p>
+    <p class="subtitle">最后更新：${updatedOn('zh-CN')}</p>
     <h2>1. 简介</h2>
-    <p>点点由 OVERRIDE 公司（SASU，注册资本1欧元，SIREN 953 122 868）发布。本隐私政策说明我们如何收集、使用和保护您的个人信息。</p>
-    <h2>2. 收集的数据</h2>
+    <p>点点由 OVERRIDE 公司（SASU，注册资本1欧元，SIREN 953 122 868）发布，该公司是您数据的控制者。本隐私政策说明我们处理哪些数据、为什么处理、交给谁保管以及保留多久。如有疑问，请联系 <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a>。</p>
+    <h2>2. 我们处理的数据</h2>
     <ul>
-      <li><strong>账户信息：</strong>电子邮箱和密码（安全加密存储）。</li>
-      <li><strong>追踪数据：</strong>您创建的页面、格子、颜色和图例。</li>
-      <li><strong>技术数据：</strong>基本服务器日志（IP地址、时间戳），用于安全目的。</li>
+      <li><strong>账户：</strong>您的电子邮箱；如果您设置了密码，我们只保存其哈希值（密码本身从不保存）。如果您使用 Apple 或 Google 登录，我们会收到您的电子邮箱以及该服务为您提供的一个标识符，不会收到您个人资料中的其他内容。</li>
+      <li><strong>追踪器内容：</strong>您创建的追踪器、上色的日期、图例和备注。记录什么由您决定。</li>
+      <li><strong>设置：</strong>您选择的主题、语言和光标。</li>
+      <li><strong>购买：</strong>所购方案、应用商店、日期、价格和商店所在的国家/地区。我们无法获取您的支付信息。</li>
+      <li><strong>产品事件：</strong>见第 7 节。</li>
+      <li><strong>技术数据：</strong>您的 IP 地址用于限制滥用（在内存中统计 15 分钟），并在登录被拒绝时写入服务器日志。</li>
+      <li><strong>消息：</strong>您通过联系表单或电子邮件写给我们的内容。</li>
     </ul>
-    <h2>3. 数据使用方式</h2>
+    <h2>3. 处理目的与依据</h2>
     <ul>
-      <li>提供和维护服务。</li>
-      <li>验证身份并保护账户安全。</li>
-      <li>跨设备同步追踪数据。</li>
+      <li><strong>提供服务</strong>（履行合同）：创建账户、登录、保存您的追踪器并在您的设备间同步、在您购买后提供高级版，以及发送服务邮件（重置验证码、删除确认）。</li>
+      <li><strong>保护服务</strong>（正当利益）：限制滥用并能够发现攻击。</li>
+      <li><strong>改进应用</strong>（正当利益）：第 7 节所述的产品事件和使用统计、第 6 节所述的网站访问统计，以及销售统计。</li>
+      <li><strong>回复您</strong>（正当利益）：当您写信给我们时。</li>
     </ul>
-    <p>我们<strong>不会</strong>出售您的数据或将其用于用户画像。</p>
-    <h2>4. 第三方服务</h2>
+    <p>我们<strong>不会</strong>出售您的数据或将其用于用户画像，也不发送任何广告邮件。</p>
+    <h2>4. 数据交给谁保管</h2>
+    <p>除我们之外，没有人会查看您的数据。以下公司代我们托管或传输数据：</p>
     <ul>
-      <li><strong>Google AdMob：</strong>免费版应用通过 Google AdMob 显示横幅广告。AdMob 可能根据 <a href="https://policies.google.com/privacy" target="_blank">Google 隐私政策</a>收集设备标识符和使用数据。高级用户不会看到广告。</li>
-      <li><strong>应用内购买（Apple 与 Google）：</strong>订阅和购买由 Apple（App Store）或 Google（Google Play）处理，取决于您的设备。我们无法访问您的支付信息。请参阅 <a href="https://www.apple.com/legal/privacy/" target="_blank">Apple 隐私政策</a>和 <a href="https://policies.google.com/privacy" target="_blank">Google 隐私政策</a>。</li>
+      <li><strong>Vultr：</strong>服务器，位于法国。</li>
+      <li><strong>Cloudflare：</strong>数据库备份（离开我们的服务器前已加密，存储在欧盟境内）；以及转发您写给我们的电子邮件。</li>
+      <li><strong>Resend：</strong>发送我们的电子邮件。Resend 会收到您的邮箱地址和邮件内容，并保留 30 天。</li>
+      <li><strong>RevenueCat：</strong>跟踪购买状态。RevenueCat 会收到您的账户标识符和购买凭证，绝不会收到您的电子邮箱。</li>
     </ul>
-    <p>我们<strong>不使用</strong>任何其他第三方分析工具或追踪脚本。不会与第三方共享或出售个人数据。</p>
+    <p>Resend 和 RevenueCat 位于美国：这些数据传输受欧盟委员会标准合同条款的约束。</p>
+    <p><strong>Apple 和 Google</strong> 自行负责处理您交给它们的数据：通过它们登录（如果您选择这样做），以及您的购买（App Store 或 Google Play，取决于您的设备）。请参阅 <a href="https://www.apple.com/legal/privacy/" target="_blank">Apple 隐私政策</a>和 <a href="https://policies.google.com/privacy" target="_blank">Google 隐私政策</a>。</p>
+    <p>我们<strong>不使用任何第三方分析工具</strong>或追踪脚本。除上述公司和第 8 节所述的广告外，您的数据不会提供给任何人。</p>
     <h2>5. Cookie</h2>
     <p>我们仅将 Cookie 用于两个用途：<strong>身份验证</strong>（会话令牌），以及在您拒绝网站访问统计时记住该选择（<code>dd_noaudience</code>，保留 13 个月）。网站上不使用追踪或广告 Cookie。</p>
     <h2>6. 网站访问统计</h2>
-    <p>我们自行统计本网站的访问量，以了解有多少人访问、来自哪个网站，以及有多少人点击了应用商店按钮。此统计<strong>不使用任何 Cookie 或第三方工具</strong>。</p>
+    <p>我们自行统计本网站的访问量，以了解有多少人访问、来自哪个网站，以及有多少人点击了应用商店按钮。此统计<strong>不使用任何 Cookie 或第三方工具</strong>。本网站不从任何第三方加载内容：字体和图片均来自我们自己的服务器。</p>
     <ul>
       <li><strong>统计内容：</strong>每天的页面浏览次数和应用商店按钮点击次数，以及来源网站（仅域名，由您的浏览器提供或由您点击的链接指明）、该链接是否带有推广标记（不记录标记本身）、设备和浏览器类型、页面语言和国家/地区。</li>
       <li><strong>不保留的内容：</strong>您的 IP 地址和浏览器的完整标识不会被写入任何地方。它们用于确定国家/地区，并与一个每天更换的随机值混合后，用于区分同一天的访客；该混合值最迟在当天结束时从服务器内存中清除。任何数据都不会与账户关联，也无法跨天追踪任何访客。</li>
@@ -267,44 +344,74 @@ const privacy: Record<Lang, string> = {
       <li><strong>存储位置：</strong>我们位于法国的服务器，以及其数据库的加密备份。这些数据仅供点点使用，绝不与他人分享。</li>
     </ul>
     <p>您可以<a href="/privacy/audience?lang=zh-CN">拒绝被统计</a>。如果您的浏览器发送“Global Privacy Control”或“Do Not Track”信号，您将完全不被统计。国家/地区查询使用 <a href="https://db-ip.com" target="_blank" rel="noopener">IP Geolocation by DB-IP</a> 数据库。</p>
-    <h2>7. 数据存储与安全</h2>
-    <p>您的数据存储在 Vultr 托管的服务器上。密码使用 Argon2 加密。所有连接通过 HTTPS 加密。</p>
-    <h2>8. 数据保留与删除</h2>
-    <p>账户活跃期间保留数据。您可以随时从应用中<strong>删除账户和所有数据</strong>。</p>
-    <h2>9. 您的权利（GDPR）</h2>
-    <p>如果您在欧洲经济区，您有权访问、更正、删除、导出或限制处理您的数据。请联系 <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a>。</p>
-    <h2>10. 变更</h2>
+    <h2 id="events">7. 产品事件与使用统计</h2>
+    <p>为了解应用在哪些地方让用户受阻，应用会向我们报告少量与您账户关联的事件。</p>
+    <ul>
+      <li><strong>报告的内容：</strong>某个界面或操作的名称（目前为：显示免费版的某项限制）、平台（iOS、Android）、应用版本和日期。绝不包含您追踪器的内容。</li>
+      <li><strong>目的：</strong>调整免费版的限制，并修复造成阻碍的问题。</li>
+      <li><strong>保留期限：</strong>最多 13 个月，之后删除。如果您删除账户，它们会随账户一并删除。</li>
+      <li><strong>使用者：</strong>仅限点点，绝不与他人分享。</li>
+      <li><strong>提出反对：</strong>请写信至 <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a>。我们将停止为您的账户记录这些事件，并删除已收到的事件。</li>
+    </ul>
+    <p>我们还会对全体账户进行统计（账户数、追踪器数、已填写的天数、最常见的追踪器标题），以决定应用的发展方向。这些统计不描述任何特定个人。</p>
+    <h2>8. 广告</h2>
+    <p>免费版应用通过 <strong>Google AdMob</strong> 显示横幅广告。AdMob 可能收集设备标识符和使用数据，由 Google 根据 <a href="https://policies.google.com/privacy" target="_blank">Google 隐私政策</a>自行处理。高级用户不会看到广告。</p>
+    <h2>9. 数据存储与安全</h2>
+    <p>您的数据存储在我们位于法国、由 Vultr 托管的服务器上。密码使用 Argon2 进行哈希处理。所有连接通过 HTTPS 加密。数据库每天备份；备份经过加密，存储在欧盟境内，保留 7 天。</p>
+    <h2>10. 数据保留与删除</h2>
+    <ul>
+      <li><strong>账户和内容：</strong>账户存在期间一直保留。您可以随时从应用中<strong>删除账户和所有数据</strong>，删除立即生效。</li>
+      <li><strong>备份：</strong>7 天。因此，已删除的账户会在 7 天后从备份中消失。</li>
+      <li><strong>产品事件：</strong>最多 13 个月。</li>
+      <li><strong>网站访问统计：</strong>每日统计最多保留 25 个月，之后仅保留每月总数。</li>
+      <li><strong>服务器日志：</strong>登录被拒绝时记录的 IP 地址会保留到服务器下一次更新为止。</li>
+      <li><strong>您写给我们的消息：</strong>最后一次往来后最多 3 年。</li>
+      <li><strong>购买：</strong>账户存在期间一直保留。Apple、Google 和 RevenueCat 会按各自的规则保留它们自己的购买记录。</li>
+    </ul>
+    <h2>11. 您的权利</h2>
+    <p>您可以查阅、更正或删除您的数据，获取其副本，要求限制处理，并反对基于我们正当利益的处理（第 6 节和第 7 节）。请写信至 <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a>：我们会在一个月内答复。如果您对我们的答复不满意，可以向法国数据保护机构 <a href="https://www.cnil.fr/fr/plaintes" target="_blank" rel="noopener">CNIL</a> 或您所在国家/地区的数据保护机构投诉。</p>
+    <h2>12. 变更</h2>
     <p>我们可能会更新本政策。重大变更将通过电子邮件通知。</p>
-    <h2>11. 联系</h2>
+    <h2>13. 联系</h2>
     <p>有问题？<a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a></p>`,
   'zh-TW': `
     <h1>隱私權政策</h1>
-    <p class="subtitle">最後更新：2026年11月25日</p>
+    <p class="subtitle">最後更新：${updatedOn('zh-TW')}</p>
     <h2>1. 簡介</h2>
-    <p>點點由 OVERRIDE 公司（SASU，註冊資本1歐元，SIREN 953 122 868）發布。本隱私權政策說明我們如何收集、使用和保護您的個人資訊。</p>
-    <h2>2. 收集的資料</h2>
+    <p>點點由 OVERRIDE 公司（SASU，註冊資本1歐元，SIREN 953 122 868）發布，該公司是您資料的控管者。本隱私權政策說明我們處理哪些資料、為什麼處理、交給誰保管以及保留多久。如有疑問，請聯繫 <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a>。</p>
+    <h2>2. 我們處理的資料</h2>
     <ul>
-      <li><strong>帳戶資訊：</strong>電子郵件和密碼（安全加密儲存）。</li>
-      <li><strong>追蹤資料：</strong>您建立的頁面、格子、顏色和圖例。</li>
-      <li><strong>技術資料：</strong>基本伺服器日誌（IP位址、時間戳），用於安全目的。</li>
+      <li><strong>帳戶：</strong>您的電子郵件；如果您設定了密碼，我們只儲存其雜湊值（密碼本身從不儲存）。如果您使用 Apple 或 Google 登入，我們會收到您的電子郵件以及該服務為您提供的一個識別碼，不會收到您個人檔案中的其他內容。</li>
+      <li><strong>追蹤器內容：</strong>您建立的追蹤器、上色的日期、圖例和備註。記錄什麼由您決定。</li>
+      <li><strong>設定：</strong>您選擇的主題、語言和游標。</li>
+      <li><strong>購買：</strong>所購方案、應用程式商店、日期、價格和商店所在的國家/地區。我們無法取得您的付款資訊。</li>
+      <li><strong>產品事件：</strong>見第 7 節。</li>
+      <li><strong>技術資料：</strong>您的 IP 位址用於限制濫用（在記憶體中統計 15 分鐘），並在登入被拒絕時寫入伺服器日誌。</li>
+      <li><strong>訊息：</strong>您透過聯絡表單或電子郵件寫給我們的內容。</li>
     </ul>
-    <h2>3. 資料使用方式</h2>
+    <h2>3. 處理目的與依據</h2>
     <ul>
-      <li>提供和維護服務。</li>
-      <li>驗證身分並保護帳戶安全。</li>
-      <li>跨裝置同步追蹤資料。</li>
+      <li><strong>提供服務</strong>（履行契約）：建立帳戶、登入、儲存您的追蹤器並在您的裝置間同步、在您購買後提供進階版，以及寄送服務郵件（重設驗證碼、刪除確認）。</li>
+      <li><strong>保護服務</strong>（正當利益）：限制濫用並能夠發現攻擊。</li>
+      <li><strong>改進應用程式</strong>（正當利益）：第 7 節所述的產品事件和使用統計、第 6 節所述的網站流量統計，以及銷售統計。</li>
+      <li><strong>回覆您</strong>（正當利益）：當您寫信給我們時。</li>
     </ul>
-    <p>我們<strong>不會</strong>出售您的資料或將其用於使用者分析。</p>
-    <h2>4. 第三方服務</h2>
+    <p>我們<strong>不會</strong>出售您的資料或將其用於使用者分析，也不寄送任何廣告郵件。</p>
+    <h2>4. 資料交給誰保管</h2>
+    <p>除我們之外，沒有人會查看您的資料。以下公司代我們託管或傳輸資料：</p>
     <ul>
-      <li><strong>Google AdMob：</strong>免費版應用程式透過 Google AdMob 顯示橫幅廣告。AdMob 可能根據 <a href="https://policies.google.com/privacy" target="_blank">Google 隱私權政策</a>收集裝置識別碼和使用資料。進階使用者不會看到廣告。</li>
-      <li><strong>應用程式內購買（Apple 與 Google）：</strong>訂閱和購買由 Apple（App Store）或 Google（Google Play）處理，取決於您的裝置。我們無法存取您的付款資訊。請參閱 <a href="https://www.apple.com/legal/privacy/" target="_blank">Apple 隱私權政策</a>和 <a href="https://policies.google.com/privacy" target="_blank">Google 隱私權政策</a>。</li>
+      <li><strong>Vultr：</strong>伺服器，位於法國。</li>
+      <li><strong>Cloudflare：</strong>資料庫備份（離開我們的伺服器前已加密，儲存在歐盟境內）；以及轉寄您寫給我們的電子郵件。</li>
+      <li><strong>Resend：</strong>寄送我們的電子郵件。Resend 會收到您的郵件地址和郵件內容，並保留 30 天。</li>
+      <li><strong>RevenueCat：</strong>追蹤購買狀態。RevenueCat 會收到您的帳戶識別碼和購買憑證，絕不會收到您的電子郵件。</li>
     </ul>
-    <p>我們<strong>不使用</strong>任何其他第三方分析工具或追蹤指令碼。不會與第三方分享或出售個人資料。</p>
+    <p>Resend 和 RevenueCat 位於美國：這些資料傳輸受歐盟執委會標準契約條款的約束。</p>
+    <p><strong>Apple 和 Google</strong> 自行負責處理您交給它們的資料：透過它們登入（如果您選擇這樣做），以及您的購買（App Store 或 Google Play，取決於您的裝置）。請參閱 <a href="https://www.apple.com/legal/privacy/" target="_blank">Apple 隱私權政策</a>和 <a href="https://policies.google.com/privacy" target="_blank">Google 隱私權政策</a>。</p>
+    <p>我們<strong>不使用任何第三方分析工具</strong>或追蹤指令碼。除上述公司和第 8 節所述的廣告外，您的資料不會提供給任何人。</p>
     <h2>5. Cookie</h2>
     <p>我們僅將 Cookie 用於兩個用途：<strong>身分驗證</strong>（工作階段權杖），以及在您拒絕網站流量統計時記住該選擇（<code>dd_noaudience</code>，保留 13 個月）。網站上不使用追蹤或廣告 Cookie。</p>
     <h2>6. 網站流量統計</h2>
-    <p>我們自行統計本網站的造訪次數，以了解有多少人造訪、來自哪個網站，以及有多少人點擊了應用程式商店按鈕。此統計<strong>不使用任何 Cookie 或第三方工具</strong>。</p>
+    <p>我們自行統計本網站的造訪次數，以了解有多少人造訪、來自哪個網站，以及有多少人點擊了應用程式商店按鈕。此統計<strong>不使用任何 Cookie 或第三方工具</strong>。本網站不從任何第三方載入內容：字型和圖片均來自我們自己的伺服器。</p>
     <ul>
       <li><strong>統計內容：</strong>每天的頁面瀏覽次數和應用程式商店按鈕點擊次數，以及來源網站（僅網域名稱，由您的瀏覽器提供或由您點擊的連結指明）、該連結是否帶有推廣標記（不記錄標記本身）、裝置和瀏覽器類型、頁面語言和國家/地區。</li>
       <li><strong>不保留的內容：</strong>您的 IP 位址和瀏覽器的完整識別資訊不會被寫入任何地方。它們用於判斷國家/地區，並與一個每天更換的隨機值混合後，用於區分同一天的訪客；該混合值最遲在當天結束時從伺服器記憶體中清除。任何資料都不會與帳號關聯，也無法跨天追蹤任何訪客。</li>
@@ -312,15 +419,35 @@ const privacy: Record<Lang, string> = {
       <li><strong>儲存位置：</strong>我們位於法國的伺服器，以及其資料庫的加密備份。這些資料僅供點點使用，絕不與他人分享。</li>
     </ul>
     <p>您可以<a href="/privacy/audience?lang=zh-TW">拒絕被統計</a>。如果您的瀏覽器傳送「Global Privacy Control」或「Do Not Track」訊號，您將完全不被統計。國家/地區查詢使用 <a href="https://db-ip.com" target="_blank" rel="noopener">IP Geolocation by DB-IP</a> 資料庫。</p>
-    <h2>7. 資料儲存與安全</h2>
-    <p>您的資料儲存在 Vultr 託管的伺服器上。密碼使用 Argon2 加密。所有連線透過 HTTPS 加密。</p>
-    <h2>8. 資料保留與刪除</h2>
-    <p>帳戶活躍期間保留資料。您可以隨時從應用程式中<strong>刪除帳戶和所有資料</strong>。</p>
-    <h2>9. 您的權利（GDPR）</h2>
-    <p>如果您在歐洲經濟區，您有權存取、更正、刪除、匯出或限制處理您的資料。請聯繫 <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a>。</p>
-    <h2>10. 變更</h2>
+    <h2 id="events">7. 產品事件與使用統計</h2>
+    <p>為了解應用程式在哪些地方讓使用者受阻，應用程式會向我們回報少量與您帳戶關聯的事件。</p>
+    <ul>
+      <li><strong>回報的內容：</strong>某個畫面或操作的名稱（目前為：顯示免費版的某項限制）、平台（iOS、Android）、應用程式版本和日期。絕不包含您追蹤器的內容。</li>
+      <li><strong>目的：</strong>調整免費版的限制，並修正造成阻礙的問題。</li>
+      <li><strong>保留期限：</strong>最多 13 個月，之後刪除。如果您刪除帳戶，它們會隨帳戶一併刪除。</li>
+      <li><strong>使用者：</strong>僅限點點，絕不與他人分享。</li>
+      <li><strong>提出反對：</strong>請寫信至 <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a>。我們將停止為您的帳戶記錄這些事件，並刪除已收到的事件。</li>
+    </ul>
+    <p>我們還會對全體帳戶進行統計（帳戶數、追蹤器數、已填寫的天數、最常見的追蹤器標題），以決定應用程式的發展方向。這些統計不描述任何特定個人。</p>
+    <h2>8. 廣告</h2>
+    <p>免費版應用程式透過 <strong>Google AdMob</strong> 顯示橫幅廣告。AdMob 可能收集裝置識別碼和使用資料，由 Google 根據 <a href="https://policies.google.com/privacy" target="_blank">Google 隱私權政策</a>自行處理。進階使用者不會看到廣告。</p>
+    <h2>9. 資料儲存與安全</h2>
+    <p>您的資料儲存在我們位於法國、由 Vultr 託管的伺服器上。密碼使用 Argon2 進行雜湊處理。所有連線透過 HTTPS 加密。資料庫每天備份；備份經過加密，儲存在歐盟境內，保留 7 天。</p>
+    <h2>10. 資料保留與刪除</h2>
+    <ul>
+      <li><strong>帳戶和內容：</strong>帳戶存在期間一直保留。您可以隨時從應用程式中<strong>刪除帳戶和所有資料</strong>，刪除立即生效。</li>
+      <li><strong>備份：</strong>7 天。因此，已刪除的帳戶會在 7 天後從備份中消失。</li>
+      <li><strong>產品事件：</strong>最多 13 個月。</li>
+      <li><strong>網站流量統計：</strong>每日統計最多保留 25 個月，之後僅保留每月總數。</li>
+      <li><strong>伺服器日誌：</strong>登入被拒絕時記錄的 IP 位址會保留到伺服器下一次更新為止。</li>
+      <li><strong>您寫給我們的訊息：</strong>最後一次往來後最多 3 年。</li>
+      <li><strong>購買：</strong>帳戶存在期間一直保留。Apple、Google 和 RevenueCat 會按各自的規則保留它們自己的購買紀錄。</li>
+    </ul>
+    <h2>11. 您的權利</h2>
+    <p>您可以查閱、更正或刪除您的資料，取得其副本，要求限制處理，並反對基於我們正當利益的處理（第 6 節和第 7 節）。請寫信至 <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a>：我們會在一個月內答覆。如果您對我們的答覆不滿意，可以向法國資料保護機關 <a href="https://www.cnil.fr/fr/plaintes" target="_blank" rel="noopener">CNIL</a> 或您所在國家/地區的資料保護機關申訴。</p>
+    <h2>12. 變更</h2>
     <p>我們可能會更新本政策。重大變更將透過電子郵件通知。</p>
-    <h2>11. 聯繫</h2>
+    <h2>13. 聯繫</h2>
     <p>有問題？<a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a></p>`,
 };
 
@@ -777,12 +904,13 @@ const deleteAccount: Record<Lang, string> = {
       <li>All of your trackers, day cells, colors, legends and comments</li>
       <li>Your subscription records stored on our servers</li>
     </ul>
-    <p>The deletion cascades across our entire database — no personal data is kept.</p>
+    <p>The deletion reaches our entire database at once.</p>
     <h2>4. What may be retained</h2>
     <ul>
-      <li>We keep <strong>no personal data</strong> once your account is deleted.</li>
-      <li>Minimal server logs (IP address, timestamps) kept for security may persist briefly before being rotated out.</li>
-      <li>Payment and transaction records held by Apple or Google are governed by their own policies and are outside our control.</li>
+      <li><strong>Backups:</strong> the encrypted backups of our database are kept 7 days. Your data is gone from them 7 days after the deletion.</li>
+      <li><strong>Server log:</strong> it may hold the IP address of a refused sign-in until the server's next update. It does not name your account.</li>
+      <li><strong>Purchases:</strong> the record of your purchases stays with Apple or Google, and with RevenueCat, the service that keeps track of purchases for us (under your account's identifier, never your email address), under their own rules.</li>
+      <li><strong>Emails:</strong> the emails we sent you (reset codes, the deletion confirmation) stay 30 days with Resend, our email service.</li>
     </ul>
     <h2>5. Need help?</h2>
     <p>If you cannot access the app, contact <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a> and we will delete your account for you.</p>`,
@@ -810,12 +938,13 @@ const deleteAccount: Record<Lang, string> = {
       <li>Tous vos trackers, cellules, couleurs, légendes et commentaires</li>
       <li>Vos enregistrements d'abonnement stockés sur nos serveurs</li>
     </ul>
-    <p>La suppression se propage à toute notre base de données — aucune donnée personnelle n'est conservée.</p>
+    <p>La suppression se propage aussitôt à toute notre base de données.</p>
     <h2>4. Ce qui peut être conservé</h2>
     <ul>
-      <li>Nous ne conservons <strong>aucune donnée personnelle</strong> une fois le compte supprimé.</li>
-      <li>Des journaux serveur minimaux (adresse IP, horodatages) conservés pour la sécurité peuvent subsister brièvement avant rotation.</li>
-      <li>Les enregistrements de paiement détenus par Apple ou Google relèvent de leurs propres politiques et échappent à notre contrôle.</li>
+      <li><strong>Sauvegardes :</strong> les sauvegardes chiffrées de notre base sont gardées 7 jours. Vos données en ont disparu 7 jours après la suppression.</li>
+      <li><strong>Journal du serveur :</strong> il peut garder l'adresse IP d'une connexion refusée jusqu'à la mise à jour suivante du serveur. Il ne nomme pas votre compte.</li>
+      <li><strong>Achats :</strong> l'historique de vos achats reste chez Apple ou Google, et chez RevenueCat, le service qui suit les achats pour nous (sous l'identifiant de votre compte, jamais votre adresse e-mail), selon leurs propres règles.</li>
+      <li><strong>E-mails :</strong> les e-mails que nous vous avons envoyés (codes de réinitialisation, confirmation de suppression) restent 30 jours chez Resend, notre service d'envoi.</li>
     </ul>
     <h2>5. Besoin d'aide ?</h2>
     <p>Si vous ne pouvez pas accéder à l'application, contactez <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a> et nous supprimerons votre compte pour vous.</p>`,
@@ -843,12 +972,13 @@ const deleteAccount: Record<Lang, string> = {
       <li>您所有的追踪器、格子、颜色、图例和备注</li>
       <li>存储在我们服务器上的订阅记录</li>
     </ul>
-    <p>删除操作会级联至整个数据库——不保留任何个人数据。</p>
+    <p>删除操作会立即级联至整个数据库。</p>
     <h2>4. 可能保留的内容</h2>
     <ul>
-      <li>账户删除后，我们<strong>不保留任何个人数据</strong>。</li>
-      <li>为安全目的保留的最小服务器日志（IP地址、时间戳）可能会在轮替前短暂保留。</li>
-      <li>由 Apple 或 Google 持有的付款和交易记录受其各自政策约束，不在我们的控制范围内。</li>
+      <li><strong>备份：</strong>数据库的加密备份保留 7 天。删除 7 天后，您的数据将从备份中消失。</li>
+      <li><strong>服务器日志：</strong>可能会保留登录被拒绝时的 IP 地址，直到服务器下一次更新为止。日志不会指明您的账户。</li>
+      <li><strong>购买：</strong>您的购买记录由 Apple 或 Google，以及代我们跟踪购买状态的服务 RevenueCat（仅使用您的账户标识符，绝不使用您的电子邮箱）按各自的规则保留。</li>
+      <li><strong>电子邮件：</strong>我们发给您的电子邮件（重置验证码、删除确认）会在我们的邮件服务 Resend 处保留 30 天。</li>
     </ul>
     <h2>5. 需要帮助？</h2>
     <p>如果您无法访问应用，请联系 <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a>，我们将为您删除账户。</p>`,
@@ -876,12 +1006,13 @@ const deleteAccount: Record<Lang, string> = {
       <li>您所有的追蹤器、格子、顏色、圖例和備註</li>
       <li>儲存在我們伺服器上的訂閱紀錄</li>
     </ul>
-    <p>刪除操作會級聯至整個資料庫——不保留任何個人資料。</p>
+    <p>刪除操作會立即級聯至整個資料庫。</p>
     <h2>4. 可能保留的內容</h2>
     <ul>
-      <li>帳戶刪除後，我們<strong>不保留任何個人資料</strong>。</li>
-      <li>為安全目的保留的最小伺服器日誌（IP位址、時間戳）可能會在輪替前短暫保留。</li>
-      <li>由 Apple 或 Google 持有的付款和交易紀錄受其各自政策約束，不在我們的控制範圍內。</li>
+      <li><strong>備份：</strong>資料庫的加密備份保留 7 天。刪除 7 天後，您的資料將從備份中消失。</li>
+      <li><strong>伺服器日誌：</strong>可能會保留登入被拒絕時的 IP 位址，直到伺服器下一次更新為止。日誌不會指明您的帳戶。</li>
+      <li><strong>購買：</strong>您的購買紀錄由 Apple 或 Google，以及代我們追蹤購買狀態的服務 RevenueCat（僅使用您的帳戶識別碼，絕不使用您的電子郵件）按各自的規則保留。</li>
+      <li><strong>電子郵件：</strong>我們寄給您的電子郵件（重設驗證碼、刪除確認）會在我們的郵件服務 Resend 處保留 30 天。</li>
     </ul>
     <h2>5. 需要協助？</h2>
     <p>如果您無法存取應用程式，請聯繫 <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a>，我們將為您刪除帳戶。</p>`,

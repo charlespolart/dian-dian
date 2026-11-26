@@ -266,22 +266,55 @@ async function main() {
 
     // The privacy policy says what the site counts and where to object, in its four languages.
     for (const [lang, title, tag, updated] of [
-      ['en', 'Website Audience Measurement', 'campaign tag', 'November 25, 2026'], ['fr', "Mesure d'audience du site", 'marquage de campagne', '25 novembre 2026'],
-      ['zh-CN', '网站访问统计', '推广标记', '2026年11月25日'], ['zh-TW', '網站流量統計', '推廣標記', '2026年11月25日'],
+      ['en', 'Website Audience Measurement', 'campaign tag', 'November 26, 2026'], ['fr', "Mesure d'audience du site", 'marquage de campagne', '26 novembre 2026'],
+      ['zh-CN', '网站访问统计', '推广标记', '2026年11月26日'], ['zh-TW', '網站流量統計', '推廣標記', '2026年11月26日'],
     ]) {
       const policy = await (await site(`/privacy?lang=${lang}`)).text();
       assert.ok(policy.includes(title), `the ${lang} policy has its audience section`);
       assert.ok(policy.includes(tag), `the ${lang} policy says a tagged link is noted`);
-      assert.ok(policy.includes(updated), `the ${lang} policy carries the date of this change`);
+      assert.ok(policy.includes(updated), `the ${lang} policy carries the date of its last change, written in its language`);
       assert.ok(policy.includes(`href="/privacy/audience?lang=${lang}"`), `the ${lang} policy links to the opt-out page`);
       assert.ok(policy.includes('dd_noaudience'), `the ${lang} policy names the opt-out cookie`);
       assert.ok(policy.includes('IP Geolocation by DB-IP'), `the ${lang} policy credits the country database`);
     }
     const frPolicy = await (await site('/privacy?lang=fr')).text();
-    assert.ok(frPolicy.includes("autre outil d'analyse tiers") && !frPolicy.includes("outil d'analyse ou script"), 'the policy no longer says there is no analytics tool at all, only no third-party one');
+    assert.ok(frPolicy.includes("aucun outil d'analyse tiers") && !frPolicy.includes("outil d'analyse ou script"), 'the policy no longer says there is no analytics tool at all, only no third-party one');
     assert.ok(!frPolicy.includes("uniquement pour l'authentification") && !(await (await site('/privacy?lang=en')).text()).includes('solely for authentication'), 'the policy no longer says cookies serve authentication alone');
     assert.ok(plain.includes('href="https://db-ip.com"') && plain.includes('IP Geolocation by DB-IP'), 'the site credits the country database (its licence asks for the link)');
     assert.ok(plain.includes('href="/privacy/audience?lang=en"'), 'the site\'s footer leads to the opt-out page');
+
+    // The policy says what the register does (docs/REGISTRE.md), the same in
+    // its four languages: who receives the data, the product events and
+    // their 13 months, and where to complain.
+    const sections = (page: string) => (page.match(/<h2/g) ?? []).length;
+    const policySections: Record<string, number> = {};
+    for (const [lang, oldClaim] of [
+      ['en', 'No personal data is shared with or sold to third parties'], ['fr', "Aucune donnée personnelle n'est partagée ou vendue à des tiers"],
+      ['zh-CN', '不会与第三方共享或出售个人数据'], ['zh-TW', '不會與第三方分享或出售個人資料'],
+    ]) {
+      const policy = await (await site(`/privacy?lang=${lang}`)).text();
+      policySections[lang] = sections(policy);
+      for (const name of ['Vultr', 'Cloudflare', 'Resend', 'RevenueCat', 'AdMob', 'Apple', 'Google']) {
+        assert.ok(policy.includes(name), `the ${lang} policy names ${name}`);
+      }
+      assert.ok(!policy.includes(oldClaim), `the ${lang} policy no longer says nothing is shared with anyone`);
+      const events = policy.split('id="events"')[1]?.split('<h2')[0] ?? '';
+      assert.ok(events.includes('13'), `the ${lang} policy has its section on product events, with their 13 months`);
+      assert.ok(/href="https:\/\/www\.cnil\.fr\/[^"]+"/.test(policy), `the ${lang} policy says where to complain`);
+    }
+    assert.equal(policySections.en, 13, 'the policy has its thirteen sections');
+    assert.deepEqual(policySections, { en: 13, fr: 13, 'zh-CN': 13, 'zh-TW': 13 }, 'the same sections in the four languages');
+
+    // Deleting an account: the page says what stays for a while, and where.
+    const deleteSections: Record<string, number> = {};
+    for (const [lang, oldClaim] of [['en', 'no personal data'], ['fr', 'aucune donnée personnelle'], ['zh-CN', '不保留任何个人数据'], ['zh-TW', '不保留任何個人資料']]) {
+      const page = await (await site(`/delete-account?lang=${lang}`)).text();
+      deleteSections[lang] = sections(page);
+      assert.ok(page.includes('RevenueCat'), `the ${lang} deletion page names RevenueCat`);
+      assert.ok(page.includes('7'), `the ${lang} deletion page says the backups last 7 days`);
+      assert.ok(!page.toLowerCase().includes(oldClaim), `the ${lang} deletion page no longer says nothing at all is kept`);
+    }
+    assert.deepEqual(deleteSections, { en: 5, fr: 5, 'zh-CN': 5, 'zh-TW': 5 }, 'the deletion page keeps its five sections in the four languages');
 
     // The opt-out page: a button sets a cookie, and the counter leaves its bearer out.
     const optOutPage = (headers: Record<string, string> = {}) => fetch(`${BASE}/privacy/audience?lang=fr`, { headers });

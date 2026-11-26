@@ -29,8 +29,8 @@ marque ce que ni le code ni ces lectures ne disent : rien n'y est deviné.
 | 2 | Comptes et connexion | ouvrir un compte, s'y connecter, garder ses réglages | contrat | vie du compte |
 | 3 | Contenu des trackers | garder et synchroniser ce que la personne note | contrat | vie du compte |
 | 4 | Achats et abonnements | donner Premium à qui l'a acheté ; mesurer les ventes | contrat ; intérêt légitime | vie du compte ; 13 mois pour un événement sans compte |
-| 5 | E-mails de service | envoyer le code de réinitialisation et la confirmation de suppression | contrat | aucune copie chez nous ; journaux de Resend : à relever |
-| 6 | Contact et assistance | répondre à qui nous écrit | intérêt légitime | 3 ans après le dernier échange (proposé) |
+| 5 | E-mails de service | envoyer le code de réinitialisation et la confirmation de suppression | contrat | aucune copie chez nous ; 30 jours chez Resend |
+| 6 | Contact et assistance | répondre à qui nous écrit | intérêt légitime | 3 ans après le dernier échange |
 | 7 | Événements produit | savoir où l'app bloque ses utilisateurs | intérêt légitime | 13 mois |
 | 8 | Statistiques d'usage internes | décider du produit | intérêt légitime | rien de nouveau n'est gardé |
 | 9 | Publicité de la version gratuite | financer la version gratuite | consentement, **non recueilli aujourd'hui** | chez Google |
@@ -47,9 +47,9 @@ propres traitements).
 | Qui | Rôle | Ce qu'il reçoit | Où | Contrat et transfert hors d'Europe | Source, lue le 2026-11-26 |
 |---|---|---|---|---|---|
 | Vultr (Vultr Holdings LLC, États-Unis) | sous-traitant : le serveur | tout ce que le serveur traite, base comprise | centre de Paris, France | avenant de traitement (DPA) à demander par ticket, **pas encore demandé** ; clauses contractuelles types d'après sa documentation ; inscription au Data Privacy Framework non confirmée | `docs.vultr.com/support/platform/compliance/does-vultr-offer-a-data-processing-addendum`, `…/are-vultr-services-gdpr-compliant` |
-| Cloudflare (Cloudflare, Inc., États-Unis) | sous-traitant : stockage R2 des sauvegardes ; acheminement des e-mails reçus à l'adresse de contact | les sauvegardes, chiffrées avant de quitter le serveur et illisibles sans une clé que Cloudflare n'a pas ; les messages écrits à l'adresse de contact, le temps de les faire suivre (ce que Cloudflare en garde : non confirmé) | R2 : juridiction Union européenne (le point d'accès du dépôt est en `.eu.r2.cloudflarestorage.com`) | DPA inclus dans ses conditions ; inscrit au Data Privacy Framework, clauses contractuelles types en second | `cloudflare.com/dpa`, `cloudflare.com/trust-hub/gdpr` |
-| Resend (Resend, Inc., États-Unis) | sous-traitant : envoi des e-mails | l'adresse du destinataire, l'objet et le corps de chaque e-mail (fiches 5 et 6) | États-Unis | DPA en vigueur pour tout compte ; inscrit au Data Privacy Framework, clauses contractuelles types | `resend.com/legal/dpa`, `resend.com/security/gdpr` |
-| RevenueCat (RevenueCat, Inc., États-Unis) | sous-traitant : état des achats | l'identifiant du compte (un UUID), les reçus d'achat des stores, des informations techniques sur l'appareil ; jamais l'adresse e-mail (fiche 4) | États-Unis | DPA inclus dans ses conditions (version en vigueur depuis le 17 décembre 2025) ; garantie du transfert non confirmée, à lire dans le DPA | `revenuecat.com/dpa`, `revenuecat.com/gdpr` |
+| Cloudflare (Cloudflare, Inc., États-Unis) | sous-traitant : stockage R2 des sauvegardes ; acheminement des e-mails reçus à l'adresse de contact | les sauvegardes, chiffrées avant de quitter le serveur et illisibles sans une clé que Cloudflare n'a pas ; les messages écrits à l'adresse de contact, le temps de les faire suivre (sa documentation décrit un journal d'activité de l'acheminement ; elle ne dit pas si le contenu est gardé, ni combien de temps) | R2 : juridiction Union européenne (le point d'accès du dépôt est en `.eu.r2.cloudflarestorage.com`) | DPA inclus dans ses conditions ; inscrit au Data Privacy Framework, clauses contractuelles types en second | `cloudflare.com/dpa`, `cloudflare.com/trust-hub/gdpr` |
+| Resend (Resend, Inc., États-Unis) | sous-traitant : envoi des e-mails | l'adresse du destinataire, l'objet et le corps de chaque e-mail (fiches 5 et 6), gardés 30 jours | États-Unis | DPA en vigueur pour tout compte ; clauses contractuelles types, et inscription au Data Privacy Framework | `resend.com/legal/dpa`, `resend.com/security/gdpr` |
+| RevenueCat (RevenueCat, Inc., États-Unis) | sous-traitant : état des achats | l'identifiant du compte (un UUID), les reçus d'achat des stores, des informations techniques sur l'appareil ; jamais l'adresse e-mail (fiche 4) | États-Unis | DPA inclus dans ses conditions (version en vigueur depuis août 2026) ; clauses contractuelles types ; le Data Privacy Framework n'y est pas mentionné. Une demande d'effacement est à notre charge : le DPA ne décrit aucun moyen | `revenuecat.com/dpa`, `revenuecat.com/gdpr` |
 | Apple | responsable de ses propres traitements : « Se connecter avec Apple », App Store (vente et encaissement) | de nous : rien. Apple sait que la personne se connecte à Dian Dian ou y achète | — | ses propres conditions | `apple.com/legal/privacy` |
 | Google | responsable de ses propres traitements : connexion Google, Google Play (vente et encaissement), AdMob (publicité, fiche 9) | de notre serveur : rien. Par son SDK publicitaire dans l'app : des identifiants de l'appareil et des données d'usage, selon ses règles | — | pour AdMob, « Google Ads Controller-Controller Data Protection Terms » | `support.google.com/admob/answer/9035987`, `business.safety.google/adscontrollerterms` |
 | Microsoft (boîte Outlook de l'éditeur) | fournisseur de la boîte où arrivent les messages de contact | les messages de contact et leurs réponses | à relever par Charles | à relever par Charles | aucune : su par l'éditeur, pas par le code |
@@ -371,8 +371,9 @@ L'objet de l'e-mail de réinitialisation contient le code, valable 10 minutes.
 
 **Destinataires.** Resend, sous-traitant, aux États-Unis.
 
-**Durées.** Nous ne gardons aucune copie. Resend tient un journal de ses
-envois : sa durée est **à relever par Charles** dans son tableau de bord.
+**Durées.** Nous ne gardons aucune copie. Resend garde le contenu et le
+journal des e-mails envoyés 30 jours (ses offres Free, Pro et Scale, d'après
+`resend.com/security/gdpr`) ; il n'offre pas d'effacer un e-mail avant.
 
 ## Fiche 6 — Contact et assistance
 
@@ -393,8 +394,9 @@ l'adresse de contact, que Cloudflare fait suivre vers la boîte Outlook de
 l'éditeur (ce dernier point est su par l'éditeur, il n'est pas dans le
 code).
 
-**Durées.** Proposé : un échange est effacé de la boîte 3 ans après son
-dernier message. **À valider par Charles** ; rien ne l'efface tout seul.
+**Durées.** Un échange est effacé de la boîte 3 ans après son dernier
+message (proposé par Fable, accepté avec le plan le 2026-11-26). Rien ne
+l'efface tout seul : **à faire à la main par Charles**, une fois par an.
 
 **Mesures de sécurité.** 5 messages par quart d'heure et par adresse IP ; le
 contenu saisi est neutralisé avant d'entrer dans l'e-mail.
@@ -589,9 +591,9 @@ Lus sur le serveur de production, sans rien y changer.
 | Les journaux de Docker et du système n'ont pas de durée maximale | 10 | deux réglages sur le serveur | Charles |
 | Dix sauvegardes de l'été 2026 sont encore sur le serveur | 11 | les supprimer | Charles |
 | L'avenant de traitement de Vultr n'est pas demandé | « Sous-traitants » | un ticket chez Vultr | Charles |
-| Garantie du transfert vers RevenueCat non confirmée ; ce que Cloudflare garde d'un e-mail acheminé non confirmé | « Sous-traitants » | lire le DPA de RevenueCat et la documentation de Cloudflare Email Routing | Fable, au prochain passage sur ce registre |
-| Durée des journaux de Resend, sauvegardes automatiques de Vultr, boîte de contact chez Microsoft | 5, 11, « Sous-traitants » | les relever dans les tableaux de bord | Charles |
-| Durée de conservation des messages de contact non décidée | 6 | valider les 3 ans proposés | Charles |
+| Ce que Cloudflare garde d'un e-mail qu'il achemine n'est pas établi | « Sous-traitants » | lire son avenant de traitement, ou lui poser la question | Fable, au prochain passage sur ce registre |
+| Sauvegardes automatiques de Vultr, boîte de contact chez Microsoft | 11, « Sous-traitants » | les relever dans les tableaux de bord | Charles |
+| Rien n'efface les messages de contact au bout de leurs 3 ans | 6 | les effacer à la main, une fois par an | Charles |
 | Des données de santé peuvent être notées dans un contenu libre | 3 | une décision, au besoin avec un juriste | Charles |
 | L'inscription dit si une adresse a déjà un compte | 2 | l'inscription par code du chantier 9 | Fable |
 
