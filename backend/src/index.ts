@@ -11,7 +11,7 @@ import { sql, lt } from 'drizzle-orm';
 import { refreshTokens, passwordResetTokens } from './db/schema.js';
 import { env } from './lib/env.js';
 import { db } from './db/index.js';
-import { runRetentionPurge } from './lib/retention.js';
+import { RETENTION_PURGE_EVERY_MS, runRetentionPurge } from './lib/retention.js';
 import { setupWebSocket } from './lib/ws.js';
 import authRoutes from './routes/auth.js';
 import pagesRoutes from './routes/pages.js';
@@ -49,7 +49,7 @@ app.use(helmet({
     useDefaults: true,
     directives: {
       defaultSrc: ["'self'"],
-      imgSrc: ["'self'", 'data:', 'https:'],
+      imgSrc: ["'self'", 'data:'],
       styleSrc: ["'self'", "'unsafe-inline'"],
       fontSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'"],
@@ -139,10 +139,10 @@ purgeExpiredTokens();
 setInterval(purgeExpiredTokens, 60 * 60 * 1000).unref();
 
 // Product events, and purchase events that name no account, are kept 13
-// months at most (docs/REGISTRE.md): once at boot, then daily. A run that
+// months at most (docs/REGISTRE.md): once at boot, then hourly. A run that
 // fails is logged and the next one tries again.
 void runRetentionPurge(db, new Date());
-setInterval(() => { void runRetentionPurge(db, new Date()); }, 24 * 60 * 60 * 1000).unref();
+setInterval(() => { void runRetentionPurge(db, new Date()); }, RETENTION_PURGE_EVERY_MS).unref();
 
 // Readiness — actually proves the DB is reachable. /api/health returning 200
 // says nothing about Postgres, so a green healthcheck can hide a dead DB

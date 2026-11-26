@@ -5,6 +5,10 @@
 #   docker compose -f ops/docker-compose.yml -f ops/docker-compose.prod.yml up -d --wait
 services:
   postgres:
+    # Logs go to the host's journal, which keeps them 6 months at most
+    # (ops/journald/dian-dian.conf; docs/REGISTRE.md, fiche 10).
+    logging:
+      driver: journald
     restart: always
     # Block privilege escalation (setuid/sudo) inside the container — free,
     # breaks nothing (playbook: security/vps-hardening.md).
@@ -23,6 +27,10 @@ services:
       - /srv/dian-dian/postgres:/var/lib/postgresql/data
 
   backend:
+    # Logs go to the host's journal, which keeps them 6 months at most
+    # (ops/journald/dian-dian.conf; docs/REGISTRE.md, fiche 10).
+    logging:
+      driver: journald
     image: ghcr.io/charlespolart/dian-dian-backend:${IMAGE_TAG:-latest}
     restart: always
     security_opt:
@@ -43,6 +51,10 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?must be set}@postgres:5432/${POSTGRES_DB:-dian_dian}
 
   caddy:
+    # Logs go to the host's journal, which keeps them 6 months at most
+    # (ops/journald/dian-dian.conf; docs/REGISTRE.md, fiche 10).
+    logging:
+      driver: journald
     image: caddy:2-alpine
     restart: always
     security_opt:

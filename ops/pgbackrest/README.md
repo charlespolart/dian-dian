@@ -7,7 +7,7 @@ with point-in-time recovery via continuous WAL archiving.
   - Daily full backup at 03:17 UTC
   - Hourly differential at HH:17
   - Weekly `pgbackrest check` on Sunday at 04:00 UTC
-- **Retention**: 7 full backups, 30 differentials.
+- **Retention**: 30 full backups (30 days, the duration the privacy policy states), 30 differentials.
 - **Encryption**: aes-256-cbc with a repo-wide passphrase.
 
 ## Environment variables

@@ -18,6 +18,12 @@ export const EVENTS_MONTHS = 13;
  * test event): the same, counted from when they were received.
  */
 export const UNLINKED_PURCHASE_EVENTS_MONTHS = 13;
+/**
+ * How often the purge runs: hourly, so a row outlives its limit by an hour
+ * at most, and a run that failed (the database down at boot) is tried again
+ * within the hour.
+ */
+export const RETENTION_PURGE_EVERY_MS = 60 * 60 * 1000;
 
 /**
  * The first instant kept: the start (UTC) of the month `months - 1` months

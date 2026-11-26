@@ -96,7 +96,10 @@ compte doit aussi demander à RevenueCat d'effacer le client : aujourd'hui
 il y reste, avec l'identifiant du compte et l'historique d'achat
 (`docs/REGISTRE.md`, fiche 4). Le chantier 9 apporte la clé d'API qui le
 permet. Il décide aussi du sort de la table `email_verification_tokens`,
-vide aujourd'hui.
+vide aujourd'hui. Et la fenêtre de suppression du compte dans l'app doit
+dire qu'un abonnement des stores continue de se renouveler tant qu'on ne
+l'annule pas chez Apple ou Google (la page web `/delete-account` le dit
+depuis le lot registre ; l'app, non).
 
 Calendrier à garder en tête : les prix changent le **1er décembre** ; le pic
 de l'année est le **Nouvel An** (une année en pixels commence le 1er
@@ -183,21 +186,20 @@ release ; un correctif urgent de la production part du tag.
 - Demander à Vultr son avenant de traitement des données (DPA), puis le
   citer avec sa date dans `docs/REGISTRE.md` (« Sous-traitants et
   destinataires »).
-- Registre, sur le serveur (`docs/REGISTRE.md`, « Écarts connus ») :
-  supprimer les dix anciens fichiers `pg-2026-07-25.sql.age` et suivants
-  de `/srv/dian-dian/backups/` ; donner une durée maximale aux journaux
-  (`MaxRetentionSec=6month` dans journald, et le pilote `journald` pour
-  Docker), ou demander à Fable de le faire.
-- Registre, à relever et à lui donner : les sauvegardes automatiques et
-  les instantanés de Vultr sont-ils activés pour le serveur ; chez qui est
-  la boîte Outlook de l'adresse de contact (compte personnel ou
-  professionnel).
+- Au déploiement de la release : les sauvegardes passent à 30 jours et
+  les journaux à 6 mois au plus, sans rien faire de plus
+  (`deploy-prod.sh` installe le réglage de journald et reconstruit le
+  conteneur de la base) ; le conteneur Caddy est recréé une fois (ses
+  journaux changent de place), le site coupe quelques secondes.
+- Registre, à relever et à donner à Fable : les sauvegardes automatiques
+  et les instantanés de Vultr sont-ils activés pour le serveur.
 - Registre, à décider : des données de santé peuvent être notées dans un
   tracker, qui est un contenu libre (fiche 3) ; au besoin avec un juriste.
-- Une fois par an : effacer de la boîte de contact les échanges de plus de
-  3 ans (fiche 6).
-- Si quelqu'un s'oppose aux événements produit : les deux requêtes de la
-  fiche 7 du registre.
+- Boîte de contact : les échanges de plus de 3 ans s'effacent dans Outlook
+  (fiche 6 ; Charles, 2026-11-26 : « je vais me débrouiller pour
+  Outlook »).
+- Si quelqu'un s'oppose aux événements produit : transmettre sa demande à
+  Fable, qui lance les deux requêtes de la fiche 7 du registre.
 - Pour le chantier 11 : créer dans AdMob le message de consentement
   européen (« Confidentialité et messages »), que le formulaire de l'app
   affichera.
@@ -242,7 +244,11 @@ aussi pour les événements d'achat sans compte ; une opposition aux
 posé à la main ; les polices du site sont servies par le site ; les
 messages de contact sont gardés 3 ans au plus ; le consentement
 publicitaire devient le chantier 11 de la release ; l'effacement du client
-RevenueCat entre dans le chantier 9.
+RevenueCat entre dans le chantier 9. Décidé par Charles le même jour,
+après la relecture : sauvegardes gardées 30 jours (7 avant), journaux
+6 mois au plus, rien d'effacé à la main (« je ne vais pas supprimer à la
+main ») sauf la boîte de contact, dont il s'occupe dans Outlook ; les dix
+anciennes sauvegardes de l'été 2026 et leur clé sont supprimées.
 
 Tranché le 2026-11-23 après les relectures (détail dans chaque spec) :
 « Nommer mes trackers » désactivé par défaut ; pas de bilan ni de jalon de

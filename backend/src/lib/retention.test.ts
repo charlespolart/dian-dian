@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { keptSince, runRetentionPurge } from './retention.js';
+import { keptSince, RETENTION_PURGE_EVERY_MS, runRetentionPurge } from './retention.js';
 
 const at = (iso: string) => keptSince(new Date(iso), 13).toISOString();
 
@@ -32,4 +32,8 @@ test('a purge that fails is logged and never thrown', async () => {
   assert.equal(logged.length, 1);
   assert.match(String(logged[0][0]), /^Retention purge failed:/);
   assert.equal(said.length, 0, 'nothing else is said');
+});
+
+test('the purge runs at least hourly: a row outlives its 13 months by an hour at most', () => {
+  assert.ok(RETENTION_PURGE_EVERY_MS > 0 && RETENTION_PURGE_EVERY_MS <= 60 * 60 * 1000, `every ${RETENTION_PURGE_EVERY_MS} ms`);
 });

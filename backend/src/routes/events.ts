@@ -31,9 +31,10 @@ router.post('/', validate(eventSchema), async (req, res) => {
     const { name, platform, appVersion } = req.body as EventBody;
     // Someone who objected to these events (docs/REGISTRE.md, fiche 7) is
     // answered like anyone else — the app must not see an error and try
-    // again — and nothing is written.
+    // again — and nothing is written. So is an account deleted while its
+    // access token still runs (15 minutes): there is no one to count.
     const [account] = await db.select({ objected: users.eventsOptOut }).from(users).where(eq(users.id, req.userId!)).limit(1);
-    if (account?.objected) {
+    if (!account || account.objected) {
       res.status(204).end();
       return;
     }

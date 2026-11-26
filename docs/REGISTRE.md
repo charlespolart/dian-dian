@@ -34,8 +34,8 @@ marque ce que ni le code ni ces lectures ne disent : rien n'y est deviné.
 | 7 | Événements produit | savoir où l'app bloque ses utilisateurs | intérêt légitime | 13 mois |
 | 8 | Statistiques d'usage internes | décider du produit | intérêt légitime | rien de nouveau n'est gardé |
 | 9 | Publicité de la version gratuite | financer la version gratuite | consentement, **non recueilli aujourd'hui** | chez Google |
-| 10 | Sécurité et journaux | limiter les abus, voir une attaque | intérêt légitime | 15 minutes en mémoire ; journaux sans durée maximale (écart) |
-| 11 | Sauvegardes | restaurer la base après une panne | intérêt légitime (sécurité des données) | 7 jours |
+| 10 | Sécurité et journaux | limiter les abus, voir une attaque | intérêt légitime | 15 minutes en mémoire ; journaux 6 mois au plus |
+| 11 | Sauvegardes | restaurer la base après une panne | intérêt légitime (sécurité des données) | 30 jours |
 
 ## Sous-traitants et destinataires
 
@@ -83,7 +83,7 @@ mois.
 - **Effacement** : dans l'app (Réglages, « Supprimer le compte »), immédiat
   et en cascade sur toutes les tables (`backend/src/routes/auth.ts:272`) ; à
   la main pour qui n'a plus accès à l'app. Ce qui reste ensuite est dit dans
-  les fiches 4 (RevenueCat) et 11 (sauvegardes, 7 jours).
+  les fiches 4 (RevenueCat) et 11 (sauvegardes, 30 jours).
 - **Accès et copie** : à la main. Les lignes du compte sont lues dans la base
   par `psql` et envoyées à la personne. Aucun script n'existe : il n'y a
   encore eu aucune demande.
@@ -155,7 +155,7 @@ l'hébergeur du serveur (voir « Hébergement, transferts et sauvegardes »).
 - Compteurs par jour : 25 mois au plus (le mois en cours et les 24
   précédents), puis remplacés par un total par mois (visites, clics par
   store, passages de robots).
-- Sauvegardes chiffrées de la base, où ces compteurs figurent : 7 jours
+- Sauvegardes chiffrées de la base, où ces compteurs figurent : 30 jours
   (fiche 11).
 - Empreintes et sel : la journée en cours, en mémoire.
 - Cookie d'opposition (`dd_noaudience`) : 13 mois sur l'appareil du visiteur.
@@ -253,11 +253,11 @@ d'aujourd'hui ne fonctionne pas.
 | Donnée | Ce qui en est fait |
 |---|---|
 | `users` | L'adresse e-mail ; l'empreinte Argon2id du mot de passe, jamais le mot de passe (vide pour un compte ouvert par Apple ou Google) ; `email_verified`, vrai seulement quand Apple ou Google l'affirme (une adresse saisie n'est pas vérifiée aujourd'hui) ; le thème, la langue et le curseur choisis ; la date de création ; `vip`, posé à la main par l'éditeur pour ses comptes de test et ses invités ; `events_opt_out` (fiche 7). |
-| `oauth_accounts` | Le fournisseur (Apple ou Google) et l'identifiant stable qu'il donne pour la personne. De son profil, seule l'adresse e-mail est lue (pour Apple, ce peut être une adresse relais) : ni nom, ni photo. |
+| `oauth_accounts` | Le fournisseur (Apple ou Google) et l'identifiant stable qu'il donne pour la personne. Du jeton qu'il envoie, le serveur ne lit que l'identifiant et l'adresse e-mail (pour Apple, ce peut être une adresse relais) ; un jeton Google peut porter un nom et une photo, qui ne sont ni lus ni gardés. L'app demande à Apple le nom de la personne (`flutter_app/lib/widgets/oauth_buttons.dart`) mais ne l'envoie jamais au serveur. |
 | `refresh_tokens` | L'empreinte SHA-256 du jeton de session, valable 7 jours ; les jetons expirés sont effacés toutes les heures. Le jeton d'accès (15 minutes) n'est écrit nulle part. |
 | `password_reset_tokens` | L'empreinte d'un code à 6 chiffres envoyé par e-mail, valable 10 minutes et 5 essais ; effacée toutes les heures une fois expirée. |
 | `email_verification_tokens` | Table vide : aucun code ne l'écrit. Elle date d'une vérification d'adresse qui n'a jamais été mise en service ; le chantier 9 la reprend ou la supprime. |
-| Sur le téléphone | Les deux jetons, dans le stockage sécurisé du système ; les réglages, dans les préférences de l'app. |
+| Sur le téléphone | Le jeton de session, l'adresse e-mail et l'identifiant du compte, dans le stockage sécurisé du système (`flutter_app/lib/services/storage_service.dart`) ; le jeton d'accès en mémoire seulement ; les réglages dans les préférences de l'app. |
 
 **Destinataires.** L'éditeur ; Vultr (hébergement). Apple ou Google quand la
 personne choisit de se connecter par eux.
@@ -265,7 +265,7 @@ personne choisit de se connecter par eux.
 **Durées.** La vie du compte. Aucun compte inactif n'est effacé d'office
 aujourd'hui. La suppression, dans l'app, est immédiate et emporte toutes les
 tables par cascade (`auth.ts:272`) ; un e-mail de confirmation part ensuite
-(fiche 5) ; le compte reste 7 jours dans les sauvegardes (fiche 11).
+(fiche 5) ; le compte reste 30 jours dans les sauvegardes (fiche 11).
 
 **Mesures de sécurité.** Argon2id ; jetons gardés sous forme d'empreinte ;
 30 tentatives par quart d'heure et par adresse IP sur l'inscription, la
@@ -297,12 +297,13 @@ rendre sur tous ses appareils.
 | `cells` | Un jour colorié : la date, la couleur, un commentaire libre, les dates de création et de modification. |
 | `legends` | Une entrée de légende : une couleur et son libellé. |
 | Synchronisation en direct | Par WebSocket, entre les appareils d'un même compte. Rien n'y est gardé. |
+| Sur le téléphone | Depuis l'app 1.3.0, une copie de l'année affichée (trackers, légendes, jours et commentaires) dans le fichier `snapshot_v1.json` du dossier de l'app (`flutter_app/lib/services/snapshot_store.dart`), pour afficher l'app avant la réponse du serveur ; effacée à la déconnexion. Comme le reste des données de l'app, elle peut être emportée par la sauvegarde du téléphone (iCloud ; sur Android, la sauvegarde automatique de Google, que l'app ne désactive pas). Le chantier 10 étend cette copie à tout le compte et complète cette ligne. |
 
 **Destinataires.** L'éditeur, qui ne lit le contenu de personne en
 particulier (voir la fiche 8 pour les totaux) ; Vultr (hébergement).
 
 **Durées.** La vie du compte. Un tracker, un jour ou une légende supprimés
-dans l'app le sont aussitôt dans la base, et 7 jours plus tard dans les
+dans l'app le sont aussitôt dans la base, et 30 jours plus tard dans les
 sauvegardes.
 
 **Risque résiduel : un contenu libre.** L'app ne demande aucune donnée
@@ -344,8 +345,10 @@ qui sont à l'origine de ces données.
 **Durées.** Les lignes d'un compte vivent autant que lui et partent avec lui.
 Un événement qui ne nomme aucun de nos comptes (compte supprimé depuis,
 achat fait sous un identifiant anonyme, événement de test) est effacé
-13 mois au plus après sa réception : le mois en cours et les 12 précédents
-(`retention.ts`, purge au démarrage puis chaque jour).
+13 mois au plus après sa réception (la politique et la page de suppression le
+disent, avec le fait qu'un abonnement continue de se renouveler après la
+suppression du compte) : le mois en cours et les 12 précédents
+(`retention.ts`, purge au démarrage puis toutes les heures).
 
 **Écart.** Supprimer un compte n'efface pas le client correspondant chez
 RevenueCat, qui garde l'identifiant du compte et l'historique d'achat. À
@@ -394,9 +397,12 @@ l'adresse de contact, que Cloudflare fait suivre vers la boîte Outlook de
 l'éditeur (ce dernier point est su par l'éditeur, il n'est pas dans le
 code).
 
-**Durées.** Un échange est effacé de la boîte 3 ans après son dernier
-message (proposé par Fable, accepté avec le plan le 2026-11-26). Rien ne
-l'efface tout seul : **à faire à la main par Charles**, une fois par an.
+**Durées.** 3 ans au plus après le dernier message de l'échange (proposé
+par Fable, accepté avec le plan le 2026-11-26). La boîte est un compte
+Outlook personnel, qui n'offre aucune suppression automatique à 3 ans (son
+« Balayage » ne sait que « plus de 10 jours ») et que le serveur n'atteint
+pas : Charles s'en charge dans Outlook (2026-11-26 : « je vais me
+débrouiller pour Outlook »).
 
 **Mesures de sécurité.** 5 messages par quart d'heure et par adresse IP ; le
 contenu saisi est neutralisé avant d'entrer dans l'e-mail.
@@ -426,15 +432,15 @@ session du compte, comme n'importe quelle action de l'app.
 **Destinataires.** L'éditeur, seul. Jamais partagés.
 
 **Durées.** 13 mois au plus : le mois en cours et les 12 précédents
-(`retention.ts`, purge au démarrage puis chaque jour). Les événements d'un
+(`retention.ts`, purge au démarrage puis toutes les heures). Les événements d'un
 compte partent avec lui.
 
 **Droit d'opposition.** La politique de confidentialité dit de nous écrire.
 À la demande, Charles lance sur la base, avec l'adresse du compte :
 
 ```sql
-UPDATE users SET events_opt_out = true WHERE email = '<adresse>';
-DELETE FROM events WHERE user_id = (SELECT id FROM users WHERE email = '<adresse>');
+UPDATE users SET events_opt_out = true WHERE lower(email) = lower('<adresse>');
+DELETE FROM events WHERE user_id IN (SELECT id FROM users WHERE lower(email) = lower('<adresse>'));
 ```
 
 Le serveur n'écrit alors plus aucun événement pour ce compte, et répond à
@@ -518,17 +524,22 @@ les comptes.
 | Donnée | Ce qui en est fait |
 |---|---|
 | Adresse IP, limitation des abus | Comptée en mémoire pendant 15 minutes, par route sensible. Jamais écrite. |
-| Adresse IP, connexions refusées | Une connexion refusée ou un jeton refusé écrit une ligne avec l'adresse IP, sans adresse e-mail, dans la sortie du backend. Docker garde cette sortie dans un fichier, sans rotation, jusqu'au remplacement du conteneur, donc jusqu'au déploiement suivant. |
+| Adresse IP, connexions refusées | Une connexion refusée ou un jeton de session refusé écrit une ligne avec l'adresse IP, sans adresse e-mail, dans la sortie du backend, qui va au journal du système (voir « Durées »). |
 | Erreurs du serveur | Une ligne par erreur. Aucune ne nomme un compte volontairement ; l'erreur brute d'une base qui refuse une valeur peut citer cette valeur. |
 | Serveur web (Caddy) | Pas de journal d'accès. Son journal de fonctionnement (certificats, erreurs) ne suit pas les requêtes. |
 | Base PostgreSQL | Ni les requêtes ni les connexions ne sont journalisées (`log_statement = none`). |
-| Système du serveur | Le journal du système garde les tentatives de connexion SSH et les bannissements, avec leurs adresses IP. Aucune durée maximale n'est réglée, seulement un plafond de taille. |
+| Système du serveur | Le journal du système garde les tentatives de connexion SSH et les bannissements, avec leurs adresses IP. |
 | Journal de requêtes du backend | En développement seulement, jamais en production. |
 
-**Durées.** Visée : 6 mois. **Écart** : ni le journal de Docker ni celui du
-système n'ont de durée maximale (relevés ci-dessous). Remède proposé, à
-faire sur le serveur par Charles : régler `MaxRetentionSec=6month` dans
-journald, et confier les journaux de Docker à journald (`log-driver`).
+**Durées.** 6 mois au plus, comme la CNIL le recommande pour des journaux
+(entre 6 mois et 1 an). Les trois conteneurs écrivent dans le journal du
+système (`logging: driver: journald`, `ops/docker-compose.prod.yml`), qui
+efface une entrée au plus tard 179 jours après (`ops/journald/dian-dian.conf` :
+`MaxRetentionSec=178d`, un fichier par jour), réglage que `deploy-prod.sh`
+installe sur le serveur. Un test (`backend/src/lib/retentionConfig.test.ts`)
+tient ces réglages et la durée annoncée ensemble. En service avec le
+déploiement de la release unique ; jusque-là, les journaux n'ont pas de
+durée maximale (relevés ci-dessous).
 
 ## Fiche 11 — Sauvegardes
 
@@ -552,16 +563,22 @@ AES-256 avant de quitter le serveur ; la clé est sur le serveur et dans le
 gestionnaire de mots de passe de l'éditeur, Cloudflare ne l'a pas. Une
 restauration a été essayée avec succès le 2026-08-03.
 
-**Durées.** 7 sauvegardes complètes sont gardées, soit **7 jours** : une
-donnée supprimée de la base n'est plus dans aucune sauvegarde 7 jours plus
-tard. C'est la réponse à « et vos sauvegardes ? » après une suppression de
-compte.
+**Durées.** 30 sauvegardes complètes sont gardées, soit **30 jours**
+(`repo1-retention-full=30`, `ops/pgbackrest/pgbackrest.conf`) : une donnée
+supprimée de la base n'est plus dans aucune sauvegarde 30 jours plus tard,
+et un problème découvert tard (un bug qui abîme des trackers, signalé deux
+semaines après) peut encore être réparé. C'est la réponse à « et vos
+sauvegardes ? » après une suppression de compte. Décidé par Charles le
+2026-11-26 (7 jours avant) ; en service avec le déploiement de la release
+unique, qui reconstruit le conteneur de la base.
 
-**Écart.** Dix fichiers de l'ancien système (`pg-2026-07-25.sql.age` et
-suivants, jusqu'à début août 2026) sont encore dans
-`/srv/dian-dian/backups/` sur le serveur. Chiffrés par une clé gardée sur le
-poste de l'éditeur, ils contiennent la base de cette époque, comptes
-supprimés depuis compris. **À supprimer par Charles.**
+**Anciennes sauvegardes, supprimées le 2026-11-26.** Dix fichiers de
+l'ancien système (une copie de la base chiffrée chaque nuit et laissée sur
+le serveur, `pg-2026-07-25.sql.age` à `pg-2026-08-03.sql.age`) étaient
+restés dans `/srv/dian-dian/backups/` après le passage à pgBackRest le
+2026-08-03. Ils contenaient la base de cette époque, comptes supprimés
+depuis compris. Supprimés avec leur dossier, et la clé qui les ouvrait
+effacée du poste de l'éditeur, avec l'accord de Charles.
 
 **À relever par Charles.** Les sauvegardes automatiques et les instantanés
 de Vultr sont-ils activés pour ce serveur ? Si oui, c'est une copie de plus,
@@ -578,7 +595,7 @@ Lus sur le serveur de production, sans rien y changer.
 | `docker inspect -f '{{.HostConfig.LogConfig}}'` sur les trois conteneurs ; `/etc/docker/daemon.json` | pilote `json-file` sans option, pas de `daemon.json` : aucune rotation. Journal du backend : 4 Ko, première ligne du 2026-11-23, jour du dernier déploiement |
 | `journalctl --disk-usage` ; `/etc/systemd/journald.conf` | 2,2 Go, première entrée du 2026-05-14 ; réglages par défaut, aucune durée maximale |
 | `pgbackrest --stanza=dian-dian info` | état `ok` ; 7 sauvegardes complètes, du 20 au 26 novembre ; 29 différentielles |
-| `ls /srv/dian-dian/backups/` | 10 fichiers `pg-2026-07-25.sql.age` et suivants |
+| `ls /srv/dian-dian/backups/` | 10 fichiers `pg-2026-07-25.sql.age` à `pg-2026-08-03.sql.age` ; supprimés le même jour (fiche 11) |
 | `pg_settings` | `log_statement = none`, `log_min_duration_statement = -1`, `log_connections = off` |
 | `ops/Caddyfile` sur le serveur | aucune directive `log` |
 
@@ -588,12 +605,11 @@ Lus sur le serveur de production, sans rien y changer.
 |---|---|---|---|
 | L'app affiche de la publicité sans demander de consentement | 9 | le chantier « consentement publicitaire », dans la release unique | Fable, puis Charles pour les essais sur appareil |
 | Supprimer un compte n'efface pas le client chez RevenueCat | 4 | une demande d'effacement à RevenueCat à chaque suppression, dans le chantier 9 | Fable |
-| Les journaux de Docker et du système n'ont pas de durée maximale | 10 | deux réglages sur le serveur | Charles |
-| Dix sauvegardes de l'été 2026 sont encore sur le serveur | 11 | les supprimer | Charles |
+| Les journaux n'ont pas de durée maximale tant que la release n'est pas déployée | 10 | le déploiement de la release unique (6 mois au plus ensuite) | Charles, en déployant |
 | L'avenant de traitement de Vultr n'est pas demandé | « Sous-traitants » | un ticket chez Vultr | Charles |
 | Ce que Cloudflare garde d'un e-mail qu'il achemine n'est pas établi | « Sous-traitants » | lire son avenant de traitement, ou lui poser la question | Fable, au prochain passage sur ce registre |
 | Sauvegardes automatiques de Vultr, boîte de contact chez Microsoft | 11, « Sous-traitants » | les relever dans les tableaux de bord | Charles |
-| Rien n'efface les messages de contact au bout de leurs 3 ans | 6 | les effacer à la main, une fois par an | Charles |
+| Les messages de contact ne s'effacent pas tout seuls au bout de 3 ans (Outlook personnel ne le permet pas) | 6 | Charles s'en charge dans Outlook | Charles |
 | Des données de santé peuvent être notées dans un contenu libre | 3 | une décision, au besoin avec un juriste | Charles |
 | L'inscription dit si une adresse a déjà un compte | 2 | l'inscription par code du chantier 9 | Fable |
 

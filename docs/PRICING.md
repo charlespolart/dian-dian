@@ -257,7 +257,7 @@ Comparé à `master` (app 1.4.0). Détail : `docs/CONFIRMATION.md`, points 8
   la mise en forme de `priceString`. Au plan.
 - **Conservation** : construit le 2026-11-26 avec le registre
   (`backend/src/lib/retention.ts`) : le mois en cours et les 12 précédents
-  sont gardés, la purge tourne au démarrage puis chaque jour.
+  sont gardés, la purge tourne au démarrage puis toutes les heures.
 
 ### Trouvé pendant le chantier 0 (2026-11-25), pour ce chantier
 

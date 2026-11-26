@@ -294,7 +294,7 @@ async function main() {
     ]) {
       const policy = await (await site(`/privacy?lang=${lang}`)).text();
       policySections[lang] = sections(policy);
-      for (const name of ['Vultr', 'Cloudflare', 'Resend', 'RevenueCat', 'AdMob', 'Apple', 'Google']) {
+      for (const name of ['Vultr', 'Cloudflare', 'Resend', 'RevenueCat', 'Microsoft', 'AdMob', 'Apple', 'Google']) {
         assert.ok(policy.includes(name), `the ${lang} policy names ${name}`);
       }
       assert.ok(!policy.includes(oldClaim), `the ${lang} policy no longer says nothing is shared with anyone`);
@@ -302,6 +302,33 @@ async function main() {
       assert.ok(events.includes('13'), `the ${lang} policy has its section on product events, with their 13 months`);
       assert.ok(/href="https:\/\/www\.cnil\.fr\/[^"]+"/.test(policy), `the ${lang} policy says where to complain`);
     }
+    // What each version must say, found by the review of 2026-11-26: the
+    // policy says no less than the code and the register.
+    const policySays: Record<string, Record<string, string>> = {
+      'sign-in with Apple or Google keeps the address and an identifier only': { en: 'we keep only your email address', fr: 'nous ne gardons que votre adresse e-mail', 'zh-CN': '我们只保存您的电子邮箱', 'zh-TW': '我們只儲存您的電子郵件' },
+      'what a purchase record holds': { en: "the store's transaction identifier", fr: "l'identifiant de la transaction chez le store", 'zh-CN': '商店的交易标识符', 'zh-TW': '商店的交易識別碼' },
+      'a refused session token is logged too': { en: 'a sign-in or a session token is refused', fr: 'une connexion ou un jeton de session est refusé', 'zh-CN': '登录或会话令牌被拒绝', 'zh-TW': '登入或工作階段權杖被拒絕' },
+      'RevenueCat receives device information': { en: 'technical information about your device', fr: 'des informations techniques sur votre appareil', 'zh-CN': '您设备的技术信息', 'zh-TW': '您裝置的技術資訊' },
+      'the copy kept on the phone': { en: 'a copy of the year it shows', fr: "une copie de l'année qu'elle affiche", 'zh-CN': '其所显示年份的副本', 'zh-TW': '其所顯示年份的副本' },
+      'purchase events after a deletion': { en: 'linked to no account', fr: 'sans lien avec un compte', 'zh-CN': '不与任何账户关联', 'zh-TW': '不與任何帳戶關聯' },
+      'backups are kept 30 days': { en: 'kept 30 days', fr: 'gardées 30 jours', 'zh-CN': '保留 30 天', 'zh-TW': '保留 30 天' },
+      'logs are kept 6 months at most': { en: '6 months at most', fr: '6 mois au plus', 'zh-CN': '最多保留 6 个月', 'zh-TW': '最多保留 6 個月' },
+    };
+    for (const lang of ['en', 'fr', 'zh-CN', 'zh-TW']) {
+      const policy = await (await site(`/privacy?lang=${lang}`)).text();
+      for (const [what, phrase] of Object.entries(policySays)) {
+        assert.ok(policy.includes(phrase[lang]), `the ${lang} policy says ${what}`);
+      }
+      const events = policy.split('id="events"')[1]?.split('<h2')[0] ?? '';
+      if (lang.startsWith('zh')) assert.ok(events.includes('接收方') && !events.includes('使用者：'), `the ${lang} events section says who receives them, not "users"`);
+    }
+    for (const lang of ['en', 'fr', 'zh-CN', 'zh-TW']) {
+      for (const path of ['/privacy', '/delete-account']) {
+        const page = await (await site(`${path}?lang=${lang}`)).text();
+        assert.ok(!/next updated|prochaine mise à jour|下一次更新|7 days|7 jours| 7 天/.test(page), `${path} in ${lang} no longer gives the old durations (logs until an update, backups 7 days)`);
+      }
+    }
+    assert.ok(!(await (await site('/privacy?lang=zh-TW')).text()).includes('使用者分析'), 'zh-TW: profiling is not called "user analysis", which the usage statistics would contradict');
     assert.equal(policySections.en, 13, 'the policy has its thirteen sections');
     assert.deepEqual(policySections, { en: 13, fr: 13, 'zh-CN': 13, 'zh-TW': 13 }, 'the same sections in the four languages');
 
@@ -311,10 +338,30 @@ async function main() {
       const page = await (await site(`/delete-account?lang=${lang}`)).text();
       deleteSections[lang] = sections(page);
       assert.ok(page.includes('RevenueCat'), `the ${lang} deletion page names RevenueCat`);
-      assert.ok(page.includes('7'), `the ${lang} deletion page says the backups last 7 days`);
+      const backups = { en: 'kept 30 days', fr: 'gardées 30 jours', 'zh-CN': '保留 30 天', 'zh-TW': '保留 30 天' }[lang]!;
+      assert.ok(page.includes(backups), `the ${lang} deletion page says the backups last 30 days`);
+      const cancel = { en: 'does not cancel a subscription', fr: "n'annule pas un abonnement", 'zh-CN': '删除账户不会取消订阅', 'zh-TW': '刪除帳戶不會取消訂閱' }[lang]!;
+      assert.ok(page.includes(cancel), `the ${lang} deletion page says a store subscription keeps renewing`);
+      const after = { en: 'linked to no account', fr: 'sans lien avec un compte', 'zh-CN': '不与任何账户关联', 'zh-TW': '不與任何帳戶關聯' }[lang]!;
+      assert.ok(page.includes(after), `the ${lang} deletion page says what becomes of the purchase events that come after`);
+      const token = { en: 'sign-in or session token', fr: "d'une connexion ou d'un jeton de session", 'zh-CN': '登录或会话令牌', 'zh-TW': '登入或工作階段權杖' }[lang]!;
+      assert.ok(page.includes(token), `the ${lang} deletion page says which log lines hold an address`);
+      const logs = { en: '6 months at most', fr: '6 mois au plus', 'zh-CN': '最多 6 个月', 'zh-TW': '最多 6 個月' }[lang]!;
+      assert.ok(page.includes(logs), `the ${lang} deletion page says how long the log keeps it`);
       assert.ok(!page.toLowerCase().includes(oldClaim), `the ${lang} deletion page no longer says nothing at all is kept`);
     }
     assert.deepEqual(deleteSections, { en: 5, fr: 5, 'zh-CN': 5, 'zh-TW': 5 }, 'the deletion page keeps its five sections in the four languages');
+
+    // Each page's <title> is in the language of the page (zh-TW had Simplified ones).
+    for (const [path, title] of [
+      ['/privacy', '隱私權政策'], ['/terms', '使用條款'], ['/about', '關於'], ['/contact', '聯絡我們'], ['/legal', '法律聲明'], ['/delete-account', '刪除帳戶'],
+    ]) {
+      const page = await (await site(`${path}?lang=zh-TW`)).text();
+      assert.equal(page.match(/<title>([^<]*?) — Dian Dian<\/title>/)?.[1], title, `${path} in zh-TW has a Traditional title`);
+    }
+    // The browser holds the site to what the policy says: nothing from a third party, images included.
+    const imgSrc = /img-src ([^;]*)/.exec((await site('/')).headers.get('content-security-policy') ?? '')?.[1] ?? '';
+    assert.ok(imgSrc !== '' && !imgSrc.includes('https:'), `images come from the site only (img-src ${imgSrc})`);
 
     // The opt-out page: a button sets a cookie, and the counter leaves its bearer out.
     const optOutPage = (headers: Record<string, string> = {}) => fetch(`${BASE}/privacy/audience?lang=fr`, { headers });
@@ -874,6 +921,10 @@ async function main() {
     await sql`delete from subscription_events where rc_event_id in ${sql([transferId, strangerId, nowhereId])}`;
     const gone = await fetch(`${BASE}/api/auth/account`, { method: 'DELETE', headers: { Authorization: `Bearer ${secondToken}` } });
     assert.equal(gone.status, 200, 'second account deleted');
+    const late = await fetch(`${BASE}/api/events`, {
+      method: 'POST', headers: { Authorization: `Bearer ${secondToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'paywall.themes' }),
+    });
+    assert.equal(late.status, 204, 'an event sent by an account just deleted (its access token still valid) is answered 204 and dropped, not a 500');
   }
 
   // --- cleanup --------------------------------------------------------------

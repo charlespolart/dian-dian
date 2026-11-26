@@ -44,6 +44,16 @@ const notFound = {
   home: { en: 'Back to Dian Dian', fr: 'Retour à l’accueil', 'zh-CN': '返回首页', 'zh-TW': '返回首頁' },
 };
 
+/** The <title> of each page, in each language (zh-TW in Traditional characters). */
+const titles: Record<'privacy' | 'terms' | 'about' | 'contact' | 'legal' | 'deleteAccount', Record<Lang, string>> = {
+  privacy: { en: 'Privacy Policy', fr: 'Politique de confidentialité', 'zh-CN': '隐私政策', 'zh-TW': '隱私權政策' },
+  terms: { en: 'Terms of Use', fr: "Conditions d'utilisation", 'zh-CN': '使用条款', 'zh-TW': '使用條款' },
+  about: { en: 'About', fr: 'À propos', 'zh-CN': '关于', 'zh-TW': '關於' },
+  contact: { en: 'Contact', fr: 'Contact', 'zh-CN': '联系我们', 'zh-TW': '聯絡我們' },
+  legal: { en: 'Legal Notice', fr: 'Mentions légales', 'zh-CN': '法律声明', 'zh-TW': '法律聲明' },
+  deleteAccount: { en: 'Delete Account', fr: 'Suppression du compte', 'zh-CN': '删除账户', 'zh-TW': '刪除帳戶' },
+};
+
 /** What an unknown path gets (see index.ts): a 404 in the site's layout, with a way back. */
 export function notFoundPage(lang: Lang): string {
   return layout(notFound.title[lang], `<h1>${notFound.title[lang]}</h1>
@@ -156,12 +166,12 @@ const privacy: Record<Lang, string> = {
     <p>Dian Dian is published by OVERRIDE, SASU with a capital of 1 euro, registered under SIREN 953 122 868, which is the controller of your data. This Privacy Policy explains which data we process, why, who it is entrusted to and how long we keep it. Any question: <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a>.</p>
     <h2>2. Data We Process</h2>
     <ul>
-      <li><strong>Account:</strong> your email address and, if you chose a password, its hash (the password itself is never kept). If you sign in with Apple or Google, we receive your email address and an identifier that service gives us for you, nothing else from your profile.</li>
+      <li><strong>Account:</strong> your email address and, if you chose a password, its hash (the password itself is never kept). If you sign in with Apple or Google, we keep only your email address and an identifier that service gives us for you: nothing else from your profile.</li>
       <li><strong>Tracker content:</strong> the trackers, colored days, legend entries and comments you create. You choose what you write in them.</li>
       <li><strong>Settings:</strong> the theme, language and cursor you chose.</li>
-      <li><strong>Purchases:</strong> the plan you bought, the store, the dates, the price and the store's country. We never have access to your payment information.</li>
+      <li><strong>Purchases:</strong> the plan you bought, the store, the dates, the price and the store's country, whether it was a trial or a test purchase, why a subscription ended, and the store's transaction identifier. We never have access to your payment information.</li>
       <li><strong>Product events:</strong> see section 7.</li>
-      <li><strong>Technical data:</strong> your IP address is used to limit abuse (counted in memory for 15 minutes) and is written to the server's log when a sign-in is refused.</li>
+      <li><strong>Technical data:</strong> your IP address is used to limit abuse (counted in memory for 15 minutes) and is written to the server's log when a sign-in or a session token is refused.</li>
       <li><strong>Messages:</strong> what you write to us through the contact form or by email.</li>
     </ul>
     <h2>3. Why, and on What Basis</h2>
@@ -178,7 +188,8 @@ const privacy: Record<Lang, string> = {
       <li><strong>Vultr:</strong> the server, in France.</li>
       <li><strong>Cloudflare:</strong> the backups of the database, encrypted before they leave our server and stored in the European Union; and the forwarding of the emails you write to us.</li>
       <li><strong>Resend:</strong> the sending of our emails. Resend receives your address and the content of the email, and keeps them 30 days.</li>
-      <li><strong>RevenueCat:</strong> keeping track of purchases. RevenueCat receives your account's identifier and your purchase receipts, never your email address.</li>
+      <li><strong>RevenueCat:</strong> keeping track of purchases. RevenueCat receives your account's identifier, your purchase receipts and technical information about your device, never your email address.</li>
+      <li><strong>Microsoft:</strong> the mailbox where the messages you write to us arrive.</li>
     </ul>
     <p>Resend and RevenueCat are in the United States: these transfers are covered by the European Commission's standard contractual clauses.</p>
     <p><strong>Apple and Google</strong> process on their own account what you entrust to them: signing in through them, if you choose to, and your purchases (App Store or Google Play, depending on your device). See <a href="https://www.apple.com/legal/privacy/" target="_blank">Apple's Privacy Policy</a> and <a href="https://policies.google.com/privacy" target="_blank">Google's Privacy Policy</a>.</p>
@@ -207,16 +218,16 @@ const privacy: Record<Lang, string> = {
     <h2>8. Advertising</h2>
     <p>The free version of the app displays banner ads via <strong>Google AdMob</strong>. AdMob may collect device identifiers and usage data, which Google processes on its own account according to <a href="https://policies.google.com/privacy" target="_blank">Google's Privacy Policy</a>. Premium users are not shown ads.</p>
     <h2>9. Data Storage &amp; Security</h2>
-    <p>Your data is stored on our server, hosted by Vultr in France. Passwords are hashed using Argon2. All connections are encrypted via HTTPS. The database is backed up every day; the backups are encrypted, stored in the European Union and kept 7 days.</p>
+    <p>Your data is stored on our server, hosted by Vultr in France. Passwords are hashed using Argon2. All connections are encrypted via HTTPS. The database is backed up every day; the backups are encrypted, stored in the European Union and kept 30 days. The app also keeps on your phone a copy of the year it shows (trackers, colored days, legends, comments), deleted when you sign out; like the rest of the app's data, it can be included in your phone's backups (iCloud, Google).</p>
     <h2>10. Data Retention &amp; Deletion</h2>
     <ul>
       <li><strong>Account and content:</strong> as long as your account exists. You can <strong>delete your account and all data</strong> at any time from the app; the deletion is immediate.</li>
-      <li><strong>Backups:</strong> 7 days. A deleted account is therefore gone from the backups 7 days later.</li>
+      <li><strong>Backups:</strong> 30 days. A deleted account is therefore gone from the backups 30 days later.</li>
       <li><strong>Product events:</strong> 13 months at most.</li>
       <li><strong>Website audience measurement:</strong> daily counts for 25 months at most, then monthly totals only.</li>
-      <li><strong>Server log:</strong> the IP address of a refused sign-in stays there until the server's next update.</li>
+      <li><strong>Server log:</strong> the IP address of a refused sign-in or session token stays there 6 months at most.</li>
       <li><strong>Messages you write to us:</strong> 3 years at most after the last exchange.</li>
-      <li><strong>Purchases:</strong> as long as your account exists. Apple, Google and RevenueCat keep their own record of your purchases, under their own rules.</li>
+      <li><strong>Purchases:</strong> as long as your account exists. A store subscription keeps renewing until you cancel it with Apple or Google, even after your account is deleted: the purchase events that then reach us are kept 13 months at most, linked to no account. Apple, Google and RevenueCat keep their own record of your purchases, under their own rules.</li>
     </ul>
     <h2>11. Your Rights</h2>
     <p>You can access your data, have it corrected or deleted, receive a copy of it, have its processing restricted, and object to the processing based on our legitimate interest (sections 6 and 7). Write to us at <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a>: we answer within one month. If our answer does not satisfy you, you can lodge a complaint with the French data protection authority, the <a href="https://www.cnil.fr/fr/plaintes" target="_blank" rel="noopener">CNIL</a>, or with the authority of your country.</p>
@@ -231,12 +242,12 @@ const privacy: Record<Lang, string> = {
     <p>Dian Dian est édité par OVERRIDE, SASU au capital de 1 euro, immatriculée sous le SIREN 953 122 868, qui est responsable du traitement de vos données. Cette politique explique quelles données nous traitons, pourquoi, à qui elles sont confiées et combien de temps nous les gardons. Pour toute question : <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a>.</p>
     <h2>2. Données que nous traitons</h2>
     <ul>
-      <li><strong>Compte :</strong> votre adresse e-mail et, si vous avez choisi un mot de passe, son empreinte (le mot de passe lui-même n'est jamais gardé). Si vous vous connectez avec Apple ou Google, nous recevons votre adresse e-mail et un identifiant que ce service nous donne pour vous, rien d'autre de votre profil.</li>
+      <li><strong>Compte :</strong> votre adresse e-mail et, si vous avez choisi un mot de passe, son empreinte (le mot de passe lui-même n'est jamais gardé). Si vous vous connectez avec Apple ou Google, nous ne gardons que votre adresse e-mail et un identifiant que ce service nous donne pour vous : rien d'autre de votre profil.</li>
       <li><strong>Contenu de vos trackers :</strong> les trackers, les jours coloriés, les légendes et les commentaires que vous créez. Vous choisissez ce que vous y notez.</li>
       <li><strong>Réglages :</strong> le thème, la langue et le curseur choisis.</li>
-      <li><strong>Achats :</strong> la formule achetée, le store, les dates, le prix et le pays du store. Nous n'avons jamais accès à votre moyen de paiement.</li>
+      <li><strong>Achats :</strong> la formule achetée, le store, les dates, le prix et le pays du store, s'il s'agissait d'un essai ou d'un achat de test, pourquoi un abonnement a pris fin, et l'identifiant de la transaction chez le store. Nous n'avons jamais accès à votre moyen de paiement.</li>
       <li><strong>Événements produit :</strong> voir la section 7.</li>
-      <li><strong>Données techniques :</strong> votre adresse IP sert à limiter les abus (elle est comptée en mémoire pendant 15 minutes) et est écrite dans le journal du serveur quand une connexion est refusée.</li>
+      <li><strong>Données techniques :</strong> votre adresse IP sert à limiter les abus (elle est comptée en mémoire pendant 15 minutes) et est écrite dans le journal du serveur quand une connexion ou un jeton de session est refusé.</li>
       <li><strong>Messages :</strong> ce que vous nous écrivez par le formulaire de contact ou par e-mail.</li>
     </ul>
     <h2>3. Pourquoi, et sur quelle base</h2>
@@ -253,7 +264,8 @@ const privacy: Record<Lang, string> = {
       <li><strong>Vultr :</strong> le serveur, en France.</li>
       <li><strong>Cloudflare :</strong> les sauvegardes de la base, chiffrées avant de quitter notre serveur et stockées dans l'Union européenne ; et l'acheminement des e-mails que vous nous écrivez.</li>
       <li><strong>Resend :</strong> l'envoi de nos e-mails. Resend reçoit votre adresse et le contenu de l'e-mail, et les garde 30 jours.</li>
-      <li><strong>RevenueCat :</strong> le suivi des achats. RevenueCat reçoit l'identifiant de votre compte et vos reçus d'achat, jamais votre adresse e-mail.</li>
+      <li><strong>RevenueCat :</strong> le suivi des achats. RevenueCat reçoit l'identifiant de votre compte, vos reçus d'achat et des informations techniques sur votre appareil, jamais votre adresse e-mail.</li>
+      <li><strong>Microsoft :</strong> la boîte où arrivent les messages que vous nous écrivez.</li>
     </ul>
     <p>Resend et RevenueCat sont aux États-Unis : ces transferts sont encadrés par les clauses contractuelles types de la Commission européenne.</p>
     <p><strong>Apple et Google</strong> traitent pour leur propre compte ce que vous leur confiez : la connexion par leur service, si vous la choisissez, et vos achats (App Store ou Google Play, selon votre appareil). Voir la <a href="https://www.apple.com/legal/privacy/" target="_blank">Politique de confidentialité d'Apple</a> et la <a href="https://policies.google.com/privacy" target="_blank">Politique de confidentialité de Google</a>.</p>
@@ -282,16 +294,16 @@ const privacy: Record<Lang, string> = {
     <h2>8. Publicité</h2>
     <p>La version gratuite de l'application affiche des bannières publicitaires via <strong>Google AdMob</strong>. AdMob peut collecter des identifiants d'appareil et des données d'utilisation, que Google traite pour son propre compte conformément à la <a href="https://policies.google.com/privacy" target="_blank">Politique de confidentialité de Google</a>. Les utilisateurs Premium ne voient pas de publicités.</p>
     <h2>9. Stockage et sécurité</h2>
-    <p>Vos données sont stockées sur notre serveur, hébergé par Vultr en France. Les mots de passe sont hachés avec Argon2. Toutes les connexions sont chiffrées via HTTPS. La base est sauvegardée chaque jour ; les sauvegardes sont chiffrées, stockées dans l'Union européenne et gardées 7 jours.</p>
+    <p>Vos données sont stockées sur notre serveur, hébergé par Vultr en France. Les mots de passe sont hachés avec Argon2. Toutes les connexions sont chiffrées via HTTPS. La base est sauvegardée chaque jour ; les sauvegardes sont chiffrées, stockées dans l'Union européenne et gardées 30 jours. L'app garde aussi sur votre téléphone une copie de l'année qu'elle affiche (trackers, jours coloriés, légendes, commentaires), effacée quand vous vous déconnectez ; comme le reste des données de l'app, elle peut être incluse dans les sauvegardes de votre téléphone (iCloud, Google).</p>
     <h2>10. Conservation et suppression</h2>
     <ul>
       <li><strong>Compte et contenu :</strong> tant que votre compte existe. Vous pouvez <strong>supprimer votre compte et toutes vos données</strong> à tout moment depuis l'application ; la suppression est immédiate.</li>
-      <li><strong>Sauvegardes :</strong> 7 jours. Un compte supprimé a donc disparu des sauvegardes 7 jours plus tard.</li>
+      <li><strong>Sauvegardes :</strong> 30 jours. Un compte supprimé a donc disparu des sauvegardes 30 jours plus tard.</li>
       <li><strong>Événements produit :</strong> 13 mois au plus.</li>
       <li><strong>Mesure d'audience du site :</strong> les comptes par jour pendant 25 mois au plus, puis seulement des totaux par mois.</li>
-      <li><strong>Journal du serveur :</strong> l'adresse IP d'une connexion refusée y reste jusqu'à la mise à jour suivante du serveur.</li>
+      <li><strong>Journal du serveur :</strong> l'adresse IP d'une connexion ou d'un jeton de session refusés y reste 6 mois au plus.</li>
       <li><strong>Messages que vous nous écrivez :</strong> 3 ans au plus après le dernier échange.</li>
-      <li><strong>Achats :</strong> tant que votre compte existe. Apple, Google et RevenueCat gardent leur propre historique de vos achats, selon leurs règles.</li>
+      <li><strong>Achats :</strong> tant que votre compte existe. Un abonnement continue de se renouveler tant que vous ne l'annulez pas chez Apple ou Google, même après la suppression de votre compte : les événements d'achat qui nous parviennent alors sont gardés 13 mois au plus, sans lien avec un compte. Apple, Google et RevenueCat gardent leur propre historique de vos achats, selon leurs règles.</li>
     </ul>
     <h2>11. Vos droits</h2>
     <p>Vous pouvez accéder à vos données, les faire corriger ou effacer, en recevoir une copie, en faire limiter le traitement, et vous opposer aux traitements fondés sur notre intérêt légitime (sections 6 et 7). Écrivez-nous à <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a> : nous répondons sous un mois. Si notre réponse ne vous convient pas, vous pouvez saisir la <a href="https://www.cnil.fr/fr/plaintes" target="_blank" rel="noopener">CNIL</a> ou l'autorité de protection des données de votre pays.</p>
@@ -306,12 +318,12 @@ const privacy: Record<Lang, string> = {
     <p>点点由 OVERRIDE 公司（SASU，注册资本1欧元，SIREN 953 122 868）发布，该公司是您数据的控制者。本隐私政策说明我们处理哪些数据、为什么处理、交给谁保管以及保留多久。如有疑问，请联系 <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a>。</p>
     <h2>2. 我们处理的数据</h2>
     <ul>
-      <li><strong>账户：</strong>您的电子邮箱；如果您设置了密码，我们只保存其哈希值（密码本身从不保存）。如果您使用 Apple 或 Google 登录，我们会收到您的电子邮箱以及该服务为您提供的一个标识符，不会收到您个人资料中的其他内容。</li>
+      <li><strong>账户：</strong>您的电子邮箱；如果您设置了密码，我们只保存其哈希值（密码本身从不保存）。如果您使用 Apple 或 Google 登录，我们只保存您的电子邮箱以及该服务为您提供的一个标识符，不保存您个人资料中的其他内容。</li>
       <li><strong>追踪器内容：</strong>您创建的追踪器、上色的日期、图例和备注。记录什么由您决定。</li>
       <li><strong>设置：</strong>您选择的主题、语言和光标。</li>
-      <li><strong>购买：</strong>所购方案、应用商店、日期、价格和商店所在的国家/地区。我们无法获取您的支付信息。</li>
+      <li><strong>购买：</strong>所购方案、应用商店、日期、价格和商店所在的国家/地区，是否为试用或测试购买，订阅结束的原因，以及商店的交易标识符。我们无法获取您的支付信息。</li>
       <li><strong>产品事件：</strong>见第 7 节。</li>
-      <li><strong>技术数据：</strong>您的 IP 地址用于限制滥用（在内存中统计 15 分钟），并在登录被拒绝时写入服务器日志。</li>
+      <li><strong>技术数据：</strong>您的 IP 地址用于限制滥用（在内存中统计 15 分钟），并在登录或会话令牌被拒绝时写入服务器日志。</li>
       <li><strong>消息：</strong>您通过联系表单或电子邮件写给我们的内容。</li>
     </ul>
     <h2>3. 处理目的与依据</h2>
@@ -328,7 +340,8 @@ const privacy: Record<Lang, string> = {
       <li><strong>Vultr：</strong>服务器，位于法国。</li>
       <li><strong>Cloudflare：</strong>数据库备份（离开我们的服务器前已加密，存储在欧盟境内）；以及转发您写给我们的电子邮件。</li>
       <li><strong>Resend：</strong>发送我们的电子邮件。Resend 会收到您的邮箱地址和邮件内容，并保留 30 天。</li>
-      <li><strong>RevenueCat：</strong>跟踪购买状态。RevenueCat 会收到您的账户标识符和购买凭证，绝不会收到您的电子邮箱。</li>
+      <li><strong>RevenueCat：</strong>跟踪购买状态。RevenueCat 会收到您的账户标识符、购买凭证以及您设备的技术信息，绝不会收到您的电子邮箱。</li>
+      <li><strong>Microsoft：</strong>接收您写给我们的消息的邮箱。</li>
     </ul>
     <p>Resend 和 RevenueCat 位于美国：这些数据传输受欧盟委员会标准合同条款的约束。</p>
     <p><strong>Apple 和 Google</strong> 自行负责处理您交给它们的数据：通过它们登录（如果您选择这样做），以及您的购买（App Store 或 Google Play，取决于您的设备）。请参阅 <a href="https://www.apple.com/legal/privacy/" target="_blank">Apple 隐私政策</a>和 <a href="https://policies.google.com/privacy" target="_blank">Google 隐私政策</a>。</p>
@@ -350,23 +363,23 @@ const privacy: Record<Lang, string> = {
       <li><strong>报告的内容：</strong>某个界面或操作的名称（目前为：显示免费版的某项限制）、平台（iOS、Android）、应用版本和日期。绝不包含您追踪器的内容。</li>
       <li><strong>目的：</strong>调整免费版的限制，并修复造成阻碍的问题。</li>
       <li><strong>保留期限：</strong>最多 13 个月，之后删除。如果您删除账户，它们会随账户一并删除。</li>
-      <li><strong>使用者：</strong>仅限点点，绝不与他人分享。</li>
+      <li><strong>接收方：</strong>仅限点点，绝不与他人分享。</li>
       <li><strong>提出反对：</strong>请写信至 <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a>。我们将停止为您的账户记录这些事件，并删除已收到的事件。</li>
     </ul>
     <p>我们还会对全体账户进行统计（账户数、追踪器数、已填写的天数、最常见的追踪器标题），以决定应用的发展方向。这些统计不描述任何特定个人。</p>
     <h2>8. 广告</h2>
     <p>免费版应用通过 <strong>Google AdMob</strong> 显示横幅广告。AdMob 可能收集设备标识符和使用数据，由 Google 根据 <a href="https://policies.google.com/privacy" target="_blank">Google 隐私政策</a>自行处理。高级用户不会看到广告。</p>
     <h2>9. 数据存储与安全</h2>
-    <p>您的数据存储在我们位于法国、由 Vultr 托管的服务器上。密码使用 Argon2 进行哈希处理。所有连接通过 HTTPS 加密。数据库每天备份；备份经过加密，存储在欧盟境内，保留 7 天。</p>
+    <p>您的数据存储在我们位于法国、由 Vultr 托管的服务器上。密码使用 Argon2 进行哈希处理。所有连接通过 HTTPS 加密。数据库每天备份；备份经过加密，存储在欧盟境内，保留 30 天。应用还会在您的手机上保存其所显示年份的副本（追踪器、上色的日期、图例、备注），您退出登录时删除；与应用的其他数据一样，它可能包含在您手机的备份中（iCloud、Google）。</p>
     <h2>10. 数据保留与删除</h2>
     <ul>
       <li><strong>账户和内容：</strong>账户存在期间一直保留。您可以随时从应用中<strong>删除账户和所有数据</strong>，删除立即生效。</li>
-      <li><strong>备份：</strong>7 天。因此，已删除的账户会在 7 天后从备份中消失。</li>
+      <li><strong>备份：</strong>30 天。因此，已删除的账户会在 30 天后从备份中消失。</li>
       <li><strong>产品事件：</strong>最多 13 个月。</li>
       <li><strong>网站访问统计：</strong>每日统计最多保留 25 个月，之后仅保留每月总数。</li>
-      <li><strong>服务器日志：</strong>登录被拒绝时记录的 IP 地址会保留到服务器下一次更新为止。</li>
+      <li><strong>服务器日志：</strong>登录或会话令牌被拒绝时记录的 IP 地址最多保留 6 个月。</li>
       <li><strong>您写给我们的消息：</strong>最后一次往来后最多 3 年。</li>
-      <li><strong>购买：</strong>账户存在期间一直保留。Apple、Google 和 RevenueCat 会按各自的规则保留它们自己的购买记录。</li>
+      <li><strong>购买：</strong>账户存在期间一直保留。即使您删除了账户，应用商店的订阅仍会续订，直到您在 Apple 或 Google 处取消：届时我们收到的购买事件最多保留 13 个月，不与任何账户关联。Apple、Google 和 RevenueCat 会按各自的规则保留它们自己的购买记录。</li>
     </ul>
     <h2>11. 您的权利</h2>
     <p>您可以查阅、更正或删除您的数据，获取其副本，要求限制处理，并反对基于我们正当利益的处理（第 6 节和第 7 节）。请写信至 <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a>：我们会在一个月内答复。如果您对我们的答复不满意，可以向法国数据保护机构 <a href="https://www.cnil.fr/fr/plaintes" target="_blank" rel="noopener">CNIL</a> 或您所在国家/地区的数据保护机构投诉。</p>
@@ -381,12 +394,12 @@ const privacy: Record<Lang, string> = {
     <p>點點由 OVERRIDE 公司（SASU，註冊資本1歐元，SIREN 953 122 868）發布，該公司是您資料的控管者。本隱私權政策說明我們處理哪些資料、為什麼處理、交給誰保管以及保留多久。如有疑問，請聯繫 <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a>。</p>
     <h2>2. 我們處理的資料</h2>
     <ul>
-      <li><strong>帳戶：</strong>您的電子郵件；如果您設定了密碼，我們只儲存其雜湊值（密碼本身從不儲存）。如果您使用 Apple 或 Google 登入，我們會收到您的電子郵件以及該服務為您提供的一個識別碼，不會收到您個人檔案中的其他內容。</li>
+      <li><strong>帳戶：</strong>您的電子郵件；如果您設定了密碼，我們只儲存其雜湊值（密碼本身從不儲存）。如果您使用 Apple 或 Google 登入，我們只儲存您的電子郵件以及該服務為您提供的一個識別碼，不儲存您個人檔案中的其他內容。</li>
       <li><strong>追蹤器內容：</strong>您建立的追蹤器、上色的日期、圖例和備註。記錄什麼由您決定。</li>
       <li><strong>設定：</strong>您選擇的主題、語言和游標。</li>
-      <li><strong>購買：</strong>所購方案、應用程式商店、日期、價格和商店所在的國家/地區。我們無法取得您的付款資訊。</li>
+      <li><strong>購買：</strong>所購方案、應用程式商店、日期、價格和商店所在的國家/地區，是否為試用或測試購買，訂閱結束的原因，以及商店的交易識別碼。我們無法取得您的付款資訊。</li>
       <li><strong>產品事件：</strong>見第 7 節。</li>
-      <li><strong>技術資料：</strong>您的 IP 位址用於限制濫用（在記憶體中統計 15 分鐘），並在登入被拒絕時寫入伺服器日誌。</li>
+      <li><strong>技術資料：</strong>您的 IP 位址用於限制濫用（在記憶體中統計 15 分鐘），並在登入或工作階段權杖被拒絕時寫入伺服器日誌。</li>
       <li><strong>訊息：</strong>您透過聯絡表單或電子郵件寫給我們的內容。</li>
     </ul>
     <h2>3. 處理目的與依據</h2>
@@ -396,14 +409,15 @@ const privacy: Record<Lang, string> = {
       <li><strong>改進應用程式</strong>（正當利益）：第 7 節所述的產品事件和使用統計、第 6 節所述的網站流量統計，以及銷售統計。</li>
       <li><strong>回覆您</strong>（正當利益）：當您寫信給我們時。</li>
     </ul>
-    <p>我們<strong>不會</strong>出售您的資料或將其用於使用者分析，也不寄送任何廣告郵件。</p>
+    <p>我們<strong>不會</strong>出售您的資料，也不會用它建立您的個人側寫；我們不寄送任何廣告郵件。</p>
     <h2>4. 資料交給誰保管</h2>
     <p>除我們之外，沒有人會查看您的資料。以下公司代我們託管或傳輸資料：</p>
     <ul>
       <li><strong>Vultr：</strong>伺服器，位於法國。</li>
       <li><strong>Cloudflare：</strong>資料庫備份（離開我們的伺服器前已加密，儲存在歐盟境內）；以及轉寄您寫給我們的電子郵件。</li>
       <li><strong>Resend：</strong>寄送我們的電子郵件。Resend 會收到您的郵件地址和郵件內容，並保留 30 天。</li>
-      <li><strong>RevenueCat：</strong>追蹤購買狀態。RevenueCat 會收到您的帳戶識別碼和購買憑證，絕不會收到您的電子郵件。</li>
+      <li><strong>RevenueCat：</strong>追蹤購買狀態。RevenueCat 會收到您的帳戶識別碼、購買憑證以及您裝置的技術資訊，絕不會收到您的電子郵件。</li>
+      <li><strong>Microsoft：</strong>接收您寫給我們的訊息的信箱。</li>
     </ul>
     <p>Resend 和 RevenueCat 位於美國：這些資料傳輸受歐盟執委會標準契約條款的約束。</p>
     <p><strong>Apple 和 Google</strong> 自行負責處理您交給它們的資料：透過它們登入（如果您選擇這樣做），以及您的購買（App Store 或 Google Play，取決於您的裝置）。請參閱 <a href="https://www.apple.com/legal/privacy/" target="_blank">Apple 隱私權政策</a>和 <a href="https://policies.google.com/privacy" target="_blank">Google 隱私權政策</a>。</p>
@@ -425,23 +439,23 @@ const privacy: Record<Lang, string> = {
       <li><strong>回報的內容：</strong>某個畫面或操作的名稱（目前為：顯示免費版的某項限制）、平台（iOS、Android）、應用程式版本和日期。絕不包含您追蹤器的內容。</li>
       <li><strong>目的：</strong>調整免費版的限制，並修正造成阻礙的問題。</li>
       <li><strong>保留期限：</strong>最多 13 個月，之後刪除。如果您刪除帳戶，它們會隨帳戶一併刪除。</li>
-      <li><strong>使用者：</strong>僅限點點，絕不與他人分享。</li>
+      <li><strong>接收方：</strong>僅限點點，絕不與他人分享。</li>
       <li><strong>提出反對：</strong>請寫信至 <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a>。我們將停止為您的帳戶記錄這些事件，並刪除已收到的事件。</li>
     </ul>
     <p>我們還會對全體帳戶進行統計（帳戶數、追蹤器數、已填寫的天數、最常見的追蹤器標題），以決定應用程式的發展方向。這些統計不描述任何特定個人。</p>
     <h2>8. 廣告</h2>
     <p>免費版應用程式透過 <strong>Google AdMob</strong> 顯示橫幅廣告。AdMob 可能收集裝置識別碼和使用資料，由 Google 根據 <a href="https://policies.google.com/privacy" target="_blank">Google 隱私權政策</a>自行處理。進階使用者不會看到廣告。</p>
     <h2>9. 資料儲存與安全</h2>
-    <p>您的資料儲存在我們位於法國、由 Vultr 託管的伺服器上。密碼使用 Argon2 進行雜湊處理。所有連線透過 HTTPS 加密。資料庫每天備份；備份經過加密，儲存在歐盟境內，保留 7 天。</p>
+    <p>您的資料儲存在我們位於法國、由 Vultr 託管的伺服器上。密碼使用 Argon2 進行雜湊處理。所有連線透過 HTTPS 加密。資料庫每天備份；備份經過加密，儲存在歐盟境內，保留 30 天。應用程式還會在您的手機上儲存其所顯示年份的副本（追蹤器、上色的日期、圖例、備註），您登出時刪除；與應用程式的其他資料一樣，它可能包含在您手機的備份中（iCloud、Google）。</p>
     <h2>10. 資料保留與刪除</h2>
     <ul>
       <li><strong>帳戶和內容：</strong>帳戶存在期間一直保留。您可以隨時從應用程式中<strong>刪除帳戶和所有資料</strong>，刪除立即生效。</li>
-      <li><strong>備份：</strong>7 天。因此，已刪除的帳戶會在 7 天後從備份中消失。</li>
+      <li><strong>備份：</strong>30 天。因此，已刪除的帳戶會在 30 天後從備份中消失。</li>
       <li><strong>產品事件：</strong>最多 13 個月。</li>
       <li><strong>網站流量統計：</strong>每日統計最多保留 25 個月，之後僅保留每月總數。</li>
-      <li><strong>伺服器日誌：</strong>登入被拒絕時記錄的 IP 位址會保留到伺服器下一次更新為止。</li>
+      <li><strong>伺服器日誌：</strong>登入或工作階段權杖被拒絕時記錄的 IP 位址最多保留 6 個月。</li>
       <li><strong>您寫給我們的訊息：</strong>最後一次往來後最多 3 年。</li>
-      <li><strong>購買：</strong>帳戶存在期間一直保留。Apple、Google 和 RevenueCat 會按各自的規則保留它們自己的購買紀錄。</li>
+      <li><strong>購買：</strong>帳戶存在期間一直保留。即使您刪除了帳戶，應用程式商店的訂閱仍會續訂，直到您在 Apple 或 Google 處取消：屆時我們收到的購買事件最多保留 13 個月，不與任何帳戶關聯。Apple、Google 和 RevenueCat 會按各自的規則保留它們自己的購買紀錄。</li>
     </ul>
     <h2>11. 您的權利</h2>
     <p>您可以查閱、更正或刪除您的資料，取得其副本，要求限制處理，並反對基於我們正當利益的處理（第 6 節和第 7 節）。請寫信至 <a href="mailto:contact@diandian.overridedev.com">contact@diandian.overridedev.com</a>：我們會在一個月內答覆。如果您對我們的答覆不滿意，可以向法國資料保護機關 <a href="https://www.cnil.fr/fr/plaintes" target="_blank" rel="noopener">CNIL</a> 或您所在國家/地區的資料保護機關申訴。</p>
@@ -543,7 +557,7 @@ router.post('/privacy/audience', express.urlencoded({ extended: false, limit: '1
 
 router.get('/privacy', (req, res) => {
   const lang = detectLang(req);
-  res.type('html').send(layout(lang === 'fr' ? 'Politique de confidentialité' : lang.startsWith('zh') ? '隐私政策' : 'Privacy Policy', privacy[lang], lang));
+  res.type('html').send(layout(titles.privacy[lang], privacy[lang], lang));
 });
 
 // ── Terms of Use ──
@@ -653,7 +667,7 @@ const terms: Record<Lang, string> = {
 
 router.get('/terms', (req, res) => {
   const lang = detectLang(req);
-  res.type('html').send(layout(lang === 'fr' ? "Conditions d'utilisation" : lang.startsWith('zh') ? '使用条款' : 'Terms of Use', terms[lang], lang));
+  res.type('html').send(layout(titles.terms[lang], terms[lang], lang));
 });
 
 // ── About ──
@@ -735,7 +749,7 @@ const about: Record<Lang, string> = {
 
 router.get('/about', (req, res) => {
   const lang = detectLang(req);
-  res.type('html').send(layout(lang === 'fr' ? 'À propos' : lang.startsWith('zh') ? '关于' : 'About', about[lang], lang));
+  res.type('html').send(layout(titles.about[lang], about[lang], lang));
 });
 
 // ── Contact ──
@@ -792,7 +806,7 @@ function contactContent(lang: Lang): string {
 
 router.get('/contact', (req, res) => {
   const lang = detectLang(req);
-  res.type('html').send(layout(lang === 'fr' ? 'Contact' : lang.startsWith('zh') ? '联系我们' : 'Contact', contactContent(lang), lang));
+  res.type('html').send(layout(titles.contact[lang], contactContent(lang), lang));
 });
 
 // ── Legal Notice (Mentions légales) ──
@@ -874,7 +888,7 @@ const legal: Record<Lang, string> = {
 
 router.get('/legal', (req, res) => {
   const lang = detectLang(req);
-  res.type('html').send(layout(lang === 'fr' ? 'Mentions légales' : lang.startsWith('zh') ? '法律声明' : 'Legal Notice', legal[lang], lang));
+  res.type('html').send(layout(titles.legal[lang], legal[lang], lang));
 });
 
 // ── Account & data deletion (required by Google Play) ──
@@ -890,7 +904,8 @@ const deleteAccount: Record<Lang, string> = {
       <li>Tap <strong>Delete account</strong>.</li>
       <li>Confirm by typing your email address.</li>
     </ul>
-    <p>Deletion is immediate and permanent. No further action is required.</p>
+    <p>Deletion is immediate and permanent.</p>
+    <p><strong>Deleting your account does not cancel a subscription.</strong> Cancel it first in your App Store or Google Play subscription settings, or it will keep renewing.</p>
     <h2>2. Delete only part of your data</h2>
     <p>You do not have to delete your whole account to remove data:</p>
     <ul>
@@ -907,9 +922,10 @@ const deleteAccount: Record<Lang, string> = {
     <p>The deletion reaches our entire database at once.</p>
     <h2>4. What may be retained</h2>
     <ul>
-      <li><strong>Backups:</strong> the encrypted backups of our database are kept 7 days. Your data is gone from them 7 days after the deletion.</li>
-      <li><strong>Server log:</strong> it may hold the IP address of a refused sign-in until the server's next update. It does not name your account.</li>
+      <li><strong>Backups:</strong> the encrypted backups of our database are kept 30 days. Your data is gone from them 30 days after the deletion.</li>
+      <li><strong>Server log:</strong> it may hold the IP address of a refused sign-in or session token for 6 months at most. That line does not name your account.</li>
       <li><strong>Purchases:</strong> the record of your purchases stays with Apple or Google, and with RevenueCat, the service that keeps track of purchases for us (under your account's identifier, never your email address), under their own rules.</li>
+      <li><strong>Purchase events:</strong> if a subscription keeps renewing after the deletion, the events the store sends us are kept 13 months at most, linked to no account.</li>
       <li><strong>Emails:</strong> the emails we sent you (reset codes, the deletion confirmation) stay 30 days with Resend, our email service.</li>
     </ul>
     <h2>5. Need help?</h2>
@@ -924,7 +940,8 @@ const deleteAccount: Record<Lang, string> = {
       <li>Touchez <strong>Supprimer le compte</strong>.</li>
       <li>Confirmez en saisissant votre adresse e-mail.</li>
     </ul>
-    <p>La suppression est immédiate et définitive. Aucune autre démarche n'est nécessaire.</p>
+    <p>La suppression est immédiate et définitive.</p>
+    <p><strong>Supprimer votre compte n'annule pas un abonnement.</strong> Annulez-le d'abord dans les réglages d'abonnement de l'App Store ou de Google Play, sinon il continuera de se renouveler.</p>
     <h2>2. Supprimer seulement une partie de vos données</h2>
     <p>Vous n'êtes pas obligé de supprimer tout votre compte pour effacer des données :</p>
     <ul>
@@ -941,9 +958,10 @@ const deleteAccount: Record<Lang, string> = {
     <p>La suppression se propage aussitôt à toute notre base de données.</p>
     <h2>4. Ce qui peut être conservé</h2>
     <ul>
-      <li><strong>Sauvegardes :</strong> les sauvegardes chiffrées de notre base sont gardées 7 jours. Vos données en ont disparu 7 jours après la suppression.</li>
-      <li><strong>Journal du serveur :</strong> il peut garder l'adresse IP d'une connexion refusée jusqu'à la mise à jour suivante du serveur. Il ne nomme pas votre compte.</li>
+      <li><strong>Sauvegardes :</strong> les sauvegardes chiffrées de notre base sont gardées 30 jours. Vos données en ont disparu 30 jours après la suppression.</li>
+      <li><strong>Journal du serveur :</strong> il peut garder l'adresse IP d'une connexion ou d'un jeton de session refusés 6 mois au plus. Cette ligne ne nomme pas votre compte.</li>
       <li><strong>Achats :</strong> l'historique de vos achats reste chez Apple ou Google, et chez RevenueCat, le service qui suit les achats pour nous (sous l'identifiant de votre compte, jamais votre adresse e-mail), selon leurs propres règles.</li>
+      <li><strong>Événements d'achat :</strong> si un abonnement continue de se renouveler après la suppression, les événements que le store nous envoie sont gardés 13 mois au plus, sans lien avec un compte.</li>
       <li><strong>E-mails :</strong> les e-mails que nous vous avons envoyés (codes de réinitialisation, confirmation de suppression) restent 30 jours chez Resend, notre service d'envoi.</li>
     </ul>
     <h2>5. Besoin d'aide ?</h2>
@@ -958,7 +976,8 @@ const deleteAccount: Record<Lang, string> = {
       <li>点击<strong>删除账户</strong>。</li>
       <li>输入您的电子邮箱以确认。</li>
     </ul>
-    <p>删除是即时且永久的，无需其他操作。</p>
+    <p>删除是即时且永久的。</p>
+    <p><strong>删除账户不会取消订阅。</strong>请先在 App Store 或 Google Play 的订阅设置中取消，否则订阅会继续续订。</p>
     <h2>2. 仅删除部分数据</h2>
     <p>您无需删除整个账户即可移除数据：</p>
     <ul>
@@ -975,9 +994,10 @@ const deleteAccount: Record<Lang, string> = {
     <p>删除操作会立即级联至整个数据库。</p>
     <h2>4. 可能保留的内容</h2>
     <ul>
-      <li><strong>备份：</strong>数据库的加密备份保留 7 天。删除 7 天后，您的数据将从备份中消失。</li>
-      <li><strong>服务器日志：</strong>可能会保留登录被拒绝时的 IP 地址，直到服务器下一次更新为止。日志不会指明您的账户。</li>
+      <li><strong>备份：</strong>数据库的加密备份保留 30 天。删除 30 天后，您的数据将从备份中消失。</li>
+      <li><strong>服务器日志：</strong>可能会保留登录或会话令牌被拒绝时的 IP 地址，最多 6 个月。该记录不会指明您的账户。</li>
       <li><strong>购买：</strong>您的购买记录由 Apple 或 Google，以及代我们跟踪购买状态的服务 RevenueCat（仅使用您的账户标识符，绝不使用您的电子邮箱）按各自的规则保留。</li>
+      <li><strong>购买事件：</strong>如果删除后订阅仍在续订，应用商店发给我们的事件最多保留 13 个月，不与任何账户关联。</li>
       <li><strong>电子邮件：</strong>我们发给您的电子邮件（重置验证码、删除确认）会在我们的邮件服务 Resend 处保留 30 天。</li>
     </ul>
     <h2>5. 需要帮助？</h2>
@@ -992,7 +1012,8 @@ const deleteAccount: Record<Lang, string> = {
       <li>點擊<strong>刪除帳戶</strong>。</li>
       <li>輸入您的電子郵件以確認。</li>
     </ul>
-    <p>刪除是即時且永久的，無需其他操作。</p>
+    <p>刪除是即時且永久的。</p>
+    <p><strong>刪除帳戶不會取消訂閱。</strong>請先在 App Store 或 Google Play 的訂閱設定中取消，否則訂閱會繼續續訂。</p>
     <h2>2. 僅刪除部分資料</h2>
     <p>您無需刪除整個帳戶即可移除資料：</p>
     <ul>
@@ -1009,9 +1030,10 @@ const deleteAccount: Record<Lang, string> = {
     <p>刪除操作會立即級聯至整個資料庫。</p>
     <h2>4. 可能保留的內容</h2>
     <ul>
-      <li><strong>備份：</strong>資料庫的加密備份保留 7 天。刪除 7 天後，您的資料將從備份中消失。</li>
-      <li><strong>伺服器日誌：</strong>可能會保留登入被拒絕時的 IP 位址，直到伺服器下一次更新為止。日誌不會指明您的帳戶。</li>
+      <li><strong>備份：</strong>資料庫的加密備份保留 30 天。刪除 30 天後，您的資料將從備份中消失。</li>
+      <li><strong>伺服器日誌：</strong>可能會保留登入或工作階段權杖被拒絕時的 IP 位址，最多 6 個月。該紀錄不會指明您的帳戶。</li>
       <li><strong>購買：</strong>您的購買紀錄由 Apple 或 Google，以及代我們追蹤購買狀態的服務 RevenueCat（僅使用您的帳戶識別碼，絕不使用您的電子郵件）按各自的規則保留。</li>
+      <li><strong>購買事件：</strong>如果刪除後訂閱仍在續訂，應用程式商店寄給我們的事件最多保留 13 個月，不與任何帳戶關聯。</li>
       <li><strong>電子郵件：</strong>我們寄給您的電子郵件（重設驗證碼、刪除確認）會在我們的郵件服務 Resend 處保留 30 天。</li>
     </ul>
     <h2>5. 需要協助？</h2>
@@ -1020,8 +1042,7 @@ const deleteAccount: Record<Lang, string> = {
 
 router.get('/delete-account', (req, res) => {
   const lang = detectLang(req);
-  const title = lang === 'fr' ? 'Suppression du compte' : lang.startsWith('zh') ? '删除账户' : 'Delete Account';
-  res.type('html').send(layout(title, deleteAccount[lang], lang));
+  res.type('html').send(layout(titles.deleteAccount[lang], deleteAccount[lang], lang));
 });
 
 export default router;

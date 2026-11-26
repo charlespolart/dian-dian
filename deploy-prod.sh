@@ -11,8 +11,9 @@
 #
 # Then, over SSH:
 #   1. syncs ops/ exactly as it is at the tag (compose files, pgBackRest
-#      build context, host scripts; the Caddyfile through `cat >` so the
-#      bind-mounted file keeps its inode),
+#      build context, host scripts, journald retention; the Caddyfile
+#      through `cat >` so the bind-mounted file keeps its inode),
+#      and installs the journald retention when it changed,
 #   2. pins the tag in /srv/dian-dian/.env (IMAGE_TAG), keeping the one that
 #      was running in PREVIOUS_IMAGE_TAG for ./rollback-prod.sh,
 #   3. pulls the image, brings postgres up, runs the migrations (3 attempts),
@@ -109,7 +110,7 @@ rsync -az \
   "$tmp/ops/docker-compose.prod.yml" \
   "$tmp/ops/docker-compose.prod-backup.yml" \
   "$host:$stack/ops/"
-rsync -az "$tmp/ops/pgbackrest" "$tmp/ops/scripts" "$host:$stack/ops/"
+rsync -az "$tmp/ops/pgbackrest" "$tmp/ops/scripts" "$tmp/ops/journald" "$host:$stack/ops/"
 
 # The Caddy container holds the bind-mounted Caddyfile by inode; replacing the
 # file (rsync would) leaves it serving the old config until a restart.
@@ -154,6 +155,13 @@ COMPOSE="docker compose --env-file $stack/.env --env-file $stack/.env.pgbackrest
   -f ops/docker-compose.yml \
   -f ops/docker-compose.prod.yml \
   -f ops/docker-compose.prod-backup.yml"
+
+# Logs are kept 6 months at most (ops/journald/dian-dian.conf), the
+# containers' included: they write to the journal.
+if ! cmp -s ops/journald/dian-dian.conf /etc/systemd/journald.conf.d/dian-dian.conf; then
+  install -D -m 0644 ops/journald/dian-dian.conf /etc/systemd/journald.conf.d/dian-dian.conf
+  systemctl restart systemd-journald
+fi
 
 $COMPOSE pull --quiet backend
 # --build: postgres runs a locally-built image (base + pgbackrest client).
