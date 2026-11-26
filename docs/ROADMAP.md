@@ -385,6 +385,37 @@ https://claude.ai/artifact/3HsujtgXLrre5FbtaViGmE.
 - Place (2026-11-25) : le lot 1 juste après les rappels, le lot 2 avec le
   zoom.
 
+### 13. Utiliser l'app sans réseau — spécifié le 2026-11-26
+Demandé par Charles : l'app doit s'utiliser hors ligne, avec ou sans
+compte, et toutes les modifications doivent se synchroniser au retour du
+réseau. Aujourd'hui un jour colorié hors ligne s'affiche puis disparaît
+sans un mot, et créer un tracker ne fait rien. Spec :
+`docs/superpowers/specs/2026-11-26-offline-sync-design.md`.
+- Le téléphone garde une copie complète ; chaque modification s'y écrit
+  d'abord, puis attend dans une file.
+- En cas de conflit entre deux téléphones, le serveur gagne (règle de
+  Charles), et l'app dit toujours ce qui n'a pas été gardé.
+- Deux téléphones en ligne gardent la règle d'aujourd'hui : le dernier qui
+  écrit gagne.
+- Chantier 10, construit avant le compte.
+
+### 14. Entrer sans mur : le compte invisible — spécifié le 2026-11-26
+Environ 31 % des installations ne créent jamais de compte (mesuré du 28
+septembre au 22 novembre). Charles : l'app doit s'utiliser sans compte, et
+Premium doit pouvoir s'acheter sans compte. Spec :
+`docs/superpowers/specs/2026-11-25-account-later-design.md` ; les 116 cas
+illustrés : https://claude.ai/artifact/RjAYoZx4Cid4tWpgKkY7xj.
+- Un compte sans identité créé en coulisse ; le compte proposé à l'accueil
+  et plus tard, jamais exigé, pas même pour acheter (la recherche a montré
+  qu'Apple refuse « compte exigé pour acheter »).
+- Par e-mail, un code confirme l'adresse ; code et mot de passe coexistent.
+- Restaurer un achat rend Premium et propose une copie des trackers.
+- La clé du compte suit la personne par le trousseau iCloud ; l'écran
+  « Mes données » dit ce que l'app sait, et rien de plus.
+- Sur Android, la session est rétablie sur un nouveau téléphone (exigé par
+  Google Play en avril 2027).
+- Chantier 9, construit après le hors-ligne et avant le paywall.
+
 ## Fait récemment
 - 2026-11-23 : audit de conversion, `docs/PRICING.md`, specs des rappels et
   de la pop-up premium, essais gratuits Android, images App Store ; branche

@@ -1,0 +1,760 @@
+<meta charset="utf-8">
+<title>Sans compte, hors ligne</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: one reading column of story text on the left, a strip of small phone screens on the right;
+   chapters stacked, a sticky row of chapter links and filters on top. */
+:root {
+  --bg: #eef1f6; --surface: #ffffff; --ink: #18202d; --muted: #586478; --line: #d3dae6;
+  --accent: #2b62d9; --accent-ink: #ffffff;
+  --off: #8a5200; --off-bg: #ffecc7;
+  --ok: #17754f; --ok-bg: #d9f3e6;
+  --ask: #a23a14; --ask-bg: #ffe2d6;
+  --prem: #6a3fcb; --prem-bg: #e9e1fb;
+  --danger: #b9342a;
+  --phone: #f7f9fc; --frame: #2a3442; --dim: #c9d0db;
+  --c0: #e1e7ef; --c1: #6fc29b; --c2: #f0bd45; --c3: #ec8474; --c4: #76a4ee; --c5: #b296e8;
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --text: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #10141b; --surface: #19202a; --ink: #e7ecf3; --muted: #9aa6b7; --line: #2b3542;
+    --accent: #7aa5ff; --accent-ink: #0c1320;
+    --off: #f3bd62; --off-bg: #3a2b0d;
+    --ok: #63d3a3; --ok-bg: #123325;
+    --ask: #ffab8c; --ask-bg: #40201a;
+    --prem: #b9a2ff; --prem-bg: #2a2147;
+    --danger: #ff8b80;
+    --phone: #131921; --frame: #4a5668; --dim: #0a0d12;
+    --c0: #283140; --c1: #4fa07c; --c2: #c99a2e; --c3: #c96a5c; --c4: #5a86cc; --c5: #8f76c6;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #10141b; --surface: #19202a; --ink: #e7ecf3; --muted: #9aa6b7; --line: #2b3542;
+  --accent: #7aa5ff; --accent-ink: #0c1320;
+  --off: #f3bd62; --off-bg: #3a2b0d;
+  --ok: #63d3a3; --ok-bg: #123325;
+  --ask: #ffab8c; --ask-bg: #40201a;
+  --prem: #b9a2ff; --prem-bg: #2a2147;
+  --danger: #ff8b80;
+  --phone: #131921; --frame: #4a5668; --dim: #0a0d12;
+  --c0: #283140; --c1: #4fa07c; --c2: #c99a2e; --c3: #c96a5c; --c4: #5a86cc; --c5: #8f76c6;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--text); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 1140px; margin: 0 auto; padding-block: 28px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3, h4, p { margin: 0; }
+h1 { font: 700 clamp(26px, 4vw, 38px)/1.12 var(--display); text-wrap: balance; max-width: 22ch; }
+h2 { font: 700 24px/1.2 var(--display); text-wrap: balance; }
+h3 { font: 600 17px/1.3 var(--display); text-wrap: balance; }
+.lead { margin-top: 12px; max-width: 66ch; color: var(--muted); }
+.eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+
+.rules { margin-top: 28px; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px 28px; }
+.rules div { border-top: 2px solid var(--ink); padding-top: 10px; }
+.rules b { display: block; font: 600 15px/1.3 var(--display); margin-bottom: 4px; }
+.rules span { color: var(--muted); font-size: 14px; }
+
+.asks { margin-top: 28px; background: var(--ask-bg); border-radius: 10px; padding: 16px 18px; }
+.asks h2 { font-size: 17px; color: var(--ask); }
+.asks ol { margin: 10px 0 0; padding-left: 20px; display: grid; gap: 6px; max-width: 80ch; font-size: 14px; }
+
+.bar-top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 9; background: var(--bg); margin-top: 28px;
+  padding-block: 10px; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.scroller { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: thin; padding-bottom: 2px; min-width: 0; }
+.scroller a, .scroller button { flex: 0 0 auto; font: 500 13px/1 var(--text); padding: 8px 11px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink); text-decoration: none; cursor: pointer; }
+.scroller button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.scroller a:focus-visible, .scroller button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.scroller .lbl { flex: 0 0 auto; align-self: center; font-size: 12px; color: var(--muted); padding-right: 2px; }
+
+.chapter { margin-top: 44px; scroll-margin-top: 110px; }
+.chapter > p { margin-top: 6px; color: var(--muted); max-width: 70ch; }
+.story { display: grid; grid-template-columns: minmax(230px, 330px) minmax(0, 1fr); gap: 22px; padding-block: 22px; border-top: 1px solid var(--line); margin-top: 18px; }
+.story + .story { margin-top: 0; }
+.story .num { font: 600 12px/1 var(--text); color: var(--muted); font-variant-numeric: tabular-nums; margin-bottom: 6px; }
+.story .txt { min-width: 0; }
+.story .txt p { margin-top: 8px; font-size: 14px; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
+.chip { font: 500 11px/1 var(--text); padding: 4px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.chip.off { background: var(--off-bg); color: var(--off); border-color: transparent; }
+.chip.prem { background: var(--prem-bg); color: var(--prem); border-color: transparent; }
+.chip.ask { background: var(--ask-bg); color: var(--ask); border-color: transparent; }
+.story .askwhy { margin-top: 8px; font-size: 13px; color: var(--ask); }
+
+.strip { display: flex; gap: 10px; overflow-x: auto; align-items: stretch; padding-bottom: 8px; min-width: 0; scrollbar-width: thin; }
+.ph { flex: 0 0 206px; display: flex; flex-direction: column; gap: 6px; }
+.ph .lab { font: 600 11px/1.2 var(--text); color: var(--muted); min-height: 14px; }
+.scr { flex: 1; min-height: 310px; display: flex; flex-direction: column; border: 2px solid var(--frame); border-radius: 20px; background: var(--phone);
+  overflow: hidden; font: 11.5px/1.38 var(--text); color: var(--ink); }
+.arr { flex: 0 0 auto; align-self: center; width: 64px; text-align: center; color: var(--muted); font-size: 11px; line-height: 1.25; }
+.arr i { display: block; font: 600 20px/1 var(--display); font-style: normal; margin-bottom: 3px; }
+
+.scr .bar { padding: 9px 11px 7px; font-weight: 600; font-size: 12px; border-bottom: 1px solid var(--line); }
+.scr .ban { padding: 5px 11px; font-size: 10.5px; font-weight: 500; }
+.ban.off { background: var(--off-bg); color: var(--off); }
+.ban.ok { background: var(--ok-bg); color: var(--ok); }
+.scr .pline { padding: 5px 11px; font-size: 10.5px; color: var(--prem); background: var(--prem-bg); }
+.scr .body { flex: 1; padding: 11px; display: flex; flex-direction: column; gap: 8px; }
+.scr .dim { flex: 1; background: var(--dim); display: flex; align-items: center; padding: 9px; }
+.dlg { width: 100%; background: var(--surface); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 7px; }
+.dlg h4 { font: 600 12.5px/1.25 var(--text); }
+.dlg p { font-size: 11px; color: var(--muted); }
+.toast { margin: auto 9px 9px; padding: 7px 9px; border-radius: 8px; background: var(--ink); color: var(--bg); font-size: 10.5px; font-weight: 500; }
+.sheet { margin-top: auto; background: var(--surface); border-top: 1px solid var(--line); border-radius: 14px 14px 0 0; padding: 11px; display: flex; flex-direction: column; gap: 6px; }
+.sheet b { font-size: 11.5px; } .sheet span { font-size: 10.5px; color: var(--muted); }
+.btns { display: flex; flex-direction: column; gap: 5px; }
+.btn { text-align: center; padding: 7px 8px; border-radius: 8px; font-weight: 600; font-size: 11px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+.btn.p { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.btn.g { border-color: transparent; background: transparent; color: var(--muted); }
+.btn.d { border-color: var(--danger); color: var(--danger); }
+.tap { outline: 2.5px solid var(--ink); outline-offset: 2px; }
+.grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 2.5px; }
+.cell { aspect-ratio: 1; border-radius: 2.5px; background: var(--c0); }
+.cell.k1 { background: var(--c1); } .cell.k2 { background: var(--c2); } .cell.k3 { background: var(--c3); } .cell.k4 { background: var(--c4); } .cell.k5 { background: var(--c5); }
+.cell.hl { outline: 2px solid var(--ink); outline-offset: 1px; }
+.cell.pend { outline: 2px dashed var(--off); outline-offset: 1px; }
+.lst { display: flex; flex-direction: column; gap: 5px; }
+.row { display: flex; align-items: center; gap: 7px; padding: 7px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.row .nm { flex: 1; min-width: 0; font-weight: 500; overflow-wrap: anywhere; }
+.row .tg { flex: 0 0 auto; font-size: 9.5px; font-weight: 600; padding: 2px 5px; border-radius: 4px; background: var(--c0); color: var(--muted); }
+.row.pend .tg, .row.new .tg { background: var(--off-bg); color: var(--off); }
+.row.prem .tg { background: var(--prem-bg); color: var(--prem); }
+.row.lock { opacity: .62; } .row.gone .nm { text-decoration: line-through; color: var(--muted); }
+.sq { flex: 0 0 auto; width: 12px; height: 12px; border-radius: 3px; }
+.scr p.t { font-size: 11px; color: var(--muted); }
+.scr p.h { font-weight: 600; font-size: 12.5px; }
+.kv { display: grid; gap: 4px; }
+.kv div { display: flex; justify-content: space-between; gap: 8px; padding: 6px 8px; border-radius: 7px; background: var(--c0); font-size: 10.5px; }
+.kv b { font-weight: 600; } .kv span { text-align: right; }
+.rws .r { display: flex; justify-content: space-between; gap: 8px; padding: 8px 2px; border-bottom: 1px solid var(--line); font-size: 11px; }
+.rws .r span { color: var(--muted); text-align: right; }
+.rws .r.acc b { color: var(--accent); font-weight: 600; }
+.offers { display: grid; gap: 5px; }
+.offer { display: flex; justify-content: space-between; gap: 8px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font-weight: 600; font-size: 11px; }
+.offer span { font-weight: 400; color: var(--muted); }
+.lnk { text-align: center; font-size: 10.5px; color: var(--accent); font-weight: 500; }
+.inp { padding: 8px 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.story .num .ref { margin-left: 8px; font-weight: 500; }
+.key { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--muted); align-items: center; }
+.key .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 6px; background: var(--c1); }
+.key .swatch.t { outline: 2.5px solid var(--ink); outline-offset: 2px; background: var(--surface); }
+.key .swatch.p { outline: 2px dashed var(--off); outline-offset: 1px; }
+.empty { margin-top: 24px; color: var(--muted); }
+@media (max-width: 760px) {
+  .story { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .chapter { scroll-margin-top: 130px; }
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Cas d'usage · 26 novembre 2026</p>
+    <h1>Utiliser l'app sans compte, sans réseau, et passer Premium</h1>
+    <p class="lead">Chaque cas ci-dessous dit qui je suis, ce que je fais et ce que l'app répond, avec des écrans volontairement simplifiés. Ce ne sont pas des maquettes : seuls les textes et l'ordre des écrans comptent.</p>
+
+    <div class="rules">
+      <div><b>Le compte n'est jamais exigé</b><span>Ni pour utiliser l'app, ni pour acheter Premium, ni pour le restaurer. Il est proposé, et on peut toujours passer.</span></div>
+      <div><b>Le téléphone garde une copie de tout</b><span>Chaque modification s'écrit d'abord sur le téléphone, puis part vers le serveur dès qu'il y a du réseau. C'est ce qui rend le hors-ligne possible, avec ou sans compte.</span></div>
+      <div><b>Toutes les modifications se synchronisent</b><span>Points, commentaires, trackers créés, renommés, réordonnés ou supprimés, légendes, thème et langue.</span></div>
+      <div><b>En cas de conflit, le serveur gagne</b><span>Si la même chose a changé sur le serveur pendant que j'étais hors ligne, ma modification hors ligne n'est pas appliquée. L'app me le dit toujours.</span></div>
+      <div><b>Rien ne s'efface par un choix de connexion</b><span>Se connecter, créer un compte ou restaurer un achat ajoute, et n'efface jamais.</span></div>
+      <div><b>Un achat, un seul compte à la fois</b><span>On peut déplacer son Premium d'un téléphone à l'autre, jamais le multiplier.</span></div>
+      <div><b>L'app ne promet que ce qu'elle sait</b><span>Elle ne peut pas voir si le trousseau iCloud ou la sauvegarde Google sont activés. « Mes données » dit ce qui est vérifié et ce qui dépend de vos réglages.</span></div>
+      <div><b>Par e-mail, un code ou un mot de passe</b><span>Un compte se crée par code, donc avec une adresse confirmée. Le mot de passe reste une façon de se connecter : l'un ne remplace jamais l'autre.</span></div>
+    </div>
+
+    <div class="asks">
+      <h2>Tout est tranché</h2>
+      <p style="margin-top:8px;font-size:13px">Le 26 novembre, selon mes recommandations : la première ouverture marche sans réseau ; les conflits se comparent élément par élément ; une suppression faite hors ligne n'est pas appliquée si le tracker a changé ailleurs ; se déconnecter avec des modifications non envoyées demande une confirmation ; après une déconnexion forcée elles attendent la reconnexion ; après l'effacement des 12 mois, un téléphone qui a encore sa copie retrouve tout ; le thème et la langue suivent le compte ; changer d'adresse réunit deux comptes quand il le faut.</p>
+      <p style="margin-top:6px;font-size:13px">Par vous : la reprise par l'achat donne une copie ; par e-mail, le code et le mot de passe coexistent, l'un ne retire jamais l'autre ; rien n'est demandé aux comptes e-mail existants ; après la mise à jour, aucun compte ne se crée sans adresse confirmée ; une modification faite hors ligne n'est jamais refusée à cause de la limite gratuite ; la session rétablie sur un nouvel Android entre dans cette release.</p>
+    </div>
+
+    <div class="key">
+      <span><i class="swatch t"></i>ce que je touche</span>
+      <span><i class="swatch p"></i>modification pas encore envoyée</span>
+      <span><span class="chip off">Hors ligne</span></span>
+      <span><span class="chip ask">À confirmer</span> un choix de ma part</span>
+    </div>
+  </header>
+
+  <div class="bar-top">
+    <nav class="scroller" id="nav" aria-label="Chapitres"></nav>
+    <div class="scroller" id="filters" role="group" aria-label="Filtrer les cas"><span class="lbl">Montrer</span></div>
+  </div>
+
+  <main id="app"></main>
+  <p class="empty" id="empty" hidden>Aucun cas ne correspond à ce filtre.</p>
+</div>
+
+<script>
+// ---------- small builders ----------
+const ph = (lab, o) => Object.assign({ lab }, o);
+const ar = (t) => ({ ar: t || '' });
+const G = (seed, o) => Object.assign({ g: seed }, o || {});
+const L = (...rows) => ({ l: rows });
+const T = (t) => ({ t });
+const H = (h) => ({ h });
+const B = (...b) => ({ b });
+const R = (...r) => ({ r });
+const KV = (...kv) => ({ kv });
+const W = (tap) => ({ w: tap || 0 });
+const O = (tap) => ({ o: tap || 0 });
+const I = (i) => ({ i });
+const LK = (lnk) => ({ lnk });
+const D = (t, x, ...b) => ({ t, x, b });
+const off = (n) => ({ k: 'off', t: n ? `Hors ligne · ${n} modification${n > 1 ? 's' : ''} à envoyer` : `Hors ligne · tout est enregistré sur ce téléphone` });
+const T3 = [[`Humeur`, ''], [`Sport`, ''], [`Lecture`, '']];
+const SET = [
+  [`Créer mon compte`, '', 'acc'], [`J'ai déjà un compte`, '', 'acc'], [`Restaurer les achats`, '', 'acc'],
+];
+
+// ---------- the stories ----------
+const CH = [
+{ id: 'entrer', n: `Première ouverture`, intro: `L'écran d'accueil propose le compte à tout le monde, avec quatre boutons de même taille. Le quatrième permet de passer.`, st: [
+  { t: `J'ouvre l'app pour la première fois et je continue sans compte`, ref: `cas 1`, who: 's',
+    x: [`Je ne donne ni e-mail ni mot de passe. L'app crée pour moi, en coulisse, un compte sans identité : mes trackers sont sauvegardés sur le serveur comme ceux de tout le monde.`],
+    s: [ph(`Accueil`, { body: [W(4)] }), ar(), ph(`Premier tracker`, { bar: `Mon premier tracker`, body: [G(1, { empty: 1 }), T(`Touchez un jour pour le colorier.`)] })] },
+  { t: `Je crée un compte dès la première ouverture`, ref: `cas 2`, who: 'a',
+    x: [`Apple, Google ou e-mail : mon compte est créé et je commence mon premier tracker. Mes points me suivront sur un autre téléphone, d'iPhone à Android aussi.`],
+    s: [ph(`Accueil`, { body: [W(1)] }), ar(), ph(`Premier tracker`, { bar: `Mon premier tracker`, body: [G(1, { empty: 1 }), T(`Touchez un jour pour le colorier.`)] })] },
+  { t: `J'ai déjà un compte et je me connecte`, ref: `cas 3`, who: 'a',
+    x: [`Je retrouve mes trackers. Ils sont copiés sur ce téléphone : je pourrai les ouvrir et les modifier sans réseau.`],
+    s: [ph(`Accueil`, { body: [W(2)] }), ar(), ph(`Mes trackers`, { bar: `Mes trackers`, body: [L(...T3)] })] },
+  { t: `J'ouvre l'app pour la première fois sans réseau`, ref: `cas 5 · H13`, who: 's', off: 1,
+    x: [`« Continuer sans compte » marche tout de suite : tout s'enregistre sur le téléphone. Le compte sans identité sera créé au premier réseau, sans rien me demander.`, `Se connecter à un compte demande du réseau, et l'app le dit.`],
+    s: [ph(`Je touche Apple`, { dlg: D(`Il faut une connexion`, `Se connecter à un compte demande du réseau. Vous pouvez commencer sans compte et le créer plus tard.`, [`Continuer sans compte`, 'p', 1], [`Fermer`, 'g']) }), ar(),
+        ph(`Je commence`, { bar: `Mon premier tracker`, ban: off(0), body: [G(1, { empty: 1, set: { 40: 1 }, pend: [40] })] }), ar(`le réseau arrive`),
+        ph(`Plus tard`, { bar: `Mon premier tracker`, body: [G(1, { empty: 1, set: { 40: 1 } })], toast: `Synchronisé` })] },
+  { t: `J'annule la fenêtre Apple ou Google`, ref: `cas 4`, who: 'x',
+    x: [`Retour à l'écran d'accueil, sans message d'erreur. Rien n'est créé.`],
+    s: [ph(`Accueil`, { body: [W(2)] }), ar(`j'annule`), ph(`Accueil`, { body: [W(0)] })] },
+]},
+
+{ id: 'sans-compte', n: `Utiliser l'app sans compte`, intro: `Un compte sans identité se comporte comme un compte gratuit. La seule différence : il est lié à ce téléphone.`, st: [
+  { t: `J'utilise l'app sans compte, comme un compte gratuit`, ref: `cas 8`, who: 's',
+    x: [`Trackers, points, légendes, rappels, thème, langue : tout marche. La limite gratuite est la même pour tous, 3 trackers.`],
+    s: [ph(`Mes trackers`, { bar: `Mes trackers`, body: [L(...T3)] }), ph(`Un tracker`, { bar: `Humeur`, body: [G(3)] })] },
+  { t: `Les réglages me disent ce que « sans compte » veut dire`, ref: `cas 10`, who: 's',
+    x: [`Là où un compte montre son e-mail et « Se déconnecter », je vois de quoi créer mon compte ou retrouver le mien, l'écran « Mes données », et une phrase toujours visible.`],
+    s: [ph(`Réglages`, { bar: `Réglages`, body: [R([`Créer mon compte`, '', 'acc'], [`J'ai déjà un compte`, '', 'acc'], [`Restaurer les achats`, '', 'acc'], [`Mes données`, '', 'acc']), T(`Sans compte, vos trackers peuvent ne pas vous suivre sur un autre téléphone. « Mes données » dit ce qu'il en est.`)] })] },
+  { t: `Après quelques jours, l'app me propose de créer un compte`, ref: `cas 11`, who: 's',
+    x: [`À l'ouverture qui suit mon 3ᵉ jour colorié, puis mon 7ᵉ. Une fois chacune, jamais plus. « Plus tard » ferme l'écran.`],
+    s: [ph(`À l'ouverture`, { dlg: D(`Gardez vos points`, `Créez votre compte pour retrouver vos points si vous changez de téléphone.`, [`Continuer avec Apple`, 's'], [`Continuer avec Google`, 's'], [`Continuer avec un e-mail`, 's'], [`Plus tard`, 'g']) })] },
+  { t: `Je reviens après plusieurs semaines`, ref: `cas 9`, who: 's',
+    x: [`Tout est là. Un compte sans identité n'est jamais déconnecté de lui-même.`],
+    s: [ph(`Mes trackers`, { bar: `Mes trackers`, body: [L(...T3)] })] },
+]},
+
+{ id: 'hors-ligne', n: `Sans réseau`, intro: `Vaut pour tout le monde, avec ou sans compte. Tout ce que je fais s'enregistre sur le téléphone et part au retour du réseau.`, st: [
+  { t: `Je colorie un jour sans réseau`, ref: `H1`, who: 'x', off: 1,
+    x: [`Le jour se colorie tout de suite et reste colorié. Un bandeau dit que je suis hors ligne et combien de modifications attendent. Au retour du réseau, elles partent toutes seules.`],
+    s: [ph(`Sans réseau`, { bar: `Humeur`, ban: off(1), body: [G(3, { hl: [52], set: { 52: 1 }, pend: [52] })] }), ar(`le réseau revient`), ph(`Réseau revenu`, { bar: `Humeur`, body: [G(3, { set: { 52: 1 } })], toast: `Synchronisé` })] },
+  { t: `Je fais tout le reste sans réseau aussi`, ref: `H2`, who: 'x', off: 1,
+    x: [`Créer, renommer, réordonner ou supprimer un tracker ; ajouter, renommer ou recolorier une légende ; écrire un commentaire ; remettre une année à zéro ; changer de thème ou de langue ; regarder mes stats.`, `Toutes ces modifications attendent ensemble et partent dans l'ordre où je les ai faites.`],
+    s: [ph(`Sans réseau`, { bar: `Mes trackers`, ban: off(5), body: [L([`Humeur`, ''], [`Forme`, 'pend', `renommé`], [`Lecture`, 'new', `nouveau`])] }), ar(`le réseau revient`), ph(`Réseau revenu`, { bar: `Mes trackers`, body: [L([`Humeur`, ''], [`Forme`, ''], [`Lecture`, ''])], toast: `Synchronisé · 5 modifications envoyées` })] },
+  { t: `J'ouvre l'app sans réseau, déjà connecté à mon compte`, ref: `H3`, who: 'a', off: 1,
+    x: [`L'app s'ouvre sur la copie du téléphone, avec toutes mes années, et je peux tout modifier.`, `Aujourd'hui elle s'ouvre aussi, mais chaque modification disparaît sans un mot.`],
+    s: [ph(`Sans réseau`, { bar: `Mes trackers`, ban: off(0), body: [L(...T3)] })] },
+  { t: `Je ferme l'app, ou j'éteins le téléphone, avant le retour du réseau`, ref: `H4`, who: 'x', off: 1,
+    x: [`Les modifications en attente sont écrites sur le téléphone, pas seulement gardées en mémoire. Je les retrouve en rouvrant l'app, et elles partent au premier réseau.`],
+    s: [ph(`Le soir`, { bar: `Humeur`, ban: off(3), body: [G(3, { set: { 50: 2, 51: 1, 52: 1 }, pend: [50, 51, 52] })] }), ar(`app fermée, rouverte le lendemain`), ph(`Le lendemain`, { bar: `Humeur`, ban: off(3), body: [G(3, { set: { 50: 2, 51: 1, 52: 1 }, pend: [50, 51, 52] })] })] },
+  { t: `Je reste deux semaines sans réseau`, ref: `H5`, who: 'x', off: 1,
+    x: [`Rien ne change : je colorie chaque jour, le compteur monte. Au retour, tout part dans l'ordre. Je ne suis pas déconnecté entre-temps.`],
+    s: [ph(`Jour 14`, { bar: `Mes trackers`, ban: off(31), body: [L(...T3)] }), ar(`le réseau revient`), ph(`Réseau revenu`, { bar: `Mes trackers`, body: [L(...T3)], toast: `Synchronisé · 31 modifications envoyées` })] },
+  { t: `Je veux acheter, restaurer, créer un compte ou supprimer mes données sans réseau`, ref: `H6`, who: 'x', off: 1,
+    x: [`Ces gestes ont besoin du store ou du serveur. L'app le dit et ne fait rien à moitié.`],
+    s: [ph(`Sans réseau`, { dlg: D(`Il faut une connexion`, `Acheter ou restaurer Premium, créer un compte, s'y connecter et supprimer ses données demandent du réseau. Vos trackers restent utilisables.`, [`OK`, 'p']) })] },
+  { t: `J'atteins la limite gratuite sans réseau`, ref: `H7`, who: 'x', off: 1,
+    x: [`La limite de 3 trackers vaut aussi hors ligne : le téléphone la connaît. Le mur Premium s'affiche, mais l'achat attendra le réseau.`],
+    s: [ph(`Sans réseau`, { bar: `Mes trackers`, ban: off(0), body: [L(...T3), B([`+ Nouveau tracker`, 's', 1])] }), ar(), ph(`Mur Premium`, { bar: `Premium`, ban: off(0), body: [O(0), T(`L'achat sera possible au retour du réseau.`)] })] },
+  { t: `Je suis Premium et je n'ai pas de réseau`, ref: `H8`, who: 'x', off: 1, prem: 1,
+    x: [`Le téléphone se souvient que je suis Premium : plus de 3 trackers, thèmes, stats, tout marche hors ligne.`],
+    s: [ph(`Sans réseau`, { bar: `Mes trackers`, ban: off(2), body: [L([`Humeur`, ''], [`Sport`, ''], [`Lecture`, ''], [`Sommeil`, ''], [`Budget`, 'new', `nouveau`])] })] },
+  { t: `Mon abonnement a pris fin pendant que j'étais hors ligne`, ref: `H9`, who: 'x', off: 1, prem: 1,
+    x: [`Je l'apprends au retour du réseau. Rien n'est effacé : mes modifications hors ligne sont gardées, les trackers au-delà de 3 sont verrouillés, et je choisis lesquels restent ouverts.`],
+    s: [ph(`Réseau revenu`, { dlg: D(`Votre Premium a pris fin le 3 mars`, `Vos 5 trackers sont gardés. 3 restent ouverts : choisissez lesquels.`, [`Choisir mes trackers`, 'p']) }), ar(), ph(`Ensuite`, { bar: `Mes trackers`, body: [L([`Humeur`, ''], [`Sport`, ''], [`Lecture`, ''], [`Sommeil`, 'lock', `verrouillé`], [`Budget`, 'lock', `verrouillé`])] })] },
+  { t: `Je me déconnecte alors que des modifications ne sont pas parties`, ref: `H10`, who: 'a', off: 1,
+    x: [`L'app m'arrête : se déconnecter vide la copie du téléphone, donc ce qui n'est pas encore envoyé serait perdu. C'est à moi de décider.`],
+    s: [ph(`Sans réseau`, { dlg: D(`3 modifications ne sont pas envoyées`, `Vous êtes hors ligne. Si vous vous déconnectez maintenant, elles seront perdues.`, [`Rester connecté`, 'p'], [`Me déconnecter quand même`, 'd']) })] },
+  { t: `Mon téléphone est perdu ou réinitialisé avant le retour du réseau`, ref: `H11`, who: 'x', off: 1,
+    x: [`Ce qui avait déjà été envoyé est sur le serveur. Seules les modifications encore en attente sont perdues : elles n'existaient que sur ce téléphone.`, `C'est ce que dit le bandeau tant que je suis hors ligne.`],
+    s: [ph(`Avant la perte`, { bar: `Humeur`, ban: off(4), body: [G(3, { set: { 49: 3, 50: 2, 51: 1, 52: 1 }, pend: [49, 50, 51, 52] })] })] },
+  { t: `Le serveur ne peut pas appliquer une de mes modifications`, ref: `H12`, who: 'x', off: 1,
+    x: [`Rare. Rien ne disparaît en silence : l'app dit laquelle n'a pas été appliquée, et les autres partent normalement.`],
+    s: [ph(`Réseau revenu`, { dlg: D(`1 modification n'a pas pu être enregistrée`, `La légende « Très bien » de « Humeur » n'a pas été créée. Les 6 autres modifications ont été envoyées.`, [`OK`, 'p']) })] },
+  { t: `Je supprime un tracker sans réseau, puis je ferme l'app`, ref: `H14`, who: 'x', off: 1,
+    x: [`Comme en ligne : le tracker disparaît, « Annuler » le rend pendant 8 secondes. Passé ce délai, ou si je ferme l'app entre-temps, la suppression est acquise et partira au retour du réseau.`, `Aujourd'hui, fermer l'app dans les 8 secondes fait oublier la suppression : le tracker revient.`],
+    s: [ph(`Sans réseau`, { bar: `Mes trackers`, ban: off(0), body: [L([`Humeur`, ''], [`Lecture`, ''])], toast: `« Sport » supprimé · Annuler` }), ar(`8 secondes`), ph(`Ensuite`, { bar: `Mes trackers`, ban: off(1), body: [L([`Humeur`, ''], [`Lecture`, ''])] })] },
+  { t: `J'ai du réseau, mais le serveur ne répond pas`, ref: `H16`, who: 'x', off: 1,
+    x: [`Pour moi rien ne change : même bandeau, mêmes modifications gardées, même envoi dès que le serveur revient.`],
+    s: [ph(`Serveur injoignable`, { bar: `Humeur`, ban: off(2), body: [G(3, { set: { 51: 1, 52: 1 }, pend: [51, 52] })] })] },
+]},
+
+{ id: 'conflits', n: `Sans réseau, avec deux téléphones`, intro: `Seulement quand un même compte est ouvert sur deux téléphones et que les deux ont touché à la même chose. La règle retenue : le serveur gagne, et l'app le dit.`, st: [
+  { t: `J'ai colorié hors ligne un jour que mon autre téléphone a modifié entre-temps`, ref: `H17`, who: 'a', off: 1,
+    x: [`Le serveur a changé ce jour pendant que j'étais hors ligne : sa version reste. Ma modification hors ligne n'est pas appliquée, et l'app me dit laquelle.`],
+    s: [ph(`Téléphone A, sans réseau`, { bar: `Humeur`, ban: off(1), body: [G(3, { hl: [52], set: { 52: 1 }, pend: [52] })] }),
+        ph(`Téléphone B, en ligne`, { bar: `Humeur`, body: [G(3, { hl: [52], set: { 52: 3 } })] }), ar(`A retrouve le réseau`),
+        ph(`Téléphone A`, { dlg: D(`1 modification hors ligne non gardée`, `Le 12 mars de « Humeur » avait été modifié depuis un autre appareil. C'est cette version qui est gardée. La vôtre : vert, « bonne journée ».`, [`OK`, 'p']) })] },
+  { t: `J'ai colorié hors ligne d'autres jours que ceux modifiés ailleurs`, ref: `H18`, who: 'a', off: 1,
+    x: [`Rien ne se gêne : tout est gardé des deux côtés, et les deux téléphones finissent identiques.`],
+    s: [ph(`Téléphone A, sans réseau`, { bar: `Humeur`, ban: off(2), body: [G(3, { set: { 51: 1, 52: 1 }, pend: [51, 52] })] }),
+        ph(`Téléphone B, en ligne`, { bar: `Humeur`, body: [G(3, { hl: [60], set: { 60: 4 } })] }), ar(`A retrouve le réseau`),
+        ph(`Les deux`, { bar: `Humeur`, body: [G(3, { set: { 51: 1, 52: 1, 60: 4 } })], toast: `Synchronisé` })] },
+  { t: `Mes deux téléphones étaient hors ligne et ont colorié le même jour`, ref: `H19`, who: 'a', off: 1,
+    x: [`Conséquence de la règle : le premier qui retrouve le réseau envoie sa version. Quand le second revient, le serveur a déjà changé, donc c'est la version du premier qui reste. Le second le dit.`],
+    s: [ph(`Téléphone A, sans réseau`, { bar: `Humeur`, ban: off(1), body: [G(3, { hl: [52], set: { 52: 1 }, pend: [52] })] }),
+        ph(`Téléphone B, sans réseau`, { bar: `Humeur`, ban: off(1), body: [G(3, { hl: [52], set: { 52: 3 }, pend: [52] })] }), ar(`B revient d'abord, puis A`),
+        ph(`Téléphone A`, { dlg: D(`1 modification hors ligne non gardée`, `Le 12 mars de « Humeur » avait été modifié depuis un autre appareil. C'est cette version qui est gardée. La vôtre : vert, « bonne journée ».`, [`OK`, 'p']) })] },
+  { t: `J'ai colorié hors ligne dans un tracker que l'autre téléphone a supprimé`, ref: `H20`, who: 'a', off: 1,
+    x: [`Le serveur gagne : le tracker est supprimé partout. Ce que j'y avais colorié hors ligne part avec lui, et l'app me le dit.`],
+    s: [ph(`Téléphone A, sans réseau`, { bar: `Sport`, ban: off(3), body: [G(5, { set: { 50: 4, 51: 4, 52: 4 }, pend: [50, 51, 52] })] }),
+        ph(`Téléphone B, en ligne`, { bar: `Mes trackers`, body: [L([`Humeur`, ''], [`Sport`, 'gone', `supprimé`], [`Lecture`, ''])] }), ar(`A retrouve le réseau`),
+        ph(`Téléphone A`, { dlg: D(`« Sport » a été supprimé`, `Ce tracker a été supprimé depuis un autre appareil. Les 3 jours coloriés hors ligne n'ont pas été gardés.`, [`OK`, 'p']) })] },
+  { t: `J'ai supprimé hors ligne un tracker que l'autre téléphone a modifié entre-temps`, ref: `H21`, who: 'a', off: 1,
+    x: [`Même règle. Une suppression faite hors ligne n'efface jamais ce qu'un autre téléphone vient d'ajouter.`],
+    s: [ph(`Téléphone A, sans réseau`, { bar: `Mes trackers`, ban: off(1), body: [L([`Humeur`, ''], [`Sport`, 'gone', `supprimé`], [`Lecture`, ''])] }),
+        ph(`Téléphone B, en ligne`, { bar: `Sport`, body: [G(5, { hl: [52], set: { 52: 4 } })] }), ar(`A retrouve le réseau`),
+        ph(`Téléphone A`, { dlg: D(`« Sport » n'a pas été supprimé`, `Ce tracker a été modifié depuis un autre appareil pendant que vous étiez hors ligne. Supprimez-le de nouveau si vous le voulez toujours.`, [`OK`, 'p']) })] },
+  { t: `J'ai renommé hors ligne un tracker que l'autre téléphone a renommé aussi`, ref: `H22`, who: 'a', off: 1,
+    x: [`Le nom donné sur le serveur reste. Le mien n'est pas appliqué, et l'app me le dit.`],
+    s: [ph(`Téléphone A, sans réseau`, { bar: `Mes trackers`, ban: off(1), body: [L([`Humeur`, ''], [`Forme`, 'pend', `renommé`], [`Lecture`, ''])] }),
+        ph(`Téléphone B, en ligne`, { bar: `Mes trackers`, body: [L([`Humeur`, ''], [`Santé`, ''], [`Lecture`, ''])] }), ar(`A retrouve le réseau`),
+        ph(`Téléphone A`, { dlg: D(`1 modification hors ligne non gardée`, `Ce tracker s'appelle « Santé » : il a été renommé depuis un autre appareil.`, [`OK`, 'p']) })] },
+  { t: `L'autre téléphone a recolorié une légende pendant que j'étais hors ligne`, ref: `H29`, who: 'a', off: 1,
+    x: [`Recolorier une légende n'est pas une modification de chacun de ses jours. Ce que j'ai fait hors ligne sur ces jours est gardé, dans la nouvelle couleur.`],
+    s: [ph(`Téléphone A, sans réseau`, { bar: `Humeur`, ban: off(2), body: [G(3, { set: { 51: 1, 52: 1 }, pend: [51, 52] })] }),
+        ph(`Téléphone B, en ligne`, { bar: `Légendes`, body: [R([`Très bien`, `vert → bleu`]), T(`La légende change de couleur, et tous ses jours avec elle.`)] }), ar(`A retrouve le réseau`),
+        ph(`Les deux`, { bar: `Humeur`, body: [G(3, { set: { 51: 4, 52: 4 } })], toast: `Synchronisé` })] },
+  { t: `Mes deux téléphones ont chacun créé un tracker hors ligne, et le compte gratuit dépasse la limite`, ref: `H23`, who: 'a', off: 1,
+    x: [`Aucun des deux trackers n'est jeté. Le compte dépasse 3 trackers : rien n'est effacé, un tracker est verrouillé, et je choisis lesquels restent ouverts.`],
+    s: [ph(`Téléphone A, sans réseau`, { bar: `Mes trackers`, ban: off(1), body: [L([`Humeur`, ''], [`Sport`, ''], [`Lecture`, 'new', `nouveau`])] }),
+        ph(`Téléphone B, sans réseau`, { bar: `Mes trackers`, ban: off(1), body: [L([`Humeur`, ''], [`Sport`, ''], [`Sommeil`, 'new', `nouveau`])] }), ar(`les deux reviennent`),
+        ph(`Les deux`, { dlg: D(`Vous avez 4 trackers`, `Deux trackers ont été créés hors ligne sur deux appareils. Votre compte gratuit garde 3 trackers ouverts : choisissez lesquels. Rien n'est effacé.`, [`Choisir mes trackers`, 'p']) })] },
+  { t: `Mon compte a été supprimé depuis l'autre téléphone pendant que j'étais hors ligne`, ref: `H24`, who: 'a', off: 1,
+    x: [`Au retour du réseau, je reviens à l'écran d'accueil avec l'explication. Les modifications en attente ne partent pas : il n'y a plus de compte.`],
+    s: [ph(`Téléphone A, sans réseau`, { bar: `Mes trackers`, ban: off(2), body: [L(...T3)] }), ar(`A retrouve le réseau`),
+        ph(`Téléphone A`, { dlg: D(`Ce compte a été supprimé`, `Il a été supprimé depuis un autre appareil. Les 2 modifications faites hors ligne n'ont pas été envoyées.`, [`OK`, 'p']) })] },
+  { t: `J'ai été déconnecté pendant que j'étais hors ligne`, ref: `H25`, who: 'a', off: 1,
+    x: [`Le mot de passe a changé, ou j'ai touché « Déconnecter mes autres appareils » ailleurs. Je me reconnecte, et ce qui attendait part.`],
+    s: [ph(`Réseau revenu`, { dlg: D(`Le mot de passe de ce compte a changé`, `Reconnectez-vous : vos 4 modifications en attente seront envoyées.`, [`Me reconnecter`, 'p', 1]) }), ar(), ph(`Reconnecté`, { bar: `Mes trackers`, body: [L(...T3)], toast: `Synchronisé · 4 modifications envoyées` })] },
+  { t: `Mon Premium a été restauré ailleurs pendant que j'étais hors ligne`, ref: `H9`, who: 'x', off: 1, prem: 1,
+    x: [`Je l'apprends au retour du réseau. Mes modifications hors ligne sont gardées ; les trackers au-delà de 3 sont verrouillés, pas effacés.`],
+    s: [ph(`Réseau revenu`, { dlg: D(`Votre Premium a été restauré sur un autre appareil`, `Pour le reprendre ici, touchez « Restaurer les achats ». Vos 5 trackers sont gardés ; 3 restent ouverts.`, [`Restaurer les achats`, 'p'], [`Plus tard`, 'g']) })] },
+  { t: `J'ai modifié plusieurs fois le même jour hors ligne`, ref: `H28`, who: 'x', off: 1,
+    x: [`Seul le dernier état part. Il est comparé à ce que le serveur avait avant ma première modification : si personne d'autre n'y a touché, il est appliqué.`],
+    s: [ph(`Sans réseau`, { bar: `Humeur`, ban: off(1), body: [G(3, { hl: [52], set: { 52: 4 }, pend: [52] })] }), ar(`le réseau revient`), ph(`Réseau revenu`, { bar: `Humeur`, body: [G(3, { set: { 52: 4 } })], toast: `Synchronisé` })] },
+]},
+
+{ id: 'compte', n: `Créer son compte, ou rejoindre le sien`, intro: `Deux boutons qui ne promettent pas la même chose : « Créer mon compte » et « J'ai déjà un compte ». Dans les deux cas, mes trackers s'ajoutent et rien n'est effacé.`, st: [
+  { t: `Je crée mon compte après avoir commencé sans`, ref: `cas 14`, who: 's',
+    x: [`Mon compte sans identité devient ce compte. Rien ne bouge : mêmes trackers, mêmes points, et Premium si je l'avais.`],
+    s: [ph(`Réglages`, { bar: `Réglages`, body: [R([`Créer mon compte`, '', 'acc tap'], [`J'ai déjà un compte`, '', 'acc'], [`Restaurer les achats`, '', 'acc'])] }), ar(`Apple, Google ou e-mail`),
+        ph(`Ensuite`, { bar: `Réglages`, body: [R([`Compte`, `moi@exemple.fr`], [`Se déconnecter`, '', 'acc'])], toast: `Compte créé. Vos trackers sont maintenant liés à ce compte.` })] },
+  { t: `L'identité que je choisis a déjà un compte`, ref: `cas 15, 16, 18`, who: 's',
+    x: [`L'app le dit avant de faire quoi que ce soit, même si mon téléphone est vide. Elle montre ce qu'il y a des deux côtés. « Continuer » ajoute mes trackers au compte.`, `Deux trackers du même nom restent côte à côte : aucun point n'est mélangé.`],
+    s: [ph(`Avant`, { bar: `Ce compte existe déjà`, body: [KV([`Sur ce téléphone`, `2 trackers · 14 points`], [`Dans votre compte`, `1 tracker · 210 points`]), T(`Les 2 trackers de ce téléphone seront ajoutés à votre compte. Rien n'est effacé.`), B([`Continuer`, 'p', 1], [`Annuler`, 's'])] }), ar(),
+        ph(`Après`, { bar: `Mes trackers`, body: [L([`Humeur`, ''], [`Sport`, 'new', `ajouté`], [`Lecture`, 'new', `ajouté`])], toast: `2 trackers ajoutés à votre compte` })] },
+  { t: `Je préfère annuler`, ref: `cas 21`, who: 's',
+    x: [`Je reste sur mon téléphone tel qu'il était. Tant que je n'ai pas touché « Continuer », rien n'a changé nulle part. Je peux recommencer plus tard.`],
+    s: [ph(`Avant`, { bar: `Ce compte existe déjà`, body: [KV([`Sur ce téléphone`, `2 trackers · 14 points`], [`Dans votre compte`, `1 tracker · 210 points`]), B([`Continuer`, 'p'], [`Annuler`, 's', 1])] }), ar(), ph(`Après`, { bar: `Mes trackers`, body: [L([`Sport`, ''], [`Lecture`, ''])] })] },
+  { t: `L'ajout fait dépasser 3 trackers à un compte gratuit`, ref: `cas 19`, who: 's',
+    x: [`L'écran le dit avant. Les trackers en trop sont verrouillés, pas effacés, et je choisis lesquels restent ouverts. Ce choix se refait quand je veux.`],
+    s: [ph(`Avant`, { bar: `Ce compte existe déjà`, body: [KV([`Sur ce téléphone`, `2 trackers · 14 points`], [`Dans votre compte`, `3 trackers · 210 points`]), T(`Les 2 trackers de ce téléphone seront ajoutés. Votre compte gratuit garde 3 trackers ouverts : vous choisirez lesquels.`), B([`Continuer`, 'p', 1], [`Annuler`, 's'])] }), ar(),
+        ph(`Après`, { bar: `Trackers ouverts`, body: [L([`Humeur`, ''], [`Sport`, ''], [`Lecture`, ''], [`Sommeil`, 'lock', `verrouillé`], [`Budget`, 'lock', `verrouillé`])] })] },
+  { t: `Je touche « J'ai déjà un compte », mais cette identité n'en a pas`, ref: `cas 17`, who: 's',
+    x: [`L'app ne crée rien dans mon dos. Elle le dit et me laisse choisir.`],
+    s: [ph(`Réponse`, { dlg: D(`Aucun compte trouvé`, `Aucun compte n'existe avec cette identité.`, [`Créer mon compte avec elle`, 'p'], [`Essayer autrement`, 's']) })] },
+  { t: `Un de mes trackers est identique à un tracker du compte`, ref: `règle des doubles`, who: 's',
+    x: [`Même nom, mêmes légendes, mêmes points : il n'est pas ajouté en double, et l'écran le compte à part. S'il porte le même nom sans être identique, il est ajouté et j'ai les deux.`],
+    s: [ph(`Avant`, { bar: `Ce compte existe déjà`, body: [KV([`Sur ce téléphone`, `3 trackers · 230 points`], [`Dans votre compte`, `3 trackers · 210 points`]), T(`2 trackers seront ajoutés. 1 tracker, identique à un tracker de votre compte, n'est pas ajouté en double.`), B([`Continuer`, 'p'], [`Annuler`, 's'])] })] },
+  { t: `Le réseau coupe au milieu`, ref: `cas 22`, who: 's',
+    x: [`L'app repose la même demande. Le serveur reconnaît qu'elle a déjà été traitée : rien n'est ajouté deux fois, et je ne me retrouve jamais entre deux comptes.`],
+    s: [ph(`Coupure`, { dlg: D(`Connexion impossible`, `Réessayez. Rien n'a été perdu.`, [`Réessayer`, 'p', 1]) }), ar(), ph(`Après`, { bar: `Mes trackers`, body: [L([`Humeur`, ''], [`Sport`, ''], [`Lecture`, ''])], toast: `2 trackers ajoutés à votre compte` })] },
+  { t: `Mon adresse appartient à un compte créé avec Apple ou Google`, ref: `cas 23, 24`, who: 'x',
+    x: [`Par e-mail, le code prouve que l'adresse est la mienne : je suis connecté à ce compte, sans rien avoir à expliquer.`, `Dans l'autre sens, quand Apple ou Google donne l'adresse d'un compte qui existe sans eux, l'app demande une fois le code envoyé à cette adresse avant de les y relier.`],
+    s: [ph(`Relier Apple`, { dlg: D(`Cette adresse a déjà un compte`, `Pour y relier Apple, saisissez le code que nous venons d'envoyer à m•••@exemple.fr.`, [`Valider`, 'p'], [`Annuler`, 'g']) })] },
+  { t: `Je crée mon compte alors que des modifications attendent encore`, ref: `H6`, who: 's', off: 1,
+    x: [`Créer un compte demande du réseau. Quand il revient, ce qui attendait part d'abord, puis le compte est créé : rien ne reste en route.`],
+    s: [ph(`Sans réseau`, { dlg: D(`Il faut une connexion`, `Créer un compte demande du réseau. Vos 2 modifications en attente sont gardées.`, [`OK`, 'p']) }), ar(`le réseau revient`),
+        ph(`Ensuite`, { bar: `Réglages`, body: [R([`Compte`, `moi@exemple.fr`], [`Se déconnecter`, '', 'acc'])], toast: `Synchronisé, puis compte créé` })] },
+  { t: `Mon téléphone sans compte porte un achat, et je rejoins mon compte`, ref: `cas 25`, who: 's', prem: 1,
+    x: [`Mon Premium suit dans le compte, dans la même opération que mes trackers. Je ne suis jamais gratuit entre les deux.`],
+    s: [ph(`Avant`, { bar: `Ce compte existe déjà`, body: [KV([`Sur ce téléphone`, `2 trackers · Premium`], [`Dans votre compte`, `3 trackers · gratuit`]), T(`Les 2 trackers de ce téléphone seront ajoutés. Votre Premium suit dans votre compte.`), B([`Continuer`, 'p', 1], [`Annuler`, 's'])] }), ar(),
+        ph(`Après`, { bar: `Mes trackers`, body: [L([`Humeur`, ''], [`Sport`, ''], [`Lecture`, ''], [`Sommeil`, ''], [`Budget`, ''])], toast: `2 trackers ajoutés · Premium actif` })] },
+]},
+
+{ id: 'email', n: `Le compte par e-mail`, intro: `Créer un compte et s'y connecter, c'est le même parcours : une adresse, puis un code reçu par e-mail. Le mot de passe reste une autre façon de se connecter, pour qui en a un ou en ajoute un.`, st: [
+  { t: `Je continue avec un e-mail`, ref: `cas 70`, who: 'a',
+    x: [`Je saisis mon adresse, je reçois un code à 6 chiffres, je le tape. Si l'adresse a un compte, j'y suis connecté ; sinon il est créé. Aucun mot de passe à inventer.`, `Quand le compte vient d'être créé, l'app le dit, pour qu'un compte neuf ne passe pas pour le mien : « Nouveau compte créé pour moi@exemple.fr. Si vous aviez déjà un compte, il est peut-être à une autre adresse. »`],
+    s: [ph(`Adresse`, { bar: `Continuer avec un e-mail`, body: [I(`moi@exemple.fr`), B([`Recevoir un code`, 'p', 1]), LK(`Utiliser mon mot de passe`)] }), ar(),
+        ph(`Code`, { bar: `Code reçu par e-mail`, body: [T(`Nous avons envoyé un code à 6 chiffres à moi@exemple.fr.`), I(`4 8 2 9 1 7`), B([`Valider`, 'p', 1]), LK(`Renvoyer le code · Changer d'adresse`)] }), ar(),
+        ph(`Connecté`, { bar: `Mes trackers`, body: [L(...T3)] })] },
+  { t: `Je fais une faute de frappe dans mon adresse`, ref: `cas 71`, who: 'a',
+    x: [`Le code part vers une adresse qui n'est pas la mienne : je ne le reçois pas, donc aucun compte n'est créé avec une adresse fausse. Je corrige et je recommence.`, `C'est le défaut d'aujourd'hui qui disparaît : un compte créé avec une faute, puis introuvable le jour où l'on change de téléphone.`],
+    s: [ph(`Code`, { bar: `Code reçu par e-mail`, body: [T(`Nous avons envoyé un code à 6 chiffres à moi@exmple.fr.`), I(`· · · · · ·`), LK(`Renvoyer le code`), B([`Changer d'adresse`, 's', 1])] })] },
+  { t: `Le code n'arrive pas`, ref: `cas 72`, who: 'a',
+    x: [`Je peux le redemander après 30 secondes, et l'écran me rappelle de regarder mes courriers indésirables. Trop de demandes sont refusées pendant un quart d'heure.`],
+    s: [ph(`Code`, { bar: `Code reçu par e-mail`, body: [T(`Pas reçu ? Regardez vos courriers indésirables.`), I(`· · · · · ·`), B([`Renvoyer le code`, 's', 1]), LK(`Changer d'adresse`)] }), ph(`Trop de demandes`, { dlg: D(`Trop de codes demandés`, `Réessayez dans 15 minutes.`, [`OK`, 'p']) })] },
+  { t: `Je tape un mauvais code, ou trop tard`, ref: `cas 73`, who: 'a',
+    x: [`Un code vaut 10 minutes et 5 essais. Passé l'un ou l'autre, il faut en demander un nouveau.`],
+    s: [ph(`Mauvais code`, { dlg: D(`Code incorrect`, `Après 5 erreurs : « Trop d'essais. Demandez un nouveau code. »`, [`Réessayer`, 'p']) }), ph(`Trop tard`, { dlg: D(`Ce code a expiré`, `Demandez-en un nouveau.`, [`Renvoyer le code`, 'p']) })] },
+  { t: `J'ai déjà un mot de passe`, ref: `cas 74`, who: 'a',
+    x: [`Mon mot de passe reste valable : « Utiliser mon mot de passe » ouvre la connexion habituelle. Les deux façons valent toujours, par code un jour, par mot de passe le lendemain.`, `« Mot de passe oublié » m'envoie un code, me connecte, puis me propose d'en choisir un nouveau.`],
+    s: [ph(`Mot de passe`, { bar: `Connexion`, body: [I(`moi@exemple.fr`), I(`• • • • • • • • • •`), B([`Me connecter`, 'p']), LK(`Recevoir un code à la place · Mot de passe oublié`)] })] },
+  { t: `J'ajoute un mot de passe dans les réglages`, ref: `cas 75`, who: 'a',
+    x: [`C'est une option. L'app me demande d'abord un code, puis un mot de passe d'au moins 8 caractères avec 3 types parmi majuscule, minuscule, chiffre et caractère spécial. Si le format n'y est pas, l'écran dit ce qui manque.`],
+    s: [ph(`Réglages`, { bar: `Réglages`, body: [R([`Compte`, `moi@exemple.fr`], [`Ajouter un mot de passe`, '', 'acc tap'], [`Changer d'adresse e-mail`, '', 'acc'])] }), ar(`après un code`),
+        ph(`Format`, { dlg: D(`Mot de passe trop simple`, `Il manque un chiffre ou un caractère spécial. Il faut 8 caractères au moins, avec 3 types parmi majuscule, minuscule, chiffre et caractère spécial.`, [`OK`, 'p']) })] },
+  { t: `Quelqu'un essaie des mots de passe sur mon compte`, ref: `cas 76`, who: 'a',
+    x: [`Après plusieurs échecs, la connexion par mot de passe de ce compte est mise en pause. La limite porte sur le compte, pas seulement sur le réseau d'où viennent les essais.`],
+    s: [ph(`Après plusieurs échecs`, { dlg: D(`Trop d'essais`, `Réessayez dans une minute, ou recevez un code par e-mail.`, [`Recevoir un code`, 'p'], [`Fermer`, 'g']) })] },
+  { t: `Je change d'adresse e-mail`, ref: `cas 77`, who: 'a',
+    x: [`Dans les réglages : la nouvelle adresse, puis le code qui lui est envoyé. C'est le moyen, sans rien imposer à personne, de corriger une adresse mal tapée tant qu'on est encore connecté.`, `Pour qu'un téléphone resté connecté ne suffise pas à s'emparer d'un compte, l'app demande d'abord une preuve : un code envoyé à mon adresse actuelle si elle a déjà été confirmée, sinon le mot de passe du compte.`, `Une adresse déjà confirmée reçoit ensuite un e-mail avec un lien pour annuler, valable 7 jours. Une adresse jamais confirmée ne reçoit rien : c'est peut-être la boîte d'un inconnu.`],
+    s: [ph(`Nouvelle adresse`, { bar: `Changer d'adresse`, body: [I(`nouvelle@exemple.fr`), B([`Recevoir un code`, 'p', 1])] }), ar(`code saisi`), ph(`Ensuite`, { bar: `Réglages`, body: [R([`Compte`, `nouvelle@exemple.fr`])], toast: `Adresse changée` })] },
+  { t: `La nouvelle adresse est déjà celle d'un autre compte`, ref: `cas 77`, who: 'a',
+    x: [`L'app envoie toujours le code d'abord : avant lui, elle ne dit pas si l'adresse est prise. Le code prouve que cette adresse est la mienne, donc que l'autre compte aussi.`, `Si ce compte est vide, il est remplacé. C'est ce qui arrive après une faute de frappe à l'inscription : en essayant la bonne adresse ailleurs, on a créé un compte vide sans le vouloir.`, `S'il a des données, l'app propose de réunir les deux : rien n'est effacé, et ses autres téléphones doivent se reconnecter.`],
+    s: [ph(`L'autre compte est vide`, { bar: `Réglages`, body: [R([`Compte`, `nouvelle@exemple.fr`])], toast: `Adresse changée. Un compte vide existait à cette adresse : il a été remplacé.` }),
+        ph(`L'autre compte a des données`, { bar: `Ce compte existe déjà`, body: [KV([`Ce compte`, `3 trackers · 210 points`], [`L'autre compte`, `1 tracker · 12 points`]), T(`Les réunir ? Le tracker de l'autre compte sera ajouté à celui-ci. Rien n'est effacé.`), B([`Réunir`, 'p'], [`Annuler`, 's'])] }),
+        ph(`Autres téléphones de l'autre compte`, { dlg: D(`Ce compte a été réuni avec un autre`, `Reconnectez-vous pour retrouver vos trackers.`, [`Me reconnecter`, 'p']) })] },
+  { t: `J'ai un compte e-mail d'aujourd'hui`, ref: `cas 78, 70`, who: 'a',
+    x: [`Rien ne m'est demandé. Mon mot de passe marche comme avant, même s'il ne suit pas le nouveau format. Je peux aussi me connecter par code : l'un ne retire jamais l'autre.`, `La première fois qu'un code confirme mon adresse, l'app me rappelle que ce compte a aussi un mot de passe, avant toute autre étape. Un lien discret permet de le retirer à qui découvrirait un compte créé à son adresse par quelqu'un d'autre, avant la mise à jour.`],
+    s: [ph(`Comme avant`, { bar: `Mes trackers`, body: [L(...T3)] }), ph(`Première connexion par code`, { dlg: D(`Ce compte a aussi un mot de passe`, `Vous pouvez vous connecter avec le code ou avec lui.`, [`OK`, 'p'], [`Ce n'est pas moi qui l'ai créé`, 'g']) })] },
+]},
+
+{ id: 'premium', n: `Passer Premium`, intro: `Le mur et les offres sont les mêmes pour tous. Sans compte, c'est Apple ou Google qui prouve l'achat.`, st: [
+  { t: `Je touche une fonction Premium`, ref: `cas 27`, who: 'x', prem: 1,
+    x: [`Quatrième tracker, thème, stats : le mur s'ouvre avec ses offres, que j'aie un compte ou non.`],
+    s: [ph(`Mes trackers`, { bar: `Mes trackers`, body: [L(...T3), B([`+ Nouveau tracker`, 's', 1])] }), ar(), ph(`Mur Premium`, { bar: `Premium`, body: [O(0)] })] },
+  { t: `J'achète sans compte`, ref: `cas 28, 12`, who: 's', prem: 1,
+    x: [`Une seule étape : la fenêtre du store. Aucun compte n'est demandé avant. Juste après, un écran me propose d'en créer un, avec ses raisons, et je peux passer.`],
+    s: [ph(`Mur Premium`, { bar: `Premium`, body: [O(2)], sheet: [`App Store`, `Premium annuel · essai gratuit de 7 jours`, `Confirmer`] }), ar(),
+        ph(`Juste après`, { dlg: D(`Votre Premium est actif`, `Créez votre compte pour retrouver vos points et votre Premium sur un autre téléphone, y compris d'iPhone à Android. Avec un compte, vous seul ouvrez vos trackers.`, [`Continuer avec Apple`, 's'], [`Continuer avec Google`, 's'], [`Continuer avec un e-mail`, 's'], [`Plus tard`, 'g']) })] },
+  { t: `Je passe l'invitation`, ref: `cas 13`, who: 's', prem: 1,
+    x: [`Premium marche. Une ligne discrète reste en haut de ma liste tant que je n'ai pas de compte. Elle ne bloque rien.`],
+    s: [ph(`Mes trackers`, { bar: `Mes trackers`, line: `Premium actif sans compte · Créer mon compte`, body: [L([`Humeur`, ''], [`Sport`, ''], [`Lecture`, ''], [`Sommeil`, ''])] })] },
+  { t: `Je crée mon compte plus tard`, ref: `cas 14, 25`, who: 's', prem: 1,
+    x: [`Mon compte est Premium, la ligne disparaît, rien d'autre ne change. Premium me suivra désormais sur iPhone comme sur Android.`],
+    s: [ph(`Mes trackers`, { bar: `Mes trackers`, body: [L([`Humeur`, ''], [`Sport`, ''], [`Lecture`, ''], [`Sommeil`, ''])], toast: `Compte créé. Vos trackers sont maintenant liés à ce compte.` })] },
+  { t: `Je viens de payer, et le serveur ne le sait pas encore`, ref: `cas 29`, who: 'x', prem: 1,
+    x: [`Je suis Premium tout de suite, sur la parole du store. Si je fais dans la seconde un geste que le serveur refuserait encore, l'app le dit au lieu de l'annuler en silence.`],
+    s: [ph(`Dans la seconde`, { dlg: D(`Achat en cours de validation`, `Votre achat est en cours de validation. Réessayez dans un instant.`, [`OK`, 'p']) })] },
+  { t: `Je touche une offre alors que j'avais déjà acheté avec ce compte Apple`, ref: `cas 31`, who: 'x', prem: 1,
+    x: [`Le store répond que c'est déjà acheté. L'app le traite comme une restauration et me dit que rien n'a été débité.`],
+    s: [ph(`Réponse`, { dlg: D(`Premium restauré`, `Vous aviez déjà Premium avec ce compte Apple : il est restauré, rien n'a été débité.`, [`OK`, 'p']) })] },
+  { t: `J'achète avec un compte`, ref: `cas 30`, who: 'a', prem: 1,
+    x: [`Comme aujourd'hui. Premium est sur mon compte, donc sur tous mes téléphones, iPhone et Android.`],
+    s: [ph(`Mur Premium`, { bar: `Premium`, body: [O(2)], sheet: [`App Store`, `Premium annuel · essai gratuit de 7 jours`, `Confirmer`] }), ar(), ph(`Ensuite`, { bar: `Mes trackers`, body: [L([`Humeur`, ''], [`Sport`, ''], [`Lecture`, ''], [`Sommeil`, 'new', `nouveau`])] })] },
+  { t: `Je rejoins un compte déjà Premium avec mon propre achat`, ref: `cas 26`, who: 's', prem: 1,
+    x: [`Il y a alors deux achats pour un seul compte. L'app nomme celui qui est de trop, son store, et où le résilier. Une seule fois.`],
+    s: [ph(`Après avoir rejoint`, { dlg: D(`Deux achats Premium`, `Votre compte a maintenant deux achats Premium. Un seul suffit : résiliez l'abonnement mensuel pris dans l'App Store.`, [`Gérer mes abonnements`, 'p'], [`OK`, 'g']) })] },
+]},
+
+{ id: 'restaurer', n: `Restaurer son achat, et reprendre ses trackers`, intro: `« Restaurer les achats » est sur le mur Premium et dans les réglages. Il ne demande jamais de se connecter et il répond toujours.`, st: [
+  { t: `Je change de téléphone sans compte, et je restaure mon achat`, ref: `cas 33, 37, 38`, who: 's', prem: 1,
+    x: [`Apple confirme mon achat. Le serveur reconnaît que cet achat a servi sur un autre téléphone sans compte, et me propose une copie de ses trackers. Je retrouve Premium et mes points.`],
+    s: [ph(`Réglages`, { bar: `Réglages`, body: [R([`Créer mon compte`, '', 'acc'], [`J'ai déjà un compte`, '', 'acc'], [`Restaurer les achats`, '', 'acc tap'])] }), ar(),
+        ph(`Réponse`, { dlg: D(`Premium restauré`, `Cet achat vient d'un autre téléphone, utilisé sans compte : 3 trackers · 210 points. En reprendre une copie ici ? Elle s'ajoute aux trackers de ce téléphone, rien n'est effacé. L'autre téléphone garde les siens.`, [`Reprendre mes trackers`, 'p', 1], [`Non, Premium seulement`, 's']) }), ar(),
+        ph(`Ensuite`, { bar: `Mes trackers`, body: [L(...T3)], toast: `3 trackers repris` })] },
+  { t: `Je réponds « Non, Premium seulement »`, ref: `cas 39`, who: 's', prem: 1,
+    x: [`Rien n'est copié, et l'offre ne se perd pas : une ligne reste dans les réglages. Tant que l'achat est en cours, les trackers de l'autre téléphone ne sont pas effacés ; ensuite la ligne affiche la date limite.`],
+    s: [ph(`Réglages`, { bar: `Réglages`, body: [R([`Des trackers d'un autre téléphone sont liés à votre achat`, `Les reprendre`, 'acc'], [`Créer mon compte`, '', 'acc'], [`Restaurer les achats`, '', 'acc'])] })] },
+  { t: `Mon ancien téléphone sert encore`, ref: `cas 40`, who: 's', prem: 1,
+    x: [`Il garde ses trackers et continue comme avant. Il a perdu Premium, et il me prévient qu'une copie de mes trackers a été prise ailleurs : c'est l'avertissement qu'on attend quand quelqu'un d'autre a pu lire ses données.`],
+    s: [ph(`Ancien téléphone`, { dlg: D(`Une copie de vos trackers a été reprise`, `Elle a été reprise sur un autre appareil, avec votre compte Apple. Pour que vous seul puissiez les ouvrir, créez votre compte.`, [`Créer mon compte`, 'p'], [`Plus tard`, 'g']) })] },
+  { t: `J'ai continué sur l'ancien téléphone après une première copie`, ref: `cas 32, 37`, who: 's', prem: 1,
+    x: [`L'offre revient dès que les contenus diffèrent. Les trackers identiques ne sont pas proposés de nouveau ; ceux qui ont changé arrivent comme une version de plus.`],
+    s: [ph(`Nouvelle restauration`, { dlg: D(`Premium est déjà actif ici`, `2 trackers de votre autre téléphone ont changé depuis la dernière copie. Ils portent le nom de trackers que vous avez déjà : vous aurez les deux.`, [`Reprendre mes trackers`, 'p'], [`Non merci`, 's']) })] },
+  { t: `Mon achat était lié à un compte`, ref: `cas 34`, who: 's', prem: 1,
+    x: [`Premium est restauré ici. Les trackers d'un compte ne s'ouvrent qu'en s'y connectant : l'app m'y invite. Le compte, lui, est prévenu qu'il a perdu Premium.`],
+    s: [ph(`Réponse`, { dlg: D(`Premium restauré`, `Cet achat était lié à un compte : connectez-vous-y pour retrouver ses trackers.`, [`J'ai déjà un compte`, 'p'], [`Plus tard`, 'g']) })] },
+  { t: `Rien n'est trouvé`, ref: `cas 35`, who: 'x', prem: 1,
+    x: [`L'app dit pourquoi cela peut arriver et quoi faire dans chaque cas.`],
+    s: [ph(`Réponse`, { dlg: D(`Aucun achat en cours trouvé`, [`Aucun achat en cours avec ce compte Apple. Un achat fait sur Android, ou avec un autre compte Apple, ne se restaure pas ici.`, `Fait avec un compte : connectez-vous-y. Fait sans compte : créez d'abord votre compte sur le téléphone qui l'a acheté.`], [`OK`, 'p']) })] },
+  { t: `La restauration échoue`, ref: `cas 36`, who: 'x', prem: 1,
+    x: [`Le store ou le réseau n'a pas répondu. L'app le dit, rien n'a changé.`],
+    s: [ph(`Réponse`, { dlg: D(`Restauration impossible`, `Réessayez dans un instant.`, [`Réessayer`, 'p']) })] },
+  { t: `Je réinstalle l'app sur le même téléphone, sans compte, avec un achat`, ref: `cas 41`, who: 's', prem: 1,
+    x: [`Même chemin qu'un nouveau téléphone : j'entre sans compte, je restaure, et l'app me propose mes trackers d'avant.`],
+    s: [ph(`Accueil`, { body: [W(4)] }), ar(`Restaurer les achats`), ph(`Réponse`, { dlg: D(`Premium restauré`, `Cet achat vient d'un autre téléphone, utilisé sans compte : 3 trackers · 210 points. En reprendre une copie ici ?`, [`Reprendre mes trackers`, 'p', 1], [`Non, Premium seulement`, 's']) })] },
+]},
+
+{ id: 'premium-bouge', n: `Premium qui change de place, ou qui prend fin`, intro: `Un achat est sur un seul compte à la fois : celui où il est arrivé en dernier. Celui qui le perd est toujours prévenu.`, st: [
+  { t: `Mon téléphone sans compte perd Premium`, ref: `cas 43`, who: 's', prem: 1,
+    x: [`Quelqu'un a restauré mon achat ailleurs. Je l'apprends tout de suite si l'app est ouverte, sinon à l'ouverture suivante. Mes trackers au-delà de 3 sont verrouillés, pas effacés.`],
+    s: [ph(`Message`, { dlg: D(`Votre Premium a été restauré sur un autre appareil`, `Pour le reprendre ici, touchez « Restaurer les achats ». Pour l'avoir sur vos deux appareils, créez un compte ici et connectez-vous-y sur l'autre.`, [`Restaurer les achats`, 'p'], [`Créer mon compte`, 's'], [`Plus tard`, 'g']) }), ar(),
+        ph(`D'ici là`, { bar: `Mes trackers`, body: [L([`Humeur`, ''], [`Sport`, ''], [`Lecture`, ''], [`Sommeil`, 'lock', `verrouillé`])] })] },
+  { t: `Mon compte perd Premium`, ref: `cas 44`, who: 'a', prem: 1,
+    x: [`Si l'achat a été fait avec ce compte, je le reprends d'un toucher, depuis n'importe lequel de mes téléphones : un achat fait sur iPhone se reprend aussi depuis mon Android.`, `Si mon compte ne l'avait eu que par une restauration, ou si son identité a été posée depuis un autre appareil que celui qui avait payé, pas de bouton : l'app me renvoie vers « Restaurer les achats » sur un appareil Apple.`],
+    s: [ph(`Message`, { dlg: D(`Votre Premium a été restauré sur un autre appareil`, `Cet achat a été fait avec ce compte.`, [`Reprendre mon Premium`, 'p', 1], [`Plus tard`, 'g']) }), ar(), ph(`Ensuite`, { bar: `Mes trackers`, body: [L([`Humeur`, ''], [`Sport`, ''], [`Lecture`, ''], [`Sommeil`, ''])], toast: `Premium repris` })] },
+  { t: `J'ai un iPhone et un iPad, tous deux sans compte`, ref: `cas 45`, who: 's', prem: 1,
+    x: [`Sans compte, chaque appareil a ses propres trackers et Premium est sur un seul des deux : le restaurer sur l'un le retire à l'autre, et chacun le dit.`, `Pour avoir les mêmes trackers et Premium sur les deux, il faut un compte connecté sur les deux.`],
+    s: [ph(`iPhone`, { bar: `Mes trackers`, line: `Premium actif sans compte · Créer mon compte`, body: [L([`Humeur`, ''], [`Sport`, ''], [`Lecture`, ''], [`Sommeil`, ''])] }),
+        ph(`iPad`, { dlg: D(`Votre Premium a été restauré sur un autre appareil`, `Pour l'avoir sur vos deux appareils, créez un compte ici et connectez-vous-y sur l'autre.`, [`Créer mon compte`, 'p'], [`Plus tard`, 'g']) })] },
+  { t: `Mon abonnement prend fin, ou mon achat est remboursé`, ref: `cas 47`, who: 'x', prem: 1,
+    x: [`L'app le dit, avec la date. Mes trackers au-delà de 3 sont verrouillés, pas effacés, et je choisis lesquels restent ouverts.`, `Sans compte, elle ajoute ce que je risque désormais.`],
+    s: [ph(`Avec un compte`, { dlg: D(`Votre Premium a pris fin le 3 mars`, `Vos trackers sont gardés. 3 restent ouverts : choisissez lesquels.`, [`Choisir mes trackers`, 'p']) }),
+        ph(`Sans compte`, { dlg: D(`Votre Premium a pris fin le 3 mars`, `Sans compte ni Premium, vos trackers ne pourront plus être repris sur un autre téléphone. Créez votre compte pour les garder.`, [`Créer mon compte`, 'p'], [`Plus tard`, 'g']) })] },
+  { t: `Je me connecte à mon compte depuis le téléphone qui lui avait pris Premium`, ref: `cas 46`, who: 's', prem: 1,
+    x: [`L'achat retourne dans mon compte avec ce téléphone, et ses trackers s'y ajoutent.`],
+    s: [ph(`Avant`, { bar: `Ce compte existe déjà`, body: [KV([`Sur ce téléphone`, `1 tracker · Premium`], [`Dans votre compte`, `4 trackers · gratuit`]), T(`Le tracker de ce téléphone sera ajouté. Votre Premium suit dans votre compte.`), B([`Continuer`, 'p', 1], [`Annuler`, 's'])] })] },
+]},
+
+{ id: 'deux-telephones', n: `Deux téléphones sur le même compte, avec du réseau`, intro: `En grande partie réglé aujourd'hui : chaque changement est poussé en direct à l'autre téléphone. Ce chapitre ajoute ce qui manquait.`, st: [
+  { t: `Je colorie sur un téléphone, l'autre le montre dans la seconde`, ref: `cas 48`, who: 'a',
+    x: [`Marche déjà aujourd'hui, pour les points, les trackers, les légendes et l'ordre.`],
+    s: [ph(`Téléphone A`, { bar: `Humeur`, body: [G(3, { hl: [52], set: { 52: 1 } })] }), ar(`une seconde`), ph(`Téléphone B`, { bar: `Humeur`, body: [G(3, { set: { 52: 1 } })] })] },
+  { t: `Nous touchons le même jour au même moment`, ref: `cas 48 · H27`, who: 'a',
+    x: [`Le dernier qui écrit gagne, pour le jour entier, et les deux écrans affichent la même chose. Il n'y a ni doublon ni mélange.`],
+    s: [ph(`Téléphone A, d'abord`, { bar: `Humeur`, body: [G(3, { hl: [52], set: { 52: 1 } })] }), ph(`Téléphone B, juste après`, { bar: `Humeur`, body: [G(3, { hl: [52], set: { 52: 3 } })] }), ar(), ph(`Les deux`, { bar: `Humeur`, body: [G(3, { set: { 52: 3 } })] })] },
+  { t: `Je supprime mon compte depuis un téléphone`, ref: `cas 50`, who: 'a',
+    x: [`L'autre revient tout de suite à l'écran d'accueil avec l'explication. Aujourd'hui il montre une liste vide, puis l'écran de connexion, sans un mot.`],
+    s: [ph(`Téléphone B`, { dlg: D(`Ce compte a été supprimé`, `Il a été supprimé depuis un autre appareil.`, [`OK`, 'p']) })] },
+  { t: `Je change mon mot de passe`, ref: `cas 51`, who: 'a',
+    x: [`Tous mes autres téléphones sont déconnectés. Aujourd'hui aucun ne l'est : quelqu'un qui avait le mot de passe reste connecté.`],
+    s: [ph(`Téléphone B`, { dlg: D(`Le mot de passe de ce compte a changé`, `Reconnectez-vous pour retrouver vos trackers.`, [`Me reconnecter`, 'p']) })] },
+  { t: `Je déconnecte mes autres appareils`, ref: `cas 52`, who: 'a',
+    x: [`Pour un téléphone perdu ou prêté. C'est la seule réponse pour un compte Apple ou Google, qui n'a pas de mot de passe à changer.`],
+    s: [ph(`Téléphone A`, { bar: `Réglages`, body: [R([`Compte`, `moi@exemple.fr`], [`Déconnecter mes autres appareils`, '', 'acc tap'], [`Se déconnecter`, '', 'acc'])] }), ar(), ph(`Téléphone B`, { dlg: D(`Vous avez été déconnecté`, `Vous avez été déconnecté de ce compte depuis un autre appareil.`, [`Me reconnecter`, 'p']) })] },
+  { t: `Je supprime un tracker que l'autre téléphone a sous les yeux`, ref: `cas 53`, who: 'a',
+    x: [`L'autre téléphone revient à la liste et dit pourquoi. Aujourd'hui il y revient sans un mot.`],
+    s: [ph(`Téléphone B`, { bar: `Mes trackers`, body: [L([`Humeur`, ''], [`Lecture`, ''])], toast: `« Sport » a été supprimé depuis un autre appareil` })] },
+  { t: `Premium est acheté ou perdu sur un téléphone`, ref: `cas 49`, who: 'a', prem: 1,
+    x: [`L'autre le sait tout de suite. Aujourd'hui il ne demande au serveur qu'à son lancement, et peut montrer entre-temps des fonctions qu'il n'a plus.`],
+    s: [ph(`Téléphone A`, { bar: `Premium`, body: [O(2)], sheet: [`App Store`, `Premium annuel`, `Confirmer`] }), ar(`tout de suite`), ph(`Téléphone B`, { bar: `Mes trackers`, body: [L(...T3), B([`+ Nouveau tracker`, 's'])], toast: `Premium est actif sur ce compte` })] },
+  { t: `Nous sommes deux personnes sur le même compte`, ref: `cas 54`, who: 'a',
+    x: [`Nous voyons et modifions les mêmes trackers, en direct. Chacune peut supprimer un tracker ou le compte : c'est ce que veut dire partager un compte. Celle à qui il appartient reprend la main en changeant le mot de passe ou en déconnectant les autres appareils.`, `Le thème et la langue sont ceux du compte : changés sur un téléphone, ils s'appliquent à l'autre.`],
+    s: [ph(`Téléphone A`, { bar: `Mes trackers`, body: [L(...T3)] }), ph(`Téléphone B`, { bar: `Mes trackers`, body: [L(...T3)] })] },
+]},
+
+{ id: 'changer', n: `Changer de téléphone`, intro: `Avec un compte, tout revient. Sans compte, cela dépend de réglages du téléphone que l'app ne peut pas voir : elle dit les conditions, sans rien promettre.`, st: [
+  { t: `J'ai un compte`, ref: `cas 56`, who: 'a',
+    x: [`Je me connecte : mes trackers et mon Premium reviennent, d'iPhone à Android aussi. C'est la seule voie sûre.`],
+    s: [ph(`Nouveau téléphone`, { body: [W(2)] }), ar(), ph(`Ensuite`, { bar: `Mes trackers`, body: [L(...T3)] })] },
+  { t: `Je n'ai pas de compte, et je passe à un autre iPhone`, ref: `cas 57`, who: 's',
+    x: [`Mes trackers et mon Premium reviennent si la clé arrive : par le trousseau iCloud activé sur les deux appareils, ou par un transfert direct de l'ancien iPhone vers le nouveau. Selon le cas, l'app s'ouvre comme avant, ou me propose de les retrouver d'un toucher.`, `Sinon, un iPhone restauré depuis iCloud retrouve les trackers de la sauvegarde, et Premium revient par « Restaurer les achats ».`],
+    s: [ph(`Nouvel iPhone`, { body: [H(`Des trackers d'un autre de vos appareils Apple ont été retrouvés`), T(`3 trackers · 210 points, ouverts hier sur un iPhone.`), B([`Les retrouver ici`, 'p', 1]), W(0)] }), ar(), ph(`Ensuite`, { bar: `Mes trackers`, body: [L(...T3)] })] },
+  { t: `Je n'ai pas de compte, et je passe à un autre Android`, ref: `cas 58`, who: 's',
+    x: [`Mes trackers reviennent si le nouveau téléphone est copié directement depuis l'ancien, ou restauré depuis la sauvegarde Google. L'app me dit de quand ils datent. Premium revient par « Restaurer les achats ».`],
+    s: [ph(`Nouvel Android`, { dlg: D(`Ces trackers viennent d'une sauvegarde`, `Ils sont à jour au 12 mars. Ce qui a été fait ensuite sur un autre appareil n'y est pas. Pour le retrouver : créez un compte sur cet autre appareil, ou touchez « Restaurer les achats » si vous êtes Premium.`, [`OK`, 'p']) })] },
+  { t: `Je n'ai pas de compte, et je passe d'iPhone à Android`, ref: `cas 59`, who: 's',
+    x: [`Rien ne suit : Apple et Google ne se connaissent pas, seul un compte fait le lien. « Mes données » le disait.`],
+    s: [ph(`Nouveau téléphone`, { body: [W(4)] }), ar(), ph(`Ensuite`, { bar: `Mon premier tracker`, body: [G(1, { empty: 1 })] })] },
+  { t: `J'ai encore l'ancien téléphone`, ref: `cas 60`, who: 's',
+    x: [`J'y crée mon compte, puis je m'y connecte sur le nouveau : je retrouve tout, d'iPhone à Android aussi.`],
+    s: [ph(`Ancien téléphone`, { bar: `Réglages`, body: [R([`Créer mon compte`, '', 'acc tap'], [`J'ai déjà un compte`, '', 'acc'])] }), ar(`puis`), ph(`Nouveau téléphone`, { body: [W(2)] }), ar(), ph(`Ensuite`, { bar: `Mes trackers`, body: [L(...T3)] })] },
+  { t: `Rien de tout cela n'a marché, mais j'ai acheté Premium`, ref: `cas 33, 37`, who: 's', prem: 1,
+    x: [`Sur la même plateforme, « Restaurer les achats » me rend Premium et me propose une copie de mes trackers.`],
+    s: [ph(`Nouveau téléphone`, { dlg: D(`Premium restauré`, `Cet achat vient d'un autre téléphone, utilisé sans compte : 3 trackers · 210 points. En reprendre une copie ici ?`, [`Reprendre mes trackers`, 'p'], [`Non, Premium seulement`, 's']) })] },
+]},
+
+{ id: 'donnees', n: `Mes données, et les garder sans compte`, intro: `Trois choses peuvent ramener les données d'un téléphone sans compte : la clé recopiée par le trousseau iCloud, la copie du téléphone portée par une sauvegarde, et un achat. Aucune n'est sûre, et l'app ne peut pas vérifier les deux premières. L'écran « Mes données » dit ce qu'elle sait.`, st: [
+  { t: `Je regarde où en sont mes données, sans compte, sur iPhone`, ref: `cas 79`, who: 's',
+    x: [`L'écran a trois parties : où sont mes données, quels appareils les ont ouvertes, et ce qui se passera si je change de téléphone. Il ne dit que ce que l'app sait : elle ne peut pas voir mes réglages iCloud, et elle le dit.`],
+    s: [ph(`Mes données`, { bar: `Mes données`, body: [H(`Où elles sont`), R([`Sur cet iPhone`, `oui`], [`Sur le serveur`, `à jour`], [`Compte`, `sans compte`]), H(`Si je change de téléphone`), R([`Avec un compte`, `tout revient`], [`Vers un autre iPhone`, `si « Mots de passe » est activé dans iCloud`], [`Vers un Android`, `il faut un compte`]), T(`L'app ne peut pas vérifier vos réglages iCloud.`), B([`Créer mon compte`, 'p'])] })] },
+  { t: `Je regarde où en sont mes données, sans compte, sur Android`, ref: `cas 79`, who: 's',
+    x: [`Même écran, avec ce qui vaut pour Android : la sauvegarde Google, que l'app ne peut pas voir non plus.`],
+    s: [ph(`Mes données`, { bar: `Mes données`, ban: off(3), body: [H(`Où elles sont`), R([`Sur ce téléphone`, `oui`], [`Sur le serveur`, `3 modifications à envoyer`], [`Compte`, `sans compte`]), H(`Si je change de téléphone`), R([`Avec un compte`, `tout revient`], [`Vers un autre Android`, `si la sauvegarde Google est activée`], [`Vers un iPhone`, `il faut un compte`]), B([`Créer mon compte`, 'p'])] })] },
+  { t: `Je regarde où en sont mes données, avec un compte`, ref: `cas 79`, who: 'a',
+    x: [`Une seule ligne suffit pour le changement de téléphone : tout revient, où que j'aille.`],
+    s: [ph(`Mes données`, { bar: `Mes données`, body: [H(`Où elles sont`), R([`Sur cet iPhone`, `oui`], [`Sur le serveur`, `à jour`], [`Compte`, `moi@exemple.fr`]), H(`Mes appareils`), R([`Cet iPhone`, ``], [`Pixel`, `ouvert hier`]), H(`Si je change de téléphone`), T(`Connectez-vous sur le nouveau téléphone : tout revient, iPhone ou Android.`)] })] },
+  { t: `« Mes données » me montre mes autres appareils`, ref: `cas 79`, who: 'x',
+    x: [`La liste vient du serveur : les appareils qui ont ouvert ces données, avec la date de leur dernière ouverture. L'écran n'en tire aucune conclusion : un appareil de la liste a pu être vendu depuis.`],
+    s: [ph(`Mes données`, { bar: `Mes données`, body: [H(`Mes appareils`), R([`Cet iPhone`, `aujourd'hui`], [`iPad`, `ouvert hier`])] })] },
+  { t: `J'ouvre l'app sur mon iPad, et mes trackers y sont proposés`, ref: `cas 80`, who: 's',
+    x: [`Ma clé est arrivée par le trousseau iCloud. L'app n'entre jamais d'elle-même dans des données qu'elle trouve : elle propose, et dit ce qu'elle a trouvé sans prétendre savoir par où c'est arrivé. Si j'accepte, mes deux appareils partagent ensuite les mêmes trackers.`],
+    s: [ph(`iPad, première ouverture`, { body: [H(`Des trackers d'un autre de vos appareils Apple ont été retrouvés`), T(`3 trackers · 210 points, ouverts hier sur un iPhone.`), B([`Les retrouver ici`, 'p', 1]), W(0)] }), ar(), ph(`Ensuite`, { bar: `Mes trackers`, body: [L(...T3)] })] },
+  { t: `Je préfère commencer à part`, ref: `cas 81`, who: 's',
+    x: [`Les quatre boutons sont toujours là. « Continuer sans compte » me donne des trackers séparés. Les autres restent proposés dans « Mes données » ; les retrouver plus tard ajoute ceux de cet appareil, sans rien effacer.`],
+    s: [ph(`iPad`, { body: [H(`Des trackers d'un autre de vos appareils Apple ont été retrouvés`), T(`3 trackers · 210 points.`), B([`Les retrouver ici`, 'p']), W(4)] }), ar(`plus tard`), ph(`Mes données`, { bar: `Mes données`, body: [R([`D'autres trackers ont été retrouvés`, `Les voir`, 'acc'])] })] },
+  { t: `La clé arrive après que j'ai commencé`, ref: `cas 82`, who: 's',
+    x: [`J'ai ouvert l'app avant que le trousseau ait fini de se synchroniser : je n'ai rien vu et j'ai commencé sans compte. L'app relit le trousseau à chaque ouverture, et me le dit dès que la clé apparaît.`],
+    s: [ph(`À une ouverture suivante`, { dlg: D(`Des trackers viennent d'être retrouvés`, `3 trackers · 210 points, d'un autre de vos appareils Apple.`, [`Les retrouver ici`, 'p', 1], [`Plus tard`, 'g']) }), ar(),
+        ph(`Avant de réunir`, { bar: `Ces trackers existent déjà`, body: [KV([`Sur cet appareil`, `1 tracker · 4 points`], [`Retrouvés`, `3 trackers · 210 points`]), T(`Le tracker de cet appareil sera ajouté. Rien n'est effacé.`), B([`Continuer`, 'p'], [`Annuler`, 's'])] })] },
+  { t: `Mon iPhone et mon iPad partagent mes trackers, sans compte`, ref: `cas 83, 55`, who: 's',
+    x: [`Ce que je fais sur l'un apparaît sur l'autre, et Premium vaut pour les deux.`],
+    s: [ph(`iPhone`, { bar: `Humeur`, body: [G(3, { hl: [52], set: { 52: 1 } })] }), ar(`une seconde`), ph(`iPad`, { bar: `Humeur`, body: [G(3, { set: { 52: 1 } })] })] },
+  { t: `Un compte est créé depuis mon autre appareil`, ref: `cas 55`, who: 's',
+    x: [`Mes deux appareils partageaient les mêmes trackers sans compte. L'un crée un compte : l'autre le dit, et ne reste jamais à la porte. Il peut se connecter à ce compte, ou continuer sans compte avec les trackers qu'il a.`, `Cela vaut même si celui qui a créé le compte est quelqu'un d'autre : un proche sur le même compte Apple, ou la personne à qui un téléphone a été cédé.`],
+    s: [ph(`L'autre appareil`, { dlg: D(`Ce compte a maintenant un identifiant`, `Il a été créé depuis un autre appareil.`, [`Me connecter à ce compte`, 'p'], [`Continuer sans compte avec les trackers de cet appareil`, 's']) })] },
+  { t: `Mon nouvel iPhone a été copié depuis l'ancien`, ref: `cas 84`, who: 's',
+    x: [`La copie du téléphone et la clé arrivent ensemble : l'app s'ouvre comme sur l'ancien, sans rien me demander.`],
+    s: [ph(`Nouvel iPhone`, { bar: `Mes trackers`, body: [L(...T3)] })] },
+  { t: `Ma copie arrive sans la clé`, ref: `cas 85`, who: 's',
+    x: [`iPhone restauré depuis iCloud sans trousseau synchronisé, Android copié, restauré ou app réinstallée. L'app s'ouvre sur la copie, et me dit de quand elle date.`, `Si la clé arrive plus tard, ce que j'ai fait entre-temps est rejoué sur mes trackers d'origine : rien n'est doublé.`, `Si la copie est celle d'un compte, elle n'est pas affichée : l'app me demande de m'y connecter.`],
+    s: [ph(`Nouveau téléphone`, { dlg: D(`Ces trackers viennent d'une sauvegarde`, `Ils sont à jour au 12 mars. Ce qui a été fait ensuite sur un autre appareil n'y est pas. Pour le retrouver : créez un compte sur cet autre appareil, ou touchez « Restaurer les achats » si vous êtes Premium.`, [`OK`, 'p']) })] },
+  { t: `La sauvegarde ramène des données que j'avais supprimées`, ref: `cas 86`, who: 'x',
+    x: [`Le serveur se souvient qu'elles ont été supprimées à ma demande, sans rien garder d'autre. Il refuse de les faire revivre, et la copie est effacée du téléphone.`],
+    s: [ph(`Après la restauration`, { dlg: D(`Ces trackers avaient été supprimés`, `Ils avaient été supprimés à votre demande le 3 mars. Ils ne sont pas rétablis.`, [`OK`, 'p']) })] },
+  { t: `Je réinstalle l'app sur mon iPhone`, ref: `cas 87`, who: 's',
+    x: [`La copie est partie avec l'app, mais la clé est le plus souvent restée dans le trousseau : l'app me propose mes trackers. Apple ne le garantit pas ; sinon il reste « Restaurer les achats » si j'ai acheté.`, `Si ces trackers sont entre-temps passés dans un compte, l'app me dit de m'y connecter. S'ils ont été supprimés, elle ne montre rien.`],
+    s: [ph(`Après la réinstallation`, { body: [H(`Des trackers ont déjà été utilisés sur cet appareil`), T(`3 trackers · 210 points, ouverts hier.`), B([`Les retrouver ici`, 'p', 1]), W(0)] })] },
+  { t: `Sur Android, rien ne recopie la clé`, ref: `cas 88`, who: 's',
+    x: [`Le coffre d'Android ne quitte pas le téléphone. Ce qui suit, c'est la copie du téléphone, dans la sauvegarde Google ou dans le transfert d'un téléphone à l'autre. Deux Android en même temps demandent un compte.`],
+    s: [ph(`Mes données`, { bar: `Mes données`, body: [H(`Si je change de téléphone`), R([`Vers un autre Android`, `si la sauvegarde Google est activée`], [`Deux téléphones à la fois`, `il faut un compte`])] })] },
+  { t: `Je change d'Android avec un compte, et l'app s'ouvre déjà connectée`, ref: `cas 89`, who: 'a',
+    x: [`Quand je me connecte, le téléphone crée en silence une clé de restauration, que Google emporte vers mon téléphone suivant. Sur le nouvel Android, l'app s'ouvre déjà connectée à mon compte. Google Play l'exigera en avril 2027 de toute app avec connexion : c'est fait dans cette release.`, `Tout ce qui ferme la session d'un téléphone fait oublier sa clé : me déconnecter, « Déconnecter mes autres appareils », un mot de passe changé, un compte supprimé. Un téléphone volé ou prêté ne peut donc pas s'en servir pour rouvrir mon compte sur un autre.`, `Si la clé n'a pas suivi, j'arrive sur l'écran d'accueil comme aujourd'hui.`],
+    s: [ph(`Nouvel Android`, { bar: `Mes trackers`, body: [L(...T3)] })] },
+  { t: `Mon téléphone est cédé sans avoir été effacé`, ref: `cas 90`, who: 's',
+    x: [`Celui qui y réinstalle l'app trouve la clé : l'app lui dit que des trackers existent, et il les voit s'il choisit de les retrouver. Risque connu et non couvert : un téléphone se réinitialise avant d'être cédé, ce qui efface le trousseau.`],
+    s: [ph(`Le suivant`, { body: [H(`Des trackers ont déjà été utilisés sur cet appareil`), T(`3 trackers · 210 points.`), B([`Les retrouver ici`, 'p']), W(0)] })] },
+  { t: `Je supprime mes données, et la clé part avec`, ref: `cas 91`, who: 's',
+    x: [`La clé est effacée du trousseau, donc de tous mes appareils. Si un autre appareil partageait ces trackers, la confirmation me le dit avant, et il l'apprend après.`],
+    s: [ph(`Confirmation`, { dlg: D(`Supprimer mes données ?`, `Vos trackers seront effacés du serveur, de cet appareil, et de tout autre appareil ou sauvegarde qui les contient. Ils sont ouverts en ce moment sur un autre appareil.`, [`Supprimer`, 'd'], [`Annuler`, 's']) }), ph(`L'autre appareil`, { dlg: D(`Ces données ont été supprimées`, `Elles ont été supprimées depuis un autre appareil.`, [`OK`, 'p']) })] },
+  { t: `Le trousseau iCloud n'est pas activé`, ref: `cas 92`, who: 's',
+    x: [`Rien ne casse : la clé reste sur l'appareil, comme sans cette idée. « Mes données » continue de dire qu'il ne peut pas le vérifier.`],
+    s: [ph(`Mes données`, { bar: `Mes données`, body: [H(`Si je change de téléphone`), R([`Vers un autre iPhone`, `si « Mots de passe » est activé dans iCloud`]), T(`L'app ne peut pas vérifier vos réglages iCloud.`)] })] },
+]},
+
+{ id: 'partir', n: `Effacements et départ`, intro: `Les seules suppressions : celles que je demande, et l'effacement d'un compte sans identité abandonné.`, st: [
+  { t: `Je n'ouvre plus l'app pendant plus de 12 mois, sans compte ni achat`, ref: `cas 61`, who: 's',
+    x: [`Le serveur efface un compte sans identité, sans achat, que l'app n'a pas contacté depuis 12 mois. Mais le téléphone a sa propre copie : si je rouvre l'app sur ce même téléphone, tout est là et repart vers le serveur.`, `Je ne perds mes trackers que si je n'ai plus ce téléphone.`],
+    s: [ph(`Même téléphone, 14 mois après`, { bar: `Mes trackers`, body: [L(...T3)], toast: `Synchronisé` })] },
+  { t: `Je paie Premium sans compte et je n'ouvre plus l'app`, ref: `cas 61`, who: 's', prem: 1,
+    x: [`Je ne suis jamais effacé tant qu'un achat que j'ai porté est en cours, même s'il a été restauré sur un autre téléphone. Pour un achat à vie, cela veut dire jamais, sauf si je le demande.`],
+    s: [ph(`Deux ans après`, { bar: `Mes trackers`, line: `Premium actif sans compte · Créer mon compte`, body: [L([`Humeur`, ''], [`Sport`, ''], [`Lecture`, ''], [`Sommeil`, ''])] })] },
+  { t: `Je me déconnecte de mon compte`, ref: `cas 64`, who: 'a',
+    x: [`Retour à l'écran d'accueil. Mon compte n'est pas touché ; la copie du téléphone est retirée. Si je choisis ensuite « sans compte », je repars d'un téléphone vide.`],
+    s: [ph(`Réglages`, { bar: `Réglages`, body: [R([`Compte`, `moi@exemple.fr`], [`Se déconnecter`, '', 'acc tap'])] }), ar(), ph(`Accueil`, { body: [W(0)] })] },
+  { t: `Je supprime mes données, ou mon compte`, ref: `cas 65`, who: 'x',
+    x: [`Le bouton dit ce qu'il fait : « Supprimer mes données » sans compte, « Supprimer mon compte et mes données » avec. La confirmation dit ce qui part, et ce qu'il advient d'un achat.`, `Elle dit toujours que la suppression vaut partout. Sinon, quelqu'un qui vide son ancien téléphone avant de le céder effacerait ce que son nouveau téléphone s'apprêtait à retrouver.`],
+    s: [ph(`Confirmation`, { dlg: D(`Supprimer mes données ?`, [`Vos 3 trackers et leurs 210 points seront effacés du serveur, de cet appareil, et de tout autre appareil ou sauvegarde qui les contient. Pour vider seulement cet appareil, désinstallez l'app.`, `Un abonnement se résilie dans le store, pas ici. Votre achat reste lié à votre compte Apple : « Restaurer les achats » le rendra.`], [`Supprimer`, 'd'], [`Annuler`, 's']) })] },
+  { t: `La suppression n'aboutit pas, ou je n'ai pas de réseau`, ref: `cas 66`, who: 'x', off: 1,
+    x: [`Rien ne change sur le téléphone : je ne suis pas déconnecté d'un compte qui existerait encore. Si la suppression avait eu lieu et que seule la réponse s'est perdue, réessayer répond « Vos données ont été supprimées ».`],
+    s: [ph(`Réponse`, { dlg: D(`Suppression impossible pour l'instant`, `Réessayez quand vous aurez du réseau. Rien n'a changé.`, [`OK`, 'p']) })] },
+]},
+
+{ id: 'aujourdhui', n: `Ceux qui ont déjà l'app`, intro: `Personne n'a rien à faire.`, st: [
+  { t: `Je mets à jour, connecté à mon compte`, ref: `cas 67 · H15`, who: 'a',
+    x: [`Rien ne change à l'écran. À la première ouverture avec du réseau, l'app copie tous mes trackers sur le téléphone ; ensuite le hors-ligne marche.`],
+    s: [ph(`Après la mise à jour`, { bar: `Mes trackers`, body: [L(...T3)] })] },
+  { t: `Je mets à jour, déconnecté`, ref: `cas 68`, who: 'a',
+    x: [`J'arrive sur l'écran d'accueil et je me connecte. Si je touche « sans compte » par erreur, « J'ai déjà un compte » me ramène au mien, et ce que j'ai fait entre-temps s'y ajoute.`],
+    s: [ph(`Après la mise à jour`, { body: [W(0)] })] },
+  { t: `Je garde l'ancienne version`, ref: `cas 69 · H26`, who: 'a',
+    x: [`Elle continue de marcher comme avant, avec du réseau seulement, y compris sur un compte qu'un téléphone à jour utilise aussi. Elle n'affiche aucun des nouveaux messages.`, `Une seule chose lui est retirée : créer un compte par e-mail sans confirmer l'adresse. Elle affiche alors « Mettez l'app à jour pour créer un compte par e-mail ».`],
+    s: [ph(`Ancienne version`, { bar: `Humeur`, body: [G(3)] })] },
+]},
+];
+
+// ---------- rendering ----------
+const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
+const btns = (list) => { const w = el('div', 'btns'); list.forEach(([t, k, tap]) => w.append(el('div', 'btn ' + (k || 's') + (tap ? ' tap' : ''), t))); return w; };
+function grid(o) {
+  const g = el('div', 'grid'); let s = (o.g * 7919 + 13) % 2147483647 || 1;
+  const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 108; i++) {
+    let k = 0; const a = rnd(), b = rnd();
+    if (!o.empty && i < 70 && a < 0.72) k = 1 + Math.floor(b * 5);
+    if (o.set && o.set[i] != null) k = o.set[i];
+    const c = el('div', 'cell' + (k ? ' k' + k : ''));
+    if (o.hl && o.hl.includes(i)) c.classList.add('hl');
+    if (o.pend && o.pend.includes(i)) c.classList.add('pend');
+    g.append(c);
+  }
+  return g;
+}
+function block(b) {
+  if (b.w !== undefined) {
+    const w = el('div', 'btns');
+    [`Continuer avec Apple`, `Continuer avec Google`, `Continuer avec un e-mail`, `Continuer sans compte`].forEach((t, i) => w.append(el('div', 'btn s' + (b.w === i + 1 ? ' tap' : ''), t)));
+    const box = el('div'); box.style.display = 'grid'; box.style.gap = '8px'; box.style.marginTop = 'auto';
+    box.append(el('p', 'h', `Bienvenue`), w, el('p', 't', `Avec un compte, vous retrouvez vos points sur un autre téléphone. Sans compte, ils restent liés à cette installation de l'app.`));
+    return box;
+  }
+  if (b.g !== undefined) return grid(b);
+  if (b.l) { const l = el('div', 'lst'); b.l.forEach(([n, st, tag], i) => { const r = el('div', 'row ' + (st || '')); const sq = el('span', 'sq'); sq.style.background = 'var(--c' + (1 + (i % 5)) + ')'; r.append(sq, el('span', 'nm', n)); if (tag) r.append(el('span', 'tg', tag)); l.append(r); }); return l; }
+  if (b.i) return el('div', 'inp', b.i);
+  if (b.lnk) return el('div', 'lnk', b.lnk);
+  if (b.t) return el('p', 't', b.t);
+  if (b.h) return el('p', 'h', b.h);
+  if (b.b) return btns(b.b);
+  if (b.kv) { const k = el('div', 'kv'); b.kv.forEach(([a, c]) => { const d = el('div'); d.append(el('b', null, a), el('span', null, c)); k.append(d); }); return k; }
+  if (b.r) { const w = el('div', 'rws'); b.r.forEach(([a, c, cls]) => { const r = el('div', 'r ' + (cls || '')); r.append(el('b', null, a)); if (c) r.append(el('span', null, c)); w.append(r); }); return w; }
+  if (b.o !== undefined) {
+    const w = el('div', 'offers');
+    [[`Mensuel`, `essai 7 jours`], [`Annuel`, `essai 7 jours`], [`À vie`, `un seul paiement`]].forEach(([a, c], i) => { const o = el('div', 'offer' + (b.o === i + 1 ? ' tap' : '')); o.append(document.createTextNode(a), el('span', null, c)); w.append(o); });
+    const box = el('div'); box.style.display = 'grid'; box.style.gap = '8px';
+    box.append(el('p', 't', `Trackers illimités, thèmes, statistiques, sans publicité.`), w, el('div', 'lnk', `Restaurer les achats`));
+    return box;
+  }
+  return el('div');
+}
+function screen(o) {
+  const s = el('div', 'scr');
+  if (o.bar) s.append(el('div', 'bar', o.bar));
+  if (o.ban) s.append(el('div', 'ban ' + o.ban.k, o.ban.t));
+  if (o.line) s.append(el('div', 'pline', o.line));
+  if (o.dlg) {
+    const dim = el('div', 'dim'), d = el('div', 'dlg');
+    d.append(el('h4', null, o.dlg.t));
+    [].concat(o.dlg.x || []).forEach((p) => d.append(el('p', null, p)));
+    if (o.dlg.b.length) d.append(btns(o.dlg.b));
+    dim.append(d); s.append(dim);
+  } else {
+    const body = el('div', 'body'); (o.body || []).forEach((b) => body.append(block(b))); s.append(body);
+  }
+  if (o.sheet) { const sh = el('div', 'sheet'); sh.append(el('b', null, o.sheet[0]), el('span', null, o.sheet[1]), el('div', 'btn p tap', o.sheet[2])); s.append(sh); }
+  if (o.toast) s.append(el('div', 'toast', o.toast));
+  return s;
+}
+const WHO = { s: `Sans compte`, a: `Avec compte`, x: `Avec ou sans compte` };
+const app = document.getElementById('app'), nav = document.getElementById('nav');
+let total = 0;
+CH.forEach((c, ci) => {
+  const a = el('a', null, c.n); a.href = '#' + c.id; nav.append(a);
+  const sec = el('section', 'chapter'); sec.id = c.id;
+  sec.append(el('h2', null, c.n), el('p', null, c.intro));
+  c.st.forEach((st, si) => {
+    total++;
+    const art = el('article', 'story');
+    art.dataset.who = st.who; art.dataset.off = st.off ? 1 : 0; art.dataset.prem = st.prem ? 1 : 0; art.dataset.ask = st.ask ? 1 : 0;
+    const txt = el('div', 'txt');
+    const num = el('div', 'num', (ci + 1) + '.' + (si + 1));
+    if (st.ref) num.append(el('span', 'ref', 'spec : ' + st.ref));
+    txt.append(num, el('h3', null, st.t));
+    const chips = el('div', 'chips');
+    chips.append(el('span', 'chip', WHO[st.who]));
+    if (st.off) chips.append(el('span', 'chip off', `Hors ligne`));
+    if (st.prem) chips.append(el('span', 'chip prem', `Premium`));
+    if (st.ask) chips.append(el('span', 'chip ask', `À confirmer`));
+    txt.append(chips);
+    st.x.forEach((p) => txt.append(el('p', null, p)));
+    if (st.ask) txt.append(el('p', 'askwhy', st.ask));
+    const strip = el('div', 'strip');
+    st.s.forEach((p) => {
+      if (p.ar !== undefined) { const ar = el('div', 'arr'); ar.append(el('i', null, '→')); if (p.ar) ar.append(document.createTextNode(p.ar)); strip.append(ar); return; }
+      const box = el('div', 'ph'); box.append(el('div', 'lab', p.lab || ''), screen(p)); strip.append(box);
+    });
+    art.append(txt, strip); sec.append(art);
+  });
+  app.append(sec);
+});
+
+// ---------- filters ----------
+const FILTERS = [[`all`, `Tous les cas (${total})`], [`s`, `Sans compte`], [`a`, `Avec compte`], [`off`, `Hors ligne`], [`prem`, `Premium`], [`ask`, `À confirmer`]];
+const fbar = document.getElementById('filters'), empty = document.getElementById('empty');
+function apply(f) {
+  let shown = 0;
+  document.querySelectorAll('.chapter').forEach((sec) => {
+    let n = 0;
+    sec.querySelectorAll('.story').forEach((st) => {
+      const d = st.dataset;
+      const ok = f === 'all' || (f === 's' && d.who !== 'a') || (f === 'a' && d.who !== 's') || (f === 'off' && d.off === '1') || (f === 'prem' && d.prem === '1') || (f === 'ask' && d.ask === '1');
+      st.hidden = !ok; if (ok) n++;
+    });
+    sec.hidden = n === 0; shown += n;
+  });
+  empty.hidden = shown !== 0;
+  fbar.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.f === f)));
+}
+FILTERS.forEach(([f, t]) => { const b = el('button', null, t); b.type = 'button'; b.dataset.f = f; b.id = 'filter-' + f; b.addEventListener('click', () => apply(f)); fbar.append(b); });
+apply('all');
+</script>

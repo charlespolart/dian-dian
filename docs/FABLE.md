@@ -41,9 +41,16 @@ RevenueCat) sont en anglais ; les textes de l'app vouvoient.
    principe, les neuf modèles, sept histoires de « + » jusqu'aux stats, les
    rappels, Premium). L'ancienne page
    (https://claude.ai/artifact/1rF2wxMQx5fMsxf4Rogz3P) ne fait plus foi.
-4. `docs/PRICING.md` : prix décidés, paywall à refaire (section « Le
+4. Pour les chantiers 10 et 9, décidés le 2026-11-26 :
+   `2026-11-26-offline-sync-design.md` (utiliser l'app sans réseau) et
+   `2026-11-25-account-later-design.md` (le compte invisible), dans cet
+   ordre. Les 116 cas illustrés, sur lesquels Charles a tranché :
+   `2026-11-26-sans-compte-hors-ligne-stories.html`, publiés sur
+   https://claude.ai/artifact/RjAYoZx4Cid4tWpgKkY7xj. Chaque cas de la
+   page porte le numéro du cas de la spec.
+5. `docs/PRICING.md` : prix décidés, paywall à refaire (section « Le
    paywall (pour Fable) »).
-5. Au besoin, les recherches : `docs/research/reports/` (rapports) et
+6. Au besoin, les recherches : `docs/research/reports/` (rapports) et
    `docs/research/notes/` (sources), plus `docs/research/audit-2026-11-22.md`.
 
 ## Les branches
@@ -69,6 +76,8 @@ RevenueCat) sont en anglais ; les textes de l'app vouvoient.
 | 6 | Pop-up premium occasionnelle | `2026-11-23-premium-popup-design.md` | 4 (passe après l'écran des rappels), 5 lot 2 (`stats_ready` dévoile une stat Premium prête) et lot 3 (`link_found`) | à estimer |
 | 7 | Voir un tracker par mois et par semaine (zoom), et plier la barre d'un glissement | `2026-11-25-tracker-zoom-design.md` ; page d'essai https://claude.ai/artifact/TonXNPhgKSxYvDwVet948j (version 2) | la fusion de `feat/comment-badge` (même fichier, `tracker_grid.dart`) ; après la pop-up (6), *mon choix* du 2026-11-25 | à estimer |
 | 8 | Astuces : les fonctions cachées montrées une à une, carnet d'astuces, événements | `2026-11-25-feature-tips-design.md` ; maquettes https://claude.ai/artifact/3HsujtgXLrre5FbtaViGmE | lot 1 : deux champs du bootstrap (backend, avant l'app) ; 5 lot 1 si déjà là (la roue des réglages pour l'astuce 8) ; lot 2 (astuces du zoom) : 7 ; les événements avec le registre RGPD ; le lot 1 juste après les rappels (4), *mon choix* du 2026-11-25 | à estimer |
+| 9 | Entrer sans mur : compte sans identité créé en coulisse, écran d'accueil à quatre boutons, e-mail par code, créer son compte ou rejoindre le sien, Premium sans compte (achat, restauration, reprise des trackers par l'achat), annonces entre deux téléphones, clé dans le trousseau iCloud, écran « Mes données », clé de restauration Android en dernier lot | `2026-11-25-account-later-design.md` ; cas illustrés `2026-11-26-sans-compte-hors-ligne-stories.html` | 10 (il s'appuie sur la copie du téléphone) ; passe avant 2 (le paywall doit connaître le compte invisible) | à estimer, gros ; le plan commence par les vérifications RevenueCat en bac à sable et sur appareils |
+| 10 | Utiliser l'app sans réseau, avec ou sans compte : copie complète sur le téléphone, file des modifications, « le serveur gagne » en cas de conflit, sessions qui durent | `2026-11-26-offline-sync-design.md` ; mêmes cas illustrés | 3 | à estimer, le plus gros de la release : toute la couche de données de l'app est refaite |
 | — | Registre RGPD du projet et politique de confidentialité (événements produit, compteur de visites), en quatre langues ; purge des événements produit au-delà de 13 mois (rien ne les efface aujourd'hui) | specs du compteur et `docs/PRICING.md` (« Relecture ») | avant ou avec 1 et 2 | ½ jour |
 
 Chaque spec finit par une section « Relecture » (du 2026-11-23, ou du
@@ -91,8 +100,11 @@ du backend, puis une version de l'app. Pas de release intermédiaire. Le
 calendrier ci-dessus ne dit donc plus quand chaque chantier sort ; il ne
 reste qu'un ordre de construction (*mon choix*, Fable) : 0, 1 et le
 registre, qui sont du backend ; 3, l'outillage Android, tôt, pour que
-tout le reste soit testé dessus ; puis 2, 5 lot 1, 4, 8 lot 1, 5 lots 2
-et 3, 6, 7, 8 lot 2. Ce que cela change dans les specs est dans
+tout le reste soit testé dessus ; puis 10 et 9 (ajoutés le 2026-11-26,
+validés par Charles : le hors-ligne d'abord, le compte ensuite, tous deux
+avant le paywall) ; puis 2, 5 lot 1, 4, 8 lot 1, 5 lots 2 et 3, 6, 7,
+8 lot 2. Charles sait que l'ensemble ne sortira sans doute pas avant le
+Nouvel An. Ce que cela change dans les specs est dans
 `docs/CONFIRMATION.md`, « Une seule release ». `master` avance sans
 release ; un correctif urgent de la production part du tag.
 
@@ -173,6 +185,14 @@ release ; un correctif urgent de la production part du tag.
   serveur ne voit pas l'adresse des visiteurs ou n'a pas pu charger la base
   des pays) ; chaque trimestre, relire la table des robots
   (`backend/src/audience/bots.ts`) face aux listes citées dans son en-tête.
+- Pour le chantier 9 : créer une clé d'API RevenueCat et la poser sur le
+  serveur ; vérifier dans RevenueCat que le réglage de restauration est
+  « Transfer to new App User ID » ; vérifier dans App Store Connect si le
+  partage familial est activé pour les produits ; donner aux relecteurs
+  d'Apple et de Google un compte de test dont le code de connexion est
+  fixe ; faire sur de vrais appareils (deux iPhone, ou un iPhone et un
+  iPad ; deux Android) les essais du trousseau, des sauvegardes et de la
+  clé de restauration que la spec liste sous « À essayer ».
 - Avant la sortie du paywall refait : mettre à jour les étiquettes de
   confidentialité de l'App Store et la sécurité des données de Google Play
   (événements du parcours d'achat liés au compte).
