@@ -186,7 +186,7 @@ async function main() {
 
     const res = await site('/?utm_source=pinterest&utm_campaign=mood-en');
     assert.equal(res.status, 200);
-    assert.equal(res.headers.get('referrer-policy'), 'no-referrer', 'what the page loads (its fonts) does not learn which site the visitor is on');
+    assert.equal(res.headers.get('referrer-policy'), 'no-referrer', 'a link followed from the page does not say which page the visitor was on');
     const html = await res.text();
     assert.ok(html.includes('href="/go/play?lang=en&amp;utm_source=pinterest&amp;utm_campaign=mood-en"'), 'the Play button carries the page language and the campaign');
     assert.ok(html.includes('href="/go/apple?lang=en&amp;utm_source=pinterest&amp;utm_campaign=mood-en"'), 'the App Store button carries the page language and the campaign');
@@ -236,6 +236,30 @@ async function main() {
     }
     assert.equal((await site('/privacy')).headers.get('referrer-policy'), 'no-referrer', 'the other pages keep the strict policy');
     assert.ok((await (await site('/robots.txt')).text()).includes('Disallow: /go/'), 'polite robots do not follow the store buttons');
+
+    // Nothing on the site is loaded from a third party: its fonts are served
+    // from here (docs/REGISTRE.md). Fetched from Google, they gave it the
+    // address of every visitor.
+    for (const path of ['/', '/privacy', '/terms', '/legal', '/contact', '/about', '/delete-account', '/privacy/audience', '/no-such-page']) {
+      const page = await site(path);
+      const body = await page.text();
+      assert.ok(!/googleapis|gstatic/.test(body), `${path} loads nothing from Google`);
+      assert.ok(!/googleapis|gstatic/.test(page.headers.get('content-security-policy') ?? ''), `${path}: the content security policy allows no font host but this one`);
+      assert.ok(body.includes('href="/fonts/fonts.css"'), `${path} loads the site's own fonts`);
+    }
+    const fontsCss = await site('/fonts/fonts.css');
+    assert.equal(fontsCss.status, 200, 'the font stylesheet is served');
+    assert.match(fontsCss.headers.get('content-type') ?? '', /^text\/css/);
+    const css = await fontsCss.text();
+    assert.ok(css.includes('@font-face') && !css.includes('https://'), 'the font stylesheet names files of this site only');
+    const fontFiles = [...new Set([...css.matchAll(/url\((\/fonts\/[^)]+)\)/g)].map((match) => match[1]))];
+    assert.ok(fontFiles.length >= 3, `the stylesheet names its font files (${fontFiles.length})`);
+    for (const file of fontFiles) {
+      const font = await site(file);
+      assert.equal(font.status, 200, `${file} is served`);
+      assert.equal(font.headers.get('content-type'), 'font/woff2', `${file} is a woff2 font`);
+      await font.arrayBuffer();
+    }
     // The website's contact page is a real form posting to /api/contact.
     const contact = await (await site('/contact?lang=fr')).text();
     assert.ok(contact.includes('id="contact-form"') && contact.includes('/api/contact'), 'contact page has the form');

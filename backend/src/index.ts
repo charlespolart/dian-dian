@@ -38,7 +38,9 @@ const server = createServer(app);
 app.set('trust proxy', 1);
 
 // Security. CSP is tuned for the server-rendered landing + legal pages, which
-// use inline <style>, inline <script>, inline event handlers and Google Fonts.
+// use inline <style>, inline <script> and inline event handlers. Their fonts
+// are served from here (public/fonts): the pages load nothing from a third
+// party, and the policy allows no other host.
 // No user-controlled HTML is rendered (the ?lang param is allow-listed), so
 // 'unsafe-inline' here carries no real XSS risk. The mobile app hits /api/*
 // (JSON) — CSP is a browser directive and does not affect it.
@@ -48,8 +50,8 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       imgSrc: ["'self'", 'data:', 'https:'],
-      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      fontSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'"],
       scriptSrcAttr: ["'unsafe-inline'"],
       connectSrc: ["'self'"],

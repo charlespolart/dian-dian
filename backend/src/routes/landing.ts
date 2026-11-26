@@ -283,9 +283,7 @@ function page(lang: Lang, campaign = '', platform: StorePlatform = 'unknown'): s
   <meta property="og:image" content="${ORIGIN}/shots/1.jpg" />
   <meta property="og:url" content="${ORIGIN}/" />
   <meta name="twitter:card" content="summary_large_image" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet" />
+  <link href="/fonts/fonts.css" rel="stylesheet" />
   <script>document.documentElement.classList.add('js');</script>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
