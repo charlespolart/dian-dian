@@ -92,6 +92,27 @@ void main() {
   final bar = find.text('<');
   final groups = {'grid': grid, 'sidebar': sidebar, 'bar': bar};
 
+  // A free account's banner is pinned above the system bar (AdBannerFrame):
+  // in portrait the grid ends above it, or the banner hides the 31st row.
+  testWidgets('portrait, free account: the grid ends above the banner, which sits above the home indicator', (tester) async {
+    // Portrait tablet, an iPad's home indicator (20 points): the phone sizes
+    // overflow the sidebar's year row under the test font, not the real one;
+    // the banner is the same 320 × 50 in portrait on both.
+    tabletPortrait(tester);
+    tester.view.viewPadding = const FakeViewPadding(top: 24 * 3, bottom: 20 * 3);
+    tester.view.padding = const FakeViewPadding(top: 24 * 3, bottom: 20 * 3);
+    // Ads on, as for a free account on a phone: the screen keeps the banner's room
+    // whether or not an ad loads (none can in a test).
+    AdService().enable();
+    addTearDown(AdService().disable);
+    final anchors = MorphAnchors();
+    await tester.pumpWidget(TrackerHarness(anchors: anchors).widget);
+    await tester.pumpAndSettle();
+    final screenBottom = tester.view.physicalSize.height / tester.view.devicePixelRatio;
+    final bannerTop = screenBottom - 20 - AdBannerWidget.reservedHeight(premium: false);
+    expect(anchors.rect(MorphAnchors.shell)!.bottom, lessThanOrEqualTo(bannerTop));
+  });
+
   testWidgets('arriving by the morph, the chrome is unseen until the handover, then comes in by groups', (tester) async {
     tabletPortrait(tester);
     // Clock from the first frame, the one the stage's morph starts on too.

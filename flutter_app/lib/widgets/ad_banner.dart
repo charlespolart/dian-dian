@@ -18,6 +18,13 @@ class AdBannerWidget extends StatefulWidget {
 
   const AdBannerWidget({super.key, this.width});
 
+  /// The room a portrait screen keeps free at its bottom, above the system
+  /// bar, for the banner of a free account: the standard 320 × 50 banner and
+  /// its margins. Kept whether or not an ad has loaded, so the screen does
+  /// not jump when one arrives; 0 when no banner can show.
+  static double reservedHeight({required bool premium}) =>
+      kIsWeb || AdService().isDisabled || premium ? 0 : AdSize.banner.height + 4.0;
+
   @override
   State<AdBannerWidget> createState() => _AdBannerWidgetState();
 }
@@ -88,18 +95,37 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
     if (!_isLoaded || _bannerAd == null) return const SizedBox.shrink();
 
     final lang = context.read<LanguageProvider>();
+    return AdBannerFrame(
+      adSize: Size(_bannerAd!.size.width.toDouble(), _bannerAd!.size.height.toDouble()),
+      ad: AdWidget(ad: _bannerAd!),
+      onClose: () => PremiumGateDialog.show(context, feature: lang.t('premium.feature.noAds'), event: 'no_ads'),
+    );
+  }
+}
 
-    return Stack(
+/// The loaded banner and its close button, pinned to the bottom of a screen
+/// above the system bar: the screens draw edge to edge (Android 15+, iPhone),
+/// so without it the three-button navigation bar or the home indicator would
+/// cover the ad. Only the system bar counts (`viewPadding`), not the keyboard.
+class AdBannerFrame extends StatelessWidget {
+  final Size adSize;
+  final Widget ad;
+  final VoidCallback onClose;
+
+  const AdBannerFrame({super.key, required this.adSize, required this.ad, required this.onClose});
+
+  @override
+  Widget build(BuildContext context) {
+    final systemBar = MediaQuery.viewPaddingOf(context).bottom;
+    return Padding(
+      padding: EdgeInsets.only(bottom: systemBar),
+      child: Stack(
         children: [
           // Ad banner
           Padding(
             padding: const EdgeInsets.only(top: 2, bottom: 2),
             child: Center(
-              child: SizedBox(
-                width: _bannerAd!.size.width.toDouble(),
-                height: _bannerAd!.size.height.toDouble(),
-                child: AdWidget(ad: _bannerAd!),
-              ),
+              child: SizedBox(width: adSize.width, height: adSize.height, child: ad),
             ),
           ),
           // Close button
@@ -108,7 +134,7 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
             right: 6,
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onTap: () => PremiumGateDialog.show(context, feature: lang.t('premium.feature.noAds'), event: 'no_ads'),
+              onTap: onClose,
               child: Padding(
                 padding: const EdgeInsets.all(4),
                 child: Container(
@@ -127,6 +153,7 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
             ),
           ),
         ],
+      ),
     );
   }
 }

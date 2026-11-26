@@ -629,14 +629,16 @@ class _PageListScreenState extends State<PageListScreen> {
             child: AdBannerWidget(),
           ),
 
-          // FAB positioned manually
+          // FAB positioned manually, above the system bar (the screen runs
+          // edge to edge under it: Android 15+, iPhone) and above the banner.
           Positioned(
             right: 16,
-            bottom: _bannerVisible
-                ? 56
-                : (!kIsWeb && !context.read<PremiumProvider>().isPremium
-                      ? 66
-                      : 16),
+            bottom: MediaQuery.viewPaddingOf(context).bottom +
+                (_bannerVisible
+                    ? 56
+                    : (!kIsWeb && !context.read<PremiumProvider>().isPremium
+                          ? 66
+                          : 16)),
             child: PressScale(
               onTap: _createPage,
               child: Container(

@@ -85,6 +85,25 @@ void main() {
     AdService().disable();
   });
 
+  // Edge to edge (Android 15+, iPhone), the screen runs under the system bar:
+  // the + button keeps its distance above it, not above the screen's edge.
+  for (final (name, vip, above) in [('a free account (room for the banner)', false, 66.0), ('a Premium account', true, 16.0)]) {
+    testWidgets('$name: the + button stays above the system bar', (tester) async {
+      phone(tester);
+      // 48 logical points of system bar (the view's padding is in physical pixels).
+      tester.view.viewPadding = FakeViewPadding(bottom: 48 * tester.view.devicePixelRatio);
+      tester.view.padding = FakeViewPadding(bottom: 48 * tester.view.devicePixelRatio);
+      addTearDown(tester.view.resetViewPadding);
+      addTearDown(tester.view.resetPadding);
+      final h = ListHarness(vip: vip);
+      await tester.pumpWidget(h.widget);
+      await tester.pumpAndSettle();
+      final button = find.ancestor(of: find.byIcon(Icons.add_rounded), matching: find.byType(PressScale)).first;
+      final screenBottom = tester.view.physicalSize.height / tester.view.devicePixelRatio;
+      expect(screenBottom - tester.getBottomLeft(button).dy, above + 48);
+    });
+  }
+
   testWidgets('a year change keeps where the list was scrolled', (tester) async {
     phone(tester);
     final h = ListHarness(pageCount: 10, vip: true);

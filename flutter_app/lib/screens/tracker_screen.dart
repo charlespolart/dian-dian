@@ -613,8 +613,11 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
   ) {
     final isTablet = MediaQuery.of(context).size.shortestSide >= 600;
 
+    // The grid ends above the banner of a free account, which is pinned
+    // above the system bar (AdBannerFrame): otherwise it hides the 31st row.
+    final bannerRoom = AdBannerWidget.reservedHeight(premium: context.watch<PremiumProvider>().isPremium);
     return Padding(
-      padding: EdgeInsets.only(bottom: _bottomSafe),
+      padding: EdgeInsets.only(bottom: _bottomSafe + bannerRoom),
       child: Column(
       children: [
         _buildTopBar(),
