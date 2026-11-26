@@ -497,15 +497,15 @@ class _AppShellState extends State<AppShell> {
                   child: _buildAppScreen(),
                 ),
                 // Global undo delete bar
-                Consumer<PagesProvider>(
-                  builder: (context, pagesProv, _) {
+                Consumer2<PagesProvider, PremiumProvider>(
+                  builder: (context, pagesProv, premium, _) {
                     if (pagesProv.pendingDeletePage == null) {
                       return const SizedBox.shrink();
                     }
                     return Positioned(
                       left: 16,
-                      right: 16,
-                      bottom: 24 + MediaQuery.of(context).padding.bottom,
+                      right: UndoDeleteBar.rightInset,
+                      bottom: UndoDeleteBar.bottomOffset(context, premium: premium.isPremium),
                       child: UndoDeleteBar(
                         pageName: pagesProv.pendingDeletePage!.title,
                         onUndo: () => pagesProv.undoDeletePage(),

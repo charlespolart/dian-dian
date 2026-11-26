@@ -23,7 +23,7 @@ class AdBannerWidget extends StatefulWidget {
   /// its margins. Kept whether or not an ad has loaded, so the screen does
   /// not jump when one arrives; 0 when no banner can show.
   static double reservedHeight({required bool premium}) =>
-      kIsWeb || AdService().isDisabled || premium ? 0 : AdSize.banner.height + 4.0;
+      kIsWeb || AdService().isDisabled || premium ? 0 : AdSize.banner.height + 2 * AdBannerFrame.margin;
 
   @override
   State<AdBannerWidget> createState() => _AdBannerWidgetState();
@@ -106,13 +106,18 @@ class _AdBannerWidgetState extends State<AdBannerWidget> {
 /// The loaded banner and its close button, pinned to the bottom of a screen
 /// above the system bar: the screens draw edge to edge (Android 15+, iPhone),
 /// so without it the three-button navigation bar or the home indicator would
-/// cover the ad. Only the system bar counts (`viewPadding`), not the keyboard.
+/// cover the ad. Only the system bar counts (`viewPadding`, which a keyboard
+/// leaves alone — as long as no ancestor removes the view insets, which also
+/// lowers it: the tracker keeps the banner outside its removeViewInsets).
 class AdBannerFrame extends StatelessWidget {
   final Size adSize;
   final Widget ad;
   final VoidCallback onClose;
 
   const AdBannerFrame({super.key, required this.adSize, required this.ad, required this.onClose});
+
+  /// Above and below the ad (AdBannerWidget.reservedHeight counts it twice).
+  static const double margin = 2;
 
   @override
   Widget build(BuildContext context) {
@@ -123,14 +128,14 @@ class AdBannerFrame extends StatelessWidget {
         children: [
           // Ad banner
           Padding(
-            padding: const EdgeInsets.only(top: 2, bottom: 2),
+            padding: const EdgeInsets.only(top: margin, bottom: margin),
             child: Center(
               child: SizedBox(width: adSize.width, height: adSize.height, child: ad),
             ),
           ),
           // Close button
           Positioned(
-            top: 2,
+            top: margin,
             right: 6,
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,

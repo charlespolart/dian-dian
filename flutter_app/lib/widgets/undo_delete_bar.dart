@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/language_provider.dart';
 import '../theme/app_theme.dart';
+import 'ad_banner.dart';
 import 'press_scale.dart';
 
 /// Animated undo bar shown after deleting a tracker.
@@ -17,6 +18,17 @@ class UndoDeleteBar extends StatefulWidget {
     required this.onUndo,
     required this.duration,
   });
+
+  /// Where the bar sits in the shell's Stack, over the list for a few
+  /// seconds: 24 above the system bar and, for a free account, above the ad
+  /// banner pinned on it (AdBannerFrame) — never over the ad or its close
+  /// button.
+  static double bottomOffset(BuildContext context, {required bool premium}) =>
+      MediaQuery.viewPaddingOf(context).bottom + AdBannerWidget.reservedHeight(premium: premium) + 24;
+
+  /// Its right edge stops left of the list's + button (16 from the edge,
+  /// 48 wide), which stays usable while the bar shows.
+  static const double rightInset = 72;
 
   @override
   State<UndoDeleteBar> createState() => _UndoDeleteBarState();

@@ -104,6 +104,40 @@ void main() {
     });
   }
 
+  // Scrolled to the end, the last row of cards stays clear of what is pinned
+  // to the bottom: the system bar, then the banner (free) or the + button.
+  for (final (name, vip) in [('a free account', false), ('a Premium account', true)]) {
+    testWidgets('$name, scrolled to the end: the last cards end above the system bar and what sits on it', (tester) async {
+      phone(tester);
+      tester.view.viewPadding = FakeViewPadding(bottom: 48 * tester.view.devicePixelRatio);
+      tester.view.padding = FakeViewPadding(bottom: 48 * tester.view.devicePixelRatio);
+      addTearDown(tester.view.resetViewPadding);
+      addTearDown(tester.view.resetPadding);
+      final h = ListHarness(pageCount: 9, vip: vip);
+      await tester.pumpWidget(h.widget);
+      await tester.pumpAndSettle();
+      gridPosition(tester).jumpTo(gridPosition(tester).maxScrollExtent);
+      await tester.pumpAndSettle();
+      final screenBottom = tester.view.physicalSize.height / tester.view.devicePixelRatio;
+      final lastCardBottom = find.byType(PageCard).evaluate().map((e) => tester.getBottomLeft(find.byWidget(e.widget)).dy).reduce((a, b) => a > b ? a : b);
+      expect(screenBottom - lastCardBottom, greaterThanOrEqualTo(48 + 80 - 0.01));
+    });
+  }
+
+  testWidgets('back from a tracker at the end of the list, its card is scrolled above the system bar and the banner', (tester) async {
+    phone(tester);
+    tester.view.viewPadding = FakeViewPadding(bottom: 48 * tester.view.devicePixelRatio);
+    tester.view.padding = FakeViewPadding(bottom: 48 * tester.view.devicePixelRatio);
+    addTearDown(tester.view.resetViewPadding);
+    addTearDown(tester.view.resetPadding);
+    final h = ListHarness(pageCount: 9, revealPageId: 'p8');
+    await tester.pumpWidget(h.widget);
+    await tester.pumpAndSettle();
+    final screenBottom = tester.view.physicalSize.height / tester.view.devicePixelRatio;
+    final card = find.ancestor(of: find.text('T8'), matching: find.byType(PageCard));
+    expect(screenBottom - tester.getBottomLeft(card).dy, greaterThanOrEqualTo(48 + 80 - 0.01));
+  });
+
   testWidgets('a year change keeps where the list was scrolled', (tester) async {
     phone(tester);
     final h = ListHarness(pageCount: 10, vip: true);

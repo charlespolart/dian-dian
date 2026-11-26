@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:dian_dian/providers/language_provider.dart';
+import 'package:dian_dian/services/ad_service.dart';
+import 'package:dian_dian/widgets/ad_banner.dart';
 import 'package:dian_dian/widgets/undo_delete_bar.dart';
 
 void main() {
@@ -22,6 +24,26 @@ void main() {
           ]),
         ),
       );
+
+  // The bar shows over the list for 8 seconds after a deletion: it must not
+  // cover the ad banner (nor its close button), pinned above the system bar,
+  // nor the + button at the list's bottom right.
+  testWidgets('the undo bar sits above the system bar and the banner, and ends left of the + button', (tester) async {
+    addTearDown(AdService().enable);
+    AdService().enable();
+    late BuildContext context;
+    await tester.pumpWidget(MediaQuery(
+      data: const MediaQueryData(viewPadding: EdgeInsets.only(bottom: 48)),
+      child: Builder(builder: (c) {
+        context = c;
+        return const SizedBox();
+      }),
+    ));
+    expect(UndoDeleteBar.bottomOffset(context, premium: false), 48 + AdBannerWidget.reservedHeight(premium: false) + 24);
+    expect(UndoDeleteBar.bottomOffset(context, premium: true), 48 + 24);
+    // The + button: 16 from the right edge, 48 wide.
+    expect(UndoDeleteBar.rightInset, greaterThanOrEqualTo(16 + 48 + 8));
+  });
 
   testWidgets('the undo bar never inherits the MaterialApp fallback style (the yellow double underline)', (tester) async {
     SharedPreferences.setMockInitialValues({});

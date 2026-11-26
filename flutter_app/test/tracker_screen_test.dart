@@ -31,7 +31,7 @@ import 'helpers.dart';
 class TrackerHarness {
   late final Widget widget;
 
-  TrackerHarness({TrackerEntrance entrance = TrackerEntrance.none, AudioService? audio, MorphAnchors? anchors, String title = 'Mood'}) {
+  TrackerHarness({TrackerEntrance entrance = TrackerEntrance.none, AudioService? audio, MorphAnchors? anchors, String title = 'Mood', bool vip = false}) {
     final client = MockClient((req) async => http.Response('{"error":"x"}', 404));
     final api = ApiService.custom(client: client, tokens: FakeTokens());
     final rows = [pageJson('p0', title: title)];
@@ -62,7 +62,7 @@ class TrackerHarness {
         ChangeNotifierProvider.value(value: pages),
         ChangeNotifierProvider.value(value: cells),
         ChangeNotifierProvider.value(value: legends),
-        ChangeNotifierProvider(create: (_) => PremiumProvider()),
+        ChangeNotifierProvider(create: (_) => vip ? (PremiumProvider()..setVip(true)) : PremiumProvider()),
         Provider<SyncService>.value(value: sync),
         if (audio != null) ChangeNotifierProvider<AudioService>.value(value: audio),
       ],
@@ -111,6 +111,51 @@ void main() {
     final screenBottom = tester.view.physicalSize.height / tester.view.devicePixelRatio;
     final bannerTop = screenBottom - 20 - AdBannerWidget.reservedHeight(premium: false);
     expect(anchors.rect(MorphAnchors.shell)!.bottom, lessThanOrEqualTo(bannerTop));
+  });
+
+  /// Portrait tablet with an iPad's 20-point home indicator and ads on, as
+  /// for a free account on a device; [keyboard] points of keyboard open.
+  void bannerScreen(WidgetTester tester, {double keyboard = 0}) {
+    tabletPortrait(tester);
+    final dpr = tester.view.devicePixelRatio;
+    tester.view.viewPadding = FakeViewPadding(top: 24 * dpr, bottom: 20 * dpr);
+    tester.view.viewInsets = FakeViewPadding(bottom: keyboard * dpr);
+    tester.view.padding = FakeViewPadding(top: 24 * dpr, bottom: (20 - keyboard).clamp(0, 20) * dpr);
+    addTearDown(tester.view.resetViewInsets);
+    AdService().enable();
+    addTearDown(AdService().disable);
+  }
+
+  double bannerTop(WidgetTester tester) =>
+      tester.view.physicalSize.height / tester.view.devicePixelRatio - 20 - AdBannerWidget.reservedHeight(premium: false);
+
+  // Creating a tracker opens it while the dialog's keyboard is still closing:
+  // the room kept for the banner must not depend on that moment.
+  testWidgets('opened while the keyboard closes, a free account\'s grid still ends above the banner', (tester) async {
+    bannerScreen(tester, keyboard: 300);
+    final anchors = MorphAnchors();
+    await tester.pumpWidget(TrackerHarness(anchors: anchors).widget);
+    await tester.pump();
+    bannerScreen(tester, keyboard: 12); // padding 8: the keyboard almost gone
+    await tester.pump();
+    bannerScreen(tester); // closed
+    await tester.pumpAndSettle();
+    expect(anchors.rect(MorphAnchors.shell)!.bottom, lessThanOrEqualTo(bannerTop(tester)));
+  });
+
+  testWidgets('the banner does not follow the keyboard: it keeps the system bar\'s height under it', (tester) async {
+    bannerScreen(tester, keyboard: 300);
+    await tester.pumpWidget(TrackerHarness().widget);
+    await tester.pumpAndSettle();
+    expect(MediaQuery.viewPaddingOf(tester.element(find.byType(AdBannerWidget))).bottom, 20);
+  });
+
+  testWidgets('portrait, Premium account: no room is kept for a banner', (tester) async {
+    bannerScreen(tester);
+    final anchors = MorphAnchors();
+    await tester.pumpWidget(TrackerHarness(anchors: anchors, vip: true).widget);
+    await tester.pumpAndSettle();
+    expect(anchors.rect(MorphAnchors.shell)!.bottom, greaterThan(bannerTop(tester)));
   });
 
   testWidgets('arriving by the morph, the chrome is unseen until the handover, then comes in by groups', (tester) async {

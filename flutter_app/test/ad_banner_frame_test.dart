@@ -49,6 +49,14 @@ void main() {
     });
   }
 
+  testWidgets('the room a screen keeps is exactly the frame above the system bar', (tester) async {
+    addTearDown(AdService().enable);
+    AdService().enable();
+    phoneScreen(tester);
+    await tester.pumpWidget(pinned(systemBar: 48));
+    expect(tester.getSize(find.byType(AdBannerFrame)).height - 48, AdBannerWidget.reservedHeight(premium: false));
+  });
+
   testWidgets('an open keyboard does not move it: only the system bar counts', (tester) async {
     await tester.pumpWidget(pinned(systemBar: 34, keyboard: 300));
     expect(tester.getSize(find.byType(AdBannerFrame)).height, 50 + 4 + 34);

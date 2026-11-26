@@ -428,6 +428,9 @@ class _PageListScreenState extends State<PageListScreen> {
                           return LayoutBuilder(
                             builder: (context, constraints) {
                               final metrics = gridMetrics(constraints.maxWidth);
+                              // The grid runs to the screen's edge, under the system bar
+                              // (edge to edge) and what is pinned above it (banner, + button).
+                              final bottomRoom = MediaQuery.viewPaddingOf(context).bottom + (_bannerVisible ? 90.0 : 80.0);
                               final revealIndex = widget.revealPageId == null
                                   ? -1
                                   : sortedPages.indexWhere((p) => p.id == widget.revealPageId);
@@ -439,7 +442,7 @@ class _PageListScreenState extends State<PageListScreen> {
                                         columns: metrics.columns,
                                         rowExtent: metrics.rowExtent,
                                         spacing: _gridSpacing,
-                                        viewportHeight: constraints.maxHeight,
+                                        viewportHeight: constraints.maxHeight - bottomRoom,
                                         topPadding: _gridTopPadding,
                                       ),
                               );
@@ -459,7 +462,7 @@ class _PageListScreenState extends State<PageListScreen> {
                                   left: _gridSidePadding,
                                   right: _gridSidePadding,
                                   top: _gridTopPadding,
-                                  bottom: _bannerVisible ? 90 : 80,
+                                  bottom: bottomRoom,
                                 ),
                                 gridDelegate:
                                     SliverGridDelegateWithMaxCrossAxisExtent(

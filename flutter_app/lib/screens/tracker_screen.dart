@@ -74,7 +74,6 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
   static const _sidebarCollapsed = 32.0;
 
   bool _editingTitle = false;
-  double _bottomSafe = 0;
   bool _showLegendLabels = true;
   String? _selectedLegendId;
   late TextEditingController _titleController;
@@ -179,9 +178,6 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_bottomSafe == 0) {
-      _bottomSafe = MediaQuery.of(context).padding.bottom;
-    }
     if (!_revealArmed) {
       _revealArmed = true;
       if (widget.entrance == TrackerEntrance.morph && !AppMotion.reduced(context)) {
@@ -324,16 +320,20 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
     return Scaffold(
       backgroundColor: Colors.transparent,
       resizeToAvoidBottomInset: false,
-      body: MediaQuery.removeViewInsets(
-        context: context,
-        removeBottom: true,
-        child: Stack(
+      // The layout ignores the keyboard (removeViewInsets): a title being
+      // edited does not squeeze the grid. The banner sits outside it, so its
+      // system bar stays the real one (AdBannerFrame) while a keyboard is up.
+      body: Stack(
         children: [
-          SafeArea(
-            bottom: false,
-            child: useWideLayout
-                ? _buildLandscapeLayout(lang, cellsProv, legends, filledDays, streak, yearPercent)
-                : _buildPortraitLayout(lang, cellsProv, legends, filledDays, streak, yearPercent),
+          MediaQuery.removeViewInsets(
+            context: context,
+            removeBottom: true,
+            child: SafeArea(
+              bottom: false,
+              child: useWideLayout
+                  ? _buildLandscapeLayout(lang, cellsProv, legends, filledDays, streak, yearPercent)
+                  : _buildPortraitLayout(lang, cellsProv, legends, filledDays, streak, yearPercent),
+            ),
           ),
           Positioned(
             left: 0,
@@ -342,7 +342,6 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
             child: AdBannerWidget(width: useWideLayout ? _shellLeft : null),
           ),
         ],
-      ),
       ),
     );
   }
@@ -613,11 +612,16 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
   ) {
     final isTablet = MediaQuery.of(context).size.shortestSide >= 600;
 
-    // The grid ends above the banner of a free account, which is pinned
-    // above the system bar (AdBannerFrame): otherwise it hides the 31st row.
+    // The grid ends above the system bar and, for a free account, above the
+    // banner pinned on it (AdBannerFrame): otherwise it hides the 31st row.
+    // viewPadding, read from this State's context (above the screen's
+    // removeViewInsets): the system bar alone, never the keyboard, so the
+    // grid neither jumps when a keyboard opens nor depends on the moment the
+    // screen was built.
+    final systemBar = MediaQuery.viewPaddingOf(context).bottom;
     final bannerRoom = AdBannerWidget.reservedHeight(premium: context.watch<PremiumProvider>().isPremium);
     return Padding(
-      padding: EdgeInsets.only(bottom: _bottomSafe + bannerRoom),
+      padding: EdgeInsets.only(bottom: systemBar + bannerRoom),
       child: Column(
       children: [
         _buildTopBar(),
