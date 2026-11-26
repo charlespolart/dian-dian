@@ -134,6 +134,13 @@
       "when": 1795609086124,
       "tag": "0018_landing_visits",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1795711156811,
+      "tag": "0019_events_opt_out",
+      "breakpoints": true
     }
   ]
 }

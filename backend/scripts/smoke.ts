@@ -525,6 +525,20 @@ async function main() {
     assert.deepEqual(await origin('paywall.stats'), { platform: 'ios', appVersion: '1.5.0' }, 'platform and version are kept');
     assert.deepEqual(await origin('paywall.export'), { platform: null, appVersion: null }, 'an unknown origin is left empty');
     assert.deepEqual(await origin('paywall.tracker_limit'), { platform: null, appVersion: null }, 'an app that sends the name alone (≤ 1.4.0) still counts');
+
+    // An account that objected to product events (docs/REGISTRE.md, fiche 7):
+    // the app is answered as usual and nothing is written.
+    const written = async (name: string) => (await sql`select count(*)::int as n from events where user_id = ${userId} and name = ${name}`)[0].n as number;
+    await sql`update users set events_opt_out = true where id = ${userId}`;
+    r = await call('POST', '/api/events', { name: 'paywall.themes' });
+    assert.equal(r.status, 204, 'an account that objected is answered like any other');
+    assert.equal(await written('paywall.themes'), 0, 'and nothing is written for it');
+    r = await call('POST', '/api/events', { name: 'Bad Name!' });
+    assert.equal(r.status, 400, 'a bad name is refused as before');
+    await sql`update users set events_opt_out = false where id = ${userId}`;
+    r = await call('POST', '/api/events', { name: 'paywall.themes' });
+    assert.equal(r.status, 204);
+    assert.equal(await written('paywall.themes'), 1, 'once the objection is lifted, events are written again');
   }
 
   // --- retention: 13 months for product events, and for purchase events ----

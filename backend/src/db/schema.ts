@@ -11,6 +11,10 @@ export const users = pgTable('users', {
   language: text('language'),
   cursorId: text('cursor_id').notNull().default('cat'),
   cursorEnabled: boolean('cursor_enabled').notNull().default(false),
+  // The person objected to product events (docs/REGISTRE.md, fiche 7): the
+  // server writes none for this account. Set by hand, on request; no route
+  // shows it or changes it.
+  eventsOptOut: boolean('events_opt_out').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 

@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "events_opt_out" boolean DEFAULT false NOT NULL;
