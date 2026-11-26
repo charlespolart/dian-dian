@@ -420,7 +420,6 @@ async function main() {
       } else {
         await sql`delete from audience_months where month = '2020-03-01'`;
       }
-      await db.$client.end();
     }
   }
 
@@ -526,6 +525,45 @@ async function main() {
     assert.deepEqual(await origin('paywall.stats'), { platform: 'ios', appVersion: '1.5.0' }, 'platform and version are kept');
     assert.deepEqual(await origin('paywall.export'), { platform: null, appVersion: null }, 'an unknown origin is left empty');
     assert.deepEqual(await origin('paywall.tracker_limit'), { platform: null, appVersion: null }, 'an app that sends the name alone (≤ 1.4.0) still counts');
+  }
+
+  // --- retention: 13 months for product events, and for purchase events ----
+  // --- that name no account (docs/REGISTRE.md) ------------------------------
+  if (sql) {
+    const { db } = await import('../src/db/index.js');
+    const { keptSince, purgeOldRows } = await import('../src/lib/retention.js');
+    const run = `smoke-${Date.now()}`;
+    const now = new Date();
+    const limit = keptSince(now, 13);
+    const justBefore = new Date(limit.getTime() - 1);
+    const threeYearsAgo = new Date(Date.UTC(now.getUTCFullYear() - 3, now.getUTCMonth(), 1));
+    await sql`
+      insert into events (user_id, name, created_at)
+      values (${userId}, 'smoke.old', ${justBefore}), (${userId}, 'smoke.edge', ${limit}), (${userId}, 'smoke.recent', ${now})`;
+    const purchaseEvent = (id: string, account: string | null, receivedAt: Date) => sql`
+      insert into subscription_events (rc_event_id, user_id, type, event_at, payload, received_at)
+      values (${`${run}-${id}`}, ${account}, 'TEST', ${receivedAt}, '{}'::jsonb, ${receivedAt})`;
+    await purchaseEvent('orphan-old', null, justBefore);
+    await purchaseEvent('orphan-edge', null, limit);
+    await purchaseEvent('owned-old', userId, threeYearsAgo);
+    const left = async () => ({
+      events: (await sql`select name from events where user_id = ${userId} and name like 'smoke.%' order by name`).map((row) => row.name as string),
+      purchaseEvents: (await sql`select rc_event_id from subscription_events where rc_event_id like ${`${run}-%`} order by rc_event_id`).map((row) => row.rc_event_id as string),
+    });
+    try {
+      const purged = await purgeOldRows(db, now);
+      assert.ok(purged.events >= 1 && purged.purchaseEvents >= 1, `the purge says what it deleted: ${JSON.stringify(purged)}`);
+      const kept = {
+        events: ['smoke.edge', 'smoke.recent'],
+        purchaseEvents: [`${run}-orphan-edge`, `${run}-owned-old`],
+      };
+      assert.deepEqual(await left(), kept, 'older than the limit is deleted; the limit itself, and the purchase events of an account whatever their age, are kept');
+      await purgeOldRows(db, now);
+      assert.deepEqual(await left(), kept, 'purging again deletes nothing more');
+    } finally {
+      await sql`delete from events where user_id = ${userId} and name like 'smoke.%'`;
+      await sql`delete from subscription_events where rc_event_id like ${`${run}-%`}`;
+    }
   }
 
   // --- RevenueCat webhook: every event is kept, the entitlement follows -----
@@ -773,6 +811,7 @@ async function main() {
   if (sql) {
     const [{ n }] = await sql`select count(*)::int as n from subscription_events where user_id = ${userId}`;
     assert.equal(n, 0, 'deleting the account deletes its purchase events');
+    await (await import('../src/db/index.js')).db.$client.end();
     await sql.end();
   }
   console.log('smoke: OK');

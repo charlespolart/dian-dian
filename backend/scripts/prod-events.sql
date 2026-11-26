@@ -23,7 +23,7 @@ WHERE NOT (u.vip OR u.email ILIKE '%@example.com' OR u.email ILIKE '%@overridede
 GROUP BY 1, 2
 ORDER BY 1, 2;
 
-\echo === Total par événement ===
+\echo === Total par événement (13 mois gardés au plus : le mois en cours et les 12 précédents) ===
 SELECT e.name, count(*) AS occurrences, count(DISTINCT e.user_id) AS comptes
 FROM events e JOIN users u ON u.id = e.user_id
 WHERE NOT (u.vip OR u.email ILIKE '%@example.com' OR u.email ILIKE '%@overridedev.com' OR u.email = 'demo@diandian.app' OR u.email ILIKE '%@mydiandian.app')
