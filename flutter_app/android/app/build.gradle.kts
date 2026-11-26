@@ -3,7 +3,9 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
-    id("kotlin-android")
+    // No Kotlin plugin here, as in Flutter 3.47.5's app template: with
+    // android.builtInKotlin=false (gradle.properties) the Flutter Gradle Plugin
+    // applies kotlin-android itself.
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -21,16 +23,15 @@ val hasReleaseKeystore = keystorePropertiesFile.exists()
 
 android {
     namespace = "app.mydiandian"
-    compileSdk = flutter.compileSdkVersion
+    // 37 by hand: Flutter 3.47.5 still sets 36, and flutter_local_notifications
+    // 23 (the reminders) needs 37. Back to flutter.compileSdkVersion once
+    // Flutter sets 37 or more. targetSdk stays Flutter's (36).
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
     defaultConfig {
@@ -61,6 +62,12 @@ android {
                 signingConfigs.getByName("debug")
             }
         }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
 }
 
