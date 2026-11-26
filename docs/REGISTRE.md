@@ -502,11 +502,39 @@ depuis 2024 un formulaire de consentement certifié pour servir autre chose
 que des annonces limitées dans l'Espace économique européen, au Royaume-Uni
 et en Suisse.
 
-**Écart.** L'app ne demande aucun consentement. Décidé par Charles le
-2026-11-26 : un chantier « consentement publicitaire » entre dans la release
-unique (le formulaire de Google, déjà dans le paquet `google_mobile_ads`,
-affiché avant la première bannière là où il est requis). Ce chantier
-complétera cette fiche et la politique de confidentialité.
+**Écart.** L'app ne demande aucun consentement. Le « message de
+remplacement » que Google propose aux apps sans SDK UMP (réglage
+« Autoriser Google à maximiser la couverture des messages », coché, et
+interrupteur « Solution de remplacement (consentement) » par app, laissé
+désactivé) ne peut rien y changer : Google l'affiche dans une annonce
+interstitielle ou d'ouverture d'app, et l'app n'a que des bannières
+(`support.google.com/admob/answer/14237900`, lu le 2026-11-26). Décidé par Charles le 2026-11-26 : un chantier « consentement
+publicitaire » (chantier 11) entre dans la release unique (le formulaire
+de Google, déjà dans le paquet `google_mobile_ads`, affiché avant la
+première bannière là où il est requis). Ce chantier complétera cette fiche
+et la politique de confidentialité.
+
+**Réglages AdMob** (« Confidentialité et messagerie » → « Réglementations
+européennes », 2026-11-26) : les 199 partenaires publicitaires courants
+inclus d'office, Google compris ; la couverture des messages maximisée
+(message de remplacement) ; les options d'intérêt légitime du TCF
+affichées, actives par défaut, que la personne peut refuser une à une ;
+ni mode Consentement, ni fonctionnalité spéciale 2 (analyse des
+caractéristiques de l'appareil pour l'identifier), ni synchronisation du
+consentement entre applications, ni finalité propre à l'éditeur. Deux
+cases recommandées par Fable le même jour, cochées ou non par Charles (à
+confirmer) : « Ajouter automatiquement des sources d'annonces en tant que
+partenaires publicitaires » et « Vérifier le consentement des créations de
+partenaires publicitaires pour les partenaires d'enchères en temps réel ».
+
+**Message de consentement**, publié par Charles le 2026-11-26 :
+« Dian Dian – GDPR consent », pour les deux apps (Android `app.mydiandian`,
+iOS 6761432329), en anglais (langue par défaut), français et chinois
+simplifié, pour les pays soumis au RGPD (EEE, Royaume-Uni, Suisse), avec
+trois boutons dès le premier écran (refuser, accepter, gérer les options),
+le texte de Google sans retouche, et l'adresse de la politique de
+confidentialité. Il ne s'affiche qu'à travers le SDK UMP, que l'app
+intégrera avec le chantier 11.
 
 ## Fiche 10 — Sécurité et journaux
 

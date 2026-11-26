@@ -78,7 +78,7 @@ RevenueCat) sont en anglais ; les textes de l'app vouvoient.
 | 8 | Astuces : les fonctions cachées montrées une à une, carnet d'astuces, événements | `2026-11-25-feature-tips-design.md` ; maquettes https://claude.ai/artifact/3HsujtgXLrre5FbtaViGmE | lot 1 : deux champs du bootstrap (backend, avant l'app) ; 5 lot 1 si déjà là (la roue des réglages pour l'astuce 8) ; lot 2 (astuces du zoom) : 7 ; les événements avec le registre RGPD ; le lot 1 juste après les rappels (4), *mon choix* du 2026-11-25 | à estimer |
 | 9 | Entrer sans mur : compte sans identité créé en coulisse, écran d'accueil à quatre boutons, e-mail par code, créer son compte ou rejoindre le sien, Premium sans compte (achat, restauration, reprise des trackers par l'achat), annonces entre deux téléphones, clé dans le trousseau iCloud, écran « Mes données », clé de restauration Android en dernier lot | `2026-11-25-account-later-design.md` ; cas illustrés `2026-11-26-sans-compte-hors-ligne-stories.html` | 10 (il s'appuie sur la copie du téléphone) ; passe avant 2 (le paywall doit connaître le compte invisible) | à estimer, gros ; le plan commence par les vérifications RevenueCat en bac à sable et sur appareils |
 | 10 | Utiliser l'app sans réseau, avec ou sans compte : copie complète sur le téléphone, file des modifications, « le serveur gagne » en cas de conflit, sessions qui durent | `2026-11-26-offline-sync-design.md` ; mêmes cas illustrés | 3 | à estimer, le plus gros de la release : toute la couche de données de l'app est refaite |
-| 11 | Consentement publicitaire : le formulaire de Google affiché avant la première bannière AdMob là où il est requis (Espace économique européen, Royaume-Uni, Suisse), un moyen de revenir sur son choix dans les réglages, et l'écran de suivi d'Apple si le formulaire le demande. Ajouté le 2026-11-26 : l'app affiche aujourd'hui la publicité sans rien demander | spec à écrire ; le constat et ses sources : `docs/REGISTRE.md`, fiche 9 | 9 (son écran d'accueil décide du moment où la première bannière peut apparaître) ; un message de consentement créé par Charles dans AdMob | à estimer, petit |
+| 11 | Consentement publicitaire : le formulaire de Google affiché avant la première bannière AdMob là où il est requis (Espace économique européen, Royaume-Uni, Suisse), un moyen de revenir sur son choix dans les réglages, et l'écran de suivi d'Apple si le formulaire le demande. Ajouté le 2026-11-26 : l'app affiche aujourd'hui la publicité sans rien demander | spec à écrire ; le constat et ses sources : `docs/REGISTRE.md`, fiche 9 | 9 (son écran d'accueil décide du moment où la première bannière peut apparaître) ; le message de consentement publié dans AdMob (fait le 2026-11-26) | à estimer, petit |
 | — | Registre RGPD du projet et politique de confidentialité, en quatre langues ; purge des événements produit au-delà de 13 mois. **Construit le 2026-11-26** : `docs/REGISTRE.md` (onze fiches, les écarts connus), la politique réécrite, la purge, un moyen de tenir une opposition aux événements, les polices du site servies par le site | plan `docs/superpowers/plans/2026-11-26-rgpd-register.md` | — | fait |
 
 Chaque spec finit par une section « Relecture » (du 2026-11-23, ou du
@@ -200,9 +200,12 @@ release ; un correctif urgent de la production part du tag.
   Outlook »).
 - Si quelqu'un s'oppose aux événements produit : transmettre sa demande à
   Fable, qui lance les deux requêtes de la fiche 7 du registre.
-- Pour le chantier 11 : créer dans AdMob le message de consentement
-  européen (« Confidentialité et messages »), que le formulaire de l'app
-  affichera.
+- Chantier 11 : le message de consentement européen est **publié dans
+  AdMob depuis le 2026-11-26** (« Dian Dian – GDPR consent », les deux
+  apps, trois boutons ; détail dans `docs/REGISTRE.md`, fiche 9). À
+  confirmer : les deux cases recommandées dans les réglages
+  (« Ajouter automatiquement des sources d'annonces… », « Vérifier le
+  consentement des créations… »).
 - Tester le bouton App Store depuis une épingle Pinterest sur iPhone, et
   depuis Safari : depuis le chantier 1 il passe par `/go/apple` et s'ouvre
   dans le même onglet (plus de nouvel onglet).
