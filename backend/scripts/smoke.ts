@@ -99,6 +99,33 @@ async function main() {
   assert.equal(r.json.email, email, 'refresh returns email');
   access = r.json.accessToken; refresh = r.json.refreshToken;
 
+  // --- a session lasts (chantier 10): 18 months, renewed at each use; a ---
+  // --- renewal survives a lost answer; a refusal says why -------------------
+  {
+    const renew = (token: string) => call('POST', '/api/auth/refresh', { refreshToken: token }, false);
+    if (sql) {
+      const [t] = await sql`select extract(epoch from expires_at - now())::int as left from refresh_tokens where user_id = ${userId} order by created_at desc limit 1`;
+      assert.ok(Math.abs(t.left - 548 * 24 * 3600) < 120, `a session lasts 548 days (${t.left} s left)`);
+    }
+    const r1 = refresh;
+    const lost = await renew(r1); // its answer is lost on the way
+    assert.equal(lost.status, 200);
+    const again = await renew(r1); // the phone tries again with the token it still has
+    assert.equal(again.status, 200, `a renewal whose answer was lost can be made again: ${JSON.stringify(again.json)}`);
+    assert.notEqual(again.json.refreshToken, lost.json.refreshToken, 'with a new token');
+    const unused = await renew(lost.json.refreshToken);
+    assert.equal(unused.status, 401, 'the token that never arrived no longer works');
+    const r3 = again.json.refreshToken;
+    const used = await renew(r3);
+    assert.equal(used.status, 200, 'the new one works');
+    const stale = await renew(r1);
+    assert.equal(stale.status, 401, 'once its successor has served, the old token is refused');
+    assert.ok(['invalid', 'session_revoked'].includes(stale.json.code), `with a reason the app reads as "log in again" (${stale.json.code})`);
+    const garbage = await renew('not-a-token');
+    assert.equal(garbage.json.code, 'invalid');
+    access = used.json.accessToken; refresh = used.json.refreshToken;
+  }
+
   // --- no default page since 1.2.0: the app creates the first tracker -------
   r = await call('GET', '/api/pages');
   assert.equal(r.status, 200);
@@ -912,6 +939,15 @@ async function main() {
       assert.equal(floor, accountRev, 'and the account remembers the highest number it forgot');
       const late = await call('GET', `/api/sync?since=${accountRev - 1}`);
       assert.equal(late.json.full, true, 'a phone older than that takes the full copy');
+      const oldEnd = `${run}-old-end`;
+      const newEnd = `${run}-new-end`;
+      await sql`insert into ended_sessions (token_hash, reason, ended_at) values
+        (${oldEnd}, 'account_deleted', ${new Date(now.getTime() - 548 * 24 * 60 * 60 * 1000 - 1000)}),
+        (${newEnd}, 'account_deleted', ${new Date(now.getTime() - 547 * 24 * 60 * 60 * 1000)})`;
+      await purgeOldRows(db, now);
+      const ends = (await sql`select token_hash from ended_sessions where token_hash in ${sql([oldEnd, newEnd])}`).map((row) => row.token_hash);
+      assert.deepEqual(ends, [newEnd], 'ended sessions are remembered as long as a session lasts, then forgotten');
+      await sql`delete from ended_sessions where token_hash = ${newEnd}`;
     } finally {
       await sql`delete from events where user_id = ${userId} and name like 'smoke.%'`;
       await sql`delete from deletions where user_id = ${userId} and key like ${`${run}-%`}`;
@@ -1166,6 +1202,9 @@ async function main() {
   // --- cleanup --------------------------------------------------------------
   r = await call('DELETE', '/api/auth/account');
   assert.equal(r.status, 200);
+  r = await call('POST', '/api/auth/refresh', { refreshToken: refresh }, false);
+  assert.equal(r.status, 401);
+  assert.equal(r.json.code, 'account_deleted', 'a session of a deleted account says so (H24)');
   if (sql) {
     const [{ n }] = await sql`select count(*)::int as n from subscription_events where user_id = ${userId}`;
     assert.equal(n, 0, 'deleting the account deletes its purchase events');

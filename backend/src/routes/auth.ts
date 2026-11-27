@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import { z } from 'zod';
 import * as argon2 from 'argon2';
 import { db } from '../db/index.js';
-import { users, refreshTokens, passwordResetTokens, subscriptions, oauthAccounts } from '../db/schema.js';
+import { users, refreshTokens, passwordResetTokens, subscriptions, oauthAccounts, endedSessions } from '../db/schema.js';
 import { and } from 'drizzle-orm';
 import { signAccessToken, generateRefreshToken, hashToken } from '../lib/jwt.js';
 import { validate } from '../middleware/validate.js';
@@ -36,25 +36,45 @@ async function profileOf(user: ProfileUser) {
   };
 }
 
-/** Issues access + refresh tokens, sets the cookie, and returns the response body. */
-async function issueSession(res: Response, user: ProfileUser) {
-  const accessToken = await signAccessToken(user.id);
-  const refreshToken = generateRefreshToken();
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-  await db.insert(refreshTokens).values({
-    userId: user.id,
-    tokenHash: hashToken(refreshToken),
-    expiresAt,
-  });
+/**
+ * How long a session lasts without being used: 18 months, longer than the 12
+ * months after which the account document erases an untouched account, so
+ * that a phone left offline for weeks is never logged out (offline sync,
+ * chantier 10). Each renewal starts the period again.
+ */
+export const SESSION_DAYS = 548;
+const sessionMs = SESSION_DAYS * 24 * 60 * 60 * 1000;
+
+function setRefreshCookie(res: Response, refreshToken: string) {
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    maxAge: sessionMs,
     path: '/api/auth',
   });
+}
+
+/** A new refresh token for [userId], stored by its hash; returns it and its row id. */
+async function newRefreshToken(userId: string): Promise<{ token: string; id: string }> {
+  const token = generateRefreshToken();
+  const [row] = await db.insert(refreshTokens)
+    .values({ userId, tokenHash: hashToken(token), expiresAt: new Date(Date.now() + sessionMs) })
+    .returning({ id: refreshTokens.id });
+  return { token, id: row.id };
+}
+
+/** Issues access + refresh tokens, sets the cookie, and returns the response body. */
+async function issueSession(res: Response, user: ProfileUser) {
+  const accessToken = await signAccessToken(user.id);
+  const { token: refreshToken } = await newRefreshToken(user.id);
+  setRefreshCookie(res, refreshToken);
   return { accessToken, refreshToken, ...(await profileOf(user)) };
 }
+
+/** A refused renewal, with why: the app only erases its copy for `account_deleted`. */
+type EndCode = 'invalid' | 'session_expired' | 'session_revoked' | 'account_deleted';
+const refuse = (res: Response, code: EndCode) => res.status(401).json({ error: 'Invalid or expired refresh token', code });
 
 const registerSchema = z.object({
   email: z.string().email('Invalid email').max(255),
@@ -274,8 +294,17 @@ router.delete('/account', requireAuth, async (req, res) => {
   try {
     const [user] = await db.select({ email: users.email }).from(users).where(eq(users.id, req.userId!)).limit(1);
 
-    // Cascade delete handles pages, cells, legends, tokens
-    await db.delete(users).where(eq(users.id, req.userId!));
+    // Cascade delete handles pages, cells, legends, tokens. Its sessions are
+    // remembered as ended by a deletion: another phone of the account learns
+    // it at its next renewal and erases its copy (H24).
+    await db.transaction(async (tx) => {
+      const sessions = await tx.select({ tokenHash: refreshTokens.tokenHash }).from(refreshTokens).where(eq(refreshTokens.userId, req.userId!));
+      if (sessions.length > 0) {
+        await tx.insert(endedSessions).values(sessions.map((t) => ({ tokenHash: t.tokenHash, reason: 'account_deleted' })))
+          .onConflictDoNothing();
+      }
+      await tx.delete(users).where(eq(users.id, req.userId!));
+    });
 
     res.clearCookie('refreshToken', { path: '/api/auth' });
 
@@ -291,53 +320,47 @@ router.delete('/account', requireAuth, async (req, res) => {
 });
 
 // Refresh
+// Renew a session. The token presented is replaced; it stays good while
+// its successor has never been used, so a renewal whose answer was lost on
+// the way can be made again (the unused successor is dropped). Once the
+// successor has served, the old token is refused, saying why.
 router.post('/refresh', async (req, res) => {
   try {
     const token = req.body?.refreshToken || req.cookies?.refreshToken;
-    if (!token) {
-      res.status(401).json({ error: 'Missing refresh token' });
-      return;
-    }
+    if (!token) { refuse(res, 'invalid'); return; }
 
     const tokenH = hashToken(token);
     const [stored] = await db.select().from(refreshTokens).where(eq(refreshTokens.tokenHash, tokenH)).limit(1);
-
-    if (!stored || stored.expiresAt < new Date()) {
-      res.status(401).json({ error: 'Invalid or expired refresh token' });
+    if (!stored) {
+      const [ended] = await db.select({ reason: endedSessions.reason }).from(endedSessions).where(eq(endedSessions.tokenHash, tokenH)).limit(1);
+      refuse(res, (ended?.reason as EndCode | undefined) ?? 'invalid');
       return;
     }
+    if (stored.expiresAt < new Date()) { refuse(res, 'session_expired'); return; }
 
     // The profile rides along with the new token pair so the app can skip
-    // the /me round-trip on cold start. A token whose user vanished (account
-    // deleted) is as good as invalid.
+    // the /me round-trip on cold start.
     const [user] = await db.select().from(users).where(eq(users.id, stored.userId)).limit(1);
-    if (!user) {
-      res.status(401).json({ error: 'Invalid or expired refresh token' });
-      return;
+    if (!user) { refuse(res, 'account_deleted'); return; }
+
+    if (stored.replacedById) {
+      const [successor] = await db.select({ id: refreshTokens.id, replacedById: refreshTokens.replacedById })
+        .from(refreshTokens).where(eq(refreshTokens.id, stored.replacedById)).limit(1);
+      // The successor has served (it was renewed in turn): this token is spent.
+      if (successor?.replacedById) { refuse(res, 'session_revoked'); return; }
+      // Never used: its answer was lost. Drop it and issue another.
+      if (successor) await db.delete(refreshTokens).where(eq(refreshTokens.id, successor.id));
     }
 
-    // Rotation: delete old, issue new
-    await db.delete(refreshTokens).where(eq(refreshTokens.id, stored.id));
+    const next = await newRefreshToken(stored.userId);
+    await db.update(refreshTokens).set({ replacedById: next.id }).where(eq(refreshTokens.id, stored.id));
+    // The token before this one is no longer needed: its successor (this
+    // one) has now served.
+    await db.delete(refreshTokens).where(eq(refreshTokens.replacedById, stored.id));
 
     const accessToken = await signAccessToken(stored.userId);
-    const newRefreshToken = generateRefreshToken();
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-
-    await db.insert(refreshTokens).values({
-      userId: stored.userId,
-      tokenHash: hashToken(newRefreshToken),
-      expiresAt,
-    });
-
-    res.cookie('refreshToken', newRefreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: '/api/auth',
-    });
-
-    res.json({ accessToken, refreshToken: newRefreshToken, ...(await profileOf(user)) });
+    setRefreshCookie(res, next.token);
+    res.json({ accessToken, refreshToken: next.token, ...(await profileOf(user)) });
   } catch (err) {
     console.error('Refresh error:', err);
     res.status(500).json({ error: 'Server error' });

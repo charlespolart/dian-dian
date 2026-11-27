@@ -75,6 +75,10 @@ export const refreshTokens = pgTable('refresh_tokens', {
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   tokenHash: text('token_hash').notNull(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  // The token that replaced this one at its last renewal. This one stays
+  // good while its successor has never been used: a renewal whose answer was
+  // lost can be made again (offline sync, chantier 10).
+  replacedById: uuid('replaced_by_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   index('refresh_tokens_token_hash_idx').on(t.tokenHash),
@@ -257,4 +261,17 @@ export const syncStats = pgTable('sync_stats', {
   count: integer('count').notNull().default(0),
 }, (t) => [
   primaryKey({ columns: [t.week, t.kind] }),
+]);
+
+// Sessions ended by the server, by the hash of their refresh token, and why:
+// a phone that presents one is told the reason instead of a bare refusal
+// ("account_deleted" makes it erase its copy, H24; anything else keeps it).
+// Kept as long as a session lasts (548 days, lib/retention.ts); only a hash,
+// linked to no account.
+export const endedSessions = pgTable('ended_sessions', {
+  tokenHash: text('token_hash').primaryKey(),
+  reason: text('reason').notNull(), // 'account_deleted' | 'session_revoked'
+  endedAt: timestamp('ended_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('ended_sessions_ended_at_idx').on(t.endedAt),
 ]);

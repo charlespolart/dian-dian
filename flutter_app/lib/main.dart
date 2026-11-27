@@ -397,7 +397,9 @@ class _AppShellState extends State<AppShell> {
       // the disk snapshot: the next user must never see this one's data.
       _sessionStarted = false;
       context.read<PagesProvider>().cancelPendingDelete();
-      context.read<SyncService>().clear();
+      // A session the server closed keeps its copy for the reconnection to
+      // that account (offline sync, H25); a logout or a deleted account does not.
+      if (auth.sessionEnded != SessionEnd.reconnect) context.read<SyncService>().clear();
       _clearLastTracker();
     }
     if (!auth.isAuthenticated &&

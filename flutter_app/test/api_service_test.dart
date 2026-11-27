@@ -79,21 +79,58 @@ void main() {
     expect(refreshCalls, 1);
   });
 
-  test('invalid refresh (401) fires onAuthExpired and clears the stored session', () async {
+  // A refused renewal ends the session but keeps the account id: the copy of
+  // the phone and its queue wait, hidden, for a reconnection to that account
+  // (offline sync, H25). Only a deleted account forgets it (H24).
+  for (final (body, label) in [
+    ('{"error":"x","code":"session_revoked"}', 'a session closed by the server'),
+    ('{"error":"x","code":"session_expired"}', 'an expired session'),
+    ('{"error":"bad"}', 'a refusal without a reason (an older server)'),
+  ]) {
+    test('$label: the session ends with "log in again", the account id is kept', () async {
+      final client = MockClient((req) async {
+        if (req.url.path == '/api/auth/refresh') return http.Response(body, 401);
+        return http.Response('{}', 401);
+      });
+      final tokens = FakeTokens(refresh: 'r1')..userId = 'u1';
+      final api = ApiService.custom(client: client, tokens: tokens);
+      final ends = <SessionEnd>[];
+      api.onSessionEnded = ends.add;
+
+      final r = await api.apiFetch('/api/pages');
+
+      expect(r.statusCode, 401);
+      expect(ends, [SessionEnd.reconnect]);
+      expect(tokens.refresh, isNull, reason: 'the refused token is gone');
+      expect(tokens.userId, 'u1', reason: 'the account the copy belongs to is remembered');
+    });
+  }
+
+  test('a deleted account ends the session and forgets the account (H24)', () async {
     final client = MockClient((req) async {
-      if (req.url.path == '/api/auth/refresh') return http.Response('{"error":"bad"}', 401);
+      if (req.url.path == '/api/auth/refresh') return http.Response('{"error":"x","code":"account_deleted"}', 401);
       return http.Response('{}', 401);
     });
     final tokens = FakeTokens(refresh: 'r1')..userId = 'u1';
     final api = ApiService.custom(client: client, tokens: tokens);
-    var expired = false;
-    api.onAuthExpired = () => expired = true;
+    final ends = <SessionEnd>[];
+    api.onSessionEnded = ends.add;
 
-    final r = await api.apiFetch('/api/pages');
+    await api.apiFetch('/api/pages');
 
-    expect(r.statusCode, 401);
-    expect(expired, isTrue);
+    expect(ends, [SessionEnd.accountDeleted]);
     expect(tokens.refresh, isNull);
+    expect(tokens.userId, isNull);
+  });
+
+  test('at launch, a refused session is reported with its reason', () async {
+    final client = MockClient((req) async => http.Response('{"error":"x","code":"account_deleted"}', 401));
+    final tokens = FakeTokens(refresh: 'r1')..userId = 'u1';
+    final api = ApiService.custom(client: client, tokens: tokens);
+
+    final r = await api.tryRestoreSession();
+
+    expect(r.outcome, RefreshOutcome.accountDeleted);
     expect(tokens.userId, isNull);
   });
 
@@ -105,7 +142,7 @@ void main() {
     final tokens = FakeTokens(refresh: 'r1');
     final api = ApiService.custom(client: client, tokens: tokens);
     var expired = false;
-    api.onAuthExpired = () => expired = true;
+    api.onSessionEnded = (_) => expired = true;
 
     final restore = await api.tryRestoreSession();
     expect(restore.outcome, RefreshOutcome.offline);
@@ -125,7 +162,7 @@ void main() {
     final tokens = FakeTokens(refresh: 'r1');
     final api = ApiService.custom(client: client, tokens: tokens);
     var expired = false;
-    api.onAuthExpired = () => expired = true;
+    api.onSessionEnded = (_) => expired = true;
 
     final restore = await api.tryRestoreSession();
     expect(restore.outcome, RefreshOutcome.offline);

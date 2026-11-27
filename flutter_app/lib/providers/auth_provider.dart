@@ -20,6 +20,9 @@ class AuthProvider extends ChangeNotifier {
   String? _email;
   String? _userId;
   bool _isVip = false;
+  // Why the last session ended without the user asking (null otherwise):
+  // [SessionEnd.reconnect] keeps the account's copy for its reconnection.
+  SessionEnd? _sessionEnded;
 
   // Server-synced settings (populated on login / restore / refresh)
   Map<String, dynamic>? _serverSettings;
@@ -30,10 +33,11 @@ class AuthProvider extends ChangeNotifier {
   String? get email => _email;
   String? get userId => _userId;
   bool get isVip => _isVip;
+  SessionEnd? get sessionEnded => _sessionEnded;
   Map<String, dynamic>? get serverSettings => _serverSettings;
 
   AuthProvider() {
-    _api.onAuthExpired = _onAuthExpired;
+    _api.onSessionEnded = _onSessionEnded;
     _api.onTokensRefreshed = _onTokensRefreshed;
     tryRestoreSession();
   }
@@ -70,6 +74,7 @@ class AuthProvider extends ChangeNotifier {
       _isOffline = false;
       _serverSettings = null;
       _isAuthenticated = false;
+      _sessionEnded = null;
       await _storage.deleteEmail();
       notifyListeners();
     }
@@ -106,9 +111,11 @@ class AuthProvider extends ChangeNotifier {
           _ws.connect();
 
         case RefreshOutcome.invalid:
+        case RefreshOutcome.accountDeleted:
           _isAuthenticated = false;
           _isOffline = false;
           _userId = null;
+          _sessionEnded = result.outcome == RefreshOutcome.accountDeleted ? SessionEnd.accountDeleted : SessionEnd.reconnect;
 
         case RefreshOutcome.offline:
           // No network: stay on the stored session (if any) with cached data;
@@ -135,6 +142,7 @@ class AuthProvider extends ChangeNotifier {
     if (_userId != null) await _storage.setUserId(_userId!);
     _isAuthenticated = true;
     _isOffline = false;
+    _sessionEnded = null;
     _ws.connect();
     notifyListeners();
   }
@@ -165,7 +173,8 @@ class AuthProvider extends ChangeNotifier {
     if (wasOffline) notifyListeners();
   }
 
-  void _onAuthExpired() {
+  void _onSessionEnded(SessionEnd end) {
+    _sessionEnded = end;
     _ws.disconnect();
     _userId = null;
     _email = null;
@@ -177,7 +186,7 @@ class AuthProvider extends ChangeNotifier {
 
   @override
   void dispose() {
-    _api.onAuthExpired = null;
+    _api.onSessionEnded = null;
     _api.onTokensRefreshed = null;
     _ws.disconnect();
     super.dispose();

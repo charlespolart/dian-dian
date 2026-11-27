@@ -14,7 +14,21 @@ import 'dev_host.dart';
 /// Only [invalid] means the session is gone. [offline] covers everything
 /// transient (no network, timeout, 5xx): the refresh token is kept and the
 /// next request tries again.
-enum RefreshOutcome { ok, invalid, offline }
+/// How a session renewal went. [invalid]: the server refused the session
+/// (closed, expired, unknown): log in again, the phone's copy waits for it.
+/// [accountDeleted]: the account was deleted (from another device): the copy
+/// goes too (offline sync, H24).
+enum RefreshOutcome { ok, invalid, accountDeleted, offline }
+
+/// Why a session ended without the user asking.
+enum SessionEnd {
+  /// Log in again: the copy of the phone and its queue are kept, hidden,
+  /// for that account (H25).
+  reconnect,
+
+  /// The account was deleted elsewhere: forget it, copy included (H24).
+  accountDeleted,
+}
 
 class RestoreResult {
   final RefreshOutcome outcome;
@@ -47,9 +61,10 @@ class ApiService {
   Map<String, dynamic>? _lastProfile;
   Future<RefreshOutcome>? _refreshInFlight;
 
-  /// Called when both access and refresh tokens are definitively invalid.
-  /// The caller should navigate the user to the login screen.
-  VoidCallback? onAuthExpired;
+  /// Called when the server refused the session for good, with why. The
+  /// caller shows the login screen; it erases the account's copy only for
+  /// [SessionEnd.accountDeleted].
+  void Function(SessionEnd end)? onSessionEnded;
 
   /// Called after every successful token refresh with the user profile the
   /// server attached to it (lets an offline-started session fill in later).
@@ -86,7 +101,10 @@ class ApiService {
       case RefreshOutcome.ok:
         return _send(path, method: method, body: body, headers: headers);
       case RefreshOutcome.invalid:
-        _handleAuthExpired();
+        _endSession(SessionEnd.reconnect);
+        return response;
+      case RefreshOutcome.accountDeleted:
+        _endSession(SessionEnd.accountDeleted);
         return response;
       case RefreshOutcome.offline:
         return response;
@@ -164,7 +182,7 @@ class ApiService {
         return RefreshOutcome.ok;
       }
       if (response.statusCode == 401 || response.statusCode == 403) {
-        return RefreshOutcome.invalid;
+        return _refusalCode(response) == 'account_deleted' ? RefreshOutcome.accountDeleted : RefreshOutcome.invalid;
       }
       // 5xx / 429 / anything else: the server is unhappy, not the session.
       return RefreshOutcome.offline;
@@ -181,12 +199,26 @@ class ApiService {
     if (userId is String) await _tokens.setUserId(userId);
   }
 
-  void _handleAuthExpired() {
+  /// The `code` of a refused renewal (backend ≥ 1.3: `session_expired`,
+  /// `session_revoked`, `account_deleted`, `invalid`), or null.
+  static String? _refusalCode(http.Response response) {
+    try {
+      final body = jsonDecode(response.body);
+      return body is Map && body['code'] is String ? body['code'] as String : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// The session is over. The refused token goes; the account id stays
+  /// unless the account itself was deleted: it says whose copy the phone
+  /// keeps for the reconnection.
+  void _endSession(SessionEnd end, {bool notify = true}) {
     _accessToken = null;
     _lastProfile = null;
     _tokens.deleteRefreshToken();
-    _tokens.deleteUserId();
-    onAuthExpired?.call();
+    if (end == SessionEnd.accountDeleted) _tokens.deleteUserId();
+    if (notify) onSessionEnded?.call(end);
   }
 
   // ---------------------------------------------------------------------------
@@ -241,6 +273,10 @@ class ApiService {
   /// Attempts to restore a previous session by refreshing the token pair.
   Future<RestoreResult> tryRestoreSession() async {
     final outcome = await _refreshTokens();
+    // The caller reads the outcome itself: the tokens are settled here, the
+    // callback is not fired.
+    if (outcome == RefreshOutcome.invalid) _endSession(SessionEnd.reconnect, notify: false);
+    if (outcome == RefreshOutcome.accountDeleted) _endSession(SessionEnd.accountDeleted, notify: false);
     return RestoreResult(outcome, outcome == RefreshOutcome.ok ? _lastProfile : null);
   }
 

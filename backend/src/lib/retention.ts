@@ -6,7 +6,7 @@
  */
 import { and, eq, isNull, lt, max } from 'drizzle-orm';
 import type { db as database } from '../db/index.js';
-import { deletions, events, subscriptionEvents, syncMutations, users } from '../db/schema.js';
+import { deletions, endedSessions, events, subscriptionEvents, syncMutations, users } from '../db/schema.js';
 
 type Db = typeof database;
 
@@ -22,6 +22,8 @@ export const UNLINKED_PURCHASE_EVENTS_MONTHS = 13;
 export const SYNC_ANSWERS_DAYS = 90;
 /** Offline sync: deletion traces, as long as the memory of deleted accounts. */
 export const DELETION_TRACES_MONTHS = 24;
+/** Ended sessions are remembered as long as a session lasts (routes/auth.ts, SESSION_DAYS). */
+export const ENDED_SESSIONS_DAYS = 548;
 /**
  * How often the purge runs: hourly, so a row outlives its limit by an hour
  * at most, and a run that failed (the database down at boot) is tried again
@@ -44,7 +46,7 @@ export function keptSince(now: Date, months: number): Date {
  * account is never deleted here, whatever its age. Returns how many rows of
  * each went.
  */
-export async function purgeOldRows(db: Db, now: Date): Promise<{ events: number; purchaseEvents: number; syncMutations: number; deletions: number }> {
+export async function purgeOldRows(db: Db, now: Date): Promise<{ events: number; purchaseEvents: number; syncMutations: number; deletions: number; endedSessions: number }> {
   const oldEvents = await db.delete(events).where(lt(events.createdAt, keptSince(now, EVENTS_MONTHS)));
   const oldPurchaseEvents = await db.delete(subscriptionEvents).where(and(
     isNull(subscriptionEvents.userId),
@@ -64,7 +66,9 @@ export async function purgeOldRows(db: Db, now: Date): Promise<{ events: number;
     }
     return tx.delete(deletions).where(lt(deletions.deletedAt, traceLimit));
   });
-  return { events: oldEvents.count, purchaseEvents: oldPurchaseEvents.count, syncMutations: oldAnswers.count, deletions: oldTraces.count };
+  const oldEnded = await db.delete(endedSessions)
+    .where(lt(endedSessions.endedAt, new Date(now.getTime() - ENDED_SESSIONS_DAYS * 24 * 60 * 60 * 1000)));
+  return { events: oldEvents.count, purchaseEvents: oldPurchaseEvents.count, syncMutations: oldAnswers.count, deletions: oldTraces.count, endedSessions: oldEnded.count };
 }
 
 /**
@@ -75,8 +79,8 @@ export async function purgeOldRows(db: Db, now: Date): Promise<{ events: number;
 export async function runRetentionPurge(db: Db, now: Date, log: Pick<Console, 'log' | 'error'> = console): Promise<void> {
   try {
     const purged = await purgeOldRows(db, now);
-    if (purged.events + purged.purchaseEvents + purged.syncMutations + purged.deletions > 0) {
-      log.log(`Retention purge: ${purged.events} product events, ${purged.purchaseEvents} purchase events without account, ${purged.syncMutations} sync answers, ${purged.deletions} deletion traces deleted`);
+    if (purged.events + purged.purchaseEvents + purged.syncMutations + purged.deletions + purged.endedSessions > 0) {
+      log.log(`Retention purge: ${purged.events} product events, ${purged.purchaseEvents} purchase events without account, ${purged.syncMutations} sync answers, ${purged.deletions} deletion traces, ${purged.endedSessions} ended sessions deleted`);
     }
   } catch (err) {
     log.error('Retention purge failed:', err);
