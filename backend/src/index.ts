@@ -132,6 +132,7 @@ async function purgeExpiredTokens() {
   const now = new Date();
   try {
     await db.delete(refreshTokens).where(lt(refreshTokens.expiresAt, now));
+    await purgeEmptySessions(); // a session whose tokens are all gone renews nothing
     await db.delete(passwordResetTokens).where(lt(passwordResetTokens.expiresAt, now));
   } catch (err) {
     console.error('Token purge failed:', err);
@@ -161,6 +162,7 @@ app.get('/api/ready', async (_req, res) => {
 
 // Contact form
 import { sendEmail } from './lib/email.js';
+import { purgeEmptySessions } from './lib/sessions.js';
 function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }

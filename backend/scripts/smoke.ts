@@ -121,10 +121,51 @@ async function main() {
     assert.equal(used.status, 200, 'the new one works');
     const stale = await renew(r1);
     assert.equal(stale.status, 401, 'once its successor has served, the old token is refused');
-    assert.ok(['invalid', 'session_revoked'].includes(stale.json.code), `with a reason the app reads as "log in again" (${stale.json.code})`);
+    assert.equal(stale.json.code, 'invalid', '"invalid", never "session_revoked", which means logged out from another device');
     const garbage = await renew('not-a-token');
     assert.equal(garbage.json.code, 'invalid');
     access = used.json.accessToken; refresh = used.json.refreshToken;
+  }
+
+  // --- a session has an id, carried by its access tokens and checked at ----
+  // --- every request (chantier 9, lot 1) -------------------------------------
+  {
+    const sidOf = (jwt: string) => JSON.parse(Buffer.from(jwt.split('.')[1], 'base64url').toString()).sid as string | undefined;
+    const sid = sidOf(access);
+    assert.match(sid ?? '', /^[0-9a-f-]{36}$/, 'the access token names its session');
+    const renewed = await call('POST', '/api/auth/refresh', { refreshToken: refresh }, false);
+    assert.equal(sidOf(renewed.json.accessToken), sid, 'a renewal keeps the session');
+    access = renewed.json.accessToken; refresh = renewed.json.refreshToken;
+    if (sql) {
+      const [{ n }] = await sql`select count(*)::int as n from sessions where id = ${sid}`;
+      assert.equal(n, 1, 'one row per session');
+    }
+
+    // Logging out closes the whole session: a token left before it (its
+    // successor never served) no longer renews anything.
+    const other = await call('POST', '/api/auth/login', { email, password }, false);
+    const before = other.json.refreshToken as string;
+    const after = await call('POST', '/api/auth/refresh', { refreshToken: before }, false);
+    const out = await fetch(`${BASE}/api/auth/logout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${after.json.accessToken}` },
+      body: JSON.stringify({ refreshToken: after.json.refreshToken }),
+    });
+    assert.equal(out.status, 200);
+    const left = await call('POST', '/api/auth/refresh', { refreshToken: before }, false);
+    assert.equal(left.status, 401, 'the token before the logout renews nothing');
+    const gone = await fetch(`${BASE}/api/auth/me`, { headers: { Authorization: `Bearer ${after.json.accessToken}` } });
+    assert.equal(gone.status, 401, 'and its access token no longer opens anything, though it has not expired');
+
+    if (sql && process.env.JWT_SECRET) {
+      // An access token without a session id (issued before the update) is
+      // still accepted until it expires (15 minutes).
+      const { SignJWT } = await import('jose');
+      const legacy = await new SignJWT({ sub: userId }).setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime('15m')
+        .sign(new TextEncoder().encode(process.env.JWT_SECRET));
+      const me = await fetch(`${BASE}/api/auth/me`, { headers: { Authorization: `Bearer ${legacy}` } });
+      assert.equal(me.status, 200, 'a token without a session id still works');
+    }
   }
 
   // --- no default page since 1.2.0: the app creates the first tracker -------
@@ -1253,7 +1294,8 @@ async function main() {
     const late = await fetch(`${BASE}/api/events`, {
       method: 'POST', headers: { Authorization: `Bearer ${secondToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'paywall.themes' }),
     });
-    assert.equal(late.status, 204, 'an event sent by an account just deleted (its access token still valid) is answered 204 and dropped, not a 500');
+    assert.equal(late.status, 401, 'an event sent by an account just deleted (its access token still valid) is refused, not a 500');
+    assert.equal((await late.json()).code, 'account_deleted', 'with why: its session is over (chantier 9)');
   }
 
   // --- cleanup --------------------------------------------------------------
@@ -1269,6 +1311,10 @@ async function main() {
 
   r = await call('DELETE', '/api/auth/account');
   assert.equal(r.status, 200);
+  // The access token still has minutes to run: the session check says why it is refused.
+  r = await call('GET', '/api/sync?since=0');
+  assert.equal(r.status, 401, 'a deleted account reads nothing, not an empty list');
+  assert.equal(r.json.code, 'account_deleted');
   r = await call('POST', '/api/auth/refresh', { refreshToken: refresh }, false);
   assert.equal(r.status, 401);
   assert.equal(r.json.code, 'account_deleted', 'a session of a deleted account says so (H24)');

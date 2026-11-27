@@ -1,9 +1,12 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import type { Server } from 'http';
 import { verifyAccessToken } from './jwt.js';
+import { sessionStatus } from './sessions.js';
 
 // Map userId -> Set of connected WebSockets
 const clients = new Map<string, Set<WebSocket>>();
+// The session of each socket (none for a token issued before sessions had ids).
+const socketSession = new Map<WebSocket, string>();
 
 // How long a connection may sit unauthenticated before we drop it.
 const AUTH_TIMEOUT_MS = 10_000;
@@ -35,14 +38,23 @@ export function setupWebSocket(server: Server) {
     const url = new URL(req.url || '', `http://${req.headers.host}`);
     const legacyToken = url.searchParams.get('token');
 
-    const attach = (userId: string) => {
+    // A socket belongs to a session (chantier 9): a session that is over
+    // opens none, and closing a session closes its sockets.
+    const attach = async ({ userId, sessionId }: { userId: string; sessionId: string | null }): Promise<boolean> => {
+      if (sessionId && (await sessionStatus(sessionId)) !== 'alive') {
+        ws.close(4003, 'Session ended');
+        return false;
+      }
       if (!clients.has(userId)) clients.set(userId, new Set());
       clients.get(userId)!.add(ws);
+      if (sessionId) socketSession.set(ws, sessionId);
 
       ws.on('close', () => {
         clients.get(userId)?.delete(ws);
         if (clients.get(userId)?.size === 0) clients.delete(userId);
+        socketSession.delete(ws);
       });
+      return true;
     };
 
     if (legacyToken) {
@@ -50,7 +62,7 @@ export function setupWebSocket(server: Server) {
       // Kept for backward compatibility while the installed fleet migrates;
       // remove once first-message auth has been out for a few months.
       try {
-        attach(await verifyAccessToken(legacyToken));
+        await attach(await verifyAccessToken(legacyToken));
       } catch {
         ws.close(4003, 'Invalid token');
       }
@@ -72,8 +84,7 @@ export function setupWebSocket(server: Server) {
           ws.close(4001, 'Expected auth message');
           return;
         }
-        attach(await verifyAccessToken(msg.token));
-        ws.send(JSON.stringify({ event: 'auth:ok' }));
+        if (await attach(await verifyAccessToken(msg.token))) ws.send(JSON.stringify({ event: 'auth:ok' }));
       } catch {
         ws.close(4003, 'Invalid token');
       }

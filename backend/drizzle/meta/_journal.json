@@ -176,6 +176,27 @@
       "when": 1795755897644,
       "tag": "0024_cells_page_rev",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1795778710264,
+      "tag": "0025_sessions",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1795778717823,
+      "tag": "0026_sessions_backfill",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1795778718409,
+      "tag": "0027_sessions_required",
+      "breakpoints": true
     }
   ]
 }

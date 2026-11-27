@@ -70,9 +70,22 @@ export const emailVerificationTokens = pgTable('email_verification_tokens', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+// A session: one phone signed in to an account, from its sign-in to its
+// sign-out (chantier 9). Its refresh tokens follow one another under it;
+// its access tokens name it (`sid`), and every request checks it still
+// exists. Closing it deletes it, with its tokens.
+export const sessions = pgTable('sessions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('sessions_user_id_idx').on(t.userId),
+]);
+
 export const refreshTokens = pgTable('refresh_tokens', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  sessionId: uuid('session_id').notNull().references(() => sessions.id, { onDelete: 'cascade' }),
   tokenHash: text('token_hash').notNull(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   // The token that replaced this one at its last renewal. This one stays
@@ -83,6 +96,7 @@ export const refreshTokens = pgTable('refresh_tokens', {
 }, (t) => [
   index('refresh_tokens_token_hash_idx').on(t.tokenHash),
   index('refresh_tokens_expires_at_idx').on(t.expiresAt),
+  index('refresh_tokens_session_id_idx').on(t.sessionId),
 ]);
 
 export const subscriptions = pgTable('subscriptions', {
@@ -272,8 +286,13 @@ export const syncStats = pgTable('sync_stats', {
 // linked to no account.
 export const endedSessions = pgTable('ended_sessions', {
   tokenHash: text('token_hash').primaryKey(),
-  reason: text('reason').notNull(), // 'account_deleted' | 'session_revoked'
+  // 'account_deleted' | 'password_changed' | 'session_revoked'
+  reason: text('reason').notNull(),
+  // The session the token belonged to: a request with its access token
+  // learns why it is refused (chantier 9). Null for rows written before.
+  sessionId: uuid('session_id'),
   endedAt: timestamp('ended_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   index('ended_sessions_ended_at_idx').on(t.endedAt),
+  index('ended_sessions_session_id_idx').on(t.sessionId),
 ]);

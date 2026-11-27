@@ -2,7 +2,8 @@ import { Router, Response } from 'express';
 import { z } from 'zod';
 import * as argon2 from 'argon2';
 import { db } from '../db/index.js';
-import { users, refreshTokens, passwordResetTokens, subscriptions, oauthAccounts, endedSessions } from '../db/schema.js';
+import { users, refreshTokens, passwordResetTokens, subscriptions, oauthAccounts, endedSessions, sessions } from '../db/schema.js';
+import { newSession, type EndReason } from '../lib/sessions.js';
 import { and } from 'drizzle-orm';
 import { signAccessToken, generateRefreshToken, hashToken } from '../lib/jwt.js';
 import { validate } from '../middleware/validate.js';
@@ -56,25 +57,30 @@ function setRefreshCookie(res: Response, refreshToken: string) {
   });
 }
 
-/** A new refresh token for [userId], stored by its hash; returns it and its row id. */
-async function newRefreshToken(userId: string): Promise<{ token: string; id: string }> {
+/** A new refresh token of [sessionId], stored by its hash; returns it and its row id. */
+async function newRefreshToken(userId: string, sessionId: string): Promise<{ token: string; id: string }> {
   const token = generateRefreshToken();
   const [row] = await db.insert(refreshTokens)
-    .values({ userId, tokenHash: hashToken(token), expiresAt: new Date(Date.now() + sessionMs) })
+    .values({ userId, sessionId, tokenHash: hashToken(token), expiresAt: new Date(Date.now() + sessionMs) })
     .returning({ id: refreshTokens.id });
   return { token, id: row.id };
 }
 
-/** Issues access + refresh tokens, sets the cookie, and returns the response body. */
+/** Opens a session: access + refresh tokens, the cookie, and the response body. */
 async function issueSession(res: Response, user: ProfileUser) {
-  const accessToken = await signAccessToken(user.id);
-  const { token: refreshToken } = await newRefreshToken(user.id);
+  const sessionId = await newSession(user.id);
+  const accessToken = await signAccessToken(user.id, sessionId);
+  const { token: refreshToken } = await newRefreshToken(user.id, sessionId);
   setRefreshCookie(res, refreshToken);
   return { accessToken, refreshToken, ...(await profileOf(user)) };
 }
 
-/** A refused renewal, with why: the app only erases its copy for `account_deleted`. */
-type EndCode = 'invalid' | 'session_expired' | 'session_revoked' | 'account_deleted';
+/**
+ * A refused renewal, with why: the app only erases its copy for
+ * `account_deleted`. An expired or spent token is `invalid`;
+ * `session_revoked` means only "signed out from another device" (chantier 9).
+ */
+type EndCode = EndReason;
 const refuse = (res: Response, code: EndCode) => res.status(401).json({ error: 'Invalid or expired refresh token', code });
 
 const registerSchema = z.object({
@@ -299,9 +305,10 @@ router.delete('/account', requireAuth, async (req, res) => {
     // remembered as ended by a deletion: another phone of the account learns
     // it at its next renewal and erases its copy (H24).
     await db.transaction(async (tx) => {
-      const sessions = await tx.select({ tokenHash: refreshTokens.tokenHash }).from(refreshTokens).where(eq(refreshTokens.userId, req.userId!));
-      if (sessions.length > 0) {
-        await tx.insert(endedSessions).values(sessions.map((t) => ({ tokenHash: t.tokenHash, reason: 'account_deleted' })))
+      const tokens = await tx.select({ tokenHash: refreshTokens.tokenHash, sessionId: refreshTokens.sessionId })
+        .from(refreshTokens).where(eq(refreshTokens.userId, req.userId!));
+      if (tokens.length > 0) {
+        await tx.insert(endedSessions).values(tokens.map((t) => ({ tokenHash: t.tokenHash, sessionId: t.sessionId, reason: 'account_deleted' })))
           .onConflictDoNothing();
       }
       await tx.delete(users).where(eq(users.id, req.userId!));
@@ -337,7 +344,7 @@ router.post('/refresh', async (req, res) => {
       refuse(res, (ended?.reason as EndCode | undefined) ?? 'invalid');
       return;
     }
-    if (stored.expiresAt < new Date()) { refuse(res, 'session_expired'); return; }
+    if (stored.expiresAt < new Date()) { refuse(res, 'invalid'); return; }
 
     // The profile rides along with the new token pair so the app can skip
     // the /me round-trip on cold start.
@@ -348,18 +355,18 @@ router.post('/refresh', async (req, res) => {
       const [successor] = await db.select({ id: refreshTokens.id, replacedById: refreshTokens.replacedById })
         .from(refreshTokens).where(eq(refreshTokens.id, stored.replacedById)).limit(1);
       // The successor has served (it was renewed in turn): this token is spent.
-      if (successor?.replacedById) { refuse(res, 'session_revoked'); return; }
+      if (successor?.replacedById) { refuse(res, 'invalid'); return; }
       // Never used: its answer was lost. Drop it and issue another.
       if (successor) await db.delete(refreshTokens).where(eq(refreshTokens.id, successor.id));
     }
 
-    const next = await newRefreshToken(stored.userId);
+    const next = await newRefreshToken(stored.userId, stored.sessionId);
     await db.update(refreshTokens).set({ replacedById: next.id }).where(eq(refreshTokens.id, stored.id));
     // The token before this one is no longer needed: its successor (this
     // one) has now served.
     await db.delete(refreshTokens).where(eq(refreshTokens.replacedById, stored.id));
 
-    const accessToken = await signAccessToken(stored.userId);
+    const accessToken = await signAccessToken(stored.userId, stored.sessionId);
     setRefreshCookie(res, next.token);
     res.json({ accessToken, refreshToken: next.token, ...(await profileOf(user)) });
   } catch (err) {
@@ -435,10 +442,15 @@ router.patch('/settings', requireAuth, validate(settingsSchema), async (req, res
 // Logout
 router.post('/logout', requireAuth, async (req, res) => {
   try {
+    // The whole session closes: every token of its chain goes with it (a
+    // token left before the last renewal would otherwise still renew it).
     const token = req.body?.refreshToken || req.cookies?.refreshToken;
-    if (token) {
-      await db.delete(refreshTokens).where(eq(refreshTokens.tokenHash, hashToken(token)));
-    }
+    const [owned] = token
+      ? await db.select({ sessionId: refreshTokens.sessionId }).from(refreshTokens)
+        .where(and(eq(refreshTokens.tokenHash, hashToken(token)), eq(refreshTokens.userId, req.userId!))).limit(1)
+      : [];
+    const sessionId = owned?.sessionId ?? req.sessionId;
+    if (sessionId) await db.delete(sessions).where(and(eq(sessions.id, sessionId), eq(sessions.userId, req.userId!)));
 
     res.clearCookie('refreshToken', { path: '/api/auth' });
     res.json({ ok: true });
