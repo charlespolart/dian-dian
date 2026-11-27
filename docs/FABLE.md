@@ -62,6 +62,8 @@ RevenueCat) sont en anglais ; les textes de l'app vouvoient.
 | `feat/comment-badge` | App : pastille de commentaire à la place de l'anneau troué ; tuiles Sons et Vibrations qui suivent le thème. Testé, analyse propre, entrées dans `flutter_app/CHANGELOG.md` (Unreleased) | À pousser (au 2026-11-25 elle n'existe que sur la machine de Charles) et à fusionner ; sortira avec la prochaine version de l'app ; les notes des stores devront dire que le repère a changé (celles de 1.4.0 parlent d'« un petit anneau ») |
 | `feat/landing-store-by-platform` | Déjà fusionnée et en production (1.2.1) | Peut être supprimée |
 | `feat/cell-popup-page-list` | Ancien travail en cours, hors de ce brief | — |
+| `feat/android-tooling` | Chantier 3 (outillage Android, bannière au-dessus de la barre système) | En attente des essais de Charles sur appareil, puis fusion |
+| `feat/offline-sync` | Chantier 10 (hors ligne), partie de `feat/android-tooling` : 12 tâches construites le 2026-11-27, registre d'exécution `.superpowers/sdd/2026-11-27-offline-sync/progress.md` | Essais de Charles sur deux téléphones (H1 à H29, mise à jour depuis 1.4.0), relecture neuve, fusion après le chantier 3 |
 
 ## Les chantiers, dans l'ordre
 
@@ -167,6 +169,33 @@ release ; un correctif urgent de la production part du tag.
 - App : `make test` (analyse Flutter + tests + typecheck du backend).
 - Backend : `cd backend && npx tsx --test "src/**/*.test.ts"` ; la suite
   smoke `npx tsx scripts/smoke.ts` contre un backend local lancé.
+
+- Hors ligne (chantier 10) : `cd backend && npx tsx scripts/sync-scenarios.ts`
+  (les cas à deux téléphones H17 à H29) et
+  `cd flutter_app && flutter test integration/backend_e2e_test.dart`, contre
+  un backend local lancé.
+
+## Sortie de secours du chantier 10 (choix 9 de la confirmation)
+
+Si la nouvelle couche de données de l'app devait être retirée après la
+sortie, l'app 1.4.0 se reconstruit telle quelle : le serveur garde les
+routes qu'elle utilise, et ce qu'elle y écrit compte comme un autre
+appareil pour les téléphones encore sur la nouvelle version (cas H26).
+
+1. `git switch -c release/back-to-1.4.0 app-v1.4.0`, puis donner dans
+   `flutter_app/pubspec.yaml` un numéro de version plus grand que celui de
+   la release retirée (les stores refusent un numéro plus petit).
+2. Le numéro de build est le nombre de commits, plus petit sur cette
+   branche que sur la release retirée : l'imposer plus grand,
+   `make prod-ios BUILD_NUMBER=<n>` et `make prod-android BUILD_NUMBER=<n>`
+   (une variable donnée à `make` remplace celle du `Makefile`).
+3. Les notes des stores le disent : ce qui avait été fait hors ligne et
+   n'était pas encore envoyé reste sur le téléphone, dans un fichier
+   (`dian_<compte>.db`) que l'app 1.4.0 ne lit pas ; tout ce qui était déjà
+   envoyé est sur le serveur. L'app 1.4.0 relit le serveur à l'ouverture.
+4. Le backend, lui, ne revient pas en arrière en deçà de la version de cette
+   release tant qu'une app qui synchronise est installée : elle a besoin de
+   `/api/sync` et des numéros. Retirer l'app ne demande rien au serveur.
 
 ## Ce que Charles fait de son côté (hors code)
 

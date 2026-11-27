@@ -401,7 +401,9 @@ sans un mot, et créer un tracker ne fait rien. Spec :
   Charles), et l'app dit toujours ce qui n'a pas été gardé.
 - Deux téléphones en ligne gardent la règle d'aujourd'hui : le dernier qui
   écrit gagne.
-- Chantier 10, construit avant le compte.
+- Chantier 10, construit avant le compte : construit le 2026-11-27 sur
+  `feat/offline-sync` (12 tâches, scénarios H17–H29 verts), en attente des
+  essais de Charles sur deux téléphones avant la fusion.
 
 ### 14. Entrer sans mur : le compte invisible — spécifié le 2026-11-26
 Environ 31 % des installations ne créent jamais de compte (mesuré du 28

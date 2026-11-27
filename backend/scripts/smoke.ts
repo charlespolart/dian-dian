@@ -506,8 +506,8 @@ async function main() {
 
     // The privacy policy says what the site counts and where to object, in its four languages.
     for (const [lang, title, tag, updated] of [
-      ['en', 'Website Audience Measurement', 'campaign tag', 'November 26, 2026'], ['fr', "Mesure d'audience du site", 'marquage de campagne', '26 novembre 2026'],
-      ['zh-CN', '网站访问统计', '推广标记', '2026年11月26日'], ['zh-TW', '網站流量統計', '推廣標記', '2026年11月26日'],
+      ['en', 'Website Audience Measurement', 'campaign tag', 'November 27, 2026'], ['fr', "Mesure d'audience du site", 'marquage de campagne', '27 novembre 2026'],
+      ['zh-CN', '网站访问统计', '推广标记', '2026年11月27日'], ['zh-TW', '網站流量統計', '推廣標記', '2026年11月27日'],
     ]) {
       const policy = await (await site(`/privacy?lang=${lang}`)).text();
       assert.ok(policy.includes(title), `the ${lang} policy has its audience section`);
@@ -549,7 +549,10 @@ async function main() {
       'what a purchase record holds': { en: "the store's transaction identifier", fr: "l'identifiant de la transaction chez le store", 'zh-CN': '商店的交易标识符', 'zh-TW': '商店的交易識別碼' },
       'a refused session token is logged too': { en: 'a sign-in or a session token is refused', fr: 'une connexion ou un jeton de session est refusé', 'zh-CN': '登录或会话令牌被拒绝', 'zh-TW': '登入或工作階段權杖被拒絕' },
       'RevenueCat receives device information': { en: 'technical information about your device', fr: 'des informations techniques sur votre appareil', 'zh-CN': '您设备的技术信息', 'zh-TW': '您裝置的技術資訊' },
-      'the copy kept on the phone': { en: 'a copy of the year it shows', fr: "une copie de l'année qu'elle affiche", 'zh-CN': '其所显示年份的副本', 'zh-TW': '其所顯示年份的副本' },
+      'the full copy of the account kept on the phone (offline sync)': { en: 'a full copy of your account', fr: 'une copie complète de votre compte', 'zh-CN': '您账户的完整副本', 'zh-TW': '您帳戶的完整副本' },
+      'the changes made offline wait on the phone': { en: 'the changes you made offline', fr: 'les modifications faites hors ligne', 'zh-CN': '离线时所做', 'zh-TW': '離線時所做' },
+      'a closed session leaves the copy hidden on the phone': { en: 'stays on the phone, hidden', fr: 'reste sur le téléphone, cachée', 'zh-CN': '隐藏保留在手机上', 'zh-TW': '隱藏保留在手機上' },
+      'what a phone sent offline is kept 90 days': { en: '90 days', fr: '90 jours', 'zh-CN': '90 天', 'zh-TW': '90 天' },
       'purchase events after a deletion': { en: 'linked to no account', fr: 'sans lien avec un compte', 'zh-CN': '不与任何账户关联', 'zh-TW': '不與任何帳戶關聯' },
       'backups are kept 30 days': { en: 'kept 30 days', fr: 'gardées 30 jours', 'zh-CN': '保留 30 天', 'zh-TW': '保留 30 天' },
       'logs are kept 6 months at most': { en: '6 months at most', fr: '6 mois au plus', 'zh-CN': '最多保留 6 个月', 'zh-TW': '最多保留 6 個月' },
