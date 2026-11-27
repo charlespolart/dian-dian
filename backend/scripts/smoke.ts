@@ -176,6 +176,109 @@ async function main() {
   r = await call('GET', `/api/legends/${pageId}`);
   assert.equal(r.json.length, 1);
 
+  // --- version numbers (chantier 10): every write of today's routes takes a ---
+  // --- number from the account's counter; every deletion leaves a trace -----
+  // Today's routes are what apps 1.4.0 use: their writes must count as
+  // changes for the offline rule ("the server wins").
+  if (sql) {
+    const userRev = async () => (await sql`select rev::int as rev from users where id = ${userId}`)[0].rev as number;
+    const userCols = async () => (await sql`
+      select rev::int, pages_order_rev::int, keep_free_rev::int, theme_rev::int, language_rev::int, cursor_rev::int
+      from users where id = ${userId}`)[0];
+    const pageCols = async (id: string) => (await sql`
+      select rev::int, edit_rev::int, content_rev::int, legends_order_rev::int from pages where id = ${id}`)[0];
+    const cellCols = async (id: string, y: number, m: number, d: number) => (await sql`
+      select rev::int, edit_rev::int from cells where page_id = ${id} and year = ${y} and month = ${m} and day = ${d}`)[0];
+    const legendCols = async (id: string) => (await sql`select rev::int, edit_rev::int from legends where id = ${id}`)[0];
+    const trace = async (kind: string, key: string) => (await sql`
+      select page_id, rev::int from deletions where user_id = ${userId} and kind = ${kind} and key = ${key}`)[0];
+
+    // A tracker of its own, removed at the end: the rest of the suite keeps its two.
+    let before = await userRev();
+    r = await call('POST', '/api/pages', { title: 'Revs', position: 2, legends: [{ color: '#123456', label: 'L0' }] });
+    assert.equal(r.status, 201, `revs page: ${JSON.stringify(r.json)}`);
+    const revPage: string = r.json.id;
+    const firstLegend: string = r.json.legends[0].id;
+    let now = await userRev();
+    assert.equal(now, before + 1, 'creating a tracker takes one number');
+    assert.deepEqual(await pageCols(revPage), { rev: now, edit_rev: now, content_rev: now, legends_order_rev: 0 }, 'a new tracker carries its number');
+    assert.deepEqual(await legendCols(firstLegend), { rev: now, edit_rev: now }, 'and so do the legends created with it');
+
+    before = now;
+    r = await call('PUT', `/api/cells/${revPage}`, { year: 2026, month: 3, day: 1, color: '#123456', comment: 'x' });
+    assert.equal(r.status, 200);
+    now = await userRev();
+    assert.equal(now, before + 1, 'colouring a day takes one number');
+    assert.deepEqual(await cellCols(revPage, 2026, 3, 1), { rev: now, edit_rev: now }, 'the day carries it');
+    assert.equal((await pageCols(revPage)).content_rev, now, 'and so does the content of its tracker');
+    assert.equal((await pageCols(revPage)).rev, now, 'the tracker row changed (its content number)');
+    assert.equal((await pageCols(revPage)).edit_rev, before, 'but its own edit number did not');
+
+    r = await call('DELETE', `/api/cells/${revPage}`, { year: 2026, month: 3, day: 1 });
+    now = await userRev();
+    assert.deepEqual(await trace('cell', `${revPage}:2026-03-01`), { page_id: revPage, rev: now }, 'clearing a day leaves a trace');
+    assert.equal((await pageCols(revPage)).content_rev, now);
+
+    r = await call('PUT', `/api/cells/${revPage}`, { year: 2026, month: 3, day: 2, color: '#123456' });
+    r = await call('PUT', `/api/cells/${revPage}`, { year: 2025, month: 1, day: 1, color: '#123456' });
+    r = await call('PATCH', `/api/cells/${revPage}/recolor`, { colorMap: { '#123456': '#654321' } });
+    now = await userRev();
+    assert.deepEqual(await cellCols(revPage, 2026, 3, 2), { rev: now, edit_rev: now }, 'an old app\'s mass recolour counts as an edit of each day');
+    assert.deepEqual(await cellCols(revPage, 2025, 1, 1), { rev: now, edit_rev: now }, 'in every year');
+
+    r = await call('DELETE', `/api/cells/${revPage}/all`, { year: 2025 });
+    now = await userRev();
+    assert.deepEqual(await trace('cell', `${revPage}:2025-01-01`), { page_id: revPage, rev: now }, 'resetting a year leaves a trace per day');
+
+    r = await call('POST', `/api/legends/${revPage}`, { color: '#ABCDEF', label: 'L1', position: 1 });
+    const secondLegend: string = r.json.id;
+    now = await userRev();
+    assert.deepEqual(await legendCols(secondLegend), { rev: now, edit_rev: now }, 'a new legend carries its number');
+    assert.equal((await pageCols(revPage)).content_rev, now);
+    r = await call('PATCH', `/api/legends/${secondLegend}`, { label: 'L1b' });
+    now = await userRev();
+    assert.deepEqual(await legendCols(secondLegend), { rev: now, edit_rev: now }, 'renaming a legend is an edit');
+    r = await call('PUT', `/api/legends/${revPage}/reorder`, { ids: [secondLegend, firstLegend] });
+    now = await userRev();
+    assert.equal((await pageCols(revPage)).legends_order_rev, now, 'reordering the legends numbers their order');
+    assert.equal((await pageCols(revPage)).content_rev, now);
+    r = await call('PATCH', `/api/legends/${revPage}/recolor`, { colorMap: { '#ABCDEF': '#FEDCBA' } });
+    now = await userRev();
+    assert.deepEqual(await legendCols(secondLegend), { rev: now, edit_rev: now }, 'an old app\'s legend recolour is an edit');
+    r = await call('DELETE', `/api/legends/${secondLegend}`);
+    now = await userRev();
+    assert.deepEqual(await trace('legend', secondLegend), { page_id: revPage, rev: now }, 'deleting a legend leaves a trace');
+    assert.equal((await pageCols(revPage)).content_rev, now);
+
+    r = await call('PATCH', `/api/pages/${revPage}`, { title: 'Revs 2' });
+    now = await userRev();
+    assert.deepEqual(await pageCols(revPage), { rev: now, edit_rev: now, content_rev: now, legends_order_rev: (await pageCols(revPage)).legends_order_rev }, 'renaming a tracker is an edit of it and of its content');
+    r = await call('PATCH', `/api/pages/${revPage}`, { position: 2 });
+    now = await userRev();
+    assert.equal((await userCols()).pages_order_rev, now, 'a position sent by an app before 1.3.0 numbers the order');
+    r = await call('PUT', '/api/pages/reorder', { ids: [page2, pageId, revPage] });
+    now = await userRev();
+    assert.equal((await userCols()).pages_order_rev, now, 'reordering the trackers numbers their order');
+    r = await call('PUT', '/api/pages/keep', { ids: [] });
+    now = await userRev();
+    assert.equal((await userCols()).keep_free_rev, now, 'choosing the open trackers numbers that choice');
+    r = await call('PATCH', '/api/auth/settings', { theme: 'defaultTheme' });
+    now = await userRev();
+    assert.equal((await userCols()).theme_rev, now, 'each setting has its number: theme');
+    r = await call('PATCH', '/api/auth/settings', { language: null });
+    now = await userRev();
+    assert.equal((await userCols()).language_rev, now, 'language');
+    r = await call('PATCH', '/api/auth/settings', { cursorEnabled: false });
+    now = await userRev();
+    assert.equal((await userCols()).cursor_rev, now, 'cursor');
+
+    r = await call('DELETE', `/api/pages/${revPage}`);
+    assert.equal(r.status, 200);
+    now = await userRev();
+    assert.deepEqual(await trace('page', revPage), { page_id: revPage, rev: now }, 'deleting a tracker leaves a trace');
+    await sql`delete from deletions where user_id = ${userId}`;
+  }
+
   // --- the site: store buttons go through /go/*, unknown paths are 404 -------
   {
     const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Mobile/15E148 Safari/604.1';
@@ -560,6 +663,10 @@ async function main() {
     assert.equal(r.status, 201, `replace: ${JSON.stringify(r.json)}`);
     const sleep: string = r.json.id;
     assert.equal(r.json.replaced, page2, 'reports the replaced page');
+    if (sql) {
+      const [t] = await sql`select page_id from deletions where user_id = ${userId} and kind = 'page' and key = ${page2}`;
+      assert.equal(t?.page_id, page2, 'the empty tracker it replaces leaves a deletion trace');
+    }
     assert.equal(r.json.position, 0, 'takes the position of the replaced page');
     r = await call('GET', '/api/pages');
     const ids: string[] = r.json.map((p: Json) => p.id);

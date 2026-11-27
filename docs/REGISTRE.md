@@ -293,10 +293,11 @@ rendre sur tous ses appareils.
 
 | Donnée | Ce qui en est fait |
 |---|---|
-| `pages` | Un tracker : son titre, son année, sa position, sa palette, et deux marques techniques (`keep_free`, `client_id`). |
+| `pages` | Un tracker : son titre, son année, sa position, sa palette, deux marques techniques (`keep_free`, `client_id`), et ses numéros de version (synchronisation hors ligne). |
 | `cells` | Un jour colorié : la date, la couleur, un commentaire libre, les dates de création et de modification. |
 | `legends` | Une entrée de légende : une couleur et son libellé. |
 | Synchronisation en direct | Par WebSocket, entre les appareils d'un même compte. Rien n'y est gardé. |
+| `deletions` | La trace de ce qui a été supprimé (un tracker, une légende, un jour) : son identifiant, son tracker, son numéro de version, sa date, rien de son contenu. Sert aux autres téléphones du compte et à écarter une modification faite hors ligne sur ce qui n'existe plus. Gardée 24 mois (purge quotidienne, `backend/src/lib/retention.ts`), comme le souvenir des comptes supprimés ; partie avec le compte. |
 | Sur le téléphone | Depuis l'app 1.3.0, une copie de l'année affichée (trackers, légendes, jours et commentaires) dans le fichier `snapshot_v1.json` du dossier de l'app (`flutter_app/lib/services/snapshot_store.dart`), pour afficher l'app avant la réponse du serveur ; effacée à la déconnexion. Comme le reste des données de l'app, elle peut être emportée par la sauvegarde du téléphone (iCloud ; sur Android, la sauvegarde automatique de Google, que l'app ne désactive pas). Le chantier 10 étend cette copie à tout le compte et complète cette ligne. |
 
 **Destinataires.** L'éditeur, qui ne lit le contenu de personne en

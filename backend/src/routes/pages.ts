@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { db } from '../db/index.js';
-import { pages, cells, legends } from '../db/schema.js';
+import { pages, cells, legends, users } from '../db/schema.js';
 import { requireAuth } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { broadcast } from '../lib/ws.js';
 import { eq, and, asc, count, inArray } from 'drizzle-orm';
 import { isUnlimited, maxFreeTrackers } from '../lib/premium.js';
+import { nextRev, trace } from '../lib/revs.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -93,6 +94,7 @@ router.post('/', validate(createPageSchema), async (req, res) => {
           .from(cells).where(eq(cells.pageId, replaces)).limit(1);
         if (legendRow || cellRow) return { status: 409 as const, error: 'Page is not empty' };
         await tx.delete(pages).where(eq(pages.id, replaces));
+        await trace(tx, [{ userId, kind: 'page', key: old.id, pageId: old.id, rev: await nextRev(tx, userId) }]);
         replaced = old.id;
         if (position === undefined) resolvedPosition = old.position;
       }
@@ -105,16 +107,18 @@ router.post('/', validate(createPageSchema), async (req, res) => {
           return { status: 403 as const, error: `Free accounts are limited to ${maxFreeTrackers} trackers` };
         }
       }
+      const rev = await nextRev(tx, userId);
       const [page] = await tx.insert(pages)
         .values({
           userId, title, position: resolvedPosition, clientId: clientId ?? null,
           ...(year !== undefined ? { year } : {}),
+          rev, editRev: rev, contentRev: rev,
         })
         .returning();
       const created = legendInputs.length === 0
         ? []
         : await tx.insert(legends)
-            .values(legendInputs.map((l, i) => ({ pageId: page.id, color: l.color, label: l.label, position: i })))
+            .values(legendInputs.map((l, i) => ({ pageId: page.id, color: l.color, label: l.label, position: i, rev, editRev: rev })))
             .returning();
       return { status: 201 as const, page, legends: created, replaced };
     });
@@ -155,11 +159,14 @@ router.put('/keep', validate(keepSchema), async (req, res) => {
     const userId = req.userId!;
     const { ids } = req.body as { ids: string[] };
     await db.transaction(async (tx) => {
+      const rev = await nextRev(tx, userId);
       await tx.update(pages).set({ keepFree: false }).where(eq(pages.userId, userId));
       if (ids.length > 0) {
         await tx.update(pages).set({ keepFree: true })
           .where(and(eq(pages.userId, userId), inArray(pages.id, ids)));
       }
+      // The choice of the open trackers is one element, numbered on the account.
+      await tx.update(users).set({ keepFreeRev: rev }).where(eq(users.id, userId));
     });
     broadcast(userId, 'pages:kept', { ids });
     res.json({ ok: true });
@@ -179,12 +186,15 @@ router.put('/reorder', validate(reorderPagesSchema), async (req, res) => {
   try {
     const { ids } = req.body as { ids: string[] };
     await db.transaction(async (tx) => {
+      const rev = await nextRev(tx, req.userId!);
       for (let i = 0; i < ids.length; i++) {
         // Scoped to the caller's pages so foreign ids are no-ops.
         await tx.update(pages)
           .set({ position: i })
           .where(and(eq(pages.id, ids[i]), eq(pages.userId, req.userId!)));
       }
+      // The order of the trackers is one element, numbered on the account.
+      await tx.update(users).set({ pagesOrderRev: rev }).where(eq(users.id, req.userId!));
     });
     broadcast(req.userId!, 'pages:reordered', { ids });
     res.json({ ok: true });
@@ -211,10 +221,20 @@ router.patch('/:id', validate(updatePageSchema), async (req, res) => {
     if (body.palette !== undefined) {
       body.palette = body.palette === null ? null : JSON.stringify(body.palette);
     }
-    const [page] = await db.update(pages)
-      .set(body)
-      .where(and(eq(pages.id, String(req.params.id)), eq(pages.userId, req.userId!)))
-      .returning();
+    const page = await db.transaction(async (tx) => {
+      const rev = await nextRev(tx, req.userId!);
+      // A name or a palette is an edit of the tracker; a position (apps before
+      // 1.3.0 reorder one tracker at a time) is a change of the order.
+      const edits = body.title !== undefined || body.palette !== undefined;
+      const [row] = await tx.update(pages)
+        .set({ ...body, rev, ...(edits ? { editRev: rev, contentRev: rev } : {}) })
+        .where(and(eq(pages.id, String(req.params.id)), eq(pages.userId, req.userId!)))
+        .returning();
+      if (row && body.position !== undefined) {
+        await tx.update(users).set({ pagesOrderRev: rev }).where(eq(users.id, req.userId!));
+      }
+      return row;
+    });
     if (!page) { res.status(404).json({ error: 'Page not found' }); return; }
     const parsed = { ...page, palette: page.palette ? JSON.parse(page.palette) : null };
     broadcast(req.userId!, 'page:updated', parsed);
@@ -228,9 +248,13 @@ router.patch('/:id', validate(updatePageSchema), async (req, res) => {
 // Delete page
 router.delete('/:id', async (req, res) => {
   try {
-    const [page] = await db.delete(pages)
-      .where(and(eq(pages.id, String(req.params.id)), eq(pages.userId, req.userId!)))
-      .returning({ id: pages.id });
+    const page = await db.transaction(async (tx) => {
+      const [row] = await tx.delete(pages)
+        .where(and(eq(pages.id, String(req.params.id)), eq(pages.userId, req.userId!)))
+        .returning({ id: pages.id });
+      if (row) await trace(tx, [{ userId: req.userId!, kind: 'page', key: row.id, pageId: row.id, rev: await nextRev(tx, req.userId!) }]);
+      return row;
+    });
     if (!page) { res.status(404).json({ error: 'Page not found' }); return; }
     broadcast(req.userId!, 'page:deleted', { id: page.id });
     res.json({ ok: true });

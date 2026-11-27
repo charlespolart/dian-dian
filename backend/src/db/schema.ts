@@ -1,4 +1,10 @@
-import { pgTable, uuid, text, smallint, integer, boolean, timestamp, doublePrecision, jsonb, primaryKey, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, smallint, integer, bigint, boolean, timestamp, doublePrecision, jsonb, primaryKey, index, uniqueIndex } from 'drizzle-orm/pg-core';
+
+/**
+ * A version number taken from the account's counter (`users.rev`, see
+ * lib/revs.ts). 0 for what predates the counter: a full copy sends it anyway.
+ */
+const revColumn = (name: string) => bigint(name, { mode: 'number' }).notNull().default(0);
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -15,6 +21,16 @@ export const users = pgTable('users', {
   // server writes none for this account. Set by hand, on request; no route
   // shows it or changes it.
   eventsOptOut: boolean('events_opt_out').notNull().default(false),
+  // The account's version counter, raised by every write of its data (one
+  // transaction at a time: the update locks the row). Elements without a row
+  // of their own keep their number here: the order of the trackers, the
+  // choice of the open ones, and each setting (offline sync, chantier 10).
+  rev: revColumn('rev'),
+  pagesOrderRev: revColumn('pages_order_rev'),
+  keepFreeRev: revColumn('keep_free_rev'),
+  themeRev: revColumn('theme_rev'),
+  languageRev: revColumn('language_rev'),
+  cursorRev: revColumn('cursor_rev'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -93,6 +109,15 @@ export const pages = pgTable('pages', {
   // Idempotency key the app sets when creating its first tracker (1.4.0):
   // a retry after a lost response finds the page instead of making a twin.
   clientId: text('client_id'),
+  // rev: last change of the row, whatever the cause (what sync sends).
+  // editRev: last direct edit of the tracker itself (its name, its palette),
+  // what the offline rule compares. contentRev: last change of anything in
+  // it (days, legends, their order, its name): a deletion that waited is
+  // compared with it. legendsOrderRev: the order of its legends.
+  rev: revColumn('rev'),
+  editRev: revColumn('edit_rev'),
+  contentRev: revColumn('content_rev'),
+  legendsOrderRev: revColumn('legends_order_rev'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   index('pages_user_id_idx').on(t.userId),
@@ -110,6 +135,10 @@ export const cells = pgTable('cells', {
   // the upsert never touches it. Activation stats read it.
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  // rev: last change (a legend recoloured elsewhere changes it); editRev:
+  // last direct edit of the day, what the offline rule compares.
+  rev: revColumn('rev'),
+  editRev: revColumn('edit_rev'),
 }, (t) => [
   primaryKey({ columns: [t.pageId, t.year, t.month, t.day] }),
 ]);
@@ -120,9 +149,29 @@ export const legends = pgTable('legends', {
   color: text('color').notNull(),
   label: text('label').notNull(),
   position: integer('position').notNull().default(0),
+  rev: revColumn('rev'),
+  editRev: revColumn('edit_rev'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   index('legends_page_id_idx').on(t.pageId),
+]);
+
+// What was deleted, and under which number: a phone that comes back learns
+// it (sync), and a change that waited for something deleted since is set
+// aside ("the server wins"). Kept 24 months (lib/retention.ts), as long as
+// the account document keeps the memory of deleted accounts. `key`: the id
+// of a tracker or a legend, `pageId:yyyy-mm-dd` for a day (lib/revs.ts).
+export const deletions = pgTable('deletions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  kind: text('kind').notNull(), // 'page' | 'legend' | 'cell'
+  key: text('key').notNull(),
+  pageId: uuid('page_id'),
+  rev: revColumn('rev'),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('deletions_user_rev_idx').on(t.userId, t.rev),
+  index('deletions_user_kind_key_idx').on(t.userId, t.kind, t.key),
 ]);
 
 // Product events reported by the app (roadmap #2): one row per paywall gate

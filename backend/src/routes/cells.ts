@@ -8,6 +8,7 @@ import { broadcast } from '../lib/ws.js';
 import { eq, and } from 'drizzle-orm';
 import { daysInMonth } from '../lib/dates.js';
 import { lockedPageIds } from '../lib/premium.js';
+import { cellKey, nextRev, touchPageContent, trace } from '../lib/revs.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -91,13 +92,20 @@ router.put('/:pageId', validate(upsertCellSchema), async (req, res) => {
       return;
     }
 
-    const [cell] = await db.insert(cells)
-      .values({ pageId, year, month, day, color, comment: comment ?? null, updatedAt: new Date() })
-      .onConflictDoUpdate({
-        target: [cells.pageId, cells.year, cells.month, cells.day],
-        set: { color, comment: comment ?? null, updatedAt: new Date() },
-      })
-      .returning();
+    // Numbered (lib/revs.ts): what this app writes counts as a change for
+    // the offline rule of the newer apps.
+    const cell = await db.transaction(async (tx) => {
+      const rev = await nextRev(tx, req.userId!);
+      const [row] = await tx.insert(cells)
+        .values({ pageId, year, month, day, color, comment: comment ?? null, updatedAt: new Date(), rev, editRev: rev })
+        .onConflictDoUpdate({
+          target: [cells.pageId, cells.year, cells.month, cells.day],
+          set: { color, comment: comment ?? null, updatedAt: new Date(), rev, editRev: rev },
+        })
+        .returning();
+      await touchPageContent(tx, pageId, rev);
+      return row;
+    });
 
     broadcast(req.userId!, 'cell:updated', cell);
     res.json(cell);
@@ -126,13 +134,20 @@ router.delete('/:pageId', validate(deleteCellSchema), async (req, res) => {
     if (await lockedByFreeTier(req.userId!, pageId, res)) return;
     const year = pickYear(req.body.year, page.year);
 
-    await db.delete(cells)
-      .where(and(
-        eq(cells.pageId, pageId),
-        eq(cells.year, year),
-        eq(cells.month, month),
-        eq(cells.day, day),
-      ));
+    await db.transaction(async (tx) => {
+      const gone = await tx.delete(cells)
+        .where(and(
+          eq(cells.pageId, pageId),
+          eq(cells.year, year),
+          eq(cells.month, month),
+          eq(cells.day, day),
+        ))
+        .returning({ day: cells.day });
+      if (gone.length === 0) return; // nothing was there: nothing changed
+      const rev = await nextRev(tx, req.userId!);
+      await trace(tx, [{ userId: req.userId!, kind: 'cell', key: cellKey(pageId, year, month, day), pageId, rev }]);
+      await touchPageContent(tx, pageId, rev);
+    });
 
     broadcast(req.userId!, 'cell:deleted', { pageId, year, month, day });
     res.json({ ok: true });
@@ -159,13 +174,18 @@ router.patch('/:pageId/recolor', validate(recolorSchema), async (req, res) => {
     if (await lockedByFreeTier(req.userId!, pageId, res)) return;
 
     const { colorMap } = req.body;
-    // One transaction: a multi-color rename must not half-apply.
+    // One transaction: a multi-color rename must not half-apply. An app
+    // before chantier 10 recolours the days itself: each day it touches is
+    // an edit of that day for the offline rule (the newer apps recolour
+    // through the legend, which leaves the days' edit numbers alone).
     await db.transaction(async (tx) => {
+      const rev = await nextRev(tx, req.userId!);
       for (const [oldColor, newColor] of Object.entries(colorMap)) {
         await tx.update(cells)
-          .set({ color: newColor as string, updatedAt: new Date() })
+          .set({ color: newColor as string, updatedAt: new Date(), rev, editRev: rev })
           .where(and(eq(cells.pageId, pageId), eq(cells.color, oldColor)));
       }
+      await touchPageContent(tx, pageId, rev);
     });
 
     broadcast(req.userId!, 'cells:recolored', { pageId, colorMap });
@@ -188,8 +208,15 @@ router.delete('/:pageId/all', async (req, res) => {
     if (await lockedByFreeTier(req.userId!, pageId, res)) return;
 
     const year = pickYear(req.body?.year ?? req.query.year, page.year);
-    await db.delete(cells)
-      .where(and(eq(cells.pageId, pageId), eq(cells.year, year)));
+    await db.transaction(async (tx) => {
+      const gone = await tx.delete(cells)
+        .where(and(eq(cells.pageId, pageId), eq(cells.year, year)))
+        .returning({ month: cells.month, day: cells.day });
+      if (gone.length === 0) return;
+      const rev = await nextRev(tx, req.userId!);
+      await trace(tx, gone.map((c) => ({ userId: req.userId!, kind: 'cell' as const, key: cellKey(pageId, year, c.month, c.day), pageId, rev })));
+      await touchPageContent(tx, pageId, rev);
+    });
 
     broadcast(req.userId!, 'cells:reset', { pageId, year });
     res.json({ ok: true });

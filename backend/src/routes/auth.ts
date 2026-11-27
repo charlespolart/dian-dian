@@ -11,6 +11,7 @@ import { sendPasswordResetEmail, sendAccountDeletedEmail } from '../lib/email.js
 import { verifyAppleIdentityToken, verifyGoogleIdToken } from '../lib/oauth.js';
 import { env } from '../lib/env.js';
 import { hasActiveSubscription } from '../lib/premium.js';
+import { nextRev } from '../lib/revs.js';
 import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
 
@@ -388,7 +389,17 @@ router.patch('/settings', requireAuth, validate(settingsSchema), async (req, res
       return;
     }
 
-    await db.update(users).set(updates).where(eq(users.id, req.userId!));
+    // Each setting is an element of its own for the offline rule: theme,
+    // language, cursor (its id and whether it is on go together).
+    await db.transaction(async (tx) => {
+      const rev = await nextRev(tx, req.userId!);
+      await tx.update(users).set({
+        ...updates,
+        ...(updates.theme !== undefined ? { themeRev: rev } : {}),
+        ...(updates.language !== undefined ? { languageRev: rev } : {}),
+        ...(updates.cursorId !== undefined || updates.cursorEnabled !== undefined ? { cursorRev: rev } : {}),
+      }).where(eq(users.id, req.userId!));
+    });
     res.json({ ok: true });
   } catch (err) {
     console.error('Update settings error:', err);

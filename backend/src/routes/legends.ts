@@ -5,6 +5,7 @@ import { legends, pages } from '../db/schema.js';
 import { requireAuth } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { broadcast } from '../lib/ws.js';
+import { nextRev, touchPageContent, trace } from '../lib/revs.js';
 import { eq, and, asc } from 'drizzle-orm';
 
 const router = Router();
@@ -51,9 +52,15 @@ router.post('/:pageId', validate(createLegendSchema), async (req, res) => {
       .where(eq(legends.pageId, String(req.params.pageId)));
     if (existing.length >= 12) { res.status(400).json({ error: 'Maximum 12 legends per page' }); return; }
 
-    const [legend] = await db.insert(legends)
-      .values({ pageId: String(req.params.pageId), ...req.body })
-      .returning();
+    const pageId = String(req.params.pageId);
+    const legend = await db.transaction(async (tx) => {
+      const rev = await nextRev(tx, req.userId!);
+      const [row] = await tx.insert(legends)
+        .values({ pageId, ...req.body, rev, editRev: rev })
+        .returning();
+      await touchPageContent(tx, pageId, rev);
+      return row;
+    });
 
     broadcast(req.userId!, 'legend:created', legend);
     res.status(201).json(legend);
@@ -81,10 +88,16 @@ router.put('/:pageId/reorder', validate(reorderSchema), async (req, res) => {
 
     const { ids } = req.body;
     // Constrain each update to a legend on THIS page, so foreign ids are no-ops.
-    await Promise.all(ids.map((id: string, i: number) =>
-      db.update(legends).set({ position: i })
-        .where(and(eq(legends.id, id), eq(legends.pageId, pageId)))
-    ));
+    // The order of a tracker's legends is one element, numbered on the tracker.
+    await db.transaction(async (tx) => {
+      const rev = await nextRev(tx, req.userId!);
+      for (let i = 0; i < ids.length; i++) {
+        await tx.update(legends).set({ position: i })
+          .where(and(eq(legends.id, ids[i]), eq(legends.pageId, pageId)));
+      }
+      await tx.update(pages).set({ legendsOrderRev: rev }).where(eq(pages.id, pageId));
+      await touchPageContent(tx, pageId, rev);
+    });
     broadcast(req.userId!, 'legends:reordered', { pageId, ids });
     res.json({ ok: true });
   } catch (err) {
@@ -109,11 +122,13 @@ router.patch('/:pageId/recolor', validate(recolorLegendSchema), async (req, res)
 
     const { colorMap } = req.body;
     await db.transaction(async (tx) => {
+      const rev = await nextRev(tx, req.userId!);
       for (const [oldColor, newColor] of Object.entries(colorMap)) {
         await tx.update(legends)
-          .set({ color: newColor as string })
+          .set({ color: newColor as string, rev, editRev: rev })
           .where(and(eq(legends.pageId, pageId), eq(legends.color, oldColor)));
       }
+      await touchPageContent(tx, pageId, rev);
     });
 
     broadcast(req.userId!, 'legends:recolored', { pageId, colorMap });
@@ -144,10 +159,15 @@ router.patch('/:id', validate(updateLegendSchema), async (req, res) => {
       .limit(1);
     if (!page) { res.status(403).json({ error: 'Unauthorized' }); return; }
 
-    const [updated] = await db.update(legends)
-      .set(req.body)
-      .where(eq(legends.id, String(req.params.id)))
-      .returning();
+    const updated = await db.transaction(async (tx) => {
+      const rev = await nextRev(tx, req.userId!);
+      const [row] = await tx.update(legends)
+        .set({ ...req.body, rev, editRev: rev })
+        .where(eq(legends.id, String(req.params.id)))
+        .returning();
+      await touchPageContent(tx, legend.pageId, rev);
+      return row;
+    });
 
     broadcast(req.userId!, 'legend:updated', updated);
     res.json(updated);
@@ -173,7 +193,12 @@ router.delete('/:id', async (req, res) => {
       .limit(1);
     if (!page) { res.status(403).json({ error: 'Unauthorized' }); return; }
 
-    await db.delete(legends).where(eq(legends.id, String(req.params.id)));
+    await db.transaction(async (tx) => {
+      const rev = await nextRev(tx, req.userId!);
+      await tx.delete(legends).where(eq(legends.id, String(req.params.id)));
+      await trace(tx, [{ userId: req.userId!, kind: 'legend', key: String(req.params.id), pageId: legend.pageId, rev }]);
+      await touchPageContent(tx, legend.pageId, rev);
+    });
     broadcast(req.userId!, 'legend:deleted', { id: String(req.params.id), pageId: legend.pageId });
     res.json({ ok: true });
   } catch (err) {

@@ -141,6 +141,13 @@
       "when": 1795711156811,
       "tag": "0019_events_opt_out",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1795748489451,
+      "tag": "0020_sync_revs",
+      "breakpoints": true
     }
   ]
 }
