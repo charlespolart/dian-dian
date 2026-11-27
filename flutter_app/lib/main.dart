@@ -202,12 +202,15 @@ class _AppShellState extends State<AppShell> {
   @override
   void initState() {
     super.initState();
-    final auth = context.read<AuthProvider>();
-    auth.addListener(_onAuthChange);
-    final sync = context.read<SyncService>()..onWriteRefused = _onWriteRefused;
-    sync.engine.addListener(_onEngine);
+    // Kept for dispose(), where looking providers up is no longer allowed.
+    _auth = context.read<AuthProvider>()..addListener(_onAuthChange);
+    _sync = context.read<SyncService>()..onWriteRefused = _onWriteRefused;
+    _sync.engine.addListener(_onEngine);
     _lifecycle = AppLifecycleListener(onResume: _maybeShowOutcomes);
   }
+
+  late final AuthProvider _auth;
+  late final SyncService _sync;
 
   late final AppLifecycleListener _lifecycle;
   SyncEngine? _engine;
@@ -545,8 +548,8 @@ class _AppShellState extends State<AppShell> {
 
   @override
   void dispose() {
-    context.read<AuthProvider>().removeListener(_onAuthChange);
-    context.read<SyncService>().engine.removeListener(_onEngine);
+    _auth.removeListener(_onAuthChange);
+    _sync.engine.removeListener(_onEngine);
     _engine?.removeListener(_maybeShowOutcomes);
     _lifecycle.dispose();
     super.dispose();

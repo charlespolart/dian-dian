@@ -120,6 +120,8 @@ cd backend && npx tsx scripts/smoke.ts                        # backend end-to-e
                                                               # and only run when the server and the database are on this machine
 cd backend && npx tsx scripts/sync-scenarios.ts                # offline sync, two phones, H17–H29 (needs `make back`)
 cd flutter_app && flutter test integration/backend_e2e_test.dart   # real client data layer (two phones' copies) vs local backend
+cd flutter_app && flutter test integration_test/offline_sync_app_test.dart -d <simulator>  # the real app on a simulator vs local backend
+                                                              # (iOS keeps the session in the keychain: `xcrun simctl keychain <sim> reset` for a clean run)
 cd backend && npx tsx scripts/seed-demo-local.ts              # demo@diandian.app / password with 9 trackers
 ```
 
