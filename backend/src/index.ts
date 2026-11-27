@@ -106,6 +106,17 @@ const eventsLimiter = rateLimit({
 });
 
 // Routes
+// Invisible accounts (chantier 9): created without proof, so their number
+// is capped per address — generous for a shared network, not for a robot.
+// Over it, the app keeps writing on the phone and tries again later (case 6).
+const invisibleLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: Number(process.env.INVISIBLE_PER_HOUR ?? 30),
+  message: { error: 'Too many accounts created from this network', code: 'too_many' },
+});
+
+app.use('/api/auth/invisible', invisibleLimiter);
+app.use('/api/auth/key', authLimiter);
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 app.use('/api/auth/forgot-password', forgotLimiter);

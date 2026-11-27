@@ -2,8 +2,10 @@ import { Router, Response } from 'express';
 import { z } from 'zod';
 import * as argon2 from 'argon2';
 import { db } from '../db/index.js';
-import { users, refreshTokens, passwordResetTokens, subscriptions, oauthAccounts, endedSessions, sessions } from '../db/schema.js';
-import { newSession, type EndReason } from '../lib/sessions.js';
+import { users, refreshTokens, passwordResetTokens, subscriptions, oauthAccounts, endedSessions, sessions, accountKeys, deletedAccounts } from '../db/schema.js';
+import { accountKind } from '../lib/accountKind.js';
+import { sqlState } from '../lib/pgError.js';
+import { newSession, touchLastSeen, type EndReason } from '../lib/sessions.js';
 import { closeSessions } from '../lib/closeSessions.js';
 import { and } from 'drizzle-orm';
 import { signAccessToken, generateRefreshToken, hashToken } from '../lib/jwt.js';
@@ -21,15 +23,22 @@ import { notifySync } from '../lib/ws.js';
 const router = Router();
 
 type ProfileUser = {
-  id: string; email: string; vip: boolean; theme: string;
+  id: string; email: string | null; passwordHash: string | null; vip: boolean; theme: string;
   language: string | null; cursorId: string; cursorEnabled: boolean;
 };
 
-/** The user fields the app needs at startup (settings, vip, premium). */
+/**
+ * The user fields the app needs at startup (settings, vip, premium), and
+ * what the account is: invisible or attached, and by which methods
+ * (chantier 9, principle 5 — the app never guesses it).
+ */
 async function profileOf(user: ProfileUser) {
+  const providers = (await db.select({ provider: oauthAccounts.provider }).from(oauthAccounts)
+    .where(eq(oauthAccounts.userId, user.id))).map((row) => row.provider);
   return {
     userId: user.id,
     email: user.email,
+    ...accountKind(user, providers),
     vip: user.vip,
     premium: await hasActiveSubscription(user.id),
     theme: user.theme,
@@ -83,6 +92,83 @@ async function issueSession(res: Response, user: ProfileUser) {
  */
 type EndCode = EndReason;
 const refuse = (res: Response, code: EndCode) => res.status(401).json({ error: 'Invalid or expired refresh token', code });
+
+// --- The invisible account (chantier 9) --------------------------------------
+// The phone chooses its id (UUID v4) and its key (32 random bytes,
+// base64url): offline at first launch it already writes under the account's
+// final id, and the account is born at the first network (case 5).
+const keySchema = z.object({
+  id: z.string().uuid(),
+  key: z.string().regex(/^[A-Za-z0-9_-]{43}$/, 'A key is 32 bytes in base64url'),
+});
+
+/** Whether [key] is the one whose hash is [stored], in constant time. */
+function sameKey(stored: string, key: string): boolean {
+  const a = Buffer.from(stored, 'hex');
+  const b = Buffer.from(hashToken(key), 'hex');
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+/** Whether the account is remembered as deleted. */
+async function wasDeleted(userId: string): Promise<boolean> {
+  const [gone] = await db.select({ userId: deletedAccounts.userId }).from(deletedAccounts).where(eq(deletedAccounts.userId, userId)).limit(1);
+  return !!gone;
+}
+
+// Create an invisible account, or answer again a creation whose answer was
+// lost (same id, same key: a session, no second account).
+router.post('/invisible', validate(keySchema), async (req, res) => {
+  try {
+    const { id, key } = req.body as z.infer<typeof keySchema>;
+    if (await wasDeleted(id)) { refuse(res, 'account_deleted'); return; }
+    const [existing] = await db.select().from(users).where(eq(users.id, id)).limit(1);
+    if (existing) {
+      const [held] = await db.select({ keyHash: accountKeys.keyHash }).from(accountKeys).where(eq(accountKeys.userId, id)).limit(1);
+      if (held && sameKey(held.keyHash, key)) {
+        await touchLastSeen(id);
+        res.json(await issueSession(res, existing));
+        return;
+      }
+      res.status(409).json({ error: 'This id is taken', code: 'taken' });
+      return;
+    }
+    let created;
+    try {
+      created = await db.transaction(async (tx) => {
+        const [user] = await tx.insert(users).values({ id, email: null }).returning();
+        await tx.insert(accountKeys).values({ userId: id, keyHash: hashToken(key) });
+        return user;
+      });
+    } catch (err) {
+      if (sqlState(err) === '23505') { res.status(409).json({ error: 'This id is taken', code: 'taken' }); return; } // a twin request won the race
+      throw err;
+    }
+    res.status(201).json(await issueSession(res, created));
+  } catch (err) {
+    console.error('Invisible account error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Reopen an invisible account's session with its key: the phone's way back
+// when its refresh token is refused, lost, or absent (principle 4).
+router.post('/key', validate(keySchema), async (req, res) => {
+  try {
+    const { id, key } = req.body as z.infer<typeof keySchema>;
+    if (await wasDeleted(id)) { refuse(res, 'account_deleted'); return; }
+    const [user] = await db.select().from(users).where(eq(users.id, id)).limit(1);
+    // Never known here (a database restored to before it): the phone keeps
+    // its copy and stays in; bringing the account back is a later lot.
+    if (!user) { res.status(401).json({ error: 'Unknown account', code: 'unknown' }); return; }
+    const [held] = await db.select({ keyHash: accountKeys.keyHash }).from(accountKeys).where(eq(accountKeys.userId, id)).limit(1);
+    if (!held || !sameKey(held.keyHash, key)) { refuse(res, 'invalid'); return; }
+    await touchLastSeen(id);
+    res.json(await issueSession(res, user));
+  } catch (err) {
+    console.error('Key session error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
 const registerSchema = z.object({
   email: z.string().email('Invalid email').max(255),
@@ -314,13 +400,16 @@ router.delete('/account', requireAuth, async (req, res) => {
     const closing = await db.transaction(async (tx) => {
       const ended = await closeSessions(tx, req.userId!, { reason: 'account_deleted' });
       await tx.delete(users).where(eq(users.id, req.userId!));
+      // Remembered 24 months, by its id only: its key, or a copy of its data
+      // restored on a phone, never brings it back (chantier 9).
+      await tx.insert(deletedAccounts).values({ userId: req.userId!, reason: 'deleted' }).onConflictDoNothing();
       return ended;
     });
     closing.afterCommit();
 
     res.clearCookie('refreshToken', { path: '/api/auth' });
 
-    if (user) {
+    if (user?.email) {
       sendAccountDeletedEmail(user.email).catch(err => console.error('Email send error:', err));
     }
 
@@ -365,6 +454,7 @@ router.post('/refresh', async (req, res) => {
     }
 
     const next = await newRefreshToken(stored.userId, stored.sessionId);
+    await touchLastSeen(stored.userId);
     await db.update(refreshTokens).set({ replacedById: next.id }).where(eq(refreshTokens.id, stored.id));
     // The token before this one is no longer needed: its successor (this
     // one) has now served.
@@ -382,21 +472,10 @@ router.post('/refresh', async (req, res) => {
 // Get current user info (vip status, settings, etc.)
 router.get('/me', requireAuth, async (req, res) => {
   try {
-    const [user] = await db.select({
-      id: users.id,
-      email: users.email,
-      vip: users.vip,
-      theme: users.theme,
-      language: users.language,
-      cursorId: users.cursorId,
-      cursorEnabled: users.cursorEnabled,
-    })
-      .from(users)
-      .where(eq(users.id, req.userId!))
-      .limit(1);
+    const [user] = await db.select().from(users).where(eq(users.id, req.userId!)).limit(1);
     if (!user) { res.status(404).json({ error: 'User not found' }); return; }
-    const premium = await hasActiveSubscription(user.id);
-    res.json({ ...user, premium });
+    // `id` as before; the profile adds `kind` and `methods` (chantier 9).
+    res.json({ id: user.id, ...(await profileOf(user)) });
   } catch (err) {
     console.error('Get me error:', err);
     res.status(500).json({ error: 'Server error' });

@@ -8,7 +8,9 @@ const revColumn = (name: string) => bigint(name, { mode: 'number' }).notNull().d
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
-  email: text('email').notNull().unique(),
+  // Null for an invisible account (chantier 9): no identity yet. Unique all
+  // the same (PostgreSQL admits several NULLs).
+  email: text('email').unique(),
   // Null for users who only sign in via OAuth — their identity comes from oauth_accounts.
   passwordHash: text('password_hash'),
   emailVerified: boolean('email_verified').notNull().default(false),
@@ -34,8 +36,33 @@ export const users = pgTable('users', {
   // The highest number among the deletion traces purged after 24 months: a
   // phone whose last sync is older gets the full copy (it may have missed one).
   syncFloorRev: revColumn('sync_floor_rev'),
+  // The last time the app spoke to the server for this account (renewal,
+  // key, sync read; at most hourly): the automatic erasures of invisible
+  // accounts count from it (chantier 9, cases 61 and 62).
+  lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).defaultNow().notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
+
+// The key of an invisible account (chantier 9): a 32-byte secret made by
+// the phone, which reopens the account's session. Only its SHA-256 is kept;
+// it goes when the account gets an identity or is deleted.
+export const accountKeys = pgTable('account_keys', {
+  userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  keyHash: text('key_hash').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+// What the server remembers of an account that is gone (chantier 9): its id
+// and why, nothing else, 24 months — a key or a phone's copy that comes back
+// is told the account was deleted instead of bringing it back to life.
+// 'deleted' (asked for); later lots add 'merged' and 'purged'.
+export const deletedAccounts = pgTable('deleted_accounts', {
+  userId: uuid('user_id').primaryKey(),
+  reason: text('reason').notNull(),
+  at: timestamp('at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('deleted_accounts_at_idx').on(t.at),
+]);
 
 // Links a user to an OAuth provider's stable user id ("subject"). A single user
 // row can have multiple oauth_accounts rows (e.g. both Apple and Google linked).

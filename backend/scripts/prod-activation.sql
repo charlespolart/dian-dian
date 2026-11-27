@@ -22,7 +22,7 @@ SET default_transaction_read_only = on;
 WITH real AS (
   SELECT id, created_at
   FROM users
-  WHERE NOT (vip OR email ILIKE '%@example.com' OR email ILIKE '%@overridedev.com' OR email = 'demo@diandian.app' OR email ILIKE '%@mydiandian.app')
+  WHERE NOT (vip OR coalesce(email, '') ILIKE '%@example.com' OR coalesce(email, '') ILIKE '%@overridedev.com' OR coalesce(email, '') = 'demo@diandian.app' OR coalesce(email, '') ILIKE '%@mydiandian.app')
     AND created_at >= date_trunc('week', now()) - interval '15 weeks'),
 first_cell AS (
   SELECT p.user_id, min(c.created_at) AS at

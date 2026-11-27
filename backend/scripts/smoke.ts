@@ -18,7 +18,7 @@
  */
 import 'dotenv/config';
 import assert from 'node:assert/strict';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import postgres from 'postgres';
 import WebSocket from 'ws';
@@ -473,6 +473,61 @@ async function main() {
     await send([mut('page.delete', { id: legendsTracker })]);
     // The rest of the suite expects this order, and no extra day on the first tracker.
     await send([mut('pages.reorder', { ids: [page2, pageId] }), mut('cell.clear', { pageId, year: 2026, month: 4, day: 1 })]);
+  }
+
+  // --- the invisible account (chantier 9, lot 1, task 3) ---------------------
+  {
+    // Its own address for the creation limit, so that reruns of this suite
+    // against one dev server do not meet it (trust proxy reads X-Forwarded-For).
+    const net = `10.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}`;
+    const post = (path: string, body: unknown, from = net) => fetch(`${BASE}${path}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': from }, body: JSON.stringify(body),
+    }).then(async (res) => ({ status: res.status, json: await res.json() as Json }));
+    const id = randomUUID();
+    const key = randomBytes(32).toString('base64url');
+    const made = await post('/api/auth/invisible', { id, key });
+    assert.equal(made.status, 201, `invisible: ${JSON.stringify(made.json)}`);
+    assert.equal(made.json.userId, id, 'under the id the phone chose');
+    assert.deepEqual([made.json.kind, made.json.methods, made.json.email], ['invisible', [], null], 'the server says what it is');
+    const replay = await post('/api/auth/invisible', { id, key });
+    assert.equal(replay.status, 200, 'the same request again (its answer lost): a session, no second account');
+    assert.equal((await post('/api/auth/invisible', { id, key: randomBytes(32).toString('base64url') })).json.code, 'taken', 'another key on that id: refused');
+    assert.equal((await post('/api/auth/invisible', { id: randomUUID(), key: 'short' })).status, 400, 'a key that is not 32 bytes');
+    const reopened = await post('/api/auth/key', { id, key });
+    assert.equal(reopened.status, 200, 'the key reopens a session');
+    assert.equal(reopened.json.kind, 'invisible');
+    assert.equal((await post('/api/auth/key', { id, key: randomBytes(32).toString('base64url') })).json.code, 'invalid');
+    assert.equal((await post('/api/auth/key', { id: randomUUID(), key })).json.code, 'unknown', 'an id the server never had: the phone keeps its copy');
+    const as = (token: string, method: string, path: string, body?: unknown) => fetch(`${BASE}${path}`, {
+      method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const tracker = randomUUID();
+    const sent = await as(reopened.json.accessToken, 'POST', '/api/sync/mutations', {
+      mutations: [{ id: randomUUID(), kind: 'page.create', waited: true, base: null, data: { id: tracker, title: 'Sans compte' } }],
+    });
+    assert.equal(sent.status, 200, 'it syncs like any account');
+    const me = await (await as(reopened.json.accessToken, 'GET', '/api/auth/me')).json();
+    assert.deepEqual([me.kind, me.methods, me.email], ['invisible', [], null]);
+    if (sql) {
+      const [u] = await sql`select extract(epoch from now() - last_seen_at)::int as ago from users where id = ${id}`;
+      assert.ok(u.ago < 60, 'its last contact is known');
+    }
+    assert.equal((await as(reopened.json.accessToken, 'DELETE', '/api/auth/account')).status, 200, '« Supprimer mes données »');
+    assert.equal((await post('/api/auth/key', { id, key })).json.code, 'account_deleted', 'the key no longer opens anything, and says why');
+    assert.equal((await post('/api/auth/invisible', { id, key })).json.code, 'account_deleted', 'nor brings the account back');
+
+    // Too many accounts from one network: refused (the app keeps writing on the phone and tries later, case 6).
+    const crowd = `10.251.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}`;
+    const limit = Number(process.env.INVISIBLE_PER_HOUR ?? 30);
+    const madeHere: { id: string; key: string; token: string }[] = [];
+    for (let i = 0; i < limit; i++) {
+      const one = { id: randomUUID(), key: randomBytes(32).toString('base64url') };
+      const r = await post('/api/auth/invisible', one, crowd);
+      assert.equal(r.status, 201);
+      madeHere.push({ ...one, token: r.json.accessToken });
+    }
+    assert.equal((await post('/api/auth/invisible', { id: randomUUID(), key: randomBytes(32).toString('base64url') }, crowd)).status, 429);
+    for (const one of madeHere) await as(one.token, 'DELETE', '/api/auth/account');
   }
 
   // --- closing sessions, and saying why (chantier 9, lot 1, task 2) --------

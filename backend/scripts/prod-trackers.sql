@@ -21,7 +21,7 @@
 CREATE TEMP TABLE u AS
 WITH real AS (
   SELECT id FROM users
-  WHERE NOT (vip OR email ILIKE '%@example.com' OR email ILIKE '%@overridedev.com' OR email = 'demo@diandian.app' OR email ILIKE '%@mydiandian.app')),
+  WHERE NOT (vip OR coalesce(email, '') ILIKE '%@example.com' OR coalesce(email, '') ILIKE '%@overridedev.com' OR coalesce(email, '') = 'demo@diandian.app' OR coalesce(email, '') ILIKE '%@mydiandian.app')),
 paying AS (
   SELECT DISTINCT user_id FROM subscriptions
   WHERE active AND (expires_at IS NULL OR expires_at > now())),
@@ -97,7 +97,7 @@ FROM u GROUP BY paying ORDER BY paying;
 \echo === Titres les plus fréquents (ce que les gens suivent) ===
 WITH real AS (
   SELECT id FROM users
-  WHERE NOT (vip OR email ILIKE '%@example.com' OR email ILIKE '%@overridedev.com' OR email = 'demo@diandian.app' OR email ILIKE '%@mydiandian.app'))
+  WHERE NOT (vip OR coalesce(email, '') ILIKE '%@example.com' OR coalesce(email, '') ILIKE '%@overridedev.com' OR coalesce(email, '') = 'demo@diandian.app' OR coalesce(email, '') ILIKE '%@mydiandian.app'))
 SELECT lower(trim(p.title)) AS title, count(*) AS n
 FROM pages p JOIN real r ON r.id = p.user_id
 GROUP BY 1 HAVING count(*) >= 2 ORDER BY n DESC, title LIMIT 25;

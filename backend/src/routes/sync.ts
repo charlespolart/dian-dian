@@ -21,6 +21,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { broadcast, notifySync } from '../lib/ws.js';
 import { hasActiveSubscription } from '../lib/premium.js';
 import { syncLimiter } from '../lib/syncLimit.js';
+import { touchLastSeen } from '../lib/sessions.js';
 import { recordSyncBatch } from '../lib/syncStats.js';
 import { applyMutation, type Outgoing } from '../sync/apply.js';
 import { parseMutation, type MutationResult } from '../sync/mutations.js';
@@ -95,6 +96,7 @@ type CompactCell = [number, number, number, string, string | null, number, numbe
 
 router.get('/', async (req, res) => {
   const userId = req.userId!;
+    touchLastSeen(userId).catch((err) => console.error('Last seen failed:', err)); // its last contact (chantier 9)
   const asked = Number(req.query.since);
   try {
     const [account] = await db.select().from(users).where(eq(users.id, userId)).limit(1);

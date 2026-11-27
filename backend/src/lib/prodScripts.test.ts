@@ -76,3 +76,14 @@ for (const name of scripts) {
     assert.deepEqual(problems(readFileSync(new URL(name, dir), 'utf8')), []);
   });
 }
+
+// Accounts without an address (chantier 9: the invisible account) have a
+// NULL e-mail: `NOT (vip OR email ILIKE '%@example.com' …)` is then unknown,
+// and such an account would vanish from every count without a word.
+test('the test-account filter compares e-mails through coalesce, so an account without one is counted', () => {
+  for (const name of scripts) {
+    const text = readFileSync(new URL(name, dir), 'utf8').split('\n').filter((line) => !/^\s*--/.test(line)).join('\n');
+    const bare = text.match(/(?<!coalesce\()\b(?:u\.)?email\s+(?:ILIKE|=)\s+'/gi) ?? [];
+    assert.deepEqual(bare, [], `${name}: an e-mail compared without coalesce`);
+  }
+});

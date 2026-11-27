@@ -1,6 +1,6 @@
-import { eq, notExists } from 'drizzle-orm';
+import { and, eq, lt, notExists, sql } from 'drizzle-orm';
 import { db } from '../db/index.js';
-import { endedSessions, refreshTokens, sessions } from '../db/schema.js';
+import { endedSessions, refreshTokens, sessions, users } from '../db/schema.js';
 
 /**
  * Why a session is over, as a refused request says it (chantier 9). The app
@@ -29,4 +29,13 @@ export async function purgeEmptySessions(): Promise<void> {
   await db.delete(sessions).where(notExists(
     db.select({ id: refreshTokens.id }).from(refreshTokens).where(eq(refreshTokens.sessionId, sessions.id)),
   ));
+}
+
+/**
+ * The app spoke to the server for this account: its last contact, at most
+ * once an hour (the erasures of invisible accounts count from it).
+ */
+export async function touchLastSeen(userId: string): Promise<void> {
+  await db.update(users).set({ lastSeenAt: sql`now()` })
+    .where(and(eq(users.id, userId), lt(users.lastSeenAt, sql`now() - interval '1 hour'`)));
 }

@@ -29,7 +29,7 @@ SET default_transaction_read_only = on;
 WITH e AS (
   SELECT se.* FROM subscription_events se JOIN users u ON u.id = se.user_id
   WHERE se.environment = 'PRODUCTION'
-    AND NOT (u.vip OR u.email ILIKE '%@example.com' OR u.email ILIKE '%@overridedev.com' OR u.email = 'demo@diandian.app' OR u.email ILIKE '%@mydiandian.app'))
+    AND NOT (u.vip OR coalesce(u.email, '') ILIKE '%@example.com' OR coalesce(u.email, '') ILIKE '%@overridedev.com' OR coalesce(u.email, '') = 'demo@diandian.app' OR coalesce(u.email, '') ILIKE '%@mydiandian.app'))
 SELECT date_trunc('week', event_at)::date AS semaine,
        type,
        coalesce(period_type, '-') AS periode,
@@ -46,7 +46,7 @@ ORDER BY 1, 2, 3;
 WITH e AS (
   SELECT se.* FROM subscription_events se JOIN users u ON u.id = se.user_id
   WHERE se.environment = 'PRODUCTION'
-    AND NOT (u.vip OR u.email ILIKE '%@example.com' OR u.email ILIKE '%@overridedev.com' OR u.email = 'demo@diandian.app' OR u.email ILIKE '%@mydiandian.app')),
+    AND NOT (u.vip OR coalesce(u.email, '') ILIKE '%@example.com' OR coalesce(u.email, '') ILIKE '%@overridedev.com' OR coalesce(u.email, '') = 'demo@diandian.app' OR coalesce(u.email, '') ILIKE '%@mydiandian.app')),
 trials AS (
   SELECT original_transaction_id AS tx, min(event_at) AS started_at, max(expires_at) AS ends_at, min(store) AS store, min(product_id) AS product_id
   FROM e
@@ -80,7 +80,7 @@ ORDER BY 1, 2, 3;
 WITH e AS (
   SELECT se.* FROM subscription_events se JOIN users u ON u.id = se.user_id
   WHERE se.environment = 'PRODUCTION'
-    AND NOT (u.vip OR u.email ILIKE '%@example.com' OR u.email ILIKE '%@overridedev.com' OR u.email = 'demo@diandian.app' OR u.email ILIKE '%@mydiandian.app')),
+    AND NOT (u.vip OR coalesce(u.email, '') ILIKE '%@example.com' OR coalesce(u.email, '') ILIKE '%@overridedev.com' OR coalesce(u.email, '') = 'demo@diandian.app' OR coalesce(u.email, '') ILIKE '%@mydiandian.app')),
 trials AS (
   SELECT original_transaction_id AS tx, min(event_at) AS started_at
   FROM e
@@ -100,7 +100,7 @@ ORDER BY 1;
 WITH e AS (
   SELECT se.* FROM subscription_events se JOIN users u ON u.id = se.user_id
   WHERE se.environment = 'PRODUCTION'
-    AND NOT (u.vip OR u.email ILIKE '%@example.com' OR u.email ILIKE '%@overridedev.com' OR u.email = 'demo@diandian.app' OR u.email ILIKE '%@mydiandian.app'))
+    AND NOT (u.vip OR coalesce(u.email, '') ILIKE '%@example.com' OR coalesce(u.email, '') ILIKE '%@overridedev.com' OR coalesce(u.email, '') = 'demo@diandian.app' OR coalesce(u.email, '') ILIKE '%@mydiandian.app'))
 SELECT product_id,
        store,
        type,
@@ -124,7 +124,7 @@ WITH e AS (
          CASE WHEN jsonb_typeof(se.payload -> 'commission_percentage') = 'number' THEN (se.payload ->> 'commission_percentage')::float8 END AS commission
   FROM subscription_events se JOIN users u ON u.id = se.user_id
   WHERE se.environment = 'PRODUCTION'
-    AND NOT (u.vip OR u.email ILIKE '%@example.com' OR u.email ILIKE '%@overridedev.com' OR u.email = 'demo@diandian.app' OR u.email ILIKE '%@mydiandian.app'))
+    AND NOT (u.vip OR coalesce(u.email, '') ILIKE '%@example.com' OR coalesce(u.email, '') ILIKE '%@overridedev.com' OR coalesce(u.email, '') = 'demo@diandian.app' OR coalesce(u.email, '') ILIKE '%@mydiandian.app'))
 SELECT to_char(date_trunc('month', event_at), 'YYYY-MM') AS mois,
        round(coalesce(sum(price_usd) FILTER (WHERE price_usd > 0 AND type IN ('INITIAL_PURCHASE', 'RENEWAL')), 0)::numeric, 2) AS abonnements_usd,
        round(coalesce(sum(price_usd) FILTER (WHERE price_usd > 0 AND type = 'NON_RENEWING_PURCHASE'), 0)::numeric, 2)          AS achats_uniques_usd,
@@ -143,7 +143,7 @@ ORDER BY 1;
 WITH e AS (
   SELECT se.* FROM subscription_events se JOIN users u ON u.id = se.user_id
   WHERE se.environment = 'PRODUCTION'
-    AND NOT (u.vip OR u.email ILIKE '%@example.com' OR u.email ILIKE '%@overridedev.com' OR u.email = 'demo@diandian.app' OR u.email ILIKE '%@mydiandian.app'))
+    AND NOT (u.vip OR coalesce(u.email, '') ILIKE '%@example.com' OR coalesce(u.email, '') ILIKE '%@overridedev.com' OR coalesce(u.email, '') = 'demo@diandian.app' OR coalesce(u.email, '') ILIKE '%@mydiandian.app'))
 SELECT type,
        store,
        coalesce(period_type, '-')                      AS periode,
@@ -161,7 +161,7 @@ WITH sorted AS (
          coalesce(se.environment, '-') AS environnement,
          CASE
            WHEN se.user_id IS NULL THEN 'sans compte (anonyme, supprimé, test)'
-           WHEN (u.vip OR u.email ILIKE '%@example.com' OR u.email ILIKE '%@overridedev.com' OR u.email = 'demo@diandian.app' OR u.email ILIKE '%@mydiandian.app') THEN 'compte exclu (test, démo, interne, VIP)'
+           WHEN (u.vip OR coalesce(u.email, '') ILIKE '%@example.com' OR coalesce(u.email, '') ILIKE '%@overridedev.com' OR coalesce(u.email, '') = 'demo@diandian.app' OR coalesce(u.email, '') ILIKE '%@mydiandian.app') THEN 'compte exclu (test, démo, interne, VIP)'
            ELSE 'vrai compte'
          END AS compte
   FROM subscription_events se LEFT JOIN users u ON u.id = se.user_id)
