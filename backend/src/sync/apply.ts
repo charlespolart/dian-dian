@@ -59,7 +59,10 @@ export async function applyMutation(tx: Tx, userId: string, m: Mutation): Promis
         ? await tx.select().from(cells).where(and(eq(cells.pageId, pageId), eq(cells.year, year), eq(cells.month, month), eq(cells.day, day))).limit(1)
         : [];
       const tomb = cell ? null : await traced(tx, userId, 'cell', cellKey(pageId, year, month, day));
-      const verdict = judge(m, { exists: !!cell, editRev: cell?.editRev ?? tomb ?? 0, tombstoned: tomb !== null, parentGone: !page });
+      // An empty day is compared by its trace, unless the phone only ever saw
+      // it empty (base 0): empty then, empty now, there is nothing to lose.
+      const emptyNumber = m.base === 0 ? 0 : tomb ?? 0;
+      const verdict = judge(m, { exists: !!cell, editRev: cell?.editRev ?? emptyNumber, tombstoned: tomb !== null, parentGone: !page });
       if (verdict !== 'apply') return setAside(verdict, cell ? { color: cell.color, comment: cell.comment } : null);
       if (!m.waited && (await lockedPageIds(userId)).has(pageId)) return rejected('locked');
 

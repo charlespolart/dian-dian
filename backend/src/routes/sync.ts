@@ -72,8 +72,12 @@ router.post('/mutations', async (req, res) => {
   }
 });
 
-/** A day as the phone stores it: [year, month, day, color, comment, rev, editRev]. */
-type CompactCell = [number, number, number, string, string | null, number, number];
+/**
+ * A day as the phone stores it: [year, month, day, color, comment, rev,
+ * editRev, updatedAt in ms] — the date tells the phone which trackers are the
+ * most active (the free tier's choice, lib/premium.ts).
+ */
+type CompactCell = [number, number, number, string, string | null, number, number, number];
 
 router.get('/', async (req, res) => {
   const userId = req.userId!;
@@ -93,7 +97,7 @@ router.get('/', async (req, res) => {
         .orderBy(asc(legends.pageId), asc(legends.position)),
       pageIds.length === 0 ? [] : db.select({
         pageId: cells.pageId, year: cells.year, month: cells.month, day: cells.day,
-        color: cells.color, comment: cells.comment, rev: cells.rev, editRev: cells.editRev,
+        color: cells.color, comment: cells.comment, rev: cells.rev, editRev: cells.editRev, updatedAt: cells.updatedAt,
       }).from(cells).where(and(inArray(cells.pageId, pageIds), gt(cells.rev, since))),
       full ? [] : db.select({ kind: deletions.kind, key: deletions.key, pageId: deletions.pageId, rev: deletions.rev })
         .from(deletions).where(and(eq(deletions.userId, userId), gt(deletions.rev, since))).orderBy(asc(deletions.rev)),
@@ -101,7 +105,7 @@ router.get('/', async (req, res) => {
 
     const cellsByPage: Record<string, CompactCell[]> = {};
     for (const c of cellRows) {
-      (cellsByPage[c.pageId] ??= []).push([c.year, c.month, c.day, c.color, c.comment, c.rev, c.editRev]);
+      (cellsByPage[c.pageId] ??= []).push([c.year, c.month, c.day, c.color, c.comment, c.rev, c.editRev, c.updatedAt.getTime()]);
     }
     // The order of a tracker's legends, for the trackers whose order changed.
     const legendsOrder: Record<string, { rev: number; ids: string[] }> = {};

@@ -342,7 +342,8 @@ async function main() {
     // What changed since a number: that day alone.
     const delta = await pull(dayRev - 1);
     assert.equal(delta.full, false);
-    assert.deepEqual(delta.cells[pageId], [[2026, 4, 1, '#2B8A3E', 'run', dayRev, dayRev]], 'the day, with its numbers');
+    assert.deepEqual(delta.cells[pageId].map((c: Json[]) => c.slice(0, 7)), [[2026, 4, 1, '#2B8A3E', 'run', dayRev, dayRev]], 'the day, with its numbers');
+    assert.ok(Math.abs(delta.cells[pageId][0][7] - Date.now()) < 60_000, 'and when it last changed (ms)');
     assert.deepEqual((await pull(dayRev)).cells, {}, 'nothing after it');
     assert.equal((await pull(dayRev + 1_000_000)).full, true, 'a phone ahead of the server (a restored database) takes the full copy');
 
@@ -353,6 +354,12 @@ async function main() {
     const fresh = await send([mut('cell.set', { pageId, year: 2026, month: 4, day: 1, color: '#C92A2A', comment: null }, { waited: true, base: dayRev })]);
     assert.equal(fresh.results[0].status, 'applied', 'a change that knew the latest version is applied');
     const online = await send([mut('cell.set', { pageId, year: 2026, month: 4, day: 1, color: '#1864AB', comment: null }, { base: 1 })]);
+    // A day coloured then cleared elsewhere is empty again: a phone that only
+    // ever saw it empty (base 0) colours it offline without a conflict.
+    await send([mut('cell.set', { pageId, year: 2026, month: 4, day: 9, color: '#000000' }), mut('cell.clear', { pageId, year: 2026, month: 4, day: 9 })]);
+    const neverSeen = await send([mut('cell.set', { pageId, year: 2026, month: 4, day: 9, color: '#2B8A3E' }, { waited: true, base: 0 })]);
+    assert.equal(neverSeen.results[0].status, 'applied', 'empty then, empty now: no conflict');
+    await send([mut('cell.clear', { pageId, year: 2026, month: 4, day: 9 })]);
     assert.equal(online.results[0].status, 'applied', 'a change that did not wait: the last writer wins (H27)');
 
     // A tracker created by the phone, with its legend and a day; a recolour
