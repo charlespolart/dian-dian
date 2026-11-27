@@ -73,4 +73,11 @@ void main() {
       expect(LanguageProvider.translationFor(lang, 'common.undo'), isNotNull, reason: lang.name);
     }
   });
+
+  testWidgets('the bar is no taller than UndoDeleteBar.height (the sync toast stacks above it)', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.pumpWidget(host(LanguageProvider()));
+    await tester.pump();
+    expect(tester.getSize(find.byType(UndoDeleteBar)).height, lessThanOrEqualTo(UndoDeleteBar.height));
+  });
 }

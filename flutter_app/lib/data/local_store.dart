@@ -95,7 +95,8 @@ class LocalStore {
       ..execute('''CREATE TABLE queue (
           seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT NOT NULL UNIQUE, kind TEXT NOT NULL,
           element TEXT NOT NULL, page_id TEXT, base INTEGER, data TEXT NOT NULL,
-          waited INTEGER NOT NULL DEFAULT 0, sent INTEGER NOT NULL DEFAULT 0)''')
+          waited INTEGER NOT NULL DEFAULT 0, sent INTEGER NOT NULL DEFAULT 0,
+          page_title TEXT, legend_label TEXT)''')
       ..execute('CREATE INDEX queue_element ON queue(element)')
       ..execute('CREATE TABLE pending_delete (page_id TEXT PRIMARY KEY, until_ms INTEGER NOT NULL)')
       ..execute('CREATE TABLE outcomes (seq INTEGER PRIMARY KEY AUTOINCREMENT, json TEXT NOT NULL)');
@@ -191,6 +192,10 @@ class LocalStore {
       final element = _elementOf(kind, data);
       final pageId = Mutation.pageOf(kind, data) ?? await _legendPage(txn, data['id'] as String?);
       final base = await _baseOf(txn, kind, data);
+      // The names as they are now, for the message if the server does not
+      // keep the change (a deleted tracker has no name left on the phone).
+      final pageTitle = await _titleOf(txn, pageId) ?? (kind == 'page.create' ? data['title'] as String? : null);
+      final legendLabel = kind.startsWith('legend.') ? await _labelOf(txn, data['id'] as String?) ?? data['label'] as String? : null;
       await _applyLocal(txn, kind, data);
 
       final last = await txn.query('queue', where: 'element = ? AND sent = 0', whereArgs: [element], orderBy: 'seq DESC', limit: 1);
@@ -199,13 +204,14 @@ class LocalStore {
         final previous = (jsonDecode(row['data'] as String) as Map).cast<String, dynamic>();
         final merged = kind.endsWith('.update') ? {...previous, ...data} : data;
         final waited = offline || row['waited'] == 1;
-        await txn.update('queue', {'kind': kind, 'data': jsonEncode(merged), 'waited': waited ? 1 : 0}, where: 'seq = ?', whereArgs: [row['seq']]);
+        await txn.update('queue', {'kind': kind, 'data': jsonEncode(merged), 'waited': waited ? 1 : 0, 'page_title': pageTitle, 'legend_label': legendLabel},
+            where: 'seq = ?', whereArgs: [row['seq']]);
         return Mutation(id: row['id'] as String, kind: kind, element: element, base: row['base'] as int?, data: merged, waited: waited, sent: false);
       }
       final id = _uuid.v4();
       await txn.insert('queue', {
         'id': id, 'kind': kind, 'element': element, 'page_id': pageId, 'base': base,
-        'data': jsonEncode(data), 'waited': offline ? 1 : 0, 'sent': 0,
+        'data': jsonEncode(data), 'waited': offline ? 1 : 0, 'sent': 0, 'page_title': pageTitle, 'legend_label': legendLabel,
       });
       return Mutation(id: id, kind: kind, element: element, base: base, data: data, waited: offline, sent: false);
     });
@@ -477,8 +483,11 @@ class LocalStore {
           continue;
         }
 
-        final title = await _titleOf(txn, pageId);
-        outcomes.add(SyncOutcome(kind: m.kind, data: m.data, status: r.status, current: r.current, reason: r.reason, pageTitle: title));
+        final title = row['page_title'] as String? ?? await _titleOf(txn, pageId);
+        outcomes.add(SyncOutcome(
+          kind: m.kind, data: m.data, status: r.status, current: r.current, reason: r.reason,
+          pageTitle: title, legendLabel: row['legend_label'] as String?,
+        ));
         if (r.status == 'rejected') continue;
         await _setMeta(txn, 'needs_full', '1');
         // A tracker gone elsewhere: everything queued inside it goes too.
@@ -487,7 +496,7 @@ class LocalStore {
           final dependents = await txn.query('queue', where: 'page_id = ? AND seq > ?', whereArgs: [pageId, seq], orderBy: 'seq');
           for (final d in dependents) {
             final dm = _mutation(d);
-            outcomes.add(SyncOutcome(kind: dm.kind, data: dm.data, status: 'deleted', pageTitle: title));
+            outcomes.add(SyncOutcome(kind: dm.kind, data: dm.data, status: 'deleted', pageTitle: title, legendLabel: d['legend_label'] as String?));
           }
           await txn.delete('queue', where: 'page_id = ? AND seq > ?', whereArgs: [pageId, seq]);
         }
@@ -500,6 +509,12 @@ class LocalStore {
     if (pageId == null) return null;
     final rows = await db.query('pages', columns: ['title'], where: 'id = ?', whereArgs: [pageId]);
     return rows.isEmpty ? null : rows.first['title'] as String;
+  }
+
+  Future<String?> _labelOf(DatabaseExecutor db, String? legendId) async {
+    if (legendId == null) return null;
+    final rows = await db.query('legends', columns: ['label'], where: 'id = ?', whereArgs: [legendId]);
+    return rows.isEmpty ? null : rows.first['label'] as String;
   }
 
   /// The number an applied change left on its element, on the phone.

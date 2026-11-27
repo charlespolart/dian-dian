@@ -208,4 +208,21 @@ void main() {
     expect(await store.pendingCount(), 1);
     await store.close();
   });
+
+  test('a change set aside names its tracker and legend as the phone knew them, even deleted on the phone (H21)', () async {
+    final store = await memory();
+    await store.applyServer(seed());
+    final rename = await store.record('legend.update', {'id': l1, 'color': '#000000'}, offline: true);
+    final delete = await store.record('page.delete', {'id': p1}, offline: true);
+    final told = await store.settle([
+      MutationResult(id: rename.id, status: 'changed', current: {'label': 'Bien', 'color': '#AAAAAA'}),
+      MutationResult(id: delete.id, status: 'changed'),
+    ]);
+    expect(told.map((o) => (o.kind, o.pageTitle, o.legendLabel)), [
+      ('legend.update', 'Mood', 'Good'),
+      ('page.delete', 'Mood', null),
+    ]);
+    expect(SyncOutcome.fromJson(told.first.toJson()).legendLabel, 'Good', reason: 'kept until told, across a restart');
+    await store.close();
+  });
 }

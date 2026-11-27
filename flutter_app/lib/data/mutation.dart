@@ -90,13 +90,16 @@ class SyncOutcome {
   final Object? current;
   final String? reason;
 
-  /// The tracker's title when the phone still knew it, for the message.
+  /// The tracker's title as the phone knew it when the change was made.
   final String? pageTitle;
 
-  const SyncOutcome({required this.kind, required this.data, required this.status, this.current, this.reason, this.pageTitle});
+  /// The legend's label as the phone knew it, for a legend change.
+  final String? legendLabel;
+
+  const SyncOutcome({required this.kind, required this.data, required this.status, this.current, this.reason, this.pageTitle, this.legendLabel});
 
   Map<String, dynamic> toJson() =>
-      {'kind': kind, 'data': data, 'status': status, 'current': current, 'reason': reason, 'pageTitle': pageTitle};
+      {'kind': kind, 'data': data, 'status': status, 'current': current, 'reason': reason, 'pageTitle': pageTitle, 'legendLabel': legendLabel};
 
   factory SyncOutcome.fromJson(Map<String, dynamic> json) => SyncOutcome(
         kind: json['kind'] as String,
@@ -105,6 +108,7 @@ class SyncOutcome {
         current: json['current'],
         reason: json['reason'] as String?,
         pageTitle: json['pageTitle'] as String?,
+        legendLabel: json['legendLabel'] as String?,
       );
 }
 

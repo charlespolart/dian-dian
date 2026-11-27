@@ -191,4 +191,36 @@ void main() {
     expect(await store.pendingCount(), 0);
     expect(engine.state, SyncState.online);
   });
+
+  test('coming back after being offline is counted once, with what was sent', () async {
+    await store.record('cell.set', day(1), offline: false);
+    server.failPosts = 1;
+    await engine.kick();
+    expect(engine.returns, 0);
+    await store.record('cell.set', day(2), offline: true);
+    await engine.kick();
+    expect(engine.returns, 1);
+    expect(engine.returnedSent, 2);
+    await engine.kick();
+    expect(engine.returns, 1, reason: 'a cycle while online is not a return');
+  });
+
+  test('a launch that sends changes which waited is a return too', () async {
+    await store.record('cell.set', day(1), offline: true);
+    await engine.kick();
+    expect((engine.returns, engine.returnedSent), (1, 1));
+  });
+
+  test('what was not kept and not told yet waits for the next launch', () async {
+    final m = await store.record('cell.set', day(1), offline: true);
+    server.verdicts[m.id] = 'changed';
+    await engine.kick();
+    expect(engine.hasOutcomes, isTrue);
+    final next = SyncEngine(store: store, api: ApiService.custom(client: server.client, tokens: FakeTokens()), network: network, schedule: (delay, run) {});
+    await next.restore();
+    expect(next.hasOutcomes, isTrue);
+    expect(next.takeOutcomes().single.status, 'changed');
+    expect(next.hasOutcomes, isFalse);
+    next.dispose();
+  });
 }

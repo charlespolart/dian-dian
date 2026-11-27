@@ -30,6 +30,10 @@ class UndoDeleteBar extends StatefulWidget {
   /// 48 wide), which stays usable while the bar shows.
   static const double rightInset = 72;
 
+  /// At most its height (10 + the Undo button + 6 + the 3 px bar + 10), for
+  /// what stacks above it (the sync toast).
+  static const double height = 64;
+
   @override
   State<UndoDeleteBar> createState() => _UndoDeleteBarState();
 }

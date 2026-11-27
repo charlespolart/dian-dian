@@ -8,6 +8,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'data/first_tracker_decision.dart';
+import 'data/sync_engine.dart';
 import 'data/whats_new.dart';
 import 'providers/auth_provider.dart';
 import 'providers/cells_provider.dart';
@@ -26,6 +27,8 @@ import 'screens/settings_screen.dart';
 import 'services/audio_service.dart';
 import 'services/orientation_policy.dart';
 import 'theme/app_theme.dart';
+import 'widgets/sync_banner.dart';
+import 'widgets/sync_outcomes_dialog.dart';
 import 'widgets/connection_needed_dialog.dart';
 import 'widgets/custom_cursor.dart';
 import 'widgets/back_swipe.dart';
@@ -200,7 +203,35 @@ class _AppShellState extends State<AppShell> {
     super.initState();
     final auth = context.read<AuthProvider>();
     auth.addListener(_onAuthChange);
-    context.read<SyncService>().onWriteRefused = _onWriteRefused;
+    final sync = context.read<SyncService>()..onWriteRefused = _onWriteRefused;
+    sync.engine.addListener(_onEngine);
+    _lifecycle = AppLifecycleListener(onResume: _maybeShowOutcomes);
+  }
+
+  late final AppLifecycleListener _lifecycle;
+  SyncEngine? _engine;
+  bool _outcomesOpen = false;
+
+  /// A new session's engine: its end of sync may have things to tell.
+  void _onEngine() {
+    _engine?.removeListener(_maybeShowOutcomes);
+    _engine = context.read<SyncService>().engine.value?..addListener(_maybeShowOutcomes);
+  }
+
+  /// What a sync did not keep, told once, as soon as it is over (H17). Not
+  /// while the app is away from the screen nor before it has landed: the
+  /// changes stay on the phone and are told at the next opening.
+  void _maybeShowOutcomes() {
+    final engine = _engine;
+    if (engine == null || !engine.hasOutcomes || _outcomesOpen || !mounted) return;
+    if (_restoreInProgress || !context.read<AuthProvider>().isAuthenticated) return;
+    final state = WidgetsBinding.instance.lifecycleState;
+    if (state != null && state != AppLifecycleState.resumed) return;
+    _outcomesOpen = true;
+    SyncOutcomesDialog.show(context, engine.takeOutcomes()).whenComplete(() {
+      _outcomesOpen = false;
+      _maybeShowOutcomes(); // one that came while this one was open
+    });
   }
 
   bool _connectionDialogOpen = false;
@@ -224,6 +255,8 @@ class _AppShellState extends State<AppShell> {
       if (mounted && _restoreInProgress) {
         setState(() => _restoreInProgress = false);
       }
+      // Told at landing: what the last run had not told yet.
+      if (mounted) WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowOutcomes());
     }
   }
 
@@ -477,6 +510,9 @@ class _AppShellState extends State<AppShell> {
   @override
   void dispose() {
     context.read<AuthProvider>().removeListener(_onAuthChange);
+    context.read<SyncService>().engine.removeListener(_onEngine);
+    _engine?.removeListener(_maybeShowOutcomes);
+    _lifecycle.dispose();
     super.dispose();
   }
 
@@ -509,14 +545,21 @@ class _AppShellState extends State<AppShell> {
               );
             }
 
-            return Stack(
+            final engine = context.watch<SyncService>().engine;
+            return ValueListenableBuilder<SyncEngine?>(
+              valueListenable: engine,
+              builder: (context, status, _) => Stack(
               children: [
-                ScreenStage(
-                  transition: _transition,
-                  anchors: _anchors,
-                  morphPageId: _morphPageId,
-                  morphContent: _morphPageId == null ? null : _morphContentFor(context, _morphPageId!),
-                  child: _buildAppScreen(),
+                // Offline: a strip under the status bar, the screens below it.
+                SyncBannerFrame(
+                  status: status,
+                  child: ScreenStage(
+                    transition: _transition,
+                    anchors: _anchors,
+                    morphPageId: _morphPageId,
+                    morphContent: _morphPageId == null ? null : _morphContentFor(context, _morphPageId!),
+                    child: _buildAppScreen(),
+                  ),
                 ),
                 // Global undo delete bar
                 Consumer2<PagesProvider, PremiumProvider>(
@@ -537,7 +580,17 @@ class _AppShellState extends State<AppShell> {
                     );
                   },
                 ),
+                // Back online: « Synchronisé · 31 modifications envoyées », above the undo bar if it shows.
+                Consumer2<PagesProvider, PremiumProvider>(
+                  builder: (context, pagesProv, premium, _) => SyncToast(
+                    status: status,
+                    right: UndoDeleteBar.rightInset,
+                    bottom: UndoDeleteBar.bottomOffset(context, premium: premium.isPremium) +
+                        (pagesProv.pendingDeletePage == null ? 0 : UndoDeleteBar.height + 8),
+                  ),
+                ),
               ],
+              ),
             );
           },
         ),

@@ -11,6 +11,21 @@ import 'mutation.dart';
 /// Whether the server can be reached, as the last attempt found it.
 enum SyncState { online, offline }
 
+/// What the banner tells (lib/widgets/sync_banner.dart).
+abstract class SyncStatus implements Listenable {
+  bool get isOffline;
+
+  /// Changes written on the phone and not yet accepted by the server.
+  int get pendingCount;
+
+  /// Grows by one at each return: a cycle that reached the server after
+  /// being offline, or that sent changes which had waited.
+  int get returns;
+
+  /// How many changes the last return sent.
+  int get returnedSent;
+}
+
 /// Sends the queue and brings back what changed (offline sync, chantier 10).
 ///
 /// A cycle: the queue leaves in order, by batches of 100; the answers leave
@@ -20,7 +35,7 @@ enum SyncState { online, offline }
 /// waited, and a new attempt is planned, 5 seconds later then doubling up
 /// to 2 minutes. The network coming back, the app coming to the front, a
 /// `sync` message from the server and every gesture start a cycle at once.
-class SyncEngine extends ChangeNotifier {
+class SyncEngine extends ChangeNotifier implements SyncStatus {
   SyncEngine({
     required LocalStore store,
     required ApiService api,
@@ -54,10 +69,21 @@ class SyncEngine extends ChangeNotifier {
   bool _disposed = false;
 
   SyncState get state => _state;
+  @override
   bool get isOffline => _state == SyncState.offline;
 
-  /// Changes written on the phone and not yet accepted by the server.
+  @override
   int get pendingCount => _pending;
+
+  int _returns = 0;
+  int _returnedSent = 0;
+  @override
+  int get returns => _returns;
+  @override
+  int get returnedSent => _returnedSent;
+
+  /// Something was not kept and is not told yet (the message, H17).
+  bool get hasOutcomes => _outcomes.isNotEmpty;
 
   /// How many changes the last cycle that sent any sent
   /// (« Synchronisé · 31 modifications envoyées »).
@@ -118,6 +144,8 @@ class SyncEngine extends ChangeNotifier {
     _pending = await _store.pendingCount();
     notifyListeners();
     var sent = 0;
+    var sentWaited = 0;
+    final wasOffline = isOffline;
     final outcomes = <SyncOutcome>[];
     try {
       while (true) {
@@ -134,6 +162,7 @@ class SyncEngine extends ChangeNotifier {
         ];
         outcomes.addAll(await _store.settle(results));
         sent += batch.length;
+        sentWaited += batch.where((m) => m.waited).length;
         _pending = await _store.pendingCount();
         notifyListeners();
       }
@@ -147,6 +176,10 @@ class SyncEngine extends ChangeNotifier {
       _delay = null;
       _retry?.cancel();
       if (sent > 0) _lastSentCount = sent;
+      if (wasOffline || sentWaited > 0) {
+        _returns++;
+        _returnedSent = sent;
+      }
     } catch (e) {
       debugPrint('Sync: server unreachable ($e)');
       await _store.markWaited();
