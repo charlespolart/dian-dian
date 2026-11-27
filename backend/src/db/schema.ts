@@ -228,3 +228,19 @@ export const subscriptionEvents = pgTable('subscription_events', {
 ]);
 
 export type NewSubscriptionEvent = typeof subscriptionEvents.$inferInsert;
+
+// The changes a phone sent (offline sync) and what was answered, by the id
+// the phone gave them: a change sent again — its answer lost on the way —
+// gets the same answer and is never applied twice. Kept 90 days
+// (lib/retention.ts); a change sent later than that is judged like any other
+// that waited. No content beyond the answer.
+export const syncMutations = pgTable('sync_mutations', {
+  id: uuid('id').notNull(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  result: jsonb('result').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  // Per account: an id another account happens to use is not this one's.
+  primaryKey({ columns: [t.userId, t.id] }),
+  index('sync_mutations_created_at_idx').on(t.createdAt),
+]);

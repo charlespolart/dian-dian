@@ -148,6 +148,13 @@
       "when": 1795748489451,
       "tag": "0020_sync_revs",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1795748744815,
+      "tag": "0021_sync_mutations",
+      "breakpoints": true
     }
   ]
 }
