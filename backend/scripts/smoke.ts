@@ -279,6 +279,109 @@ async function main() {
     await sql`delete from deletions where user_id = ${userId}`;
   }
 
+  // --- offline sync (chantier 10): changes sent by a phone, judged one by ---
+  // --- one, never applied twice; what changed since a number -----------------
+  {
+    const uuid = () => randomUUID();
+    const send = async (mutations: Json[]) => {
+      const res = await call('POST', '/api/sync/mutations', { mutations });
+      assert.equal(res.status, 200, `sync/mutations: ${JSON.stringify(res.json)}`);
+      return res.json as { results: Json[]; rev: number };
+    };
+    const mut = (kind: string, data: Json, more: Json = {}) => ({ id: uuid(), kind, waited: false, base: null, data, ...more });
+    const pull = async (since: number) => {
+      const res = await call('GET', `/api/sync?since=${since}`);
+      assert.equal(res.status, 200, `sync: ${JSON.stringify(res.json)}`);
+      return res.json;
+    };
+
+    // The full copy: every tracker, legend and day of every year.
+    const full = await pull(0);
+    assert.equal(full.full, true, 'since=0 is the full copy');
+    assert.ok(full.pages.some((p: Json) => p.id === pageId), 'with the trackers');
+    assert.ok(Array.isArray(full.cells[pageId]) && full.cells[pageId].some((c: Json[]) => c[0] === 2024), 'and the days of every year');
+    assert.equal(typeof full.rev, 'number');
+    assert.deepEqual(full.pagesOrder?.ids?.slice(0, 2), [page2, pageId], 'the order of the trackers');
+
+    // One change, sent twice (its answer lost): applied once.
+    const day = mut('cell.set', { pageId, year: 2026, month: 4, day: 1, color: '#2B8A3E', comment: 'run' }, { base: 0 });
+    const first = await send([day]);
+    assert.equal(first.results[0].status, 'applied');
+    const dayRev: number = first.results[0].revs.element;
+    const again = await send([day]);
+    assert.deepEqual(again.results, first.results, 'sent again, the same answer');
+    assert.equal(again.rev, first.rev, 'and nothing applied twice');
+
+    // What changed since a number: that day alone.
+    const delta = await pull(dayRev - 1);
+    assert.equal(delta.full, false);
+    assert.deepEqual(delta.cells[pageId], [[2026, 4, 1, '#2B8A3E', 'run', dayRev, dayRev]], 'the day, with its numbers');
+    assert.deepEqual((await pull(dayRev)).cells, {}, 'nothing after it');
+    assert.equal((await pull(dayRev + 1_000_000)).full, true, 'a phone ahead of the server (a restored database) takes the full copy');
+
+    // The offline rule: a change that waited loses to one made elsewhere meanwhile (H17).
+    const stale = await send([mut('cell.set', { pageId, year: 2026, month: 4, day: 1, color: '#C92A2A', comment: null }, { waited: true, base: 0 })]);
+    assert.equal(stale.results[0].status, 'changed', 'set aside');
+    assert.deepEqual(stale.results[0].current, { color: '#2B8A3E', comment: 'run' }, 'with what the server keeps');
+    const fresh = await send([mut('cell.set', { pageId, year: 2026, month: 4, day: 1, color: '#C92A2A', comment: null }, { waited: true, base: dayRev })]);
+    assert.equal(fresh.results[0].status, 'applied', 'a change that knew the latest version is applied');
+    const online = await send([mut('cell.set', { pageId, year: 2026, month: 4, day: 1, color: '#1864AB', comment: null }, { base: 1 })]);
+    assert.equal(online.results[0].status, 'applied', 'a change that did not wait: the last writer wins (H27)');
+
+    // A tracker created by the phone, with its legend and a day; a recolour
+    // of the legend leaves its days unedited (H29).
+    const trackerId = uuid();
+    const legendId = uuid();
+    const created = await send([
+      mut('page.create', { id: trackerId, title: 'Offline', legends: [{ id: legendId, color: '#495057', label: 'Done' }] }, { waited: true }),
+      mut('cell.set', { pageId: trackerId, year: 2026, month: 5, day: 2, color: '#495057' }, { waited: true, base: 0 }),
+    ]);
+    assert.deepEqual(created.results.map((x: Json) => x.status), ['applied', 'applied'], 'a tracker created offline, then a day in it');
+    const legendBase: number = created.results[0].revs.element;
+    const dayInIt: number = created.results[1].revs.element;
+    const recolour = await send([mut('legend.update', { id: legendId, color: '#F08C00' }, { waited: true, base: legendBase })]);
+    assert.equal(recolour.results[0].status, 'applied');
+    if (sql) {
+      const [c] = await sql`select color, rev::int, edit_rev::int from cells where page_id = ${trackerId} and year = 2026 and month = 5 and day = 2`;
+      assert.deepEqual(c, { color: '#F08C00', rev: recolour.rev, edit_rev: dayInIt }, 'the day took the colour without being edited');
+    }
+    const commentAfter = await send([mut('cell.set', { pageId: trackerId, year: 2026, month: 5, day: 2, color: '#F08C00', comment: 'kept' }, { waited: true, base: dayInIt })]);
+    assert.equal(commentAfter.results[0].status, 'applied', 'a change made offline on that day is kept (H29)');
+
+    // A deletion that waited compares the whole tracker (H21).
+    const [contentBefore] = [created.results[0].revs.content as number];
+    const staleDelete = await send([mut('page.delete', { id: trackerId }, { waited: true, base: contentBefore })]);
+    assert.equal(staleDelete.results[0].status, 'changed', 'not deleted: something in it changed since');
+    const now = (await pull(0)).pages.find((x: Json) => x.id === trackerId);
+    const deleted = await send([mut('page.delete', { id: trackerId }, { waited: true, base: now.contentRev })]);
+    assert.equal(deleted.results[0].status, 'applied');
+    const afterDelete = await send([
+      mut('cell.set', { pageId: trackerId, year: 2026, month: 5, day: 3, color: '#F08C00' }, { waited: true, base: 0 }),
+      mut('page.create', { id: trackerId, title: 'Back' }, { waited: true }),
+    ]);
+    assert.deepEqual(afterDelete.results.map((x: Json) => x.status), ['deleted', 'deleted'], 'nothing is written into a deleted tracker, and it does not come back (H20)');
+    const traces = await pull(deleted.rev - 1);
+    assert.ok(traces.deletions.some((t: Json) => t.kind === 'page' && t.key === trackerId), 'the deletion reaches the other phones');
+
+    // A 13th legend is refused (H12); an order keeps what it does not list; a setting.
+    const legendsTracker = uuid();
+    await send([mut('page.create', { id: legendsTracker, title: 'Legends' }, { waited: true })]);
+    const twelve = await send(Array.from({ length: 13 }, (_, i) => mut('legend.create', { id: uuid(), pageId: legendsTracker, color: '#000000', label: `L${i}` }, { waited: true })));
+    assert.equal(twelve.results.filter((x: Json) => x.status === 'applied').length, 12);
+    assert.deepEqual(twelve.results[12], { id: twelve.results[12].id, status: 'rejected', reason: 'legend_limit' }, 'the 13th legend is refused');
+    const order = await send([mut('pages.reorder', { ids: [legendsTracker] })]);
+    assert.equal(order.results[0].status, 'applied');
+    const ids = (await pull(0)).pagesOrder.ids;
+    assert.equal(ids[0], legendsTracker, 'the listed tracker first');
+    assert.ok(ids.includes(pageId) && ids.includes(page2), 'the others kept');
+    const theme = await send([mut('setting.set', { key: 'theme', value: 'defaultTheme' }, { waited: true, base: 0 })]);
+    assert.equal(theme.results[0].status, 'changed', 'a setting changed since (the revs block set the theme) wins over one that waited');
+    assert.equal((await send([{ id: 'nope', kind: 'cell.set', waited: false, base: 0, data: {} }])).results[0].status, 'rejected', 'a change that cannot be read is refused');
+    await send([mut('page.delete', { id: legendsTracker })]);
+    // The rest of the suite expects this order, and no extra day on the first tracker.
+    await send([mut('pages.reorder', { ids: [page2, pageId] }), mut('cell.clear', { pageId, year: 2026, month: 4, day: 1 })]);
+  }
+
   // --- the site: store buttons go through /go/*, unknown paths are 404 -------
   {
     const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Mobile/15E148 Safari/604.1';
@@ -785,8 +888,34 @@ async function main() {
       assert.deepEqual(await left(), kept, 'older than the limit is deleted; the limit itself, and the purchase events of an account whatever their age, are kept');
       await purgeOldRows(db, now);
       assert.deepEqual(await left(), kept, 'purging again deletes nothing more');
+      // Offline sync: answers to changes kept 90 days; deletion traces 24
+      // months, after which the account's floor makes a late phone take the
+      // full copy (it may have missed a deletion).
+      const syncLimit = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      const oldAnswer = randomUUID();
+      const newAnswer = randomUUID();
+      await sql`insert into sync_mutations (id, user_id, result, created_at) values
+        (${oldAnswer}, ${userId}, '{}'::jsonb, ${new Date(syncLimit.getTime() - 1000)}),
+        (${newAnswer}, ${userId}, '{}'::jsonb, ${new Date(syncLimit.getTime() + 60_000)})`;
+      const traceLimit = keptSince(now, 24);
+      const [{ rev: accountRev }] = await sql`select rev::int from users where id = ${userId}`;
+      await sql`insert into deletions (user_id, kind, key, rev, deleted_at) values
+        (${userId}, 'legend', ${`${run}-old-trace`}, ${accountRev}, ${new Date(traceLimit.getTime() - 1000)}),
+        (${userId}, 'legend', ${`${run}-new-trace`}, ${accountRev}, ${traceLimit})`;
+      const purgedSync = await purgeOldRows(db, now);
+      assert.ok(purgedSync.syncMutations >= 1 && purgedSync.deletions >= 1, `the purge says it: ${JSON.stringify(purgedSync)}`);
+      const answers = (await sql`select id from sync_mutations where id in ${sql([oldAnswer, newAnswer])}`).map((row) => row.id);
+      assert.deepEqual(answers, [newAnswer], 'answers older than 90 days are deleted');
+      const keptTraces = (await sql`select key from deletions where user_id = ${userId} and key like ${`${run}-%`}`).map((row) => row.key);
+      assert.deepEqual(keptTraces, [`${run}-new-trace`], 'traces older than 24 months are deleted');
+      const [{ floor }] = await sql`select sync_floor_rev::int as floor from users where id = ${userId}`;
+      assert.equal(floor, accountRev, 'and the account remembers the highest number it forgot');
+      const late = await call('GET', `/api/sync?since=${accountRev - 1}`);
+      assert.equal(late.json.full, true, 'a phone older than that takes the full copy');
     } finally {
       await sql`delete from events where user_id = ${userId} and name like 'smoke.%'`;
+      await sql`delete from deletions where user_id = ${userId} and key like ${`${run}-%`}`;
+      await sql`update users set sync_floor_rev = 0 where id = ${userId}`;
       await sql`delete from subscription_events where rc_event_id like ${`${run}-%`}`;
     }
   }

@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, smallint, integer, bigint, boolean, timestamp, doublePrecision, jsonb, primaryKey, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, smallint, integer, bigint, boolean, timestamp, date, doublePrecision, jsonb, primaryKey, index, uniqueIndex } from 'drizzle-orm/pg-core';
 
 /**
  * A version number taken from the account's counter (`users.rev`, see
@@ -31,6 +31,9 @@ export const users = pgTable('users', {
   themeRev: revColumn('theme_rev'),
   languageRev: revColumn('language_rev'),
   cursorRev: revColumn('cursor_rev'),
+  // The highest number among the deletion traces purged after 24 months: a
+  // phone whose last sync is older gets the full copy (it may have missed one).
+  syncFloorRev: revColumn('sync_floor_rev'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -243,4 +246,15 @@ export const syncMutations = pgTable('sync_mutations', {
   // Per account: an id another account happens to use is not this one's.
   primaryKey({ columns: [t.userId, t.id] }),
   index('sync_mutations_created_at_idx').on(t.createdAt),
+]);
+
+// What offline sync is like, per week (spec, "Mesure"): syncs that sent
+// changes which waited, how many such changes, how many were set aside and
+// why. Counts only: no account, no device. Read by scripts/prod-sync.sql.
+export const syncStats = pgTable('sync_stats', {
+  week: date('week').notNull(),
+  kind: text('kind').notNull(),
+  count: integer('count').notNull().default(0),
+}, (t) => [
+  primaryKey({ columns: [t.week, t.kind] }),
 ]);

@@ -1,12 +1,12 @@
 /**
- * How long measurement rows are kept (docs/REGISTRE.md, fiches 4 and 7, and
- * the privacy policy): 13 months at most for product events, and for
- * purchase events that name no account. Rows that belong to an account are
- * not this module's business: they go with the account.
+ * How long measurement and sync rows are kept (docs/REGISTRE.md): product
+ * events 13 months at most, purchase events that name no account the same;
+ * offline sync's answers to changes 90 days, its deletion traces 24 months.
+ * Rows that belong to an account otherwise go with the account.
  */
-import { and, isNull, lt } from 'drizzle-orm';
+import { and, eq, isNull, lt, max } from 'drizzle-orm';
 import type { db as database } from '../db/index.js';
-import { events, subscriptionEvents } from '../db/schema.js';
+import { deletions, events, subscriptionEvents, syncMutations, users } from '../db/schema.js';
 
 type Db = typeof database;
 
@@ -18,6 +18,10 @@ export const EVENTS_MONTHS = 13;
  * test event): the same, counted from when they were received.
  */
 export const UNLINKED_PURCHASE_EVENTS_MONTHS = 13;
+/** Offline sync: the answers to changes a phone sent (a resend older than this is judged afresh). */
+export const SYNC_ANSWERS_DAYS = 90;
+/** Offline sync: deletion traces, as long as the memory of deleted accounts. */
+export const DELETION_TRACES_MONTHS = 24;
 /**
  * How often the purge runs: hourly, so a row outlives its limit by an hour
  * at most, and a run that failed (the database down at boot) is tried again
@@ -40,13 +44,27 @@ export function keptSince(now: Date, months: number): Date {
  * account is never deleted here, whatever its age. Returns how many rows of
  * each went.
  */
-export async function purgeOldRows(db: Db, now: Date): Promise<{ events: number; purchaseEvents: number }> {
+export async function purgeOldRows(db: Db, now: Date): Promise<{ events: number; purchaseEvents: number; syncMutations: number; deletions: number }> {
   const oldEvents = await db.delete(events).where(lt(events.createdAt, keptSince(now, EVENTS_MONTHS)));
   const oldPurchaseEvents = await db.delete(subscriptionEvents).where(and(
     isNull(subscriptionEvents.userId),
     lt(subscriptionEvents.receivedAt, keptSince(now, UNLINKED_PURCHASE_EVENTS_MONTHS)),
   ));
-  return { events: oldEvents.count, purchaseEvents: oldPurchaseEvents.count };
+  const oldAnswers = await db.delete(syncMutations)
+    .where(lt(syncMutations.createdAt, new Date(now.getTime() - SYNC_ANSWERS_DAYS * 24 * 60 * 60 * 1000)));
+  // Before forgetting traces, each account remembers the highest number it
+  // forgets: a phone that last synced below it may have missed a deletion,
+  // and gets the full copy (routes/sync.ts).
+  const traceLimit = keptSince(now, DELETION_TRACES_MONTHS);
+  const oldTraces = await db.transaction(async (tx) => {
+    const floors = await tx.select({ userId: deletions.userId, rev: max(deletions.rev) }).from(deletions)
+      .where(lt(deletions.deletedAt, traceLimit)).groupBy(deletions.userId);
+    for (const floor of floors) {
+      if (floor.rev !== null) await tx.update(users).set({ syncFloorRev: floor.rev }).where(eq(users.id, floor.userId));
+    }
+    return tx.delete(deletions).where(lt(deletions.deletedAt, traceLimit));
+  });
+  return { events: oldEvents.count, purchaseEvents: oldPurchaseEvents.count, syncMutations: oldAnswers.count, deletions: oldTraces.count };
 }
 
 /**
@@ -57,8 +75,8 @@ export async function purgeOldRows(db: Db, now: Date): Promise<{ events: number;
 export async function runRetentionPurge(db: Db, now: Date, log: Pick<Console, 'log' | 'error'> = console): Promise<void> {
   try {
     const purged = await purgeOldRows(db, now);
-    if (purged.events + purged.purchaseEvents > 0) {
-      log.log(`Retention purge: ${purged.events} product events and ${purged.purchaseEvents} purchase events without account deleted`);
+    if (purged.events + purged.purchaseEvents + purged.syncMutations + purged.deletions > 0) {
+      log.log(`Retention purge: ${purged.events} product events, ${purged.purchaseEvents} purchase events without account, ${purged.syncMutations} sync answers, ${purged.deletions} deletion traces deleted`);
     }
   } catch (err) {
     log.error('Retention purge failed:', err);
