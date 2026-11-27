@@ -167,6 +167,7 @@ const privacy: Record<Lang, string> = {
     <h2>2. Data We Process</h2>
     <ul>
       <li><strong>Account:</strong> your email address and, if you chose a password, its hash (the password itself is never kept). If you sign in with Apple or Google, we keep only your email address and an identifier that service gives us for you: nothing else from your profile.</li>
+      <li><strong>Account without an address:</strong> if you start without an account, an account is created without an email address or a password. It is reopened by a key made by your phone and kept in its secure storage; we keep only its fingerprint, never the key itself. For every account, we also keep the date the app last contacted it.</li>
       <li><strong>Tracker content:</strong> the trackers, colored days, legend entries and comments you create. You choose what you write in them.</li>
       <li><strong>Settings:</strong> the theme, language and cursor you chose.</li>
       <li><strong>Purchases:</strong> the plan you bought, the store, the dates, the price and the store's country, whether it was a trial or a test purchase, why a subscription ended, and the store's transaction identifier. We never have access to your payment information.</li>
@@ -221,7 +222,7 @@ const privacy: Record<Lang, string> = {
     <p>Your data is stored on our server, hosted by Vultr in France. Passwords are hashed using Argon2. All connections are encrypted via HTTPS. The database is backed up every day; the backups are encrypted, stored in the European Union and kept 30 days. The app also keeps on your phone a full copy of your account (every tracker, colored day, legend and comment, of every year), and the changes you made offline until they reach our server. It is deleted when you sign out; if our server closes your session, it stays on the phone, hidden, until you sign in again to that account (signing in to another one deletes it). Like the rest of the app's data, it can be included in your phone's backups (iCloud, Google).</p>
     <h2>10. Data Retention &amp; Deletion</h2>
     <ul>
-      <li><strong>Account and content:</strong> as long as your account exists. You can <strong>delete your account and all data</strong> at any time from the app; the deletion is immediate.</li>
+      <li><strong>Account and content:</strong> as long as your account exists. You can <strong>delete your account and all data</strong> at any time from the app ("Delete my data" for an account created without an address, "Delete my account and my data" otherwise); the deletion is immediate. After it, the identifier of a deleted account (nothing else) is kept 24 months, so that a key or a copy restored on a phone does not bring it back.</li>
       <li><strong>Backups:</strong> 30 days. A deleted account is therefore gone from the backups 30 days later.</li>
       <li><strong>Offline sync:</strong> the changes a phone sends, with our answer, 90 days (so that a change sent twice is never applied twice); the trace of a deleted tracker, legend or day (its identifier, none of its content), 24 months; both go with your account. When an account is deleted, a fingerprint of its session tokens, linked to no account, is kept 548 days so that its other phones learn it.</li>
       <li><strong>Product events:</strong> 13 months at most.</li>
@@ -244,6 +245,7 @@ const privacy: Record<Lang, string> = {
     <h2>2. Données que nous traitons</h2>
     <ul>
       <li><strong>Compte :</strong> votre adresse e-mail et, si vous avez choisi un mot de passe, son empreinte (le mot de passe lui-même n'est jamais gardé). Si vous vous connectez avec Apple ou Google, nous ne gardons que votre adresse e-mail et un identifiant que ce service nous donne pour vous : rien d'autre de votre profil.</li>
+      <li><strong>Compte sans adresse :</strong> si vous commencez sans compte, un compte est créé sans adresse e-mail ni mot de passe. Il est rouvert par une clé faite par votre téléphone et rangée dans son stockage sécurisé ; nous ne gardons que son empreinte, jamais la clé elle-même. Pour tous les comptes, nous gardons aussi la date du dernier contact de l'app.</li>
       <li><strong>Contenu de vos trackers :</strong> les trackers, les jours coloriés, les légendes et les commentaires que vous créez. Vous choisissez ce que vous y notez.</li>
       <li><strong>Réglages :</strong> le thème, la langue et le curseur choisis.</li>
       <li><strong>Achats :</strong> la formule achetée, le store, les dates, le prix et le pays du store, s'il s'agissait d'un essai ou d'un achat de test, pourquoi un abonnement a pris fin, et l'identifiant de la transaction chez le store. Nous n'avons jamais accès à votre moyen de paiement.</li>
@@ -298,7 +300,7 @@ const privacy: Record<Lang, string> = {
     <p>Vos données sont stockées sur notre serveur, hébergé par Vultr en France. Les mots de passe sont hachés avec Argon2. Toutes les connexions sont chiffrées via HTTPS. La base est sauvegardée chaque jour ; les sauvegardes sont chiffrées, stockées dans l'Union européenne et gardées 30 jours. L'app garde aussi sur votre téléphone une copie complète de votre compte (tous vos trackers, jours coloriés, légendes et commentaires, de toutes les années), et les modifications faites hors ligne jusqu'à ce qu'elles atteignent notre serveur. Elle est effacée quand vous vous déconnectez ; si notre serveur ferme votre session, elle reste sur le téléphone, cachée, jusqu'à ce que vous vous reconnectiez à ce compte (se connecter à un autre l'efface). Comme le reste des données de l'app, elle peut être incluse dans les sauvegardes de votre téléphone (iCloud, Google).</p>
     <h2>10. Conservation et suppression</h2>
     <ul>
-      <li><strong>Compte et contenu :</strong> tant que votre compte existe. Vous pouvez <strong>supprimer votre compte et toutes vos données</strong> à tout moment depuis l'application ; la suppression est immédiate.</li>
+      <li><strong>Compte et contenu :</strong> tant que votre compte existe. Vous pouvez <strong>supprimer votre compte et toutes vos données</strong> à tout moment depuis l'application (« Supprimer mes données » pour un compte créé sans adresse, « Supprimer mon compte et mes données » sinon) ; la suppression est immédiate. Ensuite, l'identifiant d'un compte supprimé (rien d'autre) est gardé 24 mois, pour qu'une clé ou une copie restaurée sur un téléphone ne le fasse pas revivre.</li>
       <li><strong>Sauvegardes :</strong> 30 jours. Un compte supprimé a donc disparu des sauvegardes 30 jours plus tard.</li>
       <li><strong>Synchronisation hors ligne :</strong> les modifications qu'un téléphone envoie, avec notre réponse, 90 jours (pour qu'une modification envoyée deux fois ne soit jamais appliquée deux fois) ; la trace d'un tracker, d'une légende ou d'un jour supprimés (son identifiant, rien de son contenu), 24 mois ; les deux partent avec votre compte. À la suppression d'un compte, une empreinte de ses jetons de session, sans lien avec un compte, est gardée 548 jours pour que ses autres téléphones l'apprennent.</li>
       <li><strong>Événements produit :</strong> 13 mois au plus.</li>
@@ -321,6 +323,7 @@ const privacy: Record<Lang, string> = {
     <h2>2. 我们处理的数据</h2>
     <ul>
       <li><strong>账户：</strong>您的电子邮箱；如果您设置了密码，我们只保存其哈希值（密码本身从不保存）。如果您使用 Apple 或 Google 登录，我们只保存您的电子邮箱以及该服务为您提供的一个标识符，不保存您个人资料中的其他内容。</li>
+      <li><strong>无邮箱的账户：</strong>如果您不使用账户直接开始，我们会创建一个无需电子邮箱、也没有密码的账户。它由您的手机生成并保存在其安全存储中的密钥重新打开；我们只保存它的指纹，从不保存密钥本身。对于所有账户，我们还会保存应用最后一次联系该账户的日期。</li>
       <li><strong>追踪器内容：</strong>您创建的追踪器、上色的日期、图例和备注。记录什么由您决定。</li>
       <li><strong>设置：</strong>您选择的主题、语言和光标。</li>
       <li><strong>购买：</strong>所购方案、应用商店、日期、价格和商店所在的国家/地区，是否为试用或测试购买，订阅结束的原因，以及商店的交易标识符。我们无法获取您的支付信息。</li>
@@ -375,7 +378,7 @@ const privacy: Record<Lang, string> = {
     <p>您的数据存储在我们位于法国、由 Vultr 托管的服务器上。密码使用 Argon2 进行哈希处理。所有连接通过 HTTPS 加密。数据库每天备份；备份经过加密，存储在欧盟境内，保留 30 天。应用还会在您的手机上保存您账户的完整副本（所有年份的全部追踪器、上色的日期、图例和备注），以及离线时所做、尚未送达我们服务器的更改。您退出登录时它会被删除；如果我们的服务器关闭了您的会话，它会隐藏保留在手机上，直到您重新登录该账户（登录其他账户则会删除它）。与应用的其他数据一样，它可能包含在您手机的备份中（iCloud、Google）。</p>
     <h2>10. 数据保留与删除</h2>
     <ul>
-      <li><strong>账户和内容：</strong>账户存在期间一直保留。您可以随时从应用中<strong>删除账户和所有数据</strong>，删除立即生效。</li>
+      <li><strong>账户和内容：</strong>账户存在期间一直保留。您可以随时从应用中<strong>删除账户和所有数据</strong>（未使用邮箱创建的账户为“删除我的数据”，其他为“删除我的账号和数据”），删除立即生效。删除后，已删除账户的标识符（仅此而已）保留 24 个月，以免手机上的密钥或恢复的副本让它重新出现。</li>
       <li><strong>备份：</strong>30 天。因此，已删除的账户会在 30 天后从备份中消失。</li>
       <li><strong>离线同步：</strong>手机发送的更改及我们的答复保留 90 天（以免同一更改被应用两次）；已删除的追踪器、图例或日期的痕迹（仅其标识符，不含任何内容）保留 24 个月；两者都会随账户一起删除。账户删除时，其会话令牌的指纹（不与任何账户关联）保留 548 天，以便其他手机得知。</li>
       <li><strong>产品事件：</strong>最多 13 个月。</li>
@@ -398,6 +401,7 @@ const privacy: Record<Lang, string> = {
     <h2>2. 我們處理的資料</h2>
     <ul>
       <li><strong>帳戶：</strong>您的電子郵件；如果您設定了密碼，我們只儲存其雜湊值（密碼本身從不儲存）。如果您使用 Apple 或 Google 登入，我們只儲存您的電子郵件以及該服務為您提供的一個識別碼，不儲存您個人檔案中的其他內容。</li>
+      <li><strong>無電子郵件的帳戶：</strong>如果您不使用帳戶直接開始，我們會建立一個無需電子郵件、也沒有密碼的帳戶。它由您的手機產生並存放在其安全儲存空間中的金鑰重新開啟；我們只儲存它的指紋，從不儲存金鑰本身。對於所有帳戶，我們也會儲存 App 最後一次聯繫該帳戶的日期。</li>
       <li><strong>追蹤器內容：</strong>您建立的追蹤器、上色的日期、圖例和備註。記錄什麼由您決定。</li>
       <li><strong>設定：</strong>您選擇的主題、語言和游標。</li>
       <li><strong>購買：</strong>所購方案、應用程式商店、日期、價格和商店所在的國家/地區，是否為試用或測試購買，訂閱結束的原因，以及商店的交易識別碼。我們無法取得您的付款資訊。</li>
@@ -452,7 +456,7 @@ const privacy: Record<Lang, string> = {
     <p>您的資料儲存在我們位於法國、由 Vultr 託管的伺服器上。密碼使用 Argon2 進行雜湊處理。所有連線透過 HTTPS 加密。資料庫每天備份；備份經過加密，儲存在歐盟境內，保留 30 天。應用程式還會在您的手機上儲存您帳戶的完整副本（所有年份的全部追蹤器、上色的日期、圖例和備註），以及離線時所做、尚未送達我們伺服器的變更。您登出時它會被刪除；如果我們的伺服器關閉了您的工作階段，它會隱藏保留在手機上，直到您重新登入該帳戶（登入其他帳戶則會刪除它）。與應用程式的其他資料一樣，它可能包含在您手機的備份中（iCloud、Google）。</p>
     <h2>10. 資料保留與刪除</h2>
     <ul>
-      <li><strong>帳戶和內容：</strong>帳戶存在期間一直保留。您可以隨時從應用程式中<strong>刪除帳戶和所有資料</strong>，刪除立即生效。</li>
+      <li><strong>帳戶和內容：</strong>帳戶存在期間一直保留。您可以隨時從應用程式中<strong>刪除帳戶和所有資料</strong>（未使用電子郵件建立的帳戶為「刪除我的資料」，其他為「刪除我的帳號和資料」），刪除立即生效。刪除後，已刪除帳戶的識別碼（僅此而已）保留 24 個月，以免手機上的金鑰或還原的副本讓它重新出現。</li>
       <li><strong>備份：</strong>30 天。因此，已刪除的帳戶會在 30 天後從備份中消失。</li>
       <li><strong>離線同步：</strong>手機傳送的變更及我們的答覆保留 90 天（以免同一變更被套用兩次）；已刪除的追蹤器、圖例或日期的痕跡（僅其識別碼，不含任何內容）保留 24 個月；兩者都會隨帳戶一起刪除。帳戶刪除時，其工作階段權杖的指紋（不與任何帳戶關聯）保留 548 天，以便其他手機得知。</li>
       <li><strong>產品事件：</strong>最多 13 個月。</li>

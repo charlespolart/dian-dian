@@ -21,6 +21,7 @@ A visual year tracker where you color-code each day of the year on a 12-month ×
 - **Premium** — Custom pixel-art paywall backed by RevenueCat (monthly / yearly / lifetime + free trial), AdMob banner for free users
 - **Onboarding** — Interactive walkthrough for new users
 - **Real-time sync** — WebSocket-based, changes sync instantly across devices
+- **Start without an account** — Apple, Google, email or no account at all on the welcome screen; an account without an identity is created on the server and reopened by a key kept on the phone
 - **Multi-language** — French, English, Simplified Chinese, Traditional Chinese (auto-detects device language)
 - **Cross-platform** — iOS, Android, web via Flutter
 - **Responsive** — Adapts to phone, tablet, and desktop in portrait and landscape
@@ -121,6 +122,7 @@ cd backend && npx tsx scripts/smoke.ts                        # backend end-to-e
 cd backend && npx tsx scripts/sync-scenarios.ts                # offline sync, two phones, H17–H29 (needs `make back`)
 cd flutter_app && flutter test integration/backend_e2e_test.dart   # real client data layer (two phones' copies) vs local backend
 cd flutter_app && flutter test integration_test/offline_sync_app_test.dart -d <simulator>  # the real app on a simulator vs local backend
+cd flutter_app && flutter test integration_test/welcome_app_test.dart -d <simulator>      # « Continue without an account » end to end
                                                               # (iOS keeps the session in the keychain: `xcrun simctl keychain <sim> reset` for a clean run)
 cd backend && npx tsx scripts/seed-demo-local.ts              # demo@diandian.app / password with 9 trackers
 ```

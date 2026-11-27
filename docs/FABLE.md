@@ -177,6 +177,18 @@ La liste à faire à la fin :
 - chantier 10 : deux téléphones, l'un en mode avion, H1 à H29 (liste à
   cocher dans la page des cas illustrés), puis une mise à jour depuis 1.4.0
   hors ligne puis en ligne.
+- chantier 9, lot 1 : l'écran d'accueil sur un iPhone et un Android
+  (quatre boutons de même taille, Apple seulement sur l'iPhone, rien de
+  coupé sur un petit téléphone) ; « Continuer sans compte » en mode avion,
+  un tracker et des jours, puis le réseau (le compte naît, tout arrive) ;
+  une fenêtre Apple ou Google annulée ; une mise à jour de l'app garde le
+  compte invisible et sa clé ; sur l'iPhone, désinstaller puis réinstaller
+  (le trousseau garde la clé : le compte revient) ; deux téléphones sur un
+  compte attaché : « Déconnecter mes autres appareils », « mot de passe
+  oublié » sur l'un (l'autre dit pourquoi), la suppression sur l'un
+  (l'autre dit « supprimé depuis un autre appareil »), un tracker ouvert
+  supprimé sur l'autre. Ces essais créent des comptes invisibles en
+  production : les supprimer ensuite par « Supprimer mes données ».
 
 ## Vérifier
 
