@@ -16,8 +16,11 @@ class FakeSyncServer {
   Completer<void>? hold;
   int rev = 1;
   int pulls = 0;
+  int healthChecks = 0;
   bool premium = false;
   final batches = <List<String>>[];
+  /// The kinds that arrived judged by the offline rule.
+  final waitedKinds = <String>[];
   final pages = <String, Map<String, dynamic>>{};
   final legends = <String, Map<String, dynamic>>{};
   /// pageId → [year, month, day, color, comment, rev, editRev, updatedAtMs].
@@ -56,9 +59,14 @@ class FakeSyncServer {
   late final client = MockClient((req) async {
     if (hold != null) await hold!.future;
     if (offline) throw const SocketException('offline');
+    if (req.url.path == '/api/health') {
+      healthChecks++;
+      return http.Response('{"ok":true}', 200);
+    }
     if (req.url.path == '/api/sync/mutations') {
       final mutations = (jsonDecode(req.body)['mutations'] as List).cast<Map<String, dynamic>>();
       batches.add([for (final m in mutations) m['kind'] as String]);
+      waitedKinds.addAll([for (final m in mutations) if (m['waited'] == true) m['kind'] as String]);
       final results = <Map<String, dynamic>>[];
       for (final m in mutations) {
         _apply(m);

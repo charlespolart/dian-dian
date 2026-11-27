@@ -1,0 +1,1 @@
+CREATE INDEX "cells_page_rev_idx" ON "cells" USING btree ("page_id","rev");

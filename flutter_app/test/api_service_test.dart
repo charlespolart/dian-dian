@@ -148,8 +148,9 @@ void main() {
     expect(restore.outcome, RefreshOutcome.offline);
     expect(restore.profile, isNull);
 
-    final r = await api.apiFetch('/api/pages');
-    expect(r.statusCode, 401);
+    // The access token ran out and the renewal cannot reach the server: that
+    // is no network, not a refused session (minor 10 of the review).
+    await expectLater(api.apiFetch('/api/pages'), throwsA(isA<ApiUnreachable>()));
     expect(expired, isFalse);
     expect(tokens.refresh, 'r1');
   });

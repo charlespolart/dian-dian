@@ -119,9 +119,13 @@ class SyncOutcomesDialog extends StatelessWidget {
     return OutcomeLine(_fill(lang.t('sync.trackerChanged'), title: title));
   }
 
-  /// The lines for the changes the server refused (H12): the element, and why.
-  static List<OutcomeLine> refusedLines(List<SyncOutcome> outcomes, LanguageProvider lang) => [
+  /// The lines for the changes the server refused (H12): the element, and
+  /// why. A refused tracker is one line: the changes made in it went with it.
+  static List<OutcomeLine> refusedLines(List<SyncOutcome> outcomes, LanguageProvider lang) {
+    final refusedTrackers = {for (final o in outcomes) if (o.kind == 'page.create') _pageOf(o)};
+    return [
         for (final o in outcomes)
+          if (o.kind == 'page.create' || !refusedTrackers.contains(_pageOf(o)))
           OutcomeLine(switch ((o.kind, o.reason)) {
             ('legend.create', 'legend_limit') =>
               _fill(lang.t('sync.rejected.legendLimit'), title: o.pageTitle, label: o.data['label'] as String? ?? o.legendLabel),
@@ -130,6 +134,7 @@ class SyncOutcomesDialog extends StatelessWidget {
             _ => o.pageTitle == null ? lang.t('sync.rejected.invalidAccount') : _fill(lang.t('sync.rejected.invalid'), title: o.pageTitle),
           }),
       ];
+  }
 
   @override
   Widget build(BuildContext context) {

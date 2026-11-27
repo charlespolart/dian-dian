@@ -376,4 +376,25 @@ void main() {
     expect((await store.pending()).single.data['color'], '#CCCCCC');
     await store.close();
   });
+
+  test('a full copy keeps the legends of a tracker whose creation is still queued (minor 6)', () async {
+    final store = await memory();
+    const id = '33333333-3333-4333-8333-333333333333';
+    const legend = '55555555-5555-4555-8555-555555555555';
+    await store.record('page.create', {'id': id, 'title': 'New', 'legends': [{'id': legend, 'color': '#AAAAAA', 'label': 'A'}]}, offline: true);
+    await store.applyServer(seed());
+    expect((await store.load()).legends[id]?.map((l) => l.id), [legend]);
+    await store.close();
+  });
+
+  test('a tracker the server refused takes its queued changes with it, under the same reason (minor 2)', () async {
+    final store = await memory();
+    const id = '33333333-3333-4333-8333-333333333333';
+    final create = await store.record('page.create', {'id': id, 'title': 'Cinq'}, offline: false);
+    await store.record('cell.set', {'pageId': id, 'year': 2026, 'month': 1, 'day': 1, 'color': '#AAAAAA'}, offline: false);
+    final told = await store.settle([MutationResult(id: create.id, status: 'rejected', reason: 'tracker_limit')]);
+    expect(told.map((o) => (o.kind, o.status, o.reason)), [('page.create', 'rejected', 'tracker_limit'), ('cell.set', 'rejected', 'tracker_limit')]);
+    expect(await store.pendingCount(), 0);
+    await store.close();
+  });
 }

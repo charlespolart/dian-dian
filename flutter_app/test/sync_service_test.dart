@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'package:dian_dian/data/change_sink.dart';
+import 'package:dian_dian/data/network_gate.dart';
 import 'package:dian_dian/data/tracker_lock.dart';
 import 'package:dian_dian/providers/cells_provider.dart';
 import 'package:dian_dian/providers/legends_provider.dart';
@@ -188,6 +189,24 @@ void main() {
     expect(await other.copiesOfOtherAccounts('u1'), isEmpty, reason: 'its own copy is not another account\'s');
     await other.forgetCopies(['u1']);
     expect(await other.copiesOfOtherAccounts('u2'), isEmpty);
+  });
+
+  test('a gesture that needs the server asks it cheaply: one health check, no sync (minor 5)', () async {
+    await started();
+    final pulls = server.pulls;
+    expect(await NetworkGate.serverReachable!(), isTrue);
+    expect(server.healthChecks, 1);
+    expect(server.pulls, pulls, reason: 'no sync cycle for that');
+    server.offline = true;
+    expect(await NetworkGate.serverReachable!(), isFalse);
+  });
+
+  test('a change asked to be judged leaves as having waited, even online (minor 12)', () async {
+    server.addPage('a');
+    final sync = await started();
+    await sync.record('page.delete', {'id': 'a'}, judged: true);
+    await settle(sync);
+    expect(server.waitedKinds, ['page.delete']);
   });
 
   test('a change made offline stays shown, counts one change, and leaves when the network returns (H1)', () async {

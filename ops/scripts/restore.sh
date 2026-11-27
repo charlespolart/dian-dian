@@ -77,5 +77,17 @@ fi
 echo "==> Starting postgres container..."
 docker compose "${COMPOSE_FILES[@]}" "${ENV_FILES[@]}" start postgres
 
+# Offline sync (chantier 10): the restored database is behind what the
+# phones have seen. Every account's counter jumps past anything they can
+# know, and its floor with it, so each phone takes the full copy at its next
+# sync instead of asking "what changed since" a number the server reuses.
+echo "==> Waiting for postgres, then sending every phone back to the full copy..."
+for _ in $(seq 1 60); do
+  docker compose "${COMPOSE_FILES[@]}" "${ENV_FILES[@]}" exec -T postgres pg_isready -U postgres -q && break
+  sleep 1
+done
+docker compose "${COMPOSE_FILES[@]}" "${ENV_FILES[@]}" exec -T postgres psql -U postgres -d dian_dian -v ON_ERROR_STOP=1 \
+  -c 'UPDATE users SET rev = rev + 1000000, sync_floor_rev = rev + 1000000;'
+
 echo "OK Restore complete. Verify:"
 echo "   docker compose ${COMPOSE_FILES[*]} --env-file $ENV_FILE exec -T postgres psql -U postgres -d dian_dian -c 'SELECT count(*) FROM users'"

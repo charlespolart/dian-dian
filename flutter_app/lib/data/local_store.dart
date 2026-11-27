@@ -541,7 +541,19 @@ class LocalStore {
         // Set aside or refused, the phone had it and the server does not:
         // the full copy comes back and puts the phone right (H12, H17).
         await _setMeta(txn, 'needs_full', '1');
-        if (r.status == 'rejected') continue;
+        if (r.status == 'rejected') {
+          // A tracker refused takes its queued changes with it, under the
+          // same reason: they are not "deleted elsewhere" (minor 2).
+          if (m.kind == 'page.create' && pageId != null) {
+            final dependents = await txn.query('queue', where: 'page_id = ? AND seq > ?', whereArgs: [pageId, seq], orderBy: 'seq');
+            for (final d in dependents) {
+              final dm = _mutation(d);
+              outcomes.add(SyncOutcome(kind: dm.kind, data: dm.data, status: 'rejected', reason: r.reason, pageTitle: title, legendLabel: d['legend_label'] as String?));
+            }
+            await txn.delete('queue', where: 'page_id = ? AND seq > ?', whereArgs: [pageId, seq]);
+          }
+          continue;
+        }
         // A tracker gone elsewhere: everything queued inside it goes too.
         final trackerGone = r.status == 'deleted' && pageId != null && !m.kind.startsWith('legend.update') && !m.kind.startsWith('legend.delete');
         if (trackerGone) {
@@ -623,8 +635,13 @@ class LocalStore {
 
   /// Updates the copy with what changed on the server (or with the full
   /// copy), except the elements that have a change waiting.
-  Future<void> applyServer(SyncDelta d) {
+  ///
+  /// True when it brought something: the screens reload only then.
+  Future<bool> applyServer(SyncDelta d) {
     return _db.transaction((txn) async {
+      final news = d.full || d.pages.isNotEmpty || d.legends.isNotEmpty || d.cells.isNotEmpty || d.deletions.isNotEmpty ||
+          d.pagesOrder != null || d.keepFree != null || d.legendsOrder.isNotEmpty || d.settings.isNotEmpty ||
+          await _metaOf(txn, 'premium') != (d.premium ? '1' : '0') || await _metaOf(txn, 'vip') != (d.vip ? '1' : '0');
       final queued = await txn.query('queue', columns: ['kind', 'element', 'page_id']);
       final waiting = {for (final q in queued) q['element'] as String};
       final deleting = {for (final q in queued) if (q['kind'] == 'page.delete') q['page_id'] as String?};
@@ -641,9 +658,11 @@ class LocalStore {
           if (!serverPages.contains(id) && !creatingPages.contains(id)) await _dropPage(txn, id);
         }
         final serverLegends = {for (final l in d.legends) l['id'] as String};
-        for (final r in await txn.query('legends', columns: ['id'])) {
+        for (final r in await txn.query('legends', columns: ['id', 'page_id'])) {
           final id = r['id'] as String;
-          if (!serverLegends.contains(id) && !creatingLegends.contains(id) && !waiting.contains('legend:$id')) {
+          // A tracker still being created keeps the legends it was created with.
+          final ofCreated = creatingPages.contains(r['page_id']);
+          if (!serverLegends.contains(id) && !creatingLegends.contains(id) && !ofCreated && !waiting.contains('legend:$id')) {
             await txn.delete('legends', where: 'id = ?', whereArgs: [id]);
           }
         }
@@ -779,6 +798,7 @@ class LocalStore {
         await _setMeta(txn, 'full_copy', '1');
         await _setMeta(txn, 'needs_full', '0');
       }
+      return news;
     });
   }
 

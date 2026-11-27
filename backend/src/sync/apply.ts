@@ -59,6 +59,8 @@ export async function applyMutation(tx: Tx, userId: string, m: Mutation): Promis
         ? await tx.select().from(cells).where(and(eq(cells.pageId, pageId), eq(cells.year, year), eq(cells.month, month), eq(cells.day, day))).limit(1)
         : [];
       const tomb = cell ? null : await traced(tx, userId, 'cell', cellKey(pageId, year, month, day));
+      // Clearing a day already empty (cleared elsewhere too) is what was asked.
+      if (m.kind === 'cell.clear' && !cell && page) return applied({ element: tomb ?? 0 });
       const editRev = dayNumber(m.base, cell?.editRev ?? null, tomb);
       const verdict = judge(m, { exists: !!cell, editRev, tombstoned: tomb !== null, parentGone: !page });
       if (verdict !== 'apply') return setAside(verdict, cell ? { color: cell.color, comment: cell.comment } : null);
@@ -119,6 +121,8 @@ export async function applyMutation(tx: Tx, userId: string, m: Mutation): Promis
     case 'page.delete': {
       const page = await ownPage(tx, userId, d.id);
       const tomb = page ? null : await traced(tx, userId, 'page', d.id);
+      // Deleting a tracker already gone is what was asked: nothing to tell.
+      if (m.kind === 'page.delete' && !page) return applied({ element: tomb ?? 0 });
       // A deletion compares the whole tracker with its content (H21).
       const number = m.kind === 'page.delete' ? page?.contentRev : page?.editRev;
       const verdict = judge(m, { exists: !!page, editRev: number ?? 0, tombstoned: tomb !== null, parentGone: false });
@@ -184,6 +188,7 @@ export async function applyMutation(tx: Tx, userId: string, m: Mutation): Promis
       const page = legend ? await ownPage(tx, userId, legend.pageId) : null;
       if (legend && !page) return rejected('not_found'); // another account's legend
       const tomb = legend ? null : await traced(tx, userId, 'legend', d.id);
+      if (m.kind === 'legend.delete' && !legend) return applied({ element: tomb ?? 0 }); // already gone: nothing to tell
       const verdict = judge(m, { exists: !!legend, editRev: legend?.editRev ?? 0, tombstoned: tomb !== null, parentGone: false });
       if (verdict !== 'apply') return setAside(verdict, legend ? { label: legend.label, color: legend.color } : null);
       const rev = await nextRev(tx, userId);

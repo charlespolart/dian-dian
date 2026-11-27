@@ -403,6 +403,15 @@ async function main() {
       mut('page.create', { id: trackerId, title: 'Back' }, { waited: true }),
     ]);
     assert.deepEqual(afterDelete.results.map((x: Json) => x.status), ['deleted', 'deleted'], 'nothing is written into a deleted tracker, and it does not come back (H20)');
+    // Deleting what is already gone, or clearing a day already cleared
+    // elsewhere, is what was asked: applied, nothing to tell (minor 7).
+    const again2 = await send([mut('page.delete', { id: trackerId }, { waited: true, base: 1 })]);
+    assert.equal(again2.results[0].status, 'applied', 'a tracker already deleted');
+    await send([mut('cell.set', { pageId, year: 2026, month: 4, day: 21, color: '#000000' })]);
+    const seenAt = (await pull(0)).cells[pageId].find((c: Json[]) => c[0] === 2026 && c[1] === 4 && c[2] === 21)[6];
+    await send([mut('cell.clear', { pageId, year: 2026, month: 4, day: 21 })]);
+    const clearAgain = await send([mut('cell.clear', { pageId, year: 2026, month: 4, day: 21 }, { waited: true, base: seenAt })]);
+    assert.equal(clearAgain.results[0].status, 'applied', 'a day already cleared elsewhere');
     const traces = await pull(deleted.rev - 1);
     assert.ok(traces.deletions.some((t: Json) => t.kind === 'page' && t.key === trackerId), 'the deletion reaches the other phones');
 
@@ -590,7 +599,7 @@ async function main() {
       'the full copy of the account kept on the phone (offline sync)': { en: 'a full copy of your account', fr: 'une copie complète de votre compte', 'zh-CN': '您账户的完整副本', 'zh-TW': '您帳戶的完整副本' },
       'the changes made offline wait on the phone': { en: 'the changes you made offline', fr: 'les modifications faites hors ligne', 'zh-CN': '离线时所做', 'zh-TW': '離線時所做' },
       'a closed session leaves the copy hidden on the phone': { en: 'stays on the phone, hidden', fr: 'reste sur le téléphone, cachée', 'zh-CN': '隐藏保留在手机上', 'zh-TW': '隱藏保留在手機上' },
-      'what a phone sent offline is kept 90 days': { en: '90 days', fr: '90 jours', 'zh-CN': '90 天', 'zh-TW': '90 天' },
+      'every change a phone sends is kept 90 days with its answer': { en: 'the changes a phone sends, with our answer, 90 days', fr: "les modifications qu'un téléphone envoie, avec notre réponse, 90 jours", 'zh-CN': '手机发送的更改及我们的答复保留 90 天', 'zh-TW': '手機傳送的變更及我們的答覆保留 90 天' },
       'purchase events after a deletion': { en: 'linked to no account', fr: 'sans lien avec un compte', 'zh-CN': '不与任何账户关联', 'zh-TW': '不與任何帳戶關聯' },
       'backups are kept 30 days': { en: 'kept 30 days', fr: 'gardées 30 jours', 'zh-CN': '保留 30 天', 'zh-TW': '保留 30 天' },
       'logs are kept 6 months at most': { en: '6 months at most', fr: '6 mois au plus', 'zh-CN': '最多保留 6 个月', 'zh-TW': '最多保留 6 個月' },
@@ -1248,6 +1257,16 @@ async function main() {
   }
 
   // --- cleanup --------------------------------------------------------------
+  // --- after a database restore, every phone takes the full copy ----------
+  // (ops/scripts/restore.sh runs this very statement; review, minor 9)
+  if (sql) {
+    const seen = (await call('GET', '/api/sync?since=0')).json.rev as number;
+    await sql`update users set rev = rev + 1000000, sync_floor_rev = rev + 1000000 where id = ${userId}`;
+    const after = await call('GET', `/api/sync?since=${seen}`);
+    assert.equal(after.json.full, true, 'a phone that knew the old numbers gets the full copy');
+    assert.equal((await call('GET', `/api/sync?since=${after.json.rev}`)).json.full, false, 'then deltas again');
+  }
+
   r = await call('DELETE', '/api/auth/account');
   assert.equal(r.status, 200);
   r = await call('POST', '/api/auth/refresh', { refreshToken: refresh }, false);

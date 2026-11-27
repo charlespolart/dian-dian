@@ -24,6 +24,7 @@ import { syncLimiter } from '../lib/syncLimit.js';
 import { recordSyncBatch } from '../lib/syncStats.js';
 import { applyMutation, type Outgoing } from '../sync/apply.js';
 import { parseMutation, type MutationResult } from '../sync/mutations.js';
+import { refusedForGood } from '../sync/poison.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -50,15 +51,25 @@ router.post('/mutations', async (req, res) => {
         continue;
       }
       if (m.waited) waited++;
-      const outcome = await db.transaction(async (tx) => {
-        // Answered before: the same answer, nothing applied again.
-        const [done] = await tx.select({ result: syncMutations.result }).from(syncMutations)
-          .where(and(eq(syncMutations.userId, userId), eq(syncMutations.id, m.id))).limit(1);
-        if (done) return { result: done.result as MutationResult, events: [] as Outgoing[] };
-        const applied = await applyMutation(tx, userId, m);
-        await tx.insert(syncMutations).values({ id: m.id, userId, result: applied.result });
-        return applied;
-      });
+      let outcome: { result: MutationResult; events: Outgoing[] };
+      try {
+        outcome = await db.transaction(async (tx) => {
+          // Answered before: the same answer, nothing applied again.
+          const [done] = await tx.select({ result: syncMutations.result }).from(syncMutations)
+            .where(and(eq(syncMutations.userId, userId), eq(syncMutations.id, m.id))).limit(1);
+          if (done) return { result: done.result as MutationResult, events: [] as Outgoing[] };
+          const applied = await applyMutation(tx, userId, m);
+          await tx.insert(syncMutations).values({ id: m.id, userId, result: applied.result });
+          return applied;
+        });
+      } catch (err) {
+        if (!refusedForGood(err)) throw err; // a failure of the moment: the phone sends the batch again
+        // One change that cannot be applied never holds the queue back.
+        console.error(`Sync: ${m.kind} ${m.id} refused, it cannot be applied:`, err);
+        const result: MutationResult = { id: m.id, status: 'rejected', reason: 'invalid' };
+        await db.insert(syncMutations).values({ id: m.id, userId, result }).onConflictDoNothing();
+        outcome = { result, events: [] };
+      }
       results.push(outcome.result);
       events.push(...outcome.events);
     }

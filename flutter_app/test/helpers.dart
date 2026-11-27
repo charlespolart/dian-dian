@@ -56,9 +56,13 @@ class RecordingSink implements ChangeSink {
   /// [[kind, data], …], for a deep comparison.
   List<List<Object>> get log => [for (final c in changes) [c.$1, c.$2]];
 
+  /// The kinds recorded to be judged by the offline rule even online.
+  final judged = <String>[];
+
   @override
-  Future<void> record(String kind, Map<String, dynamic> data) async {
+  Future<void> record(String kind, Map<String, dynamic> data, {bool judged = false}) async {
     if (fail) throw StateError('not written');
+    if (judged) this.judged.add(kind);
     changes.add((kind, data));
     // Like the copy: writing a deletion lets its hold go, in the same step.
     if (kind == 'page.delete') held.remove(data['id']);

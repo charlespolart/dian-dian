@@ -169,6 +169,13 @@
       "when": 1795749173405,
       "tag": "0023_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1795755897644,
+      "tag": "0024_cells_page_rev",
+      "breakpoints": true
     }
   ]
 }

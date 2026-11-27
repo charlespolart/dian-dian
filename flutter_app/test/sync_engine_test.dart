@@ -298,4 +298,37 @@ void main() {
     expect((await store.pending()).single.waited, isTrue);
     next.dispose();
   });
+
+  test('a renewal that cannot reach the server is offline, not the end of the session: it retries (minor 10)', () async {
+    final noRenewal = SyncEngine(
+      store: store,
+      api: ApiService.custom(
+        client: MockClient((req) async {
+          if (req.url.path == '/api/auth/refresh') throw const SocketLikeException();
+          return http.Response('{}', 401);
+        }),
+        tokens: FakeTokens(),
+      ),
+      network: network,
+      schedule: (delay, run) => retries.add(delay),
+    );
+    await store.record('cell.set', day(1), offline: false);
+    await noRenewal.kick();
+    expect(noRenewal.state, SyncState.offline);
+    expect(retries, [const Duration(seconds: 5)], reason: 'tried again later');
+    expect((await store.pending()).single.waited, isTrue);
+    noRenewal.dispose();
+  });
+
+  test('a read that brings nothing new does not reload the screens (minor 4)', () async {
+    var reloads = 0;
+    final sub = engine.onCopyChanged.listen((_) => reloads++);
+    await engine.kick(); // the full copy
+    await pumpEventQueue();
+    expect(reloads, 1);
+    await engine.kick(); // nothing changed since
+    await pumpEventQueue();
+    expect(reloads, 1);
+    await sub.cancel();
+  });
 }

@@ -148,6 +148,8 @@ export const cells = pgTable('cells', {
   editRev: revColumn('edit_rev'),
 }, (t) => [
   primaryKey({ columns: [t.pageId, t.year, t.month, t.day] }),
+  // What changed in a tracker since a number (GET /api/sync?since=N).
+  index('cells_page_rev_idx').on(t.pageId, t.rev),
 ]);
 
 export const legends = pgTable('legends', {

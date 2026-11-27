@@ -231,8 +231,9 @@ class SyncEngine extends ChangeNotifier implements SyncStatus {
     final res = await _api.apiFetch('/api/sync?since=$since');
     if (res.statusCode == 401) throw const _SessionRefused();
     if (res.statusCode != 200) throw _Unreachable(res.statusCode);
-    await _store.applyServer(SyncDelta.fromJson((jsonDecode(res.body) as Map).cast<String, dynamic>()));
-    if (!_copyChanged.isClosed) _copyChanged.add(null);
+    final news = await _store.applyServer(SyncDelta.fromJson((jsonDecode(res.body) as Map).cast<String, dynamic>()));
+    // The screens reload only when the read brought something (review, minor 4).
+    if (news && !_copyChanged.isClosed) _copyChanged.add(null);
   }
 
   /// The server refused the session: ApiService has told the app (log in

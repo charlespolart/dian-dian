@@ -405,9 +405,11 @@ class _AppShellState extends State<AppShell> {
       purchases.logOut();
     }
 
-    // Apply server settings to providers
+    // The profile's settings, until the session has its copy: from then on
+    // the copy's settings take over (they keep a setting still queued; the
+    // profile would undo it until the next sync — review, minor 3).
     final settings = auth.serverSettings;
-    if (auth.isAuthenticated && settings != null) {
+    if (auth.isAuthenticated && settings != null && !_sessionStarted) {
       context.read<ThemeProvider>().applyServerSettings(
         settings['theme'] as String?,
       );
@@ -483,6 +485,11 @@ class _AppShellState extends State<AppShell> {
         }
       });
       _clearLastTracker();
+    }
+    // An account deleted elsewhere while its session had not started here
+    // yet (a launch, the other-account check): its copy goes all the same.
+    if (!auth.isAuthenticated && !_sessionStarted && auth.sessionEnded == SessionEnd.accountDeleted && auth.endedUserId != null) {
+      unawaited(context.read<SyncService>().forgetCopies([auth.endedUserId!]));
     }
     if (!auth.isAuthenticated &&
         _screen != AppScreen.login &&

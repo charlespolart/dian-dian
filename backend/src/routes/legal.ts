@@ -223,7 +223,7 @@ const privacy: Record<Lang, string> = {
     <ul>
       <li><strong>Account and content:</strong> as long as your account exists. You can <strong>delete your account and all data</strong> at any time from the app; the deletion is immediate.</li>
       <li><strong>Backups:</strong> 30 days. A deleted account is therefore gone from the backups 30 days later.</li>
-      <li><strong>Offline sync:</strong> what a phone sent after being offline, with our answer, 90 days; the trace of a deleted tracker, legend or day (its identifier, none of its content), 24 months; both go with your account. When an account is deleted, a fingerprint of its session tokens, linked to no account, is kept 548 days so that its other phones learn it.</li>
+      <li><strong>Offline sync:</strong> the changes a phone sends, with our answer, 90 days (so that a change sent twice is never applied twice); the trace of a deleted tracker, legend or day (its identifier, none of its content), 24 months; both go with your account. When an account is deleted, a fingerprint of its session tokens, linked to no account, is kept 548 days so that its other phones learn it.</li>
       <li><strong>Product events:</strong> 13 months at most.</li>
       <li><strong>Website audience measurement:</strong> daily counts for 25 months at most, then monthly totals only.</li>
       <li><strong>Server log:</strong> the IP address of a refused sign-in or session token stays there 6 months at most.</li>
@@ -300,7 +300,7 @@ const privacy: Record<Lang, string> = {
     <ul>
       <li><strong>Compte et contenu :</strong> tant que votre compte existe. Vous pouvez <strong>supprimer votre compte et toutes vos données</strong> à tout moment depuis l'application ; la suppression est immédiate.</li>
       <li><strong>Sauvegardes :</strong> 30 jours. Un compte supprimé a donc disparu des sauvegardes 30 jours plus tard.</li>
-      <li><strong>Synchronisation hors ligne :</strong> ce qu'un téléphone a envoyé après avoir été hors ligne, avec notre réponse, 90 jours ; la trace d'un tracker, d'une légende ou d'un jour supprimés (son identifiant, rien de son contenu), 24 mois ; les deux partent avec votre compte. À la suppression d'un compte, une empreinte de ses jetons de session, sans lien avec un compte, est gardée 548 jours pour que ses autres téléphones l'apprennent.</li>
+      <li><strong>Synchronisation hors ligne :</strong> les modifications qu'un téléphone envoie, avec notre réponse, 90 jours (pour qu'une modification envoyée deux fois ne soit jamais appliquée deux fois) ; la trace d'un tracker, d'une légende ou d'un jour supprimés (son identifiant, rien de son contenu), 24 mois ; les deux partent avec votre compte. À la suppression d'un compte, une empreinte de ses jetons de session, sans lien avec un compte, est gardée 548 jours pour que ses autres téléphones l'apprennent.</li>
       <li><strong>Événements produit :</strong> 13 mois au plus.</li>
       <li><strong>Mesure d'audience du site :</strong> les comptes par jour pendant 25 mois au plus, puis seulement des totaux par mois.</li>
       <li><strong>Journal du serveur :</strong> l'adresse IP d'une connexion ou d'un jeton de session refusés y reste 6 mois au plus.</li>
@@ -377,7 +377,7 @@ const privacy: Record<Lang, string> = {
     <ul>
       <li><strong>账户和内容：</strong>账户存在期间一直保留。您可以随时从应用中<strong>删除账户和所有数据</strong>，删除立即生效。</li>
       <li><strong>备份：</strong>30 天。因此，已删除的账户会在 30 天后从备份中消失。</li>
-      <li><strong>离线同步：</strong>手机离线后发送的内容及我们的答复保留 90 天；已删除的追踪器、图例或日期的痕迹（仅其标识符，不含任何内容）保留 24 个月；两者都会随账户一起删除。账户删除时，其会话令牌的指纹（不与任何账户关联）保留 548 天，以便其他手机得知。</li>
+      <li><strong>离线同步：</strong>手机发送的更改及我们的答复保留 90 天（以免同一更改被应用两次）；已删除的追踪器、图例或日期的痕迹（仅其标识符，不含任何内容）保留 24 个月；两者都会随账户一起删除。账户删除时，其会话令牌的指纹（不与任何账户关联）保留 548 天，以便其他手机得知。</li>
       <li><strong>产品事件：</strong>最多 13 个月。</li>
       <li><strong>网站访问统计：</strong>每日统计最多保留 25 个月，之后仅保留每月总数。</li>
       <li><strong>服务器日志：</strong>登录或会话令牌被拒绝时记录的 IP 地址最多保留 6 个月。</li>
@@ -454,7 +454,7 @@ const privacy: Record<Lang, string> = {
     <ul>
       <li><strong>帳戶和內容：</strong>帳戶存在期間一直保留。您可以隨時從應用程式中<strong>刪除帳戶和所有資料</strong>，刪除立即生效。</li>
       <li><strong>備份：</strong>30 天。因此，已刪除的帳戶會在 30 天後從備份中消失。</li>
-      <li><strong>離線同步：</strong>手機離線後傳送的內容及我們的答覆保留 90 天；已刪除的追蹤器、圖例或日期的痕跡（僅其識別碼，不含任何內容）保留 24 個月；兩者都會隨帳戶一起刪除。帳戶刪除時，其工作階段權杖的指紋（不與任何帳戶關聯）保留 548 天，以便其他手機得知。</li>
+      <li><strong>離線同步：</strong>手機傳送的變更及我們的答覆保留 90 天（以免同一變更被套用兩次）；已刪除的追蹤器、圖例或日期的痕跡（僅其識別碼，不含任何內容）保留 24 個月；兩者都會隨帳戶一起刪除。帳戶刪除時，其工作階段權杖的指紋（不與任何帳戶關聯）保留 548 天，以便其他手機得知。</li>
       <li><strong>產品事件：</strong>最多 13 個月。</li>
       <li><strong>網站流量統計：</strong>每日統計最多保留 25 個月，之後僅保留每月總數。</li>
       <li><strong>伺服器日誌：</strong>登入或工作階段權杖被拒絕時記錄的 IP 位址最多保留 6 個月。</li>

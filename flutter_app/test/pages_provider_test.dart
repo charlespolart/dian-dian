@@ -211,4 +211,10 @@ void main() {
     expect(sink.held, isEmpty);
     expect(sink.refusals, 7);
   });
+
+  test('the empty tracker a first tracker replaces is deleted only if still empty: its deletion is judged (minor 12)', () async {
+    final p = withPages([pageJson('a'), pageJson('b', position: 1)]);
+    await p.createFirstTracker(title: 'Humeur', legends: const [], replaces: 'a');
+    expect(sink.judged, ['page.delete'], reason: 'a day another phone just put in it keeps it');
+  });
 }

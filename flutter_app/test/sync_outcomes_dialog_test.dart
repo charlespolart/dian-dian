@@ -95,6 +95,16 @@ void main() {
     expect(find.text('The theme had been changed on another device. That theme is kept.'), findsOneWidget);
   });
 
+  testWidgets('a refused tracker is one line; the days coloured in it are counted, not told apart (minor 2)', (tester) async {
+    await show(tester, [
+      const SyncOutcome(kind: 'page.create', data: {'id': 'p', 'title': 'Cinq'}, status: 'rejected', reason: 'tracker_limit', pageTitle: 'Cinq'),
+      day(1, 'rejected', reason: 'tracker_limit', title: 'Cinq'),
+    ]);
+    expect(find.text("2 modifications n'ont pas pu être enregistrées"), findsOneWidget);
+    expect(find.text("« Cinq » n'a pas été créé : les comptes gratuits sont limités à 3 trackers."), findsOneWidget);
+    expect(find.textContaining('Une modification de « Cinq »'), findsNothing);
+  });
+
   test('every message text exists in the four languages', () {
     for (final key in SyncOutcomesDialog.textKeys) {
       for (final lang in Language.values) {

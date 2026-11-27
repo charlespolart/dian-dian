@@ -13,8 +13,11 @@ abstract class ChangeSink {
   void refused();
 
   /// Writes the change on the phone and queues it for the server. [kind] and
-  /// [data] are those of `lib/data/mutation.dart`.
-  Future<void> record(String kind, Map<String, dynamic> data);
+  /// [data] are those of `lib/data/mutation.dart`. [judged]: the server
+  /// applies it only if its element is as the phone knew it, even online
+  /// (the offline rule) — for a deletion that must not take what another
+  /// phone just added.
+  Future<void> record(String kind, Map<String, dynamic> data, {bool judged = false});
 
   /// A tracker deletion that can still be undone, kept on the phone so that
   /// an app killed meanwhile finds it done when reopened (H14). Writing the

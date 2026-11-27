@@ -39,6 +39,14 @@ class RestoreResult {
   const RestoreResult(this.outcome, this.profile);
 }
 
+/// A request that needed a new access token while the server could not be
+/// reached: thrown like any network error.
+class ApiUnreachable implements Exception {
+  const ApiUnreachable();
+  @override
+  String toString() => 'ApiUnreachable: the session could not be renewed (no network)';
+}
+
 class ApiService {
   static final ApiService _instance = ApiService.custom();
   factory ApiService() => _instance;
@@ -107,7 +115,9 @@ class ApiService {
         _endSession(SessionEnd.accountDeleted);
         return response;
       case RefreshOutcome.offline:
-        return response;
+        // The token ran out and its renewal cannot reach the server: no
+        // network, not a refused session (the sync retries, H5).
+        throw const ApiUnreachable();
     }
   }
 

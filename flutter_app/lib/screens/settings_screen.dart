@@ -25,6 +25,7 @@ import '../widgets/press_scale.dart';
 import '../services/sync_service.dart';
 import '../widgets/connection_needed_dialog.dart';
 import '../widgets/session_dialogs.dart';
+import '../widgets/message_dialog.dart';
 
 class SettingsScreen extends StatelessWidget {
   final VoidCallback onBack;
@@ -391,13 +392,21 @@ class SettingsScreen extends StatelessWidget {
     );
 
     if (confirmed == true && context.mounted) {
+      // Signed out only once the server confirms: a deletion that failed
+      // must not look done (the account and its data would still be there).
+      var deleted = false;
       try {
-        await ApiService().apiFetch('/api/auth/account', method: 'DELETE');
-        if (context.mounted) {
-          await context.read<AuthProvider>().logout();
-        }
+        final res = await ApiService().apiFetch('/api/auth/account', method: 'DELETE');
+        deleted = res.statusCode == 200;
+        if (!deleted) debugPrint('Delete account failed: ${res.statusCode}');
       } catch (e) {
         debugPrint('Delete account failed: $e');
+      }
+      if (!context.mounted) return;
+      if (deleted) {
+        await context.read<AuthProvider>().logout();
+      } else {
+        await MessageDialog.show(context, message: lang.t('firstTracker.error'));
       }
     }
   }

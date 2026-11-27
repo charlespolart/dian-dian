@@ -118,6 +118,12 @@ docker exec restore-drill psql -U postgres -d dian_dian \
 docker rm -f restore-drill && rm -rf /srv/dian-dian/restore-drill
 ```
 
+Both modes end by sending every phone back to the full copy (offline sync):
+each account's `rev` jumps by 1 000 000 and `sync_floor_rev` with it, because
+the restored database is behind what the phones have seen, and a phone asking
+"what changed since N" would miss what the server numbers again. A restore
+drill does not need it (it never serves phones).
+
 Point-in-time (undo an accidental corruption at a known time):
 
 ```bash

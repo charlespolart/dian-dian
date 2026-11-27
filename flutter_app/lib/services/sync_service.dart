@@ -251,17 +251,17 @@ class SyncService with WidgetsBindingObserver implements ChangeSink {
   late final bool Function() _unreachableNowTearOff = _unreachableNow;
   bool _unreachableNow() => engine.value?.isOffline ?? false;
 
-  /// For a gesture that needs the server (NetworkGate, H6): tries it now.
+  /// For a gesture that needs the server (NetworkGate, H6): one cheap
+  /// request, answered or not within 5 seconds — never a whole sync, which a
+  /// long queue would make look like no network.
   late final Future<bool> Function() _reachServerTearOff = _reachServer;
   Future<bool> _reachServer() async {
-    final syncEngine = engine.value;
-    if (syncEngine == null) return true;
     try {
-      await syncEngine.kick().timeout(const Duration(seconds: 5));
-    } on TimeoutException {
+      final res = await _api.apiFetch('/api/health').timeout(const Duration(seconds: 5));
+      return res.statusCode == 200;
+    } catch (_) {
       return false;
     }
-    return !syncEngine.isOffline;
   }
 
   void dispose() {
@@ -291,12 +291,12 @@ class SyncService with WidgetsBindingObserver implements ChangeSink {
   /// Writes a provider's change on the phone with its entry in the queue,
   /// then starts a sync.
   @override
-  Future<void> record(String kind, Map<String, dynamic> data) async {
+  Future<void> record(String kind, Map<String, dynamic> data, {bool judged = false}) async {
     final store = _store;
     final syncEngine = engine.value;
     if (store == null || syncEngine == null) return;
     _writes++;
-    final write = store.record(kind, data, offline: syncEngine.isOffline);
+    final write = store.record(kind, data, offline: syncEngine.isOffline || judged);
     final done = write.then((_) {});
     _recording.add(done);
     try {

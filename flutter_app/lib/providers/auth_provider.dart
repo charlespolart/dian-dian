@@ -34,6 +34,18 @@ class AuthProvider extends ChangeNotifier {
   String? get userId => _userId;
   bool get isVip => _isVip;
   SessionEnd? get sessionEnded => _sessionEnded;
+
+  /// The account whose session the server ended (null otherwise): a deleted
+  /// account's copy is erased from the phone even when no session had
+  /// started yet (review, minor 1).
+  String? get endedUserId => _endedUserId;
+  String? _endedUserId;
+
+  /// Whether a launch shows the app at once: only on a session still held —
+  /// an account id and its renewal token. A session the server closed keeps
+  /// the account id (for the reconnection, H25) but not the token.
+  static bool landsAtOnce({required String? storedUserId, required String? refreshToken}) =>
+      storedUserId != null && refreshToken != null;
   Map<String, dynamic>? get serverSettings => _serverSettings;
 
   AuthProvider() {
@@ -88,7 +100,7 @@ class AuthProvider extends ChangeNotifier {
     // disk snapshot right away (0 round-trips). The refresh below then
     // confirms it (profile, tokens) or revokes it (invalid → login screen).
     final storedUserId = await _storage.getUserId();
-    if (storedUserId != null) {
+    if (landsAtOnce(storedUserId: storedUserId, refreshToken: await _storage.getRefreshToken())) {
       _userId = storedUserId;
       _email = await _storage.getEmail();
       final prefs = await SharedPreferences.getInstance();
@@ -112,6 +124,7 @@ class AuthProvider extends ChangeNotifier {
 
         case RefreshOutcome.invalid:
         case RefreshOutcome.accountDeleted:
+          _endedUserId = storedUserId;
           _isAuthenticated = false;
           _isOffline = false;
           _userId = null;
@@ -175,6 +188,7 @@ class AuthProvider extends ChangeNotifier {
 
   void _onSessionEnded(SessionEnd end) {
     _sessionEnded = end;
+    _endedUserId = _userId;
     _ws.disconnect();
     _userId = null;
     _email = null;

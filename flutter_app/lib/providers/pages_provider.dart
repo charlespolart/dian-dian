@@ -77,9 +77,9 @@ class PagesProvider extends ChangeNotifier {
     return true;
   }
 
-  Future<void> _record(String kind, Map<String, dynamic> data) async {
+  Future<void> _record(String kind, Map<String, dynamic> data, {bool judged = false}) async {
     try {
-      await _sink?.record(kind, data);
+      await _sink?.record(kind, data, judged: judged);
     } catch (e) {
       debugPrint('PagesProvider: $kind not written: $e');
     }
@@ -154,7 +154,9 @@ class PagesProvider extends ChangeNotifier {
     notifyListeners();
     _audio.play(SoundCue.trackerCreate);
 
-    if (replacedIndex != -1) await _record('page.delete', {'id': replaces});
+    // Judged by the server: if another phone just put a day in the tracker
+    // being replaced, it is kept (the server's guard of 1.4.0, minor 12).
+    if (replacedIndex != -1) await _record('page.delete', {'id': replaces}, judged: true);
     await _record('page.create', {
       'id': id,
       'title': title,
