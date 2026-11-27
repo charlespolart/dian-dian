@@ -4,7 +4,7 @@ import { db } from '../db/index.js';
 import { cells, pages } from '../db/schema.js';
 import { requireAuth } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
-import { broadcast } from '../lib/ws.js';
+import { broadcast, notifySync } from '../lib/ws.js';
 import { eq, and } from 'drizzle-orm';
 import { daysInMonth } from '../lib/dates.js';
 import { lockedPageIds } from '../lib/premium.js';
@@ -108,6 +108,7 @@ router.put('/:pageId', validate(upsertCellSchema), async (req, res) => {
     });
 
     broadcast(req.userId!, 'cell:updated', cell);
+    notifySync(req.userId!);
     res.json(cell);
   } catch (err) {
     console.error('Upsert cell error:', err);
@@ -150,6 +151,7 @@ router.delete('/:pageId', validate(deleteCellSchema), async (req, res) => {
     });
 
     broadcast(req.userId!, 'cell:deleted', { pageId, year, month, day });
+    notifySync(req.userId!);
     res.json({ ok: true });
   } catch (err) {
     console.error('Delete cell error:', err);
@@ -189,6 +191,7 @@ router.patch('/:pageId/recolor', validate(recolorSchema), async (req, res) => {
     });
 
     broadcast(req.userId!, 'cells:recolored', { pageId, colorMap });
+    notifySync(req.userId!);
     res.json({ ok: true });
   } catch (err) {
     console.error('Recolor cells error:', err);
@@ -219,6 +222,7 @@ router.delete('/:pageId/all', async (req, res) => {
     });
 
     broadcast(req.userId!, 'cells:reset', { pageId, year });
+    notifySync(req.userId!);
     res.json({ ok: true });
   } catch (err) {
     console.error('Reset cells error:', err);

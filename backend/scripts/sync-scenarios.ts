@@ -52,7 +52,7 @@ const cellKey = (pageId: string, y: number, m: number, d: number) => `${pageId}:
 
 interface Page { title: string; position: number; palette: Json; keepFree: boolean; editRev: number; contentRev: number; legendsOrderRev: number }
 interface Legend { pageId: string; color: string; label: string; position: number; editRev: number }
-interface Cell { color: string | null; comment: string | null; editRev: number }
+interface Cell { color: string | null; comment: string | null; editRev: number; rev: number }
 interface Queued { id: string; kind: string; element: string; pageId: string | null; base: number | null; data: Json; waited: boolean; sent: boolean }
 
 /** A phone: its copy of the account, its queue, what it was told. */
@@ -88,11 +88,21 @@ class Phone {
       : kind === 'legend.update' || kind === 'legend.delete' ? this.legends.get(data.id)?.pageId ?? null : null;
     const base = this.baseOf(kind, data);
     this.applyLocal(kind, data);
+    if (kind === 'page.delete' && this.queue.some((q) => q.kind === 'page.create' && q.pageId === pageId && !q.sent)) {
+      // The server never knew this tracker: nothing of it leaves (C1).
+      this.queue = this.queue.filter((q) => q.pageId !== pageId || q.sent);
+      return { id: randomUUID(), kind, element, pageId, base, data, waited: this.offline, sent: false };
+    }
     const last = [...this.queue].reverse().find((q) => q.element === element && !q.sent);
     if (last && Phone.merges(last.kind, kind)) {
       last.data = kind.endsWith('.update') ? { ...last.data, ...data } : data;
       last.kind = kind;
       last.waited = last.waited || this.offline;
+      if (['pages.reorder', 'pages.keep', 'legends.reorder'].includes(kind)) {
+        // An order or a choice moves after what was created since (I5).
+        this.queue = this.queue.filter((q) => q !== last);
+        this.queue.push(last);
+      }
       return last; // the first base stays (H28)
     }
     const q: Queued = { id: randomUUID(), kind, element, pageId, base, data, waited: this.offline, sent: false };
@@ -121,7 +131,7 @@ class Phone {
 
   baseOf(kind: string, d: Json): number | null {
     switch (kind) {
-      case 'cell.set': case 'cell.clear': return this.cells.get(cellKey(d.pageId, d.year, d.month, d.day))?.editRev ?? 0;
+      case 'cell.set': case 'cell.clear': return this.cells.get(cellKey(d.pageId, d.year, d.month, d.day))?.editRev ?? null; // never seen: no number (I2)
       case 'page.update': return this.pages.get(d.id)?.editRev ?? null;
       case 'page.delete': return this.pages.get(d.id)?.contentRev ?? null;
       case 'pages.reorder': return this.pagesOrderRev;
@@ -137,7 +147,8 @@ class Phone {
     switch (kind) {
       case 'cell.set': {
         const key = cellKey(d.pageId, d.year, d.month, d.day);
-        this.cells.set(key, { color: d.color, comment: d.comment ?? null, editRev: this.cells.get(key)?.editRev ?? 0 });
+        const known = this.cells.get(key);
+        this.cells.set(key, { color: d.color, comment: d.comment ?? null, editRev: known?.editRev ?? 0, rev: known?.rev ?? 0 });
         break;
       }
       case 'cell.clear': {
@@ -162,7 +173,7 @@ class Phone {
       case 'legend.update': {
         const l = this.legends.get(d.id);
         if (!l) break;
-        if (d.color !== undefined && d.color !== l.color) this.recolorDays(l.pageId, l.color, d.color);
+        if (d.color !== undefined && d.color !== l.color) this.recolorWaiting(l.pageId, l.color, d.color);
         if (d.label !== undefined) l.label = d.label;
         if (d.color !== undefined) l.color = d.color;
         break;
@@ -193,6 +204,12 @@ class Phone {
     for (const [key, c] of this.cells) if (key.startsWith(`${pageId}:`) && c.color === from) c.color = to;
   }
 
+  /** The days and the queued days of a legend recoloured take its new colour (H29, I5). */
+  recolorWaiting(pageId: string, from: string, to: string) {
+    this.recolorDays(pageId, from, to);
+    for (const q of this.queue) if (q.kind === 'cell.set' && q.pageId === pageId && q.data.color === from) q.data = { ...q.data, color: to };
+  }
+
   // --- syncing -------------------------------------------------------------
 
   /** Offline: what is queued has waited. Online: read first if something
@@ -203,16 +220,21 @@ class Phone {
       for (const q of this.queue) q.waited = true;
       return;
     }
-    if (this.queue.some((q) => q.waited && !q.sent)) await this.pull();
+    if (this.queue.some((q) => q.waited)) await this.pull();
     while (this.queue.length > 0) {
       // A batch stops before a second change of one element: it leaves once
       // the first one's answer has given it its number (H28).
-      const seen = new Set<string>();
+      // ... and before a legend change of a tracker created earlier in it, or a
+      // tracker deletion after changes inside that tracker (C1).
+      const provided = new Set<string>();
       const batch: Queued[] = [];
       for (const q of this.queue.slice(0, 100)) {
-        if (seen.has(q.element)) break;
-        seen.add(q.element);
+        const needs = [q.element, ...(q.kind === 'page.delete' && q.pageId ? [`in:${q.pageId}`] : [])];
+        if (needs.some((n) => provided.has(n))) break;
         batch.push(q);
+        provided.add(q.element);
+        if (q.pageId) provided.add(`in:${q.pageId}`);
+        if (q.kind === 'page.create') for (const l of q.data.legends ?? []) provided.add(`legend:${l.id}`);
       }
       for (const q of batch) q.sent = true;
       const res = await http('POST', '/api/sync/mutations', this.token, {
@@ -241,6 +263,13 @@ class Phone {
         if (element !== undefined) {
           for (const q of this.queue.slice(i)) if (q.element === m.element) q.base = element;
           this.setNumber(m, element);
+          if (m.kind === 'page.create') {
+            for (const l of m.data.legends ?? []) {
+              const local = this.legends.get(l.id);
+              if (local) local.editRev = element;
+              for (const q of this.queue.slice(i)) if (q.element === `legend:${l.id}`) q.base = element;
+            }
+          }
         }
         if (content !== undefined && m.pageId) {
           for (const q of this.queue.slice(i)) if (q.kind === 'page.delete' && q.pageId === m.pageId) q.base = content;
@@ -264,7 +293,7 @@ class Phone {
   setNumber(m: Queued, rev: number) {
     const d = m.data;
     switch (m.kind) {
-      case 'cell.set': case 'cell.clear': { const c = this.cells.get(cellKey(d.pageId, d.year, d.month, d.day)); if (c) c.editRev = rev; break; }
+      case 'cell.set': case 'cell.clear': { const c = this.cells.get(cellKey(d.pageId, d.year, d.month, d.day)); if (c) { c.editRev = rev; c.rev = rev; } break; }
       case 'page.create': case 'page.update': { const p = this.pages.get(d.id); if (p) p.editRev = rev; break; }
       case 'legend.create': case 'legend.update': { const l = this.legends.get(d.id); if (l) l.editRev = rev; break; }
       case 'pages.reorder': this.pagesOrderRev = rev; break;
@@ -289,7 +318,9 @@ class Phone {
       const serverPages = new Set(d.pages.map((p: Json) => p.id));
       for (const id of [...this.pages.keys()]) if (!serverPages.has(id) && !creating.has(id)) this.dropPage(id);
       const serverLegends = new Set(d.legends.map((l: Json) => l.id));
-      for (const id of [...this.legends.keys()]) if (!serverLegends.has(id) && !creatingLegends.has(id) && !waiting.has(`legend:${id}`)) this.legends.delete(id);
+      for (const [id, l] of [...this.legends]) {
+        if (!serverLegends.has(id) && !creatingLegends.has(id) && !creating.has(l.pageId) && !waiting.has(`legend:${id}`)) this.legends.delete(id);
+      }
       const serverCells = new Set(Object.entries(d.cells as Record<string, Json[]>).flatMap(([pageId, rows]) => rows.map((c) => cellKey(pageId, c[0], c[1], c[2]))));
       for (const key of [...this.cells.keys()]) {
         if (!serverCells.has(key) && !waiting.has(`cell:${key}`) && !creating.has(key.split(':')[0])) this.cells.delete(key);
@@ -312,8 +343,7 @@ class Phone {
       const local = this.legends.get(l.id);
       // A legend recoloured elsewhere recolours what waits (H29).
       if (local && local.color !== l.color) {
-        this.recolorDays(l.pageId, local.color, l.color);
-        for (const q of this.queue) if (q.kind === 'cell.set' && q.pageId === l.pageId && !q.sent && q.data.color === local.color) q.data = { ...q.data, color: l.color };
+        this.recolorWaiting(l.pageId, local.color, l.color);
       }
       this.legends.set(l.id, {
         pageId: l.pageId, color: l.color, label: l.label, editRev: l.editRev,
@@ -325,13 +355,16 @@ class Phone {
       for (const c of rows) {
         const key = cellKey(pageId, c[0], c[1], c[2]);
         if (waiting.has(`cell:${key}`)) continue;
-        this.cells.set(key, { color: c[3], comment: c[4], editRev: c[6] });
+        this.cells.set(key, { color: c[3], comment: c[4], editRev: c[6], rev: c[5] });
       }
     }
     for (const t of d.deletions) {
       if (t.kind === 'page' && !creating.has(t.key)) this.dropPage(t.key);
       if (t.kind === 'legend' && !waiting.has(`legend:${t.key}`)) this.legends.delete(t.key);
-      if (t.kind === 'cell' && !waiting.has(`cell:${t.key}`)) this.cells.set(t.key, { color: null, comment: null, editRev: t.rev });
+      if (t.kind === 'cell' && !waiting.has(`cell:${t.key}`) && (this.cells.get(t.key)?.rev ?? 0) < t.rev) {
+        // Only a trace newer than the day the phone has clears it (C2).
+        this.cells.set(t.key, { color: null, comment: null, editRev: t.rev, rev: t.rev });
+      }
     }
     if (d.pagesOrder && !waiting.has('pages-order')) { this.order(this.pages, d.pagesOrder.ids); this.pagesOrderRev = d.pagesOrder.rev; }
     if (d.keepFree && !waiting.has('pages-keep')) {
@@ -607,6 +640,81 @@ async function main() {
     ], 'kept, in the new colour');
     await cleanup(a, b);
     ok('H29 a legend recoloured elsewhere: the days changed offline are kept, in the new colour');
+  }
+
+  // C1 (a): a tracker created offline then deleted offline: nothing of it reaches the server.
+  {
+    await converge(a, b);
+    a.offline = true;
+    const t = await newTracker(a, 'Brouillon', [{ color: '#FFEC99', label: 'Oui' }]);
+    await a.change('cell.set', day(t, 1, '#FFEC99'));
+    await a.change('page.delete', { id: t });
+    assert.equal(a.queue.length, 0, 'nothing to send');
+    await converge(a, b);
+    assert.deepEqual([...a.takeOutcomes(), ...b.takeOutcomes()], []);
+    assert.equal(b.pages.has(t), false);
+    await cleanup(a, b);
+    ok('C1 a tracker created then deleted offline: never sent, no message');
+  }
+
+  // C1 (b): a day coloured then the tracker deleted, offline: the deletion is applied, not "changed elsewhere".
+  {
+    const t = await newTracker(b, 'Sport');
+    await converge(a, b);
+    a.offline = true;
+    await a.change('cell.set', day(t, 2, '#2B8A3E'));
+    await a.change('page.delete', { id: t });
+    await converge(a, b);
+    assert.deepEqual(a.takeOutcomes(), [], 'my own day is not a change made elsewhere');
+    assert.equal(b.pages.has(t), false, 'deleted everywhere');
+    await cleanup(a, b);
+    ok('C1 a day coloured then its tracker deleted offline: the deletion holds');
+  }
+
+  // C1 (c): the first tracker made offline with its legends, then a legend renamed and recoloured offline.
+  {
+    await converge(a, b);
+    a.offline = true;
+    const t = await newTracker(a, 'Humeur', [{ color: '#FFEC99', label: 'Bien' }, { color: '#FFD43B', label: 'Super' }]);
+    const legendId = [...a.legends].find(([, l]) => l.pageId === t && l.label === 'Bien')![0];
+    await a.change('cell.set', day(t, 3, '#FFEC99'));
+    await a.change('legend.update', { id: legendId, label: 'Très bien' });
+    await a.change('legend.update', { id: legendId, color: '#8CE99A' });
+    await converge(a, b);
+    assert.deepEqual(a.takeOutcomes(), [], 'its legends are mine: no conflict');
+    assert.deepEqual([b.legends.get(legendId)?.label, b.legends.get(legendId)?.color], ['Très bien', '#8CE99A']);
+    assert.equal(b.cells.get(cellKey(t, Y, 1, 3))?.color, '#8CE99A', 'the day in the legend\'s colour');
+    await cleanup(a, b);
+    ok('C1 legends of a tracker created offline, edited offline: kept, no message');
+  }
+
+  // C2: a day cleared then coloured again elsewhere arrives coloured.
+  {
+    const t = await newTracker(b, 'Humeur');
+    await b.change('cell.set', day(t, 4, '#FFEC99'));
+    await converge(a, b);
+    await b.change('cell.clear', { pageId: t, year: Y, month: 1, day: 4 });
+    await b.change('cell.set', day(t, 4, '#74C0FC'));
+    await a.sync();
+    assert.equal(a.cells.get(cellKey(t, Y, 1, 4))?.color, '#74C0FC', 'not left empty by the older trace');
+    await cleanup(a, b);
+    ok('C2 a day cleared then coloured again elsewhere: the phone shows it coloured');
+  }
+
+  // I5: a legend recoloured twice offline with a day coloured in between: the day ends in the last colour.
+  {
+    const t = await newTracker(b, 'Humeur', [{ color: '#FFEC99', label: 'Bien' }]);
+    await converge(a, b);
+    const legendId = [...a.legends].find(([, l]) => l.pageId === t)![0];
+    a.offline = true;
+    await a.change('legend.update', { id: legendId, color: '#FFD43B' });
+    await a.change('cell.set', day(t, 5, '#FFD43B'));
+    await a.change('legend.update', { id: legendId, color: '#8CE99A' });
+    await converge(a, b);
+    assert.deepEqual(a.takeOutcomes(), []);
+    assert.equal(b.cells.get(cellKey(t, Y, 1, 5))?.color, '#8CE99A', 'never a colour no legend has');
+    await cleanup(a, b);
+    ok('I5 a legend recoloured twice offline: its days follow it');
   }
 
   // H23: two trackers created offline on two phones go over the free limit: both kept.

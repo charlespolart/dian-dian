@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { judge, mergeOrder, parseMutation, type Mutation } from './mutations.js';
+import { dayNumber, judge, mergeOrder, parseMutation, type Mutation } from './mutations.js';
 
 const m = (over: Partial<Mutation> = {}): Mutation => ({
   id: '0b7f6c1e-1111-4222-8333-944455556666', kind: 'cell.set', waited: true, base: 4,
@@ -61,4 +61,21 @@ test('an order sent by a phone puts the ids it lists first, then the others in t
   assert.deepEqual(mergeOrder(['c', 'a'], ['a', 'b', 'c', 'd']), ['c', 'a', 'b', 'd']);
   assert.deepEqual(mergeOrder(['x', 'b'], ['a', 'b']), ['b', 'a'], 'an id the server does not have is dropped');
   assert.deepEqual(mergeOrder([], ['a', 'b']), ['a', 'b']);
+});
+
+// I2: the number a day is judged by, from what the phone knew (its base).
+const empty = (editRev: number | null, tombstoned = false) => ({ exists: false, editRev, tombstoned, parentGone: false });
+
+test('a day the phone never saw (no number) and still empty is applied, even cleared elsewhere long ago', () => {
+  assert.equal(judge(m({ base: null }), empty(dayNumber(null, null, 7), true)), 'apply');
+  assert.equal(judge(m({ base: null }), empty(dayNumber(null, null, null))), 'apply');
+});
+
+test('a day the phone never saw but coloured elsewhere meanwhile is set aside (H17)', () => {
+  assert.equal(judge(m({ base: null }), here(dayNumber(null, 5, null)!)), 'changed');
+});
+
+test('a day the phone saw with number 0 (written before the numbers), cleared elsewhere since, is set aside (I2)', () => {
+  assert.equal(judge(m({ base: 0 }), empty(dayNumber(0, null, 5), true)), 'changed');
+  assert.equal(judge(m({ base: 0 }), empty(dayNumber(0, null, null))), 'apply', 'empty then, empty now');
 });

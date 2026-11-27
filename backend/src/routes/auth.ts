@@ -14,6 +14,7 @@ import { hasActiveSubscription } from '../lib/premium.js';
 import { nextRev } from '../lib/revs.js';
 import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
+import { notifySync } from '../lib/ws.js';
 
 const router = Router();
 
@@ -423,6 +424,7 @@ router.patch('/settings', requireAuth, validate(settingsSchema), async (req, res
         ...(updates.cursorId !== undefined || updates.cursorEnabled !== undefined ? { cursorRev: rev } : {}),
       }).where(eq(users.id, req.userId!));
     });
+    notifySync(req.userId!); // the account's other phones take the setting live
     res.json({ ok: true });
   } catch (err) {
     console.error('Update settings error:', err);

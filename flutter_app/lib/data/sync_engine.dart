@@ -96,8 +96,11 @@ class SyncEngine extends ChangeNotifier implements SyncStatus {
   Future<void> get idle => _running ?? Future.value();
 
   /// Reads what the store holds from a previous run: the queue's size and
-  /// what was not kept and not told yet.
+  /// what was not kept and not told yet. Whatever is still queued has
+  /// waited — at least since the app was closed — and is judged by the
+  /// offline rule (I3).
   Future<void> restore() async {
+    await _store.markWaited();
     _pending = await _store.pendingCount();
     _outcomes.addAll(await _store.storedOutcomes());
     notifyListeners();
@@ -153,7 +156,7 @@ class SyncEngine extends ChangeNotifier implements SyncStatus {
       // recoloured elsewhere recolours them, H29).
       if (await _store.hasWaited()) await _pull();
       while (true) {
-        final batch = _untilRepeated(await _store.pending(limit: batchSize));
+        final batch = _independent(await _store.pending(limit: batchSize));
         if (batch.isEmpty) break;
         await _store.markSent(batch.map((m) => m.id));
         final res = await _api.apiFetch('/api/sync/mutations', method: 'POST', body: {
@@ -188,24 +191,35 @@ class SyncEngine extends ChangeNotifier implements SyncStatus {
       _planRetry();
     } finally {
       if (outcomes.isNotEmpty) {
-        _outcomes.addAll(outcomes);
-        await _store.storeOutcomes(outcomes);
+        _outcomes.addAll(outcomes); // settle has stored them already
       }
       _pending = await _store.pendingCount();
       if (!_disposed) notifyListeners();
     }
   }
 
-  /// A batch stops before a second change of one element: that one leaves
-  /// once the answer to the first has given it its number (an answer lost
-  /// and sent again, a tracker created then renamed). Sent together, the
-  /// server would judge it against the first and set it aside (H28).
-  static List<Mutation> _untilRepeated(List<Mutation> queued) {
-    final seen = <String>{};
+  /// A batch stops before a change that depends on an earlier one in it:
+  /// a second change of one element (an answer lost and sent again, a
+  /// tracker created then renamed), a change of a legend a tracker was
+  /// created with, a tracker deletion after changes inside that tracker.
+  /// That one leaves once the earlier answers have given it its number; sent
+  /// together, the server would judge it against them and set the phone's
+  /// own change aside (H21, H28).
+  static List<Mutation> _independent(List<Mutation> queued) {
+    final provided = <String>{};
     final batch = <Mutation>[];
     for (final m in queued) {
-      if (!seen.add(m.element)) break;
+      final page = m.pageId;
+      final needs = {m.element, if (m.kind == 'page.delete' && page != null) 'in:$page'};
+      if (needs.any(provided.contains)) break;
       batch.add(m);
+      provided.add(m.element);
+      if (page != null) provided.add('in:$page');
+      if (m.kind == 'page.create') {
+        for (final l in (m.data['legends'] as List?) ?? const []) {
+          provided.add('legend:${(l as Map)['id']}');
+        }
+      }
     }
     return batch;
   }

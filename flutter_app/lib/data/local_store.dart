@@ -213,22 +213,42 @@ class LocalStore {
       final legendLabel = kind.startsWith('legend.') ? await _labelOf(txn, data['id'] as String?) ?? data['label'] as String? : null;
       await _applyLocal(txn, kind, data);
 
+      if (kind == 'page.delete') {
+        final unsentCreate = await txn.query('queue', columns: ['seq'], where: "kind = 'page.create' AND page_id = ? AND sent = 0", whereArgs: [pageId], limit: 1);
+        if (unsentCreate.isNotEmpty) {
+          // The server never knew this tracker: nothing of it leaves (C1).
+          await txn.delete('queue', where: 'page_id = ? AND sent = 0', whereArgs: [pageId]);
+          return Mutation(id: _uuid.v4(), kind: kind, element: element, base: base, data: data, waited: offline, sent: false, page: pageId);
+        }
+      }
+
       final last = await txn.query('queue', where: 'element = ? AND sent = 0', whereArgs: [element], orderBy: 'seq DESC', limit: 1);
       if (last.isNotEmpty && _merges(last.first['kind'] as String, kind)) {
         final row = last.first;
         final previous = (jsonDecode(row['data'] as String) as Map).cast<String, dynamic>();
         final merged = kind.endsWith('.update') ? {...previous, ...data} : data;
         final waited = offline || row['waited'] == 1;
+        if (const {'pages.reorder', 'pages.keep', 'legends.reorder'}.contains(kind)) {
+          // An order or a choice names trackers or legends that may have been
+          // created since the first one: it moves to the end of the queue,
+          // after them, keeping the first one's base (I5).
+          await txn.delete('queue', where: 'seq = ?', whereArgs: [row['seq']]);
+          await txn.insert('queue', {
+            'id': row['id'], 'kind': kind, 'element': element, 'page_id': pageId, 'base': row['base'],
+            'data': jsonEncode(merged), 'waited': waited ? 1 : 0, 'sent': 0, 'page_title': pageTitle, 'legend_label': legendLabel,
+          });
+          return Mutation(id: row['id'] as String, kind: kind, element: element, base: row['base'] as int?, data: merged, waited: waited, sent: false, page: pageId);
+        }
         await txn.update('queue', {'kind': kind, 'data': jsonEncode(merged), 'waited': waited ? 1 : 0, 'page_title': pageTitle, 'legend_label': legendLabel},
             where: 'seq = ?', whereArgs: [row['seq']]);
-        return Mutation(id: row['id'] as String, kind: kind, element: element, base: row['base'] as int?, data: merged, waited: waited, sent: false);
+        return Mutation(id: row['id'] as String, kind: kind, element: element, base: row['base'] as int?, data: merged, waited: waited, sent: false, page: pageId);
       }
       final id = _uuid.v4();
       await txn.insert('queue', {
         'id': id, 'kind': kind, 'element': element, 'page_id': pageId, 'base': base,
         'data': jsonEncode(data), 'waited': offline ? 1 : 0, 'sent': 0, 'page_title': pageTitle, 'legend_label': legendLabel,
       });
-      return Mutation(id: id, kind: kind, element: element, base: base, data: data, waited: offline, sent: false);
+      return Mutation(id: id, kind: kind, element: element, base: base, data: data, waited: offline, sent: false, page: pageId);
     });
   }
 
@@ -323,7 +343,11 @@ class LocalStore {
         return null;
       case 'cell.set':
       case 'cell.clear':
-        return col('cells', 'edit_rev', 'page_id = ? AND year = ? AND month = ? AND day = ?', [d['pageId'], d['year'], d['month'], d['day']]);
+        // A day the phone never saw (no row, not even a trace) has no number:
+        // the server then sees no conflict while it is still empty (I2).
+        final rows = await db.query('cells', columns: ['edit_rev'],
+            where: 'page_id = ? AND year = ? AND month = ? AND day = ?', whereArgs: [d['pageId'], d['year'], d['month'], d['day']]);
+        return rows.isEmpty ? null : rows.first['edit_rev'] as int;
       case 'page.update':
         return col('pages', 'edit_rev', 'id = ?', [d['id']]);
       case 'page.delete':
@@ -407,8 +431,10 @@ class LocalStore {
         if (rows.isEmpty) return;
         final old = rows.first;
         if (d['color'] is String && d['color'] != old['color']) {
-          // The legend's days take the new colour (as the server does it).
-          await txn.update('cells', {'color': d['color']}, where: 'page_id = ? AND color = ?', whereArgs: [old['page_id'], old['color']]);
+          // The legend's days take the new colour (as the server does it),
+          // and so do the queued days in its old colour: merged with an
+          // earlier recolour, this change may leave before them (I5).
+          await _recolorWaiting(txn, old['page_id'] as String, old['color'] as String, d['color'] as String);
         }
         await txn.update('legends', {
           if (d.containsKey('label')) 'label': _req<String>(d, 'label'),
@@ -464,6 +490,7 @@ class LocalStore {
         data: (jsonDecode(r['data'] as String) as Map).cast<String, dynamic>(),
         waited: r['waited'] == 1,
         sent: r['sent'] == 1,
+        page: r['page_id'] as String?,
       );
 
   /// Takes the server's answers out of the queue. An applied change makes
@@ -490,6 +517,14 @@ class LocalStore {
           if (element != null) {
             await txn.update('queue', {'base': element}, where: 'element = ? AND seq > ?', whereArgs: [m.element, seq]);
             await _setNumber(txn, m, element);
+            // The legends a tracker was created with take its number too (C1).
+            if (m.kind == 'page.create') {
+              for (final l in (m.data['legends'] as List?) ?? const []) {
+                final legendId = (l as Map)['id'] as String;
+                await txn.update('legends', {'edit_rev': element, 'rev': element}, where: 'id = ?', whereArgs: [legendId]);
+                await txn.update('queue', {'base': element}, where: 'element = ? AND seq > ?', whereArgs: ['legend:$legendId', seq]);
+              }
+            }
           }
           if (content != null && pageId != null) {
             await txn.update('queue', {'base': content}, where: "kind = 'page.delete' AND page_id = ? AND seq > ?", whereArgs: [pageId, seq]);
@@ -518,6 +553,11 @@ class LocalStore {
           await txn.delete('queue', where: 'page_id = ? AND seq > ?', whereArgs: [pageId, seq]);
         }
       }
+      // Kept to tell in the same step as they leave the queue: an app killed
+      // right after loses nothing it has to say (I4).
+      for (final o in outcomes) {
+        await txn.insert('outcomes', {'json': jsonEncode(o.toJson())});
+      }
       return outcomes;
     });
   }
@@ -528,7 +568,8 @@ class LocalStore {
   /// other days come recoloured from the server.)
   Future<void> _recolorWaiting(Transaction txn, String pageId, String from, String to) async {
     await txn.update('cells', {'color': to}, where: 'page_id = ? AND color = ?', whereArgs: [pageId, from]);
-    for (final q in await txn.query('queue', where: "page_id = ? AND kind = 'cell.set' AND sent = 0", whereArgs: [pageId])) {
+    // Sent ones too: an answer lost means the server may never have had it.
+    for (final q in await txn.query('queue', where: "page_id = ? AND kind = 'cell.set'", whereArgs: [pageId])) {
       final data = (jsonDecode(q['data'] as String) as Map).cast<String, dynamic>();
       if (data['color'] != from) continue;
       await txn.update('queue', {'data': jsonEncode({...data, 'color': to})}, where: 'seq = ?', whereArgs: [q['seq']]);
@@ -537,7 +578,7 @@ class LocalStore {
 
   /// Whether changes that waited (made or kept offline) are still queued.
   Future<bool> hasWaited() async =>
-      (await _db.query('queue', columns: ['seq'], where: 'waited = 1 AND sent = 0', limit: 1)).isNotEmpty;
+      (await _db.query('queue', columns: ['seq'], where: 'waited = 1', limit: 1)).isNotEmpty;
 
   Future<String?> _titleOf(DatabaseExecutor db, String? pageId) async {
     if (pageId == null) return null;
@@ -688,9 +729,12 @@ class LocalStore {
             if (waiting.contains('cell:$key')) continue;
             final pageId = t['pageId'] as String;
             final date = key.substring(pageId.length + 1).split('-').map(int.parse).toList();
+            // Only a trace newer than the day the phone has clears it: a day
+            // cleared then coloured again comes with both, the row newer.
             await txn.rawInsert(
               'INSERT INTO cells (page_id, year, month, day, color, comment, rev, edit_rev) VALUES (?, ?, ?, ?, NULL, NULL, ?, ?) '
-              'ON CONFLICT (page_id, year, month, day) DO UPDATE SET color = NULL, comment = NULL, rev = excluded.rev, edit_rev = excluded.edit_rev',
+              'ON CONFLICT (page_id, year, month, day) DO UPDATE SET color = NULL, comment = NULL, rev = excluded.rev, edit_rev = excluded.edit_rev '
+              'WHERE cells.rev < excluded.rev',
               [pageId, date[0], date[1], date[2], rev, rev],
             );
         }
@@ -748,13 +792,6 @@ class LocalStore {
   // The message of what was not kept (shown once, even after a restart)
   // ---------------------------------------------------------------------------
 
-  Future<void> storeOutcomes(List<SyncOutcome> outcomes) async {
-    final batch = _db.batch();
-    for (final o in outcomes) {
-      batch.insert('outcomes', {'json': jsonEncode(o.toJson())});
-    }
-    await batch.commit(noResult: true);
-  }
 
   /// What was not kept and not told yet (kept across a restart).
   Future<List<SyncOutcome>> storedOutcomes() async => [

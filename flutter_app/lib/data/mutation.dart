@@ -30,6 +30,10 @@ class Mutation {
   /// Included in a request whose answer has not come back yet.
   final bool sent;
 
+  /// The tracker, as the queue noted it (a legend change's tracker is looked
+  /// up when it is written).
+  final String? page;
+
   const Mutation({
     required this.id,
     required this.kind,
@@ -38,11 +42,12 @@ class Mutation {
     required this.data,
     required this.waited,
     required this.sent,
+    this.page,
   });
 
   /// The tracker this change belongs to (null for an order of trackers, the
   /// open ones, or a setting).
-  String? get pageId => pageOf(kind, data);
+  String? get pageId => page ?? pageOf(kind, data);
 
   static String? pageOf(String kind, Map<String, dynamic> data) {
     if (kind.startsWith('cell.') || kind == 'legend.create' || kind == 'legends.reorder') return data['pageId'] as String?;

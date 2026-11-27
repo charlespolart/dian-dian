@@ -63,7 +63,7 @@ void main() {
     final m = await s.record('cell.set', day(2), offline: true);
     expect(await s.pendingCount(), 1);
     expect(m.waited, isTrue, reason: 'made offline');
-    expect(m.base, 0, reason: 'the day did not exist for the phone');
+    expect(m.base, isNull, reason: 'the day did not exist for the phone: no number (I2)');
     expect((await s.load()).cells[p1]![2026]!.get(3, 2)!.color, '#BBBBBB', reason: 'shown at once (H1)');
   });
 
@@ -260,6 +260,120 @@ void main() {
     expect(await store.needsFullCopy(), isTrue);
     await store.applyServer(seed(rev: 12));
     expect((await store.load()).pages.map((p) => p.id), [p1], reason: 'the refused tracker is gone from the phone');
+    await store.close();
+  });
+
+  SyncDelta delta({List<dynamic> cells = const [], List<dynamic> deletions = const [], List<dynamic> legends = const [], List<dynamic> pages = const []}) =>
+      SyncDelta.fromJson({
+        'rev': 20, 'full': false, 'pages': pages, 'legends': legends,
+        'cells': {if (cells.isNotEmpty) p1: cells},
+        'deletions': deletions, 'legendsOrder': <String, dynamic>{}, 'settings': <String, dynamic>{}, 'premium': false, 'vip': false,
+      });
+
+  test('a day cleared then coloured again elsewhere arrives coloured, whatever the order of the delta (C2)', () async {
+    final store = await memory();
+    await store.applyServer(seed());
+    await store.applyServer(delta(
+      cells: [[2026, 3, 2, '#DDDDDD', null, 12, 12, 0]],
+      deletions: [{'kind': 'cell', 'key': '$p1:2026-03-02', 'pageId': p1, 'rev': 11}],
+    ));
+    expect((await store.load()).cells[p1]![2026]!.get(3, 2)?.color, '#DDDDDD');
+    // A trace newer than the day the phone has does clear it.
+    await store.applyServer(delta(deletions: [{'kind': 'cell', 'key': '$p1:2026-03-01', 'pageId': p1, 'rev': 13}]));
+    expect((await store.load()).cells[p1]![2026]!.get(3, 1), isNull);
+    await store.close();
+  });
+
+  test('deleting a tracker whose creation never left: nothing of it is sent (C1)', () async {
+    final store = await memory();
+    const id = '33333333-3333-4333-8333-333333333333';
+    await store.record('page.create', {'id': id, 'title': 'New'}, offline: true);
+    await store.record('cell.set', {'pageId': id, 'year': 2026, 'month': 1, 'day': 1, 'color': '#AAAAAA'}, offline: true);
+    await store.record('page.delete', {'id': id}, offline: true);
+    expect(await store.pendingCount(), 0, reason: 'the server never knew it');
+    expect((await store.load()).pages, isEmpty);
+    await store.close();
+  });
+
+  test('a tracker created with its legends: its legends take its number when it is applied (C1)', () async {
+    final store = await memory();
+    const id = '33333333-3333-4333-8333-333333333333';
+    const legend = '55555555-5555-4555-8555-555555555555';
+    final create = await store.record('page.create', {'id': id, 'title': 'New', 'legends': [{'id': legend, 'color': '#AAAAAA', 'label': 'A'}]}, offline: true);
+    await store.markSent([create.id]);
+    final recolour = await store.record('legend.update', {'id': legend, 'color': '#BBBBBB'}, offline: true);
+    expect(recolour.base, 0);
+    await store.settle([MutationResult(id: create.id, status: 'applied', revs: const {'element': 7, 'content': 7})]);
+    expect((await store.pending()).single.base, 7, reason: 'rebased on the legend\'s number');
+    await store.close();
+  });
+
+  test('a day the phone never saw leaves with no number; a day it saw, coloured or cleared, with its own (I2)', () async {
+    final store = await memory();
+    await store.applyServer(seed());
+    expect((await store.record('cell.set', day(10), offline: true)).base, isNull, reason: 'never seen');
+    expect((await store.record('cell.set', day(1), offline: true)).base, 8, reason: 'seen coloured');
+    await store.applyServer(delta(deletions: [{'kind': 'cell', 'key': '$p1:2026-03-04', 'pageId': p1, 'rev': 15}]));
+    expect((await store.record('cell.set', day(4), offline: true)).base, 15, reason: 'seen cleared: its trace');
+    await store.close();
+  });
+
+  test('a deletion held when the app was killed is written at launch as having waited (I3)', () async {
+    final store = await memory();
+    await store.applyServer(seed());
+    await store.holdDelete(p1);
+    await store.commitHeldDeletes(offline: true);
+    final queued = (await store.pending()).single;
+    expect((queued.kind, queued.waited, queued.base), ('page.delete', true, 8), reason: 'judged against the tracker as the phone knew it (H21)');
+    await store.close();
+  });
+
+  test('what is set aside is kept to tell in the same step as it leaves the queue: a kill right after loses nothing (I4)', () async {
+    final store = await memory();
+    await store.applyServer(seed());
+    final m = await store.record('cell.set', day(1), offline: true);
+    await store.settle([MutationResult(id: m.id, status: 'changed', current: {'color': '#000000', 'comment': null})]);
+    expect((await store.storedOutcomes()).single.status, 'changed');
+    await store.close();
+  });
+
+  test('a legend recoloured twice offline, a day coloured in between: the day leaves in the last colour (I5)', () async {
+    final store = await memory();
+    await store.applyServer(seed());
+    await store.record('legend.update', {'id': l1, 'color': '#BBBBBB'}, offline: true);
+    await store.record('cell.set', day(5, color: '#BBBBBB'), offline: true);
+    await store.record('legend.update', {'id': l1, 'color': '#CCCCCC'}, offline: true);
+    final queued = await store.pending();
+    expect(queued.map((m) => m.kind), ['legend.update', 'cell.set']);
+    expect(queued.last.data['color'], '#CCCCCC', reason: 'not a colour no legend has');
+    await store.close();
+  });
+
+  test('an order changed again after a tracker created offline leaves after that creation (I5)', () async {
+    final store = await memory();
+    await store.applyServer(seed());
+    const id = '33333333-3333-4333-8333-333333333333';
+    final first = await store.record('pages.reorder', {'ids': [p1]}, offline: true);
+    await store.record('page.create', {'id': id, 'title': 'New'}, offline: true);
+    await store.record('pages.reorder', {'ids': [id, p1]}, offline: true);
+    final queued = await store.pending();
+    expect(queued.map((m) => m.kind), ['page.create', 'pages.reorder'], reason: 'the server must know the tracker the order names');
+    expect(queued.last.data['ids'], [id, p1]);
+    expect(queued.last.base, first.base, reason: 'the first one\'s base');
+    await store.close();
+  });
+
+  test('a change sent but unanswered also waits: read first, recoloured like the others (minor 11)', () async {
+    final store = await memory();
+    await store.applyServer(seed());
+    final m = await store.record('cell.set', day(5, color: '#AAAAAA'), offline: false);
+    await store.markSent([m.id]);
+    await store.markWaited();
+    expect(await store.hasWaited(), isTrue);
+    await store.applyServer(delta(legends: [
+      {'id': l1, 'pageId': p1, 'color': '#CCCCCC', 'label': 'Good', 'position': 0, 'rev': 21, 'editRev': 21},
+    ]));
+    expect((await store.pending()).single.data['color'], '#CCCCCC');
     await store.close();
   });
 }

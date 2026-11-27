@@ -21,6 +21,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import postgres from 'postgres';
+import WebSocket from 'ws';
 import { envFlag } from '../src/lib/envFlag.js';
 import { isLoopbackDatabase, isLoopbackUrl } from '../src/lib/loopback.js';
 
@@ -354,12 +355,20 @@ async function main() {
     const fresh = await send([mut('cell.set', { pageId, year: 2026, month: 4, day: 1, color: '#C92A2A', comment: null }, { waited: true, base: dayRev })]);
     assert.equal(fresh.results[0].status, 'applied', 'a change that knew the latest version is applied');
     const online = await send([mut('cell.set', { pageId, year: 2026, month: 4, day: 1, color: '#1864AB', comment: null }, { base: 1 })]);
-    // A day coloured then cleared elsewhere is empty again: a phone that only
-    // ever saw it empty (base 0) colours it offline without a conflict.
+    // A day coloured then cleared elsewhere is empty again: a phone that never
+    // saw it (no number) colours it offline without a conflict.
     await send([mut('cell.set', { pageId, year: 2026, month: 4, day: 9, color: '#000000' }), mut('cell.clear', { pageId, year: 2026, month: 4, day: 9 })]);
-    const neverSeen = await send([mut('cell.set', { pageId, year: 2026, month: 4, day: 9, color: '#2B8A3E' }, { waited: true, base: 0 })]);
-    assert.equal(neverSeen.results[0].status, 'applied', 'empty then, empty now: no conflict');
+    const neverSeen = await send([mut('cell.set', { pageId, year: 2026, month: 4, day: 9, color: '#2B8A3E' }, { waited: true, base: null })]);
+    assert.equal(neverSeen.results[0].status, 'applied', 'never seen, empty now: no conflict');
     await send([mut('cell.clear', { pageId, year: 2026, month: 4, day: 9 })]);
+    if (sql) {
+      // A day written before the numbers (edit number 0), cleared elsewhere
+      // since: a phone that saw it with 0 and changed it offline is set aside (I2).
+      await sql`insert into cells (page_id, year, month, day, color, rev, edit_rev) values (${pageId}, 2026, 4, 20, '#000000', 0, 0)`;
+      await send([mut('cell.clear', { pageId, year: 2026, month: 4, day: 20 })]);
+      const sawZero = await send([mut('cell.set', { pageId, year: 2026, month: 4, day: 20, color: '#2B8A3E' }, { waited: true, base: 0 })]);
+      assert.equal(sawZero.results[0].status, 'changed', 'the clear made elsewhere is not undone');
+    }
     assert.equal(online.results[0].status, 'applied', 'a change that did not wait: the last writer wins (H27)');
 
     // A tracker created by the phone, with its legend and a day; a recolour
@@ -414,6 +423,35 @@ async function main() {
     await send([mut('page.delete', { id: legendsTracker })]);
     // The rest of the suite expects this order, and no extra day on the first tracker.
     await send([mut('pages.reorder', { ids: [page2, pageId] }), mut('cell.clear', { pageId, year: 2026, month: 4, day: 1 })]);
+  }
+
+  // --- every change tells the account's other phones: `sync` (I1) ---------
+  {
+    const socket = new WebSocket(`${BASE.replace(/^http/, 'ws')}/ws`);
+    const received: string[] = [];
+    await new Promise<void>((resolve, reject) => {
+      socket.on('open', () => socket.send(JSON.stringify({ type: 'auth', token: access })));
+      socket.on('message', (raw) => {
+        const { event } = JSON.parse(String(raw)) as { event: string };
+        if (event === 'auth:ok') resolve();
+        received.push(event);
+      });
+      socket.on('error', reject);
+    });
+    const syncAfter = async (what: string, write: () => Promise<unknown>) => {
+      received.length = 0;
+      await write();
+      for (let i = 0; i < 40 && !received.includes('sync'); i++) await new Promise((r) => setTimeout(r, 25));
+      assert.ok(received.includes('sync'), `${what} tells the other phones (sync)`);
+    };
+    await syncAfter('a day written by app 1.4.0', () => call('PUT', `/api/cells/${pageId}`, { year: 2026, month: 6, day: 6, color: '#123456' }));
+    await syncAfter('a day erased by app 1.4.0', () => call('DELETE', `/api/cells/${pageId}`, { year: 2026, month: 6, day: 6 }));
+    await syncAfter('a tracker renamed by app 1.4.0', () => call('PATCH', `/api/pages/${pageId}`, { title: 'Renamed' }));
+    await syncAfter('a setting changed by app 1.4.0', () => call('PATCH', '/api/auth/settings', { theme: 'defaultTheme' }));
+    await syncAfter('a setting sent by a phone', () => call('POST', '/api/sync/mutations', {
+      mutations: [{ id: randomUUID(), kind: 'setting.set', waited: false, base: null, data: { key: 'language', value: 'en' } }],
+    }));
+    socket.close();
   }
 
   // --- the site: store buttons go through /go/*, unknown paths are 404 -------

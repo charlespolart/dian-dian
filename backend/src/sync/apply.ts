@@ -15,7 +15,7 @@ import { cells, deletions, legends, pages, users } from '../db/schema.js';
 import { daysInMonth } from '../lib/dates.js';
 import { isUnlimited, lockedPageIds, maxFreeTrackers } from '../lib/premium.js';
 import { cellKey, nextRev, touchPageContent, trace, type Tx } from '../lib/revs.js';
-import { judge, mergeOrder, type ElementState, type Mutation, type MutationResult } from './mutations.js';
+import { dayNumber, judge, mergeOrder, type ElementState, type Mutation, type MutationResult } from './mutations.js';
 
 /** An event for the account's other devices: [name, data]. */
 export type Outgoing = [string, unknown];
@@ -59,10 +59,8 @@ export async function applyMutation(tx: Tx, userId: string, m: Mutation): Promis
         ? await tx.select().from(cells).where(and(eq(cells.pageId, pageId), eq(cells.year, year), eq(cells.month, month), eq(cells.day, day))).limit(1)
         : [];
       const tomb = cell ? null : await traced(tx, userId, 'cell', cellKey(pageId, year, month, day));
-      // An empty day is compared by its trace, unless the phone only ever saw
-      // it empty (base 0): empty then, empty now, there is nothing to lose.
-      const emptyNumber = m.base === 0 ? 0 : tomb ?? 0;
-      const verdict = judge(m, { exists: !!cell, editRev: cell?.editRev ?? emptyNumber, tombstoned: tomb !== null, parentGone: !page });
+      const editRev = dayNumber(m.base, cell?.editRev ?? null, tomb);
+      const verdict = judge(m, { exists: !!cell, editRev, tombstoned: tomb !== null, parentGone: !page });
       if (verdict !== 'apply') return setAside(verdict, cell ? { color: cell.color, comment: cell.comment } : null);
       if (!m.waited && (await lockedPageIds(userId)).has(pageId)) return rejected('locked');
 

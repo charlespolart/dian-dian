@@ -163,6 +163,7 @@ void main() {
       sync = await launch();
       expect(pages.pages.map((p) => p.title), ['Keep']);
       expect(sync.engine.value!.pendingCount, 1, reason: 'its deletion is queued');
+      expect(server.sentKinds, isEmpty, reason: 'offline');
       await networkBack(sync);
       expect(server.sentKinds, ['page.delete']);
     });

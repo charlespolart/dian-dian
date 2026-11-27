@@ -8,6 +8,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'package:dian_dian/data/connectivity.dart';
 import 'package:dian_dian/data/local_store.dart';
+import 'package:dian_dian/data/mutation.dart';
 import 'package:dian_dian/data/sync_engine.dart';
 import 'package:dian_dian/services/api_service.dart';
 
@@ -33,6 +34,8 @@ class FakeServer {
   bool loseNextAnswer = false;
   /// Kinds of answer to give per change id (default applied).
   final verdicts = <String, String>{};
+  /// Answer a tracker's content number too, as the server does for a change inside a tracker.
+  bool contentRevs = false;
 
   late final client = MockClient((req) async {
     if (req.url.path == '/api/sync/mutations') {
@@ -53,7 +56,7 @@ class FakeServer {
             if (status == 'applied') applied++;
             rev++;
             return status == 'applied'
-                ? {'id': m['id'], 'status': 'applied', 'revs': {'element': rev, 'account': rev}}
+                ? {'id': m['id'], 'status': 'applied', 'revs': {'element': rev, 'account': rev, if (contentRevs) 'content': rev}}
                 : {'id': m['id'], 'status': status, 'current': null};
           }),
       ];
@@ -261,5 +264,38 @@ void main() {
     await engine.kick();
     expect(server.batches, [[create.id], [rename.id]]);
     expect(server.bases[rename.id], (server.answers[create.id]!['revs'] as Map)['element']);
+  });
+
+  test('a tracker deletion waits for the answers to the changes before it in that tracker (C1)', () async {
+    // A tracker the phone has (from the server), a day coloured in it, then the tracker deleted, offline.
+    await store.applyServer(SyncDelta.fromJson({
+      'rev': 5, 'full': true,
+      'pages': [{'id': p1, 'title': 'T', 'position': 0, 'keepFree': false, 'createdAt': '', 'palette': null, 'rev': 5, 'editRev': 5, 'contentRev': 5, 'legendsOrderRev': 0}],
+      'legends': [], 'cells': {}, 'deletions': [], 'legendsOrder': {}, 'settings': {}, 'premium': false, 'vip': false,
+    }));
+    final colour = await store.record('cell.set', day(1), offline: true);
+    final delete = await store.record('page.delete', {'id': p1}, offline: true);
+    server.contentRevs = true;
+    await engine.kick();
+    expect(server.batches, [[colour.id], [delete.id]]);
+    expect(server.bases[delete.id], (server.answers[colour.id]!['revs'] as Map)['content'], reason: 'judged against the tracker as the day left it');
+  });
+
+  test('the legends of a tracker created offline then edited leave after it, with its number (C1)', () async {
+    const id = '33333333-3333-4333-8333-333333333333';
+    const legend = '55555555-5555-4555-8555-555555555555';
+    final create = await store.record('page.create', {'id': id, 'title': 'New', 'legends': [{'id': legend, 'color': '#AAAAAA', 'label': 'A'}]}, offline: true);
+    final rename = await store.record('legend.update', {'id': legend, 'label': 'B'}, offline: true);
+    await engine.kick();
+    expect(server.batches, [[create.id], [rename.id]]);
+    expect(server.bases[rename.id], (server.answers[create.id]!['revs'] as Map)['element']);
+  });
+
+  test('what is still queued at launch has waited: it is judged by the offline rule (I3)', () async {
+    await store.record('cell.set', day(1), offline: false); // the app was killed before it left
+    final next = SyncEngine(store: store, api: ApiService.custom(client: server.client, tokens: FakeTokens()), network: network, schedule: (delay, run) {});
+    await next.restore();
+    expect((await store.pending()).single.waited, isTrue);
+    next.dispose();
   });
 }

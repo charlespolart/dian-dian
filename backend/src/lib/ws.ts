@@ -81,6 +81,15 @@ export function setupWebSocket(server: Server) {
   });
 }
 
+/**
+ * Tells every phone of the account that something changed (offline sync):
+ * the new app syncs on it, apps 1.4.0 ignore it. Every write that numbers a
+ * change sends it once, the old routes included (I1).
+ */
+export function notifySync(userId: string, rev?: number) {
+  broadcast(userId, 'sync', rev === undefined ? {} : { rev });
+}
+
 export function broadcast(userId: string, event: string, data: unknown, excludeWs?: WebSocket) {
   const userClients = clients.get(userId);
   if (!userClients) return;

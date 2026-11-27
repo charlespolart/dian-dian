@@ -4,7 +4,7 @@ import { db } from '../db/index.js';
 import { pages, cells, legends, users } from '../db/schema.js';
 import { requireAuth } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
-import { broadcast } from '../lib/ws.js';
+import { broadcast, notifySync } from '../lib/ws.js';
 import { eq, and, asc, count, inArray } from 'drizzle-orm';
 import { isUnlimited, maxFreeTrackers } from '../lib/premium.js';
 import { nextRev, trace } from '../lib/revs.js';
@@ -140,6 +140,7 @@ router.post('/', validate(createPageSchema), async (req, res) => {
     if (result.replaced) broadcast(userId, 'page:deleted', { id: result.replaced });
     broadcast(userId, 'page:created', body);
     for (const legend of result.legends) broadcast(userId, 'legend:created', legend);
+    notifySync(userId);
     res.status(201).json(body);
   } catch (err) {
     console.error('Create page error:', err);
@@ -169,6 +170,7 @@ router.put('/keep', validate(keepSchema), async (req, res) => {
       await tx.update(users).set({ keepFreeRev: rev }).where(eq(users.id, userId));
     });
     broadcast(userId, 'pages:kept', { ids });
+    notifySync(userId);
     res.json({ ok: true });
   } catch (err) {
     console.error('Keep pages error:', err);
@@ -197,6 +199,7 @@ router.put('/reorder', validate(reorderPagesSchema), async (req, res) => {
       await tx.update(users).set({ pagesOrderRev: rev }).where(eq(users.id, req.userId!));
     });
     broadcast(req.userId!, 'pages:reordered', { ids });
+    notifySync(req.userId!);
     res.json({ ok: true });
   } catch (err) {
     console.error('Reorder pages error:', err);
@@ -238,6 +241,7 @@ router.patch('/:id', validate(updatePageSchema), async (req, res) => {
     if (!page) { res.status(404).json({ error: 'Page not found' }); return; }
     const parsed = { ...page, palette: page.palette ? JSON.parse(page.palette) : null };
     broadcast(req.userId!, 'page:updated', parsed);
+    notifySync(req.userId!);
     res.json(parsed);
   } catch (err) {
     console.error('Update page error:', err);
@@ -257,6 +261,7 @@ router.delete('/:id', async (req, res) => {
     });
     if (!page) { res.status(404).json({ error: 'Page not found' }); return; }
     broadcast(req.userId!, 'page:deleted', { id: page.id });
+    notifySync(req.userId!);
     res.json({ ok: true });
   } catch (err) {
     console.error('Delete page error:', err);

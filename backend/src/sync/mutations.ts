@@ -96,7 +96,19 @@ const dayKinds: ReadonlySet<MutationKind> = new Set(['cell.set', 'cell.clear']);
  * - `tombstoned`: the element itself was deleted (a trace exists).
  * - `parentGone`: the tracker it belongs to is gone.
  */
-export type ElementState = { exists: boolean; editRev: number; tombstoned: boolean; parentGone: boolean };
+export type ElementState = { exists: boolean; editRev: number | null; tombstoned: boolean; parentGone: boolean };
+
+/**
+ * The number a day is judged by. A phone that never saw the day sends no
+ * number (null): an empty day is then no conflict, a day coloured elsewhere
+ * meanwhile is. A phone that saw it sends its number: a coloured day is
+ * compared by its edit number, an empty one by its trace (a day written
+ * before the numbers has 0, and a clear since leaves a trace that differs).
+ */
+export function dayNumber(base: number | null, cellEditRev: number | null, tomb: number | null): number | null {
+  if (cellEditRev !== null) return cellEditRev;
+  return base === null ? null : tomb ?? 0;
+}
 
 /** Apply the change, or set it aside: the offline rule (spec, "Le conflit"). */
 export function judge(m: Mutation, el: ElementState): 'apply' | 'changed' | 'deleted' {

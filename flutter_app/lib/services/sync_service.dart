@@ -137,8 +137,9 @@ class SyncService with WidgetsBindingObserver implements ChangeSink {
     await syncEngine.restore();
     engine.value = syncEngine;
     _copyChanged = syncEngine.onCopyChanged.listen((_) => _reload());
-    // Deletions the app was killed holding are done now (H14).
-    await store.commitHeldDeletes(offline: false);
+    // Deletions the app was killed holding are done now (H14); they waited
+    // since, so another phone's changes meanwhile keep the tracker (H21, I3).
+    await store.commitHeldDeletes(offline: true);
     _hasFullCopy = await store.hasFullCopy();
     _bind(this);
     NetworkGate.serverReachable = _reachServerTearOff;

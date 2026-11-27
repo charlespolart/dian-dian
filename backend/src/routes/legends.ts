@@ -4,7 +4,7 @@ import { db } from '../db/index.js';
 import { legends, pages } from '../db/schema.js';
 import { requireAuth } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
-import { broadcast } from '../lib/ws.js';
+import { broadcast, notifySync } from '../lib/ws.js';
 import { nextRev, touchPageContent, trace } from '../lib/revs.js';
 import { eq, and, asc } from 'drizzle-orm';
 
@@ -63,6 +63,7 @@ router.post('/:pageId', validate(createLegendSchema), async (req, res) => {
     });
 
     broadcast(req.userId!, 'legend:created', legend);
+    notifySync(req.userId!);
     res.status(201).json(legend);
   } catch (err) {
     console.error('Create legend error:', err);
@@ -99,6 +100,7 @@ router.put('/:pageId/reorder', validate(reorderSchema), async (req, res) => {
       await touchPageContent(tx, pageId, rev);
     });
     broadcast(req.userId!, 'legends:reordered', { pageId, ids });
+    notifySync(req.userId!);
     res.json({ ok: true });
   } catch (err) {
     console.error('Reorder legends error:', err);
@@ -132,6 +134,7 @@ router.patch('/:pageId/recolor', validate(recolorLegendSchema), async (req, res)
     });
 
     broadcast(req.userId!, 'legends:recolored', { pageId, colorMap });
+    notifySync(req.userId!);
     res.json({ ok: true });
   } catch (err) {
     console.error('Recolor legends error:', err);
@@ -170,6 +173,7 @@ router.patch('/:id', validate(updateLegendSchema), async (req, res) => {
     });
 
     broadcast(req.userId!, 'legend:updated', updated);
+    notifySync(req.userId!);
     res.json(updated);
   } catch (err) {
     console.error('Update legend error:', err);
@@ -200,6 +204,7 @@ router.delete('/:id', async (req, res) => {
       await touchPageContent(tx, legend.pageId, rev);
     });
     broadcast(req.userId!, 'legend:deleted', { id: String(req.params.id), pageId: legend.pageId });
+    notifySync(req.userId!);
     res.json({ ok: true });
   } catch (err) {
     console.error('Delete legend error:', err);

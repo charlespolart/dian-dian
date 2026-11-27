@@ -18,7 +18,7 @@ import { and, asc, eq, gt, inArray } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { cells, deletions, legends, pages, syncMutations, users } from '../db/schema.js';
 import { requireAuth } from '../middleware/auth.js';
-import { broadcast } from '../lib/ws.js';
+import { broadcast, notifySync } from '../lib/ws.js';
 import { hasActiveSubscription } from '../lib/premium.js';
 import { syncLimiter } from '../lib/syncLimit.js';
 import { recordSyncBatch } from '../lib/syncStats.js';
@@ -65,7 +65,8 @@ router.post('/mutations', async (req, res) => {
     const [{ rev }] = await db.select({ rev: users.rev }).from(users).where(eq(users.id, userId)).limit(1);
     // Apps 1.4.0 hear today's events; the newer ones fetch what changed.
     for (const [event, data] of events) broadcast(userId, event, data);
-    if (events.length > 0) broadcast(userId, 'sync', { rev });
+    // Every applied change, a setting included (it has no event of its own).
+    if (results.some((r) => r.status === 'applied')) notifySync(userId, rev);
     recordSyncBatch(new Date(), waited, results).catch((err) => console.error('Sync stats failed:', err));
     res.json({ results, rev });
   } catch (err) {
