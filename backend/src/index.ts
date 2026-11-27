@@ -105,14 +105,6 @@ const eventsLimiter = rateLimit({
   message: { error: 'Too many events' },
 });
 
-// Offline sync: a phone back after weeks sends its queue in batches of 100,
-// and asks what changed after each; generous, but bounded per IP.
-const syncLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 min
-  max: 600,
-  message: { error: 'Too many sync requests' },
-});
-
 // Routes
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
@@ -126,7 +118,7 @@ app.use('/api/purchase', purchaseRoutes);
 app.use('/api/bootstrap', bootstrapRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/events', eventsLimiter, eventsRoutes);
-app.use('/api/sync', syncLimiter, syncRoutes);
+app.use('/api/sync', syncRoutes); // limited per account inside (lib/syncLimit.ts)
 
 // Liveness — deliberately cheap and DB-free. This is what the container
 // healthcheck polls: if it depended on Postgres, every DB blip would mark the

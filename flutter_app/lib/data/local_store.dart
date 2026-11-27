@@ -503,8 +503,10 @@ class LocalStore {
           kind: m.kind, data: m.data, status: r.status, current: r.current, reason: r.reason,
           pageTitle: title, legendLabel: row['legend_label'] as String?,
         ));
-        if (r.status == 'rejected') continue;
+        // Set aside or refused, the phone had it and the server does not:
+        // the full copy comes back and puts the phone right (H12, H17).
         await _setMeta(txn, 'needs_full', '1');
+        if (r.status == 'rejected') continue;
         // A tracker gone elsewhere: everything queued inside it goes too.
         final trackerGone = r.status == 'deleted' && pageId != null && !m.kind.startsWith('legend.update') && !m.kind.startsWith('legend.delete');
         if (trackerGone) {
@@ -519,6 +521,23 @@ class LocalStore {
       return outcomes;
     });
   }
+
+  /// A legend recoloured elsewhere (H29): the days waiting on the phone take
+  /// the new colour, and so do the changes queued for them, which then leave
+  /// in it — a recolour is one element, never a change of each day. (The
+  /// other days come recoloured from the server.)
+  Future<void> _recolorWaiting(Transaction txn, String pageId, String from, String to) async {
+    await txn.update('cells', {'color': to}, where: 'page_id = ? AND color = ?', whereArgs: [pageId, from]);
+    for (final q in await txn.query('queue', where: "page_id = ? AND kind = 'cell.set' AND sent = 0", whereArgs: [pageId])) {
+      final data = (jsonDecode(q['data'] as String) as Map).cast<String, dynamic>();
+      if (data['color'] != from) continue;
+      await txn.update('queue', {'data': jsonEncode({...data, 'color': to})}, where: 'seq = ?', whereArgs: [q['seq']]);
+    }
+  }
+
+  /// Whether changes that waited (made or kept offline) are still queued.
+  Future<bool> hasWaited() async =>
+      (await _db.query('queue', columns: ['seq'], where: 'waited = 1 AND sent = 0', limit: 1)).isNotEmpty;
 
   Future<String?> _titleOf(DatabaseExecutor db, String? pageId) async {
     if (pageId == null) return null;
@@ -628,7 +647,10 @@ class LocalStore {
         final pageId = l['pageId'] as String;
         if (deleting.contains(pageId) || waiting.contains('legend:$id')) continue;
         final orderWaiting = waiting.contains('legends-order:$pageId');
-        final existing = await txn.query('legends', columns: ['id'], where: 'id = ?', whereArgs: [id]);
+        final existing = await txn.query('legends', columns: ['id', 'color'], where: 'id = ?', whereArgs: [id]);
+        final before = existing.isEmpty ? null : existing.first['color'] as String?;
+        final after = l['color'] as String?;
+        if (before != null && after != null && before != after) await _recolorWaiting(txn, pageId, before, after);
         final row = <String, Object?>{
           'page_id': pageId, 'color': l['color'], 'label': l['label'], 'rev': l['rev'], 'edit_rev': l['editRev'],
           if (!orderWaiting || existing.isEmpty) 'position': l['position'],

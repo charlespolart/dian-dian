@@ -148,14 +148,18 @@ class SyncEngine extends ChangeNotifier implements SyncStatus {
     final wasOffline = isOffline;
     final outcomes = <SyncOutcome>[];
     try {
+      // Changes that waited are judged against what changed meanwhile: read
+      // it first, so that they leave as the phone now sees them (a legend
+      // recoloured elsewhere recolours them, H29).
+      if (await _store.hasWaited()) await _pull();
       while (true) {
-        final batch = await _store.pending(limit: batchSize);
+        final batch = _untilRepeated(await _store.pending(limit: batchSize));
         if (batch.isEmpty) break;
         await _store.markSent(batch.map((m) => m.id));
         final res = await _api.apiFetch('/api/sync/mutations', method: 'POST', body: {
           'mutations': [for (final m in batch) m.toJson()],
         });
-        if (res.statusCode == 401) return _sessionEnded();
+        if (res.statusCode == 401) throw const _SessionRefused();
         if (res.statusCode != 200) throw _Unreachable(res.statusCode);
         final results = [
           for (final r in (jsonDecode(res.body)['results'] as List)) MutationResult.fromJson((r as Map).cast<String, dynamic>()),
@@ -166,12 +170,7 @@ class SyncEngine extends ChangeNotifier implements SyncStatus {
         _pending = await _store.pendingCount();
         notifyListeners();
       }
-      final since = await _store.needsFullCopy() ? 0 : await _store.lastRev();
-      final res = await _api.apiFetch('/api/sync?since=$since');
-      if (res.statusCode == 401) return _sessionEnded();
-      if (res.statusCode != 200) throw _Unreachable(res.statusCode);
-      await _store.applyServer(SyncDelta.fromJson((jsonDecode(res.body) as Map).cast<String, dynamic>()));
-      if (!_copyChanged.isClosed) _copyChanged.add(null);
+      await _pull();
       _state = SyncState.online;
       _delay = null;
       _retry?.cancel();
@@ -180,6 +179,8 @@ class SyncEngine extends ChangeNotifier implements SyncStatus {
         _returns++;
         _returnedSent = sent;
       }
+    } on _SessionRefused {
+      _sessionEnded();
     } catch (e) {
       debugPrint('Sync: server unreachable ($e)');
       await _store.markWaited();
@@ -193,6 +194,31 @@ class SyncEngine extends ChangeNotifier implements SyncStatus {
       _pending = await _store.pendingCount();
       if (!_disposed) notifyListeners();
     }
+  }
+
+  /// A batch stops before a second change of one element: that one leaves
+  /// once the answer to the first has given it its number (an answer lost
+  /// and sent again, a tracker created then renamed). Sent together, the
+  /// server would judge it against the first and set it aside (H28).
+  static List<Mutation> _untilRepeated(List<Mutation> queued) {
+    final seen = <String>{};
+    final batch = <Mutation>[];
+    for (final m in queued) {
+      if (!seen.add(m.element)) break;
+      batch.add(m);
+    }
+    return batch;
+  }
+
+  /// What changed on the server since the last number the phone saw (or the
+  /// full copy), into the copy.
+  Future<void> _pull() async {
+    final since = await _store.needsFullCopy() ? 0 : await _store.lastRev();
+    final res = await _api.apiFetch('/api/sync?since=$since');
+    if (res.statusCode == 401) throw const _SessionRefused();
+    if (res.statusCode != 200) throw _Unreachable(res.statusCode);
+    await _store.applyServer(SyncDelta.fromJson((jsonDecode(res.body) as Map).cast<String, dynamic>()));
+    if (!_copyChanged.isClosed) _copyChanged.add(null);
   }
 
   /// The server refused the session: ApiService has told the app (log in
@@ -222,6 +248,10 @@ class SyncEngine extends ChangeNotifier implements SyncStatus {
     _copyChanged.close();
     super.dispose();
   }
+}
+
+class _SessionRefused implements Exception {
+  const _SessionRefused();
 }
 
 class _Unreachable implements Exception {

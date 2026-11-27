@@ -20,6 +20,10 @@ const p1 = '11111111-1111-4111-8111-111111111111';
 class FakeServer {
   final answers = <String, Map<String, dynamic>>{};
   final batches = <List<String>>[];
+  /// 'send' or 'pull', in the order the phone asked.
+  final calls = <String>[];
+  /// The base each change arrived with, by id (the last time it came).
+  final bases = <String, Object?>{};
   int applied = 0;
   int rev = 1;
   int pulls = 0;
@@ -32,12 +36,16 @@ class FakeServer {
 
   late final client = MockClient((req) async {
     if (req.url.path == '/api/sync/mutations') {
+      calls.add('send');
       if (failPosts > 0) {
         failPosts--;
         throw const SocketLikeException();
       }
       final mutations = (jsonDecode(req.body)['mutations'] as List).cast<Map<String, dynamic>>();
       batches.add([for (final m in mutations) m['id'] as String]);
+      for (final m in mutations) {
+        bases[m['id'] as String] = m['base'];
+      }
       final results = [
         for (final m in mutations)
           answers.putIfAbsent(m['id'] as String, () {
@@ -56,6 +64,7 @@ class FakeServer {
       return http.Response(jsonEncode({'results': results, 'rev': rev}), 200);
     }
     if (req.url.path == '/api/sync') {
+      calls.add('pull');
       pulls++;
       return http.Response(jsonEncode({
         'rev': rev, 'full': req.url.queryParameters['since'] == '0', 'pages': [], 'legends': [], 'cells': {}, 'deletions': [],
@@ -113,7 +122,7 @@ void main() {
     expect(server.batches.expand((b) => b), ids, reason: 'in the order of the gestures');
     expect(await store.pendingCount(), 0);
     expect(engine.pendingCount, 0);
-    expect(server.pulls, 1);
+    expect(server.pulls, 2, reason: 'they waited: read before sending them (H29), and after');
     expect(engine.state, SyncState.online);
     expect(engine.lastSentCount, 150);
   });
@@ -177,7 +186,7 @@ void main() {
     final told = engine.takeOutcomes();
     expect(told.single.status, 'changed');
     expect(engine.takeOutcomes(), isEmpty);
-    expect(server.pulls, 1);
+    expect(server.calls, ['pull', 'send', 'pull']);
   });
 
   test('the network coming back sends the queue without a gesture', () async {
@@ -222,5 +231,35 @@ void main() {
     expect(next.takeOutcomes().single.status, 'changed');
     expect(next.hasOutcomes, isFalse);
     next.dispose();
+  });
+
+  test('changes that waited leave after the phone has read what changed meanwhile (H29)', () async {
+    await store.record('cell.set', day(1), offline: true);
+    await engine.kick();
+    expect(server.calls, ['pull', 'send', 'pull']);
+    server.calls.clear();
+    await store.record('cell.set', day(2), offline: false);
+    await engine.kick();
+    expect(server.calls, ['send', 'pull'], reason: 'online, no extra read');
+  });
+
+  test('a change waits for the answer to an earlier one of its element, and leaves with its number (H28)', () async {
+    final first = await store.record('cell.set', day(1), offline: false);
+    server.loseNextAnswer = true;
+    await engine.kick(); // applied on the server, its answer lost
+    final second = await store.record('cell.set', {...day(1), 'color': '#654321'}, offline: true);
+    server.batches.clear();
+    await engine.kick();
+    expect(server.batches, [[first.id], [second.id]], reason: 'never in the same batch');
+    expect(server.bases[second.id], (server.answers[first.id]!['revs'] as Map)['element'], reason: 'the number the first one left');
+  });
+
+  test('a tracker created then renamed offline leaves in two steps, the rename with the creation\'s number', () async {
+    const id = '33333333-3333-4333-8333-333333333333';
+    final create = await store.record('page.create', {'id': id, 'title': 'New'}, offline: true);
+    final rename = await store.record('page.update', {'id': id, 'title': 'Renamed'}, offline: true);
+    await engine.kick();
+    expect(server.batches, [[create.id], [rename.id]]);
+    expect(server.bases[rename.id], (server.answers[create.id]!['revs'] as Map)['element']);
   });
 }

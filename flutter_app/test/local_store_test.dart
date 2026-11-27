@@ -225,4 +225,41 @@ void main() {
     expect(SyncOutcome.fromJson(told.first.toJson()).legendLabel, 'Good', reason: 'kept until told, across a restart');
     await store.close();
   });
+
+  test('a legend recoloured elsewhere recolours what waits on the phone: its days and its queued changes (H29)', () async {
+    final store = await memory();
+    await store.applyServer(seed());
+    await store.record('cell.set', day(5, color: '#AAAAAA'), offline: true);
+    await store.record('cell.set', day(1, color: '#AAAAAA', comment: 'note'), offline: true);
+    await store.applyServer(SyncDelta.fromJson({
+      'rev': 11, 'full': false,
+      'pages': <dynamic>[],
+      'legends': [
+        {'id': l1, 'pageId': p1, 'color': '#CCCCCC', 'label': 'Good', 'position': 0, 'rev': 11, 'editRev': 11},
+      ],
+      'cells': {
+        p1: [[2026, 3, 1, '#CCCCCC', null, 11, 8, 0]],
+      },
+      'deletions': <dynamic>[], 'legendsOrder': <String, dynamic>{}, 'settings': <String, dynamic>{}, 'premium': false, 'vip': false,
+    }));
+    expect([for (final m in await store.pending()) m.data['color']], ['#CCCCCC', '#CCCCCC'], reason: 'they leave in the new colour');
+    expect((await store.pending()).last.data['comment'], 'note', reason: 'my comment is kept');
+    final copy = await store.load();
+    expect(copy.cells[p1]![2026]!.get(3, 5)!.color, '#CCCCCC');
+    expect(copy.cells[p1]![2026]!.get(3, 1)!.color, '#CCCCCC');
+    await store.close();
+  });
+
+  test('a refused change asks for the full copy back: the phone then drops what the server does not have (H12)', () async {
+    final store = await memory();
+    await store.applyServer(seed());
+    const extra = '44444444-4444-4444-8444-444444444444';
+    final create = await store.record('page.create', {'id': extra, 'title': 'Over the limit'}, offline: false);
+    final told = await store.settle([MutationResult(id: create.id, status: 'rejected', reason: 'tracker_limit')]);
+    expect(told.single.reason, 'tracker_limit');
+    expect(await store.needsFullCopy(), isTrue);
+    await store.applyServer(seed(rev: 12));
+    expect((await store.load()).pages.map((p) => p.id), [p1], reason: 'the refused tracker is gone from the phone');
+    await store.close();
+  });
 }

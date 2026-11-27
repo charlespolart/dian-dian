@@ -20,12 +20,14 @@ import { cells, deletions, legends, pages, syncMutations, users } from '../db/sc
 import { requireAuth } from '../middleware/auth.js';
 import { broadcast } from '../lib/ws.js';
 import { hasActiveSubscription } from '../lib/premium.js';
+import { syncLimiter } from '../lib/syncLimit.js';
 import { recordSyncBatch } from '../lib/syncStats.js';
 import { applyMutation, type Outgoing } from '../sync/apply.js';
 import { parseMutation, type MutationResult } from '../sync/mutations.js';
 
 const router = Router();
 router.use(requireAuth);
+router.use(syncLimiter());
 
 const maxBatch = 100;
 
