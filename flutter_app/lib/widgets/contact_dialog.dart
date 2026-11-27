@@ -10,6 +10,7 @@ import '../theme/app_theme.dart';
 import 'app_dialog.dart';
 import 'utf16_length_limit.dart';
 import 'press_scale.dart';
+import 'connection_needed_dialog.dart';
 
 enum ContactReason { idea, bug, question }
 
@@ -89,6 +90,8 @@ class _ContactDialogState extends State<ContactDialog> {
       setState(() => _errorKey = 'auth.invalidEmail');
       return;
     }
+    if (await ConnectionNeededDialog.blockIfOffline(context)) return;
+    if (!mounted) return;
     setState(() {
       _busy = true;
       _errorKey = null;

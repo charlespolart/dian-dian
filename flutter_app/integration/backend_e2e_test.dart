@@ -58,7 +58,7 @@ class QuietNetwork implements NetworkWatcher {
 
 /// One phone: its providers and its copy.
 class Phone {
-  Phone(ApiService api, String path)
+  Phone(ApiService api, String dir)
       : pages = PagesProvider(audio: AudioService.silent()),
         cells = CellsProvider(audio: AudioService.silent()),
         legends = LegendsProvider(audio: AudioService.silent()) {
@@ -71,7 +71,7 @@ class Phone {
       snapshots: MemorySnapshots(),
       observeLifecycle: false,
       databaseFactory: databaseFactoryFfiNoIsolate,
-      databasePath: (_) => path,
+      databaseDir: dir,
       network: QuietNetwork(),
     );
   }
@@ -103,7 +103,7 @@ void main() {
     final year = DateTime.now().year;
 
     // A fresh phone: nothing to show, the first sync brings the (empty) account.
-    final one = Phone(api, '${dir.path}/one.db');
+    final one = Phone(api, (Directory('${dir.path}/one')..createSync()).path);
     expect(await one.sync.start(userId: userId, year: year), isFalse);
     await one.sync.firstSync;
     expect(one.pages.pages, isEmpty, reason: 'no default tracker since backend 1.2.0');
@@ -130,7 +130,7 @@ void main() {
     expect((jsonDecode(legacy.body) as List).length, 2);
 
     // A second phone on the same account gets the whole copy.
-    final two = Phone(api, '${dir.path}/two.db');
+    final two = Phone(api, (Directory('${dir.path}/two')..createSync()).path);
     await two.sync.start(userId: userId, year: year);
     await two.sync.firstSync;
     expect(two.pages.pages.map((p) => p.id), [second.id, pageId]);

@@ -22,6 +22,9 @@ import '../widgets/theme_picker_dialog.dart';
 import '../widgets/top_bar.dart';
 import '../widgets/contact_dialog.dart';
 import '../widgets/press_scale.dart';
+import '../services/sync_service.dart';
+import '../widgets/connection_needed_dialog.dart';
+import '../widgets/session_dialogs.dart';
 
 class SettingsScreen extends StatelessWidget {
   final VoidCallback onBack;
@@ -263,10 +266,10 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
             PressScale(
-              onTap: () {
+              onTap: () async {
                 if (kIsWeb) {
                   _openExternal('https://apps.apple.com/account/subscriptions');
-                } else {
+                } else if (!await ConnectionNeededDialog.blockIfOffline(context)) {
                   RevenueCatUI.presentCustomerCenter();
                 }
               },
@@ -363,15 +366,24 @@ class SettingsScreen extends StatelessWidget {
       cancelLabel: lang.t('common.cancel'),
     );
 
-    if (confirmed == true && context.mounted) {
-      await context.read<AuthProvider>().logout();
-    }
+    if (confirmed != true || !context.mounted) return;
+    // H10: the queue leaves first; offline with changes waiting, ask.
+    final engine = context.read<SyncService>().engine.value;
+    final go = await SessionDialogs.confirmSignOut(
+      context,
+      flush: () async => engine == null || await engine.flush(timeout: const Duration(seconds: 10)),
+      pending: () => engine?.pendingCount ?? 0,
+    );
+    if (go && context.mounted) await context.read<AuthProvider>().logout();
   }
 
   Future<void> _handleDeleteAccount(
     BuildContext context,
     LanguageProvider lang,
   ) async {
+    // Deleting one's data needs the server (H6): nothing is begun offline.
+    if (await ConnectionNeededDialog.blockIfOffline(context)) return;
+    if (!context.mounted) return;
     final email = context.read<AuthProvider>().email;
     final confirmed = await showAppDialog<bool>(
       context: context,

@@ -27,6 +27,7 @@ import 'screens/settings_screen.dart';
 import 'services/audio_service.dart';
 import 'services/orientation_policy.dart';
 import 'theme/app_theme.dart';
+import 'widgets/session_dialogs.dart';
 import 'widgets/sync_banner.dart';
 import 'widgets/sync_outcomes_dialog.dart';
 import 'widgets/connection_needed_dialog.dart';
@@ -235,6 +236,7 @@ class _AppShellState extends State<AppShell> {
   }
 
   bool _connectionDialogOpen = false;
+  bool _checkingOtherCopies = false;
 
   /// A change refused before the phone has the full copy (H15): one box at a
   /// time, however many taps.
@@ -429,7 +431,27 @@ class _AppShellState extends State<AppShell> {
       }
     }
 
-    if (auth.isAuthenticated && auth.userId != null && !_sessionStarted) {
+    if (auth.isAuthenticated && auth.userId != null && !_sessionStarted && !_checkingOtherCopies) {
+      // H25: a session the server closed left its copy and queue on the
+      // phone for that account. Another account takes over only once told
+      // that those changes will be lost; giving up signs it out again.
+      _checkingOtherCopies = true;
+      try {
+        final sync = context.read<SyncService>();
+        final others = await sync.copiesOfOtherAccounts(auth.userId!);
+        final waiting = others.values.fold(0, (sum, n) => sum + n);
+        if (waiting > 0) {
+          if (!mounted) return;
+          if (!await SessionDialogs.confirmOtherAccount(context, pending: waiting)) {
+            await auth.logout();
+            return;
+          }
+        }
+        if (others.isNotEmpty) await sync.forgetCopies(others.keys);
+      } finally {
+        _checkingOtherCopies = false;
+      }
+      if (!mounted || !auth.isAuthenticated || _sessionStarted) return;
       _sessionStarted = true;
       _wasOffline = auth.isOffline;
       await _startSession(auth);
@@ -451,8 +473,15 @@ class _AppShellState extends State<AppShell> {
       _sessionStarted = false;
       context.read<PagesProvider>().cancelPendingDelete();
       // A session the server closed keeps its copy for the reconnection to
-      // that account (offline sync, H25); a logout or a deleted account does not.
-      context.read<SyncService>().clear(keepCopy: auth.sessionEnded == SessionEnd.reconnect);
+      // that account (offline sync, H25); a logout or a deleted account does
+      // not. The end is told when changes were waiting, or the account was
+      // deleted on another device (H24).
+      final end = auth.sessionEnded;
+      context.read<SyncService>().clear(keepCopy: end == SessionEnd.reconnect).then((pending) {
+        if (end != null && SessionDialogs.tellsSessionEnd(end, pending: pending) && mounted) {
+          SessionDialogs.sessionEnded(context, end, pending: pending);
+        }
+      });
       _clearLastTracker();
     }
     if (!auth.isAuthenticated &&

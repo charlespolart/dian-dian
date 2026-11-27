@@ -9,6 +9,7 @@ import '../theme/app_theme.dart';
 import 'app_dialog.dart';
 import 'in_app_web_page.dart';
 import 'press_scale.dart';
+import 'connection_needed_dialog.dart';
 
 /// Pixel-art paywall that uses RevenueCat under the hood for offerings,
 /// purchases, and restore — but renders the UI in Dian Dian's own style.
@@ -116,6 +117,8 @@ class _CustomPaywallDialogState extends State<CustomPaywallDialog> {
   Future<void> _buy() async {
     final pkg = _selected;
     if (pkg == null || _purchasing) return;
+    if (await ConnectionNeededDialog.blockIfOffline(context)) return;
+    if (!mounted) return;
     setState(() {
       _purchasing = true;
       _error = null;
@@ -130,6 +133,8 @@ class _CustomPaywallDialogState extends State<CustomPaywallDialog> {
 
   Future<void> _restore() async {
     if (_purchasing) return;
+    if (await ConnectionNeededDialog.blockIfOffline(context)) return;
+    if (!mounted) return;
     setState(() => _purchasing = true);
     final ok = await context.read<PremiumProvider>().restorePurchases();
     if (!mounted) return;

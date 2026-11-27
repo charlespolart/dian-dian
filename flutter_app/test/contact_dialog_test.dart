@@ -7,6 +7,7 @@ import 'package:http/testing.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:dian_dian/data/network_gate.dart';
 import 'package:dian_dian/providers/language_provider.dart';
 import 'package:dian_dian/services/api_service.dart';
 import 'package:dian_dian/widgets/contact_dialog.dart';
@@ -117,5 +118,20 @@ void main() {
     expect(find.text('Could not send, try again'), findsOneWidget);
     expect(tester.widget<TextField>(find.byKey(const Key('contact.message'))).controller!.text, 'keep me');
     expect(find.text("Thanks, it's sent. We reply by email."), findsNothing);
+  });
+
+  testWidgets('H6: offline, nothing is sent, the app says a connection is needed, and the message stays', (tester) async {
+    NetworkGate.deviceOffline = () async => true;
+    await tester.pumpWidget(host());
+    await open(tester);
+    await tester.enterText(find.byKey(const Key('contact.message')), 'The grid is empty on Tuesdays');
+    await tester.pump();
+    await tester.tap(find.text('Send'));
+    await tester.pumpAndSettle();
+    expect(requests, isEmpty);
+    expect(find.text('A connection is needed'), findsOneWidget);
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    expect(find.text('The grid is empty on Tuesdays'), findsOneWidget);
   });
 }

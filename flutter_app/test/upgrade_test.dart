@@ -74,7 +74,7 @@ void main() {
       snapshots: snapshots,
       observeLifecycle: false,
       databaseFactory: databaseFactoryFfiNoIsolate,
-      databasePath: (userId) => '${dir.path}/dian_$userId.db',
+      databaseDir: dir.path,
       network: network,
     )..onWriteRefused = () => refusals++;
     services.add(sync);

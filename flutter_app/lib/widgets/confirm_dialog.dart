@@ -57,8 +57,13 @@ class ConfirmDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppDialog(
-      footer: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+      // Side by side when they fit; stacked when two long labels do not
+      // (« Rester connecté » / « Me déconnecter quand même »).
+      footer: OverflowBar(
+        alignment: MainAxisAlignment.center,
+        overflowAlignment: OverflowBarAlignment.center,
+        spacing: 12,
+        overflowSpacing: 8,
         children: [
           _buildButton(
             context,
@@ -68,7 +73,6 @@ class ConfirmDialog extends StatelessWidget {
             textColor: AppColors.textMuted,
             onTap: () => Navigator.of(context).pop(false),
           ),
-          const SizedBox(width: 12),
           _buildButton(
             context,
             label: confirmLabel,

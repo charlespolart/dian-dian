@@ -7,6 +7,7 @@ import 'package:sqflite/sqflite.dart';
 import '../data/change_sink.dart';
 import '../data/connectivity.dart';
 import '../data/local_store.dart';
+import '../data/network_gate.dart';
 import '../data/sync_engine.dart';
 import '../providers/cells_provider.dart';
 import '../providers/legends_provider.dart';
@@ -38,7 +39,7 @@ class SyncService with WidgetsBindingObserver implements ChangeSink {
   final SnapshotStore _snapshots;
   final bool _observeLifecycle;
   final DatabaseFactory? _databaseFactory;
-  final String Function(String userId)? _databasePath;
+  final String? _databaseDir;
   final NetworkWatcher? _network;
 
   /// Applies the account's settings (theme, language, cursor) from the copy.
@@ -81,7 +82,7 @@ class SyncService with WidgetsBindingObserver implements ChangeSink {
     SnapshotStore? snapshots,
     bool observeLifecycle = true,
     DatabaseFactory? databaseFactory,
-    String Function(String userId)? databasePath,
+    String? databaseDir,
     NetworkWatcher? network,
   })  : _api = api,
         _pages = pages,
@@ -91,7 +92,7 @@ class SyncService with WidgetsBindingObserver implements ChangeSink {
         _snapshots = snapshots ?? FileSnapshotStore(),
         _observeLifecycle = observeLifecycle,
         _databaseFactory = databaseFactory,
-        _databasePath = databasePath,
+        _databaseDir = databaseDir,
         _network = network {
     if (_observeLifecycle) WidgetsBinding.instance.addObserver(this);
     _ws.onReconnected = () => revalidate();
@@ -126,7 +127,7 @@ class SyncService with WidgetsBindingObserver implements ChangeSink {
     _userId = userId;
     _started = true;
     _activeYear = year;
-    final store = await LocalStore.open(userId, factory: _databaseFactory, path: _databasePath?.call(userId));
+    final store = await LocalStore.open(userId, factory: _databaseFactory, dir: _databaseDir);
     if (generation != _generation) {
       await store.close();
       return false;
@@ -140,6 +141,8 @@ class SyncService with WidgetsBindingObserver implements ChangeSink {
     await store.commitHeldDeletes(offline: false);
     _hasFullCopy = await store.hasFullCopy();
     _bind(this);
+    NetworkGate.serverReachable = _reachServerTearOff;
+    NetworkGate.serverUnreachableNow = _unreachableNowTearOff;
 
     var hydrated = false;
     if (_hasFullCopy) {
@@ -179,10 +182,11 @@ class SyncService with WidgetsBindingObserver implements ChangeSink {
     await engine.value?.kick();
   }
 
-  /// Ends the session. [keepCopy]: the server closed it (H25) — the copy and
-  /// its queue stay on the phone, hidden, for the reconnection to this
-  /// account; otherwise (sign-out, account deleted) they are erased.
-  Future<void> clear({bool keepCopy = false}) async {
+  /// Ends the session and says how many changes were still waiting.
+  /// [keepCopy]: the server closed it (H25) — the copy and its queue stay on
+  /// the phone, hidden, for the reconnection to this account; otherwise
+  /// (sign-out, account deleted) they are erased.
+  Future<int> clear({bool keepCopy = false}) async {
     _generation++;
     final userId = _userId;
     _userId = null;
@@ -206,14 +210,57 @@ class SyncService with WidgetsBindingObserver implements ChangeSink {
     }
     await Future.wait(_recording.toList());
     await _reloads;
+    final pending = store == null ? 0 : await store.pendingCount();
     await store?.close();
+    if (identical(NetworkGate.serverReachable, _reachServerTearOff)) NetworkGate.serverReachable = null;
+    if (identical(NetworkGate.serverUnreachableNow, _unreachableNowTearOff)) NetworkGate.serverUnreachableNow = null;
     _pages.clear();
     _legends.clear();
     _cells.clear();
     if (!keepCopy && userId != null) {
-      await LocalStore.deleteFor(userId, factory: _databaseFactory, path: _databasePath?.call(userId));
+      await LocalStore.deleteFor(userId, factory: _databaseFactory, dir: _databaseDir);
     }
     await _snapshots.delete();
+    return pending;
+  }
+
+  /// The copies other accounts left on this phone (closed sessions, H25),
+  /// with how many changes each still waits to send.
+  Future<Map<String, int>> copiesOfOtherAccounts(String userId) async {
+    final copies = <String, int>{};
+    for (final other in await LocalStore.accountsOnPhone(factory: _databaseFactory, dir: _databaseDir)) {
+      if (other == userId) continue;
+      final store = await LocalStore.open(other, factory: _databaseFactory, dir: _databaseDir);
+      try {
+        copies[other] = await store.pendingCount();
+      } finally {
+        await store.close();
+      }
+    }
+    return copies;
+  }
+
+  /// Erases those copies (signing in to another account, H25).
+  Future<void> forgetCopies(Iterable<String> userIds) async {
+    for (final id in userIds) {
+      await LocalStore.deleteFor(id, factory: _databaseFactory, dir: _databaseDir);
+    }
+  }
+
+  late final bool Function() _unreachableNowTearOff = _unreachableNow;
+  bool _unreachableNow() => engine.value?.isOffline ?? false;
+
+  /// For a gesture that needs the server (NetworkGate, H6): tries it now.
+  late final Future<bool> Function() _reachServerTearOff = _reachServer;
+  Future<bool> _reachServer() async {
+    final syncEngine = engine.value;
+    if (syncEngine == null) return true;
+    try {
+      await syncEngine.kick().timeout(const Duration(seconds: 5));
+    } on TimeoutException {
+      return false;
+    }
+    return !syncEngine.isOffline;
   }
 
   void dispose() {

@@ -9,6 +9,7 @@ import '../widgets/language_dropdown.dart';
 import '../widgets/oauth_buttons.dart';
 import '../widgets/password_field.dart';
 import '../widgets/press_scale.dart';
+import '../widgets/connection_needed_dialog.dart';
 
 class RegisterScreen extends StatefulWidget {
   final VoidCallback onSwitchToLogin;
@@ -61,6 +62,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       setState(() => _error = lang.t('auth.passwordMismatch'));
       return;
     }
+
+    if (await ConnectionNeededDialog.blockIfOffline(context)) return;
+    if (!mounted) return;
 
     setState(() {
       _loading = true;

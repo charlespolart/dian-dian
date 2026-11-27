@@ -1,48 +1,31 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
+import '../data/network_gate.dart';
 import '../providers/language_provider.dart';
-import '../theme/app_theme.dart';
-import 'app_dialog.dart';
-import 'press_scale.dart';
+import 'message_dialog.dart';
 
-/// A change refused on the first launch after the update from 1.4.0 while
-/// offline: the phone does not have the full copy of the account yet (H15).
-class ConnectionNeededDialog extends StatelessWidget {
-  const ConnectionNeededDialog({super.key});
+/// What the app says when the network is missing for what was asked.
+class ConnectionNeededDialog {
+  ConnectionNeededDialog._();
 
+  /// A change refused on the first launch after the update from 1.4.0
+  /// while offline: the phone does not have the full copy yet (H15).
   static Future<void> show(BuildContext context) =>
-      showAppDialog(context: context, builder: (_) => const ConnectionNeededDialog());
+      MessageDialog.show(context, message: context.read<LanguageProvider>().t('sync.needsConnection'));
 
-  @override
-  Widget build(BuildContext context) {
-    final lang = context.watch<LanguageProvider>();
-    return AppDialog(
-      footer: Center(
-        child: Semantics(
-          button: true,
-          child: PressScale(
-            onTap: () => Navigator.of(context).pop(),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.btnAdd,
-                border: Border.all(color: AppColors.btnAddBorder),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(lang.t('common.ok'), style: AppFonts.pixel(fontSize: 12, color: AppColors.btnAddText)),
-            ),
-          ),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 24, 20, 4),
-        child: Text(
-          lang.t('sync.needsConnection'),
-          style: AppFonts.dot(fontSize: 12, color: AppColors.title),
-          textAlign: TextAlign.center,
-        ),
-      ),
-    );
+  /// A gesture that needs the server, asked offline (H6): « Il faut une
+  /// connexion. … Vos trackers restent utilisables. »
+  static Future<void> showForGesture(BuildContext context) {
+    final lang = context.read<LanguageProvider>();
+    return MessageDialog.show(context, title: lang.t('net.required.title'), message: lang.t('net.required.body'));
+  }
+
+  /// True, after telling the user, when the gesture must not start (H6):
+  /// nothing is begun halfway.
+  static Future<bool> blockIfOffline(BuildContext context) async {
+    if (!await NetworkGate.isOffline()) return false;
+    if (context.mounted) await showForGesture(context);
+    return true;
   }
 }

@@ -4,12 +4,14 @@ import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../data/network_gate.dart';
 import '../providers/language_provider.dart';
 import '../providers/premium_provider.dart';
 import '../services/events_service.dart';
 import '../services/store_links.dart';
 import '../theme/app_theme.dart';
 import 'app_dialog.dart';
+import 'connection_needed_dialog.dart';
 import 'custom_paywall_dialog.dart';
 import 'keep_trackers_dialog.dart';
 import 'press_scale.dart';
@@ -20,16 +22,21 @@ class PremiumGateDialog extends StatelessWidget {
   final String feature;
   final String? event;
 
-  const PremiumGateDialog({super.key, required this.feature, this.event});
+  /// Offline (H7): « L'achat sera possible au retour du réseau. »
+  final bool offline;
+
+  const PremiumGateDialog({super.key, required this.feature, this.event, this.offline = false});
 
   /// Shows the dialog. Returns true if the user is now premium.
   /// [event] names the gate for the server-side counter (`paywall.<event>`,
   /// roadmap #2): which premium walls people actually hit.
   static Future<bool> show(BuildContext context, {required String feature, String? event}) async {
     if (event != null) unawaited(EventsService().track('paywall.$event'));
+    final offline = await NetworkGate.seemsOffline();
+    if (!context.mounted) return false;
     final result = await showAppDialog<bool>(
       context: context,
-      builder: (_) => PremiumGateDialog(feature: feature, event: event),
+      builder: (_) => PremiumGateDialog(feature: feature, event: event, offline: offline),
     );
     return result ?? false;
   }
@@ -81,6 +88,14 @@ class PremiumGateDialog extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
             ),
+            if (offline) ...[
+              const SizedBox(height: 8),
+              Text(
+                lang.t('net.purchaseLater'),
+                style: AppFonts.dot(fontSize: 12, color: AppColors.textMuted),
+                textAlign: TextAlign.center,
+              ),
+            ],
             const SizedBox(height: 16),
 
             _buildBenefit(Icons.grid_view, lang.t('premium.feature.trackers')),
@@ -131,6 +146,8 @@ class PremiumGateDialog extends StatelessWidget {
 
               PressScale(
                 onTap: () async {
+                  if (await ConnectionNeededDialog.blockIfOffline(context)) return;
+                  if (!context.mounted) return;
                   final premium = context.read<PremiumProvider>();
                   final restored = await premium.restorePurchases();
                   if (context.mounted) Navigator.of(context).pop(restored);

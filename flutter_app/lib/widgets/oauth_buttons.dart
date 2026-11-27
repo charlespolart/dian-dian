@@ -10,6 +10,7 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
 import 'press_scale.dart';
+import 'connection_needed_dialog.dart';
 
 const String _googleGLogoSvg = '''
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18">
@@ -63,6 +64,8 @@ class _OAuthButtonsState extends State<OAuthButtons> {
 
   Future<void> _signInWithApple() async {
     if (_busy) return;
+    if (await ConnectionNeededDialog.blockIfOffline(context)) return;
+    if (!mounted) return;
     setState(() => _busy = true);
     try {
       final credential = await SignInWithApple.getAppleIDCredential(
@@ -87,6 +90,8 @@ class _OAuthButtonsState extends State<OAuthButtons> {
 
   Future<void> _signInWithGoogle() async {
     if (_busy) return;
+    if (await ConnectionNeededDialog.blockIfOffline(context)) return;
+    if (!mounted) return;
     setState(() => _busy = true);
     try {
       final signIn = GoogleSignIn.instance;

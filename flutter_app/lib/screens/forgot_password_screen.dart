@@ -7,6 +7,7 @@ import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/password_field.dart';
 import '../widgets/press_scale.dart';
+import '../widgets/connection_needed_dialog.dart';
 
 enum _Step { email, code }
 
@@ -45,6 +46,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Future<void> _sendCode() async {
     final email = _emailController.text.trim();
     if (email.isEmpty) return;
+    if (await ConnectionNeededDialog.blockIfOffline(context)) return;
+    if (!mounted) return;
 
     setState(() {
       _loading = true;
@@ -71,6 +74,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   Future<void> _submitCode() async {
+    if (await ConnectionNeededDialog.blockIfOffline(context)) return;
+    if (!mounted) return;
     final lang = context.read<LanguageProvider>();
     final code = _codeController.text.trim();
     final p1 = _passwordController.text;

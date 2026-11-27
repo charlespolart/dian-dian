@@ -78,7 +78,7 @@ void main() {
       snapshots: snapshots,
       observeLifecycle: false,
       databaseFactory: databaseFactoryFfiNoIsolate,
-      databasePath: (userId) => '${dir.path}/dian_$userId.db',
+      databaseDir: dir.path,
       network: network,
     );
     services.add(sync);
@@ -160,6 +160,34 @@ void main() {
     await cleared;
     expect(server.sentKinds, ['cell.set'], reason: 'the send in flight finished');
     expect(pages.pages, isEmpty);
+  });
+
+  test('clear tells how many changes were waiting', () async {
+    server.addPage('a');
+    final sync = await started();
+    server.offline = true;
+    cells.setContext(pageId: 'a', year: 2026);
+    await cells.setCell(1, 1, '#AAAAAA');
+    await cells.setCell(1, 2, '#AAAAAA');
+    await settle(sync);
+    expect(await sync.clear(keepCopy: true), 2);
+    expect(await build().clear(), 0, reason: 'no session');
+  });
+
+  test('H25: the copy another account left is found with its queue; forgetting it erases it', () async {
+    server.addPage('a');
+    final closed = await started(userId: 'u1');
+    server.offline = true;
+    cells.setContext(pageId: 'a', year: 2026);
+    await cells.setCell(1, 1, '#AAAAAA');
+    await settle(closed);
+    await closed.clear(keepCopy: true);
+
+    final other = build();
+    expect(await other.copiesOfOtherAccounts('u2'), {'u1': 1});
+    expect(await other.copiesOfOtherAccounts('u1'), isEmpty, reason: 'its own copy is not another account\'s');
+    await other.forgetCopies(['u1']);
+    expect(await other.copiesOfOtherAccounts('u2'), isEmpty);
   });
 
   test('a change made offline stays shown, counts one change, and leaves when the network returns (H1)', () async {

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
@@ -49,12 +50,26 @@ class LocalStore {
   static const _uuid = Uuid();
   static const _activityDays = 90;
 
-  static Future<String> pathFor(String userId, {DatabaseFactory? factory}) async =>
-      '${await (factory ?? databaseFactory).getDatabasesPath()}/dian_$userId.db';
+  /// The account's file: `dian_<userId>.db` in [dir] (default: the app's
+  /// databases folder).
+  static Future<String> pathFor(String userId, {DatabaseFactory? factory, String? dir}) async =>
+      '${dir ?? await (factory ?? databaseFactory).getDatabasesPath()}/dian_$userId.db';
 
-  static Future<LocalStore> open(String userId, {DatabaseFactory? factory, String? path}) async {
+  /// The accounts that have a copy on this phone (a closed session keeps
+  /// its copy for the reconnection, H25).
+  static Future<List<String>> accountsOnPhone({DatabaseFactory? factory, String? dir}) async {
+    final folder = Directory(dir ?? await (factory ?? databaseFactory).getDatabasesPath());
+    if (!await folder.exists()) return const [];
+    final name = RegExp(r'^dian_(.+)\.db$');
+    return [
+      await for (final entry in folder.list())
+        if (entry is File) ?name.firstMatch(entry.uri.pathSegments.last)?.group(1),
+    ];
+  }
+
+  static Future<LocalStore> open(String userId, {DatabaseFactory? factory, String? path, String? dir}) async {
     final f = factory ?? databaseFactory;
-    final at = path ?? await pathFor(userId, factory: f);
+    final at = path ?? await pathFor(userId, factory: f, dir: dir);
     final db = await f.openDatabase(
       at,
       // In memory (tests), each open is a database of its own.
@@ -64,9 +79,9 @@ class LocalStore {
   }
 
   /// Forgets the account's copy and queue (sign-out, deleted account).
-  static Future<void> deleteFor(String userId, {DatabaseFactory? factory, String? path}) async {
+  static Future<void> deleteFor(String userId, {DatabaseFactory? factory, String? path, String? dir}) async {
     final f = factory ?? databaseFactory;
-    await f.deleteDatabase(path ?? await pathFor(userId, factory: f));
+    await f.deleteDatabase(path ?? await pathFor(userId, factory: f, dir: dir));
   }
 
   Future<void> close() => _db.close();

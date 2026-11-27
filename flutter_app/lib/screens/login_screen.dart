@@ -9,6 +9,7 @@ import '../widgets/language_dropdown.dart';
 import '../widgets/oauth_buttons.dart';
 import '../widgets/password_field.dart';
 import '../widgets/press_scale.dart';
+import '../widgets/connection_needed_dialog.dart';
 
 class LoginScreen extends StatefulWidget {
   final VoidCallback onSwitchToRegister;
@@ -42,6 +43,8 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = _passwordController.text;
 
     if (email.isEmpty || password.isEmpty) return;
+    if (await ConnectionNeededDialog.blockIfOffline(context)) return;
+    if (!mounted) return;
 
     final lang = context.read<LanguageProvider>();
     final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
