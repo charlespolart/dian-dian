@@ -51,9 +51,18 @@ class PagesProvider extends ChangeNotifier {
   /// deletion is still undoable stays hidden.
   void applyPages(List<PageModel> pages) {
     final hidden = _pendingDeletePage?.id;
+    final kept = {for (final p in pages) p.id};
+    _deletedElsewhere.addAll([for (final p in _pages) if (!kept.contains(p.id)) p.id]);
     _pages = [for (final p in pages) if (p.id != hidden) p];
     notifyListeners();
   }
+
+  /// Whether the tracker [id] left the list because the copy no longer has
+  /// it — deleted on another device (case 53) — rather than because the
+  /// session ended. This phone deletes only through [softDeletePage], which
+  /// hides the tracker before the copy loses it.
+  bool deletedElsewhere(String id) => _deletedElsewhere.contains(id);
+  final Set<String> _deletedElsewhere = {};
 
   /// Replaces the list with a bootstrap-shaped payload (the 1.4.0 snapshot).
   void applyBootstrap(List<dynamic> list) {
@@ -64,6 +73,7 @@ class PagesProvider extends ChangeNotifier {
     _deleteTimer?.cancel();
     _deleteTimer = null;
     _pendingDeletePage = null;
+    _deletedElsewhere.clear();
     _pages = [];
     notifyListeners();
   }

@@ -52,6 +52,27 @@ class AuthProvider extends ChangeNotifier {
   /// `google`), as the server says them.
   List<String> get methods => _methods;
 
+  /// Which settings form shows (case 10): the server's word; until it has
+  /// answered in this launch, an account whose key is on this phone is
+  /// invisible (keys go when an identity is attached), any other attached.
+  bool get isInvisible => _kind == null ? _hasKey : _kind == 'invisible';
+  bool _hasKey = false;
+
+  /// « Supprimer mes données » / « Supprimer mon compte et mes données »
+  /// (cases 65 and 66): true when the account is gone, and the session has
+  /// ended as [SessionEnd.deletedHere]; false when the server did not do it,
+  /// and nothing changed. The live channel is closed first: the server's
+  /// « session ended » for this deletion is no news.
+  Future<bool> deleteAccount() async {
+    _ws.disconnect();
+    final gone = await _api.deleteAccount();
+    if (!gone && _isAuthenticated) _ws.ensureConnected();
+    return gone;
+  }
+
+  /// « Déconnecter mes autres appareils » (case 52): how many were closed.
+  Future<int> closeOtherSessions() => _api.closeOtherSessions();
+
   /// The account was just made on this phone by « Continuer sans compte »:
   /// the server has nothing of it, its copy starts whole and empty (case 5).
   bool get isNewAccount => _isNewAccount;
@@ -114,6 +135,7 @@ class AuthProvider extends ChangeNotifier {
     await _storage.deleteEmail();
     _userId = id;
     _isNewAccount = true;
+    _hasKey = true;
     _email = null;
     _kind = null;
     _methods = const [];
@@ -145,6 +167,7 @@ class AuthProvider extends ChangeNotifier {
       _email = null;
       _userId = null;
       _isNewAccount = false;
+      _hasKey = false;
       _kind = null;
       _methods = const [];
       _isVip = false;
@@ -166,6 +189,7 @@ class AuthProvider extends ChangeNotifier {
     // confirms it (profile, tokens) or revokes it (invalid → login screen).
     final storedUserId = await _storage.getUserId();
     final hasKey = storedUserId != null && await _storage.invisibleKey(storedUserId) != null;
+    _hasKey = hasKey;
     if (landsAtOnce(storedUserId: storedUserId, refreshToken: await _storage.getRefreshToken(), hasKey: hasKey)) {
       _userId = storedUserId;
       _email = await _storage.getEmail();
@@ -221,6 +245,7 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> _applySession(Map<String, dynamic> data) async {
     _isNewAccount = false;
+    _hasKey = false;
     _applyProfile(data);
     if (_userId != null) await _storage.setUserId(_userId!);
     _isAuthenticated = true;
@@ -279,6 +304,7 @@ class AuthProvider extends ChangeNotifier {
     _ws.disconnect();
     _userId = null;
     _isNewAccount = false;
+    _hasKey = false;
     _email = null;
     _kind = null;
     _methods = const [];

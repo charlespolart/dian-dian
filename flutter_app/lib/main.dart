@@ -486,7 +486,7 @@ class _AppShellState extends State<AppShell> {
       // deleted on another device (H24).
       final end = auth.sessionEnded;
       context.read<SyncService>().clear(keepCopy: end?.keepsCopy ?? false).then((pending) {
-        if (end != null && SessionDialogs.tellsSessionEnd(end, pending: pending) && mounted) {
+        if (end != null && mounted) {
           SessionDialogs.sessionEnded(context, end, pending: pending);
         }
       });

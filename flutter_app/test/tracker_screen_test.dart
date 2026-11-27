@@ -30,12 +30,13 @@ import 'helpers.dart';
 /// tracker p0 for 2026 (its cells loaded, so no bootstrap request).
 class TrackerHarness {
   late final Widget widget;
+  late final PagesProvider pages;
 
-  TrackerHarness({TrackerEntrance entrance = TrackerEntrance.none, AudioService? audio, MorphAnchors? anchors, String title = 'Mood', bool vip = false}) {
+  TrackerHarness({TrackerEntrance entrance = TrackerEntrance.none, AudioService? audio, MorphAnchors? anchors, String title = 'Mood', bool vip = false, VoidCallback? onBack}) {
     final client = MockClient((req) async => http.Response('{"error":"x"}', 404));
     final api = ApiService.custom(client: client, tokens: FakeTokens());
     final rows = [pageJson('p0', title: title)];
-    final pages = PagesProvider()..applyBootstrap(rows);
+    pages = PagesProvider()..applyBootstrap(rows);
     final legends = LegendsProvider()
       ..applyBootstrap({
         'p0': [
@@ -67,7 +68,7 @@ class TrackerHarness {
         if (audio != null) ChangeNotifierProvider<AudioService>.value(value: audio),
       ],
       child: MaterialApp(
-        home: TrackerScreen(anchors: anchors, pageId: 'p0', initialYear: 2026, onBack: () {}, onOpenSettings: () {}, entrance: entrance),
+        home: TrackerScreen(anchors: anchors, pageId: 'p0', initialYear: 2026, onBack: onBack ?? () {}, onOpenSettings: () {}, entrance: entrance),
       ),
     );
   }
@@ -310,6 +311,32 @@ void main() {
     expect(slot.left, 0);
     expect(slot.right, closeTo(900 - shellLeft, 0.5), reason: 'the slot ends at the shell');
     expect(tester.widget<AdBannerWidget>(find.byType(AdBannerWidget)).width, closeTo(shellLeft, 0.5));
+  });
+
+  testWidgets('a tracker deleted on another device while open says so, and goes back (case 53)', (tester) async {
+    phone(tester);
+    ignoreOverflowUnderTestFont(tester);
+    var backs = 0;
+    final h = TrackerHarness(onBack: () => backs++);
+    await tester.pumpWidget(h.widget);
+    await tester.pumpAndSettle();
+    h.pages.applyPages([]); // the copy no longer has it: the server deleted it
+    await tester.pumpAndSettle();
+    expect(backs, 1);
+    expect(find.text('This tracker was deleted on another device.'), findsOneWidget);
+  });
+
+  testWidgets('a tracker gone because the session ended goes back without a word', (tester) async {
+    phone(tester);
+    ignoreOverflowUnderTestFont(tester);
+    var backs = 0;
+    final h = TrackerHarness(onBack: () => backs++);
+    await tester.pumpWidget(h.widget);
+    await tester.pumpAndSettle();
+    h.pages.clear();
+    await tester.pumpAndSettle();
+    expect(backs, 1);
+    expect(find.text('This tracker was deleted on another device.'), findsNothing);
   });
 
   testWidgets('without the morph, the chrome is there on the first frame', (tester) async {

@@ -52,6 +52,10 @@ class CellsProvider extends ChangeNotifier {
   /// this page. Identity changes exactly when the data changes.
   YearCells? cellsFor(String pageId, int year) => _store[_key(pageId, year)];
 
+  /// Every coloured day on the phone, all trackers and years (what a
+  /// deletion's confirmation counts, case 65).
+  int get totalDots => _store.values.fold(0, (sum, year) => sum + year.length);
+
   YearCells? get current {
     final pageId = _currentPageId;
     return pageId == null ? null : _store[_key(pageId, _currentYear)];

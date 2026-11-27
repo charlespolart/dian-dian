@@ -8,10 +8,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../providers/auth_provider.dart';
 import '../providers/language_provider.dart';
 import '../providers/premium_provider.dart';
-import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/sounds_settings.dart';
-import '../widgets/app_dialog.dart';
 import '../widgets/confirm_dialog.dart';
 import '../providers/theme_provider.dart';
 import '../widgets/language_picker_dialog.dart';
@@ -25,7 +23,7 @@ import '../widgets/press_scale.dart';
 import '../services/sync_service.dart';
 import '../widgets/connection_needed_dialog.dart';
 import '../widgets/session_dialogs.dart';
-import '../widgets/message_dialog.dart';
+import '../widgets/account_section.dart';
 
 class SettingsScreen extends StatelessWidget {
   final VoidCallback onBack;
@@ -201,28 +199,8 @@ class SettingsScreen extends StatelessWidget {
 
                         const SizedBox(height: 32),
 
-                        // Account section
-
-                        // Logout
-                        _buildActionButton(
-                          context: context,
-                          label: lang.t('settings.logout'),
-                          bgColor: AppColors.inputBg,
-                          borderColor: AppColors.inputBorder,
-                          textColor: AppColors.text,
-                          onTap: () => _handleLogout(context, lang),
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Delete account
-                        _buildActionButton(
-                          context: context,
-                          label: lang.t('settings.deleteAccount'),
-                          bgColor: AppColors.btnReset,
-                          borderColor: AppColors.btnResetBorder,
-                          textColor: AppColors.btnResetText,
-                          onTap: () => _handleDeleteAccount(context, lang),
-                        ),
+                        // Account section: its two forms (chantier 9, case 10)
+                        AccountSection(onLogout: () => _handleLogout(context, lang)),
 
                         const SizedBox(height: 40),
                       ],
@@ -327,34 +305,6 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButton({
-    required BuildContext context,
-    required String label,
-    required Color bgColor,
-    required Color borderColor,
-    required Color textColor,
-    required VoidCallback onTap,
-  }) {
-    return PressScale(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: bgColor,
-          border: Border.all(color: borderColor),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: AppFonts.pixel(fontSize: 13, color: textColor),
-          ),
-        ),
-      ),
-    );
-  }
-
   Future<void> _handleLogout(
     BuildContext context,
     LanguageProvider lang,
@@ -376,181 +326,5 @@ class SettingsScreen extends StatelessWidget {
       pending: () => engine?.pendingCount ?? 0,
     );
     if (go && context.mounted) await context.read<AuthProvider>().logout();
-  }
-
-  Future<void> _handleDeleteAccount(
-    BuildContext context,
-    LanguageProvider lang,
-  ) async {
-    // Deleting one's data needs the server (H6): nothing is begun offline.
-    if (await ConnectionNeededDialog.blockIfOffline(context)) return;
-    if (!context.mounted) return;
-    final email = context.read<AuthProvider>().email;
-    final confirmed = await showAppDialog<bool>(
-      context: context,
-      builder: (_) => _DeleteAccountDialog(lang: lang, email: email),
-    );
-
-    if (confirmed == true && context.mounted) {
-      // Signed out only once the server confirms: a deletion that failed
-      // must not look done (the account and its data would still be there).
-      var deleted = false;
-      try {
-        final res = await ApiService().apiFetch('/api/auth/account', method: 'DELETE');
-        deleted = res.statusCode == 200;
-        if (!deleted) debugPrint('Delete account failed: ${res.statusCode}');
-      } catch (e) {
-        debugPrint('Delete account failed: $e');
-      }
-      if (!context.mounted) return;
-      if (deleted) {
-        await context.read<AuthProvider>().logout();
-      } else {
-        await MessageDialog.show(context, message: lang.t('firstTracker.error'));
-      }
-    }
-  }
-}
-
-class _DeleteAccountDialog extends StatefulWidget {
-  final LanguageProvider lang;
-  final String? email;
-
-  const _DeleteAccountDialog({required this.lang, this.email});
-
-  @override
-  State<_DeleteAccountDialog> createState() => _DeleteAccountDialogState();
-}
-
-class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
-  final _controller = TextEditingController();
-  bool _canConfirm = false;
-
-  String get _confirmText => widget.email ?? 'DELETE';
-
-  @override
-  void initState() {
-    super.initState();
-    _controller.addListener(() {
-      final match = _controller.text.trim() == _confirmText;
-      if (match != _canConfirm) setState(() => _canConfirm = match);
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final lang = widget.lang;
-
-    return AppDialog(
-      footer: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          PressScale(
-            onTap: () => Navigator.of(context).pop(false),
-            child: Text(
-              lang.t('common.cancel'),
-              style: AppFonts.pixel(fontSize: 12, color: AppColors.textMuted),
-            ),
-          ),
-          const SizedBox(width: 20),
-          PressScale(
-            onTap: _canConfirm ? () => Navigator.of(context).pop(true) : null,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: _canConfirm ? AppColors.btnReset : AppColors.dotEmpty,
-                border: Border.all(
-                  color: _canConfirm
-                      ? AppColors.btnResetBorder
-                      : AppColors.dotBorder,
-                ),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.delete_outline,
-                    size: 14,
-                    color: _canConfirm
-                        ? AppColors.btnResetText
-                        : AppColors.textMuted,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    lang.t('common.delete'),
-                    style: AppFonts.pixel(
-                      fontSize: 12,
-                      color: _canConfirm
-                          ? AppColors.btnResetText
-                          : AppColors.textMuted,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              lang.t('settings.deleteAccount'),
-              style: AppFonts.pixel(
-                fontSize: 16,
-                color: AppColors.btnResetText,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              lang.t('settings.deleteAccountConfirm'),
-              style: AppFonts.dot(fontSize: 13, color: AppColors.text),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              widget.email != null
-                  ? lang.t('settings.typeEmail')
-                  : lang.t('settings.typeDelete'),
-              style: AppFonts.dot(fontSize: 12, color: AppColors.textMuted),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _controller,
-              // The user retypes their email (or DELETE): no keyboard "help".
-              keyboardType: widget.email != null
-                  ? TextInputType.emailAddress
-                  : TextInputType.text,
-              autocorrect: false,
-              enableSuggestions: false,
-              style: AppFonts.dot(fontSize: 14, color: AppColors.inputText),
-              textAlign: TextAlign.center,
-              decoration: InputDecoration(
-                hintText: _confirmText,
-                hintStyle: AppFonts.dot(
-                  fontSize: 14,
-                  color: AppColors.textMuted,
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                isDense: true,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

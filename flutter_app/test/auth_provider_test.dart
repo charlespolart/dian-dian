@@ -143,7 +143,7 @@ void main() {
     expect(auth.sessionEnded, SessionEnd.revoked);
   });
 
-  test('a deletion ends with the copy forgotten; every other end keeps it for the reconnection', () {
-    expect(SessionEnd.values.where((e) => !e.keepsCopy), [SessionEnd.accountDeleted]);
+  test('a deletion (elsewhere or here) ends with the copy forgotten; every other end keeps it for the reconnection', () {
+    expect(SessionEnd.values.where((e) => !e.keepsCopy), [SessionEnd.accountDeleted, SessionEnd.deletedHere]);
   });
 }

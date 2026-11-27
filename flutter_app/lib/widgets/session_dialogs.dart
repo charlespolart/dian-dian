@@ -16,7 +16,8 @@ class SessionDialogs {
     'logout.pending.title.one', 'logout.pending.title.other', 'logout.pending.body.one', 'logout.pending.body.other',
     'logout.stay', 'logout.anyway',
     'session.deleted.title', 'session.deleted.body.zero', 'session.deleted.body.one', 'session.deleted.body.other',
-    'session.closed.title', 'session.closed.body.one', 'session.closed.body.other', 'session.reconnect',
+    'session.closed.title', 'session.closed.body.zero', 'session.closed.body.one', 'session.closed.body.other', 'session.reconnect',
+    'session.password.title', 'session.password.body.zero', 'session.revoked.title', 'session.deletedHere.body',
     'session.otherAccount.title.one', 'session.otherAccount.title.other', 'session.otherAccount.body', 'session.otherAccount.continue',
   ];
 
@@ -42,25 +43,45 @@ class SessionDialogs {
     return go == true;
   }
 
-  /// Whether the end of a session is told: a deleted account always (H24),
-  /// a closed session when changes wait for the reconnection (H25).
-  static bool tellsSessionEnd(SessionEnd end, {required int pending}) => end == SessionEnd.accountDeleted || pending > 0;
-
+  /// Why the session ended, always said: the welcome screen never comes
+  /// back without a word (chantier 9, case 7). A deleted account's changes
+  /// are lost (H24, case 50); the others wait for the reconnection (H25,
+  /// cases 51 and 52).
   static Future<void> sessionEnded(BuildContext context, SessionEnd end, {required int pending}) {
     final lang = context.read<LanguageProvider>();
-    if (end == SessionEnd.accountDeleted) {
-      return MessageDialog.show(
-        context,
-        title: lang.t('session.deleted.title'),
-        message: pending == 0 ? lang.t('session.deleted.body.zero') : _n(lang, 'session.deleted.body', pending),
-      );
+    // « Reconnectez-vous » and what waits for it.
+    String reconnect(String zeroKey) => pending == 0 ? lang.t(zeroKey) : _n(lang, 'session.closed.body', pending);
+    switch (end) {
+      case SessionEnd.accountDeleted:
+        return MessageDialog.show(
+          context,
+          title: lang.t('session.deleted.title'),
+          message: pending == 0 ? lang.t('session.deleted.body.zero') : _n(lang, 'session.deleted.body', pending),
+        );
+      case SessionEnd.deletedHere:
+        return MessageDialog.show(context, message: lang.t('session.deletedHere.body'));
+      case SessionEnd.passwordChanged:
+        return MessageDialog.show(
+          context,
+          title: lang.t('session.password.title'),
+          message: reconnect('session.password.body.zero'),
+          button: lang.t('session.reconnect'),
+        );
+      case SessionEnd.revoked:
+        return MessageDialog.show(
+          context,
+          title: lang.t('session.revoked.title'),
+          message: reconnect('session.closed.body.zero'),
+          button: lang.t('session.reconnect'),
+        );
+      case SessionEnd.reconnect:
+        return MessageDialog.show(
+          context,
+          title: lang.t('session.closed.title'),
+          message: reconnect('session.closed.body.zero'),
+          button: lang.t('session.reconnect'),
+        );
     }
-    return MessageDialog.show(
-      context,
-      title: lang.t('session.closed.title'),
-      message: _n(lang, 'session.closed.body', pending),
-      button: lang.t('session.reconnect'),
-    );
   }
 
   /// H25: signing in to another account while the copy of a closed session

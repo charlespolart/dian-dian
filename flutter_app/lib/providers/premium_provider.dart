@@ -20,6 +20,10 @@ class PremiumProvider extends ChangeNotifier {
   final PurchaseService _purchaseService = PurchaseService();
 
   bool get isPremium => _isPremium || _isVip;
+
+  /// Premium from a store purchase (not the VIP flag): a deletion's
+  /// confirmation says where a subscription is cancelled (case 65).
+  bool get hasPurchase => _isPremium;
   int get maxTrackers => isPremium ? 999 : maxFreeTrackers;
   bool get canUseCustomThemes => isPremium;
   bool get canUseAnimatedCursor => isPremium && _cursorEnabled;

@@ -72,10 +72,31 @@ void main() {
     expect(find.text('Me reconnecter'), findsNothing);
   });
 
-  test('a session closed with nothing waiting says nothing; a deleted account always does', () {
-    expect(SessionDialogs.tellsSessionEnd(SessionEnd.reconnect, pending: 0), isFalse);
-    expect(SessionDialogs.tellsSessionEnd(SessionEnd.reconnect, pending: 1), isTrue);
-    expect(SessionDialogs.tellsSessionEnd(SessionEnd.accountDeleted, pending: 0), isTrue);
+  testWidgets('a session closed with nothing waiting still says so: the welcome screen never comes back without a word (case 7)', (tester) async {
+    await run(tester, (context) => SessionDialogs.sessionEnded(context, SessionEnd.reconnect, pending: 0));
+    expect(find.text('Votre session a été fermée'), findsOneWidget);
+    expect(find.text('Reconnectez-vous pour retrouver vos trackers.'), findsOneWidget);
+  });
+
+  testWidgets('the password was changed (case 51)', (tester) async {
+    await run(tester, (context) => SessionDialogs.sessionEnded(context, SessionEnd.passwordChanged, pending: 0));
+    expect(find.text('Le mot de passe de ce compte a changé'), findsOneWidget);
+    expect(find.text('Reconnectez-vous.'), findsOneWidget);
+  });
+
+  testWidgets('the password was changed with changes waiting: they wait for the reconnection', (tester) async {
+    await run(tester, (context) => SessionDialogs.sessionEnded(context, SessionEnd.passwordChanged, pending: 2));
+    expect(find.text('Reconnectez-vous : vos 2 modifications en attente seront envoyées.'), findsOneWidget);
+  });
+
+  testWidgets('signed out from another device (case 52)', (tester) async {
+    await run(tester, (context) => SessionDialogs.sessionEnded(context, SessionEnd.revoked, pending: 0));
+    expect(find.text('Vous avez été déconnecté de ce compte depuis un autre appareil.'), findsOneWidget);
+  });
+
+  testWidgets('deleted from this phone: « Vos données ont été supprimées. » (case 66)', (tester) async {
+    await run(tester, (context) => SessionDialogs.sessionEnded(context, SessionEnd.deletedHere, pending: 0));
+    expect(find.text('Vos données ont été supprimées.'), findsOneWidget);
   });
 
   testWidgets('H25: signing in to another account warns that the waiting changes will be lost, and lets go back', (tester) async {

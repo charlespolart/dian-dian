@@ -36,7 +36,8 @@ enum RefreshOutcome {
       };
 }
 
-/// Why a session ended without the user asking.
+/// Why a session ended: without the user asking, or, for [deletedHere],
+/// by the deletion they asked for.
 enum SessionEnd {
   /// Log in again: the copy of the phone and its queue are kept, hidden,
   /// for that account (H25).
@@ -51,11 +52,15 @@ enum SessionEnd {
 
   /// Another phone of the account closed this session (case 52): log in
   /// again, the copy waits.
-  revoked;
+  revoked,
+
+  /// The account was deleted from this phone, as asked (case 65), or a
+  /// retried deletion found it already done (case 66): the copy goes.
+  deletedHere;
 
   /// Whether the phone keeps the account's copy for the reconnection:
   /// every end but a deletion (H25).
-  bool get keepsCopy => this != SessionEnd.accountDeleted;
+  bool get keepsCopy => this != SessionEnd.accountDeleted && this != SessionEnd.deletedHere;
 }
 
 class RestoreResult {
@@ -161,6 +166,41 @@ class ApiService {
         if (handleSessionEnd) await _endSession(outcome.end!);
         return response;
     }
+  }
+
+  /// Deletes the account and its data on the server (cases 65 and 66). True
+  /// when it is gone — also when a first deletion's answer was lost and the
+  /// session already says so: the session then ends as [SessionEnd.deletedHere].
+  /// False when the server did not do it (no network, an error): nothing
+  /// changes on the phone. While it runs, a refusal that says the account
+  /// was deleted — another request, the live channel — is this deletion,
+  /// never « deleted on another device ».
+  Future<bool> deleteAccount() async {
+    _deleting = true;
+    _endedByDeletion = false;
+    try {
+      final res = await apiFetch('/api/auth/account', method: 'DELETE', handleSessionEnd: false);
+      final gone = res.statusCode == 200 || (res.statusCode == 401 && _refusalCode(res) == 'account_deleted');
+      if (gone && !_endedByDeletion) await _endSession(SessionEnd.deletedHere);
+      if (!gone) debugPrint('Delete account failed: ${res.statusCode}');
+      return gone;
+    } catch (e) {
+      debugPrint('Delete account failed: $e');
+      return _endedByDeletion;
+    } finally {
+      _deleting = false;
+    }
+  }
+
+  bool _deleting = false;
+  bool _endedByDeletion = false;
+
+  /// « Déconnecter mes autres appareils » (case 52): how many sessions were
+  /// closed. Throws when the server did not do it.
+  Future<int> closeOtherSessions() async {
+    final res = await apiFetch('/api/auth/sessions/close-others', method: 'POST');
+    if (res.statusCode != 200) throw ApiException(res.statusCode, _errorMessage(res));
+    return (jsonDecode(res.body) as Map<String, dynamic>)['closed'] as int? ?? 0;
   }
 
   /// The live channel said the session ended (chantier 9): the same path as
@@ -340,10 +380,17 @@ class ApiService {
   /// unless the account itself was deleted: it says whose copy the phone
   /// keeps for the reconnection. A deleted account's key goes with it.
   Future<void> _endSession(SessionEnd end, {bool notify = true}) async {
+    if (_deleting) {
+      if (_endedByDeletion) return; // already ended by this deletion
+      if (end == SessionEnd.accountDeleted) {
+        end = SessionEnd.deletedHere;
+        _endedByDeletion = true;
+      }
+    }
     _accessToken = null;
     _lastProfile = null;
     await _tokens.deleteRefreshToken();
-    if (end == SessionEnd.accountDeleted) {
+    if (!end.keepsCopy) {
       final userId = await _tokens.getUserId();
       if (userId != null) await _keys.deleteInvisibleKey(userId);
       await _tokens.deleteUserId();

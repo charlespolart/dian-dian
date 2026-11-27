@@ -21,6 +21,7 @@ import '../widgets/marquee_text.dart';
 import '../widgets/dashed_border.dart';
 import '../widgets/legend_editor_dialog.dart';
 import '../widgets/premium_gate_dialog.dart';
+import '../widgets/message_dialog.dart';
 import '../widgets/slide_switcher.dart';
 import '../widgets/morph_anchors.dart';
 import '../widgets/stats_detail_dialog.dart';
@@ -278,8 +279,12 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
     // snapshot) instead of crashing on a missing page.
     final pagesProv = context.watch<PagesProvider>();
     if (!pagesProv.pages.any((p) => p.id == widget.pageId)) {
+      final elsewhere = pagesProv.deletedElsewhere(widget.pageId);
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) widget.onBack();
+        if (!mounted) return;
+        widget.onBack();
+        // Deleted on another device: said, not a silent jump (case 53).
+        if (elsewhere) MessageDialog.show(context, message: lang.t('tracker.deletedElsewhere'));
       });
       return const SizedBox.shrink();
     }
