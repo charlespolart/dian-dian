@@ -1,7 +1,7 @@
+import '../data/change_sink.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../services/api_service.dart';
 
 enum Language { en, fr, zhCN, zhTW }
 
@@ -54,7 +54,7 @@ class LanguageProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_prefKey, lang.name);
     // Sync to server (fire-and-forget)
-    ApiService().apiFetch('/api/auth/settings', method: 'PATCH', body: {'language': lang.name}).ignore();
+    SettingsSink.record('language', lang.name).ignore();
   }
 
   /// Returns the translated string for the given [key].

@@ -1,352 +1,425 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:flutter/foundation.dart' show VoidCallback;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import 'package:dian_dian/data/change_sink.dart';
+import 'package:dian_dian/data/connectivity.dart';
+import 'package:dian_dian/data/tracker_lock.dart';
 import 'package:dian_dian/providers/cells_provider.dart';
 import 'package:dian_dian/providers/legends_provider.dart';
 import 'package:dian_dian/providers/pages_provider.dart';
 import 'package:dian_dian/services/api_service.dart';
-import 'package:dian_dian/services/snapshot_store.dart';
+import 'package:dian_dian/services/audio_service.dart';
 import 'package:dian_dian/services/sync_service.dart';
-import 'package:dian_dian/services/token_store.dart';
 import 'package:dian_dian/services/ws_service.dart';
 
-class MemorySnapshots implements SnapshotStore {
-  String? data;
-  int writes = 0;
+import 'helpers.dart';
+
+/// The account as the server holds it, with the two sync routes.
+class FakeSyncServer {
+  bool offline = false;
+  /// When set, every answer waits for it.
+  Completer<void>? hold;
+  int rev = 1;
+  int pulls = 0;
+  bool premium = false;
+  final batches = <List<String>>[];
+  final pages = <String, Map<String, dynamic>>{};
+  final legends = <String, Map<String, dynamic>>{};
+  /// pageId → [year, month, day, color, comment, rev, editRev, updatedAtMs].
+  final cells = <String, List<List<dynamic>>>{};
+  final settings = <String, Map<String, dynamic>>{};
+
+  void addPage(String id, {String title = 'T', int position = 0}) {
+    rev++;
+    pages[id] = {
+      'id': id, 'title': title, 'position': position, 'palette': null, 'keepFree': false, 'createdAt': '',
+      'rev': rev, 'editRev': rev, 'contentRev': rev, 'legendsOrderRev': 0,
+    };
+  }
+
+  void addCell(String pageId, int year, int month, int day, String color) {
+    rev++;
+    (cells[pageId] ??= []).add([year, month, day, color, null, rev, rev, 0]);
+  }
+
+  void _apply(Map<String, dynamic> m) {
+    final data = (m['data'] as Map).cast<String, dynamic>();
+    switch (m['kind']) {
+      case 'page.create':
+        addPage(data['id'] as String, title: data['title'] as String, position: pages.length);
+        for (final (i, l) in ((data['legends'] as List?) ?? const []).indexed) {
+          legends[l['id'] as String] = {'id': l['id'], 'pageId': data['id'], 'color': l['color'], 'label': l['label'], 'position': i, 'rev': rev, 'editRev': rev};
+        }
+      case 'cell.set':
+        addCell(data['pageId'] as String, data['year'] as int, data['month'] as int, data['day'] as int, data['color'] as String);
+      case 'setting.set':
+        rev++;
+        settings[data['key'] as String] = {'rev': rev, 'value': data['value']};
+    }
+  }
+
+  late final client = MockClient((req) async {
+    if (hold != null) await hold!.future;
+    if (offline) throw const SocketException('offline');
+    if (req.url.path == '/api/sync/mutations') {
+      final mutations = (jsonDecode(req.body)['mutations'] as List).cast<Map<String, dynamic>>();
+      batches.add([for (final m in mutations) m['kind'] as String]);
+      final results = <Map<String, dynamic>>[];
+      for (final m in mutations) {
+        _apply(m);
+        results.add({'id': m['id'], 'status': 'applied', 'revs': {'element': rev, 'account': rev}});
+      }
+      return http.Response(jsonEncode({'results': results, 'rev': rev}), 200);
+    }
+    if (req.url.path == '/api/sync') {
+      pulls++;
+      return http.Response(jsonEncode({
+        'rev': rev,
+        'full': req.url.queryParameters['since'] == '0',
+        'pages': pages.values.toList(),
+        'legends': legends.values.toList(),
+        'cells': cells,
+        'deletions': [],
+        'legendsOrder': {},
+        'settings': settings,
+        'premium': premium,
+        'vip': false,
+      }), 200);
+    }
+    return http.Response('{}', 404);
+  });
+
+  List<String> get sentKinds => batches.expand((b) => b).toList();
+}
+
+class FakeNetwork implements NetworkWatcher {
+  final _changes = StreamController<void>.broadcast();
   @override
-  Future<String?> read() async => data;
+  Stream<void> get onChange => _changes.stream;
+  void comeBack() => _changes.add(null);
+}
+
+/// The WebSocket, minus the socket: [receive] hands a message to the listeners.
+class FakeWs implements WsService {
+  final _listeners = <WsListener>[];
   @override
-  Future<void> write(String json) async {
-    data = json;
-    writes++;
+  VoidCallback? onReconnected;
+  @override
+  RemoveListener addListener(WsListener listener) {
+    _listeners.add(listener);
+    return () => _listeners.remove(listener);
   }
 
   @override
-  Future<void> delete() async => data = null;
+  void ensureConnected() {}
+
+  void receive(String event, [Object? data]) {
+    for (final l in List.of(_listeners)) {
+      l(WsMessage(event: event, data: data));
+    }
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class FakeTokens implements TokenStore {
-  @override
-  Future<String?> getRefreshToken() async => 'r';
-  @override
-  Future<void> setRefreshToken(String token) async {}
-  @override
-  Future<void> deleteRefreshToken() async {}
-  @override
-  Future<String?> getUserId() async => 'u1';
-  @override
-  Future<void> setUserId(String id) async {}
-  @override
-  Future<void> deleteUserId() async {}
-}
-
-Map<String, dynamic> bootstrapBody(int year, {String color = '#AAAAAA'}) => {
+Map<String, dynamic> snapshot({String userId = 'u1', int year = 2026, bool? activated}) => {
+      'v': 1,
+      'userId': userId,
       'year': year,
-      'pages': [
-        {'id': 'a', 'userId': 'u1', 'title': 'A', 'position': 0, 'palette': null, 'createdAt': '', 'year': year},
-      ],
-      'legends': {
-        'a': [
-          {'id': 'l1', 'pageId': 'a', 'color': color, 'label': 'L', 'position': 0, 'createdAt': ''},
-        ],
-      },
-      'cells': {
-        'a': [
-          [1, 1, color],
-        ],
+      'savedAt': '',
+      'data': {
+        'year': year,
+        'activated': ?activated,
+        'pages': [pageJson('s', title: 'From 1.4.0')],
+        'legends': {'s': [legendJson('ls', 's', '#AAAAAA', 0)]},
+        'cells': {'s': [[1, 1, '#AAAAAA']]},
       },
     };
 
 void main() {
   // No binding on purpose: SyncService is built with observeLifecycle: false.
   // (With the test binding, MockClient-backed futures never resolve under test().)
+  setUpAll(sqfliteFfiInit);
 
-  late int bootstrapCalls;
-  late int statusCode;
+  late Directory dir;
+  late FakeSyncServer server;
+  late FakeNetwork network;
+  late FakeWs ws;
   late MemorySnapshots snapshots;
   late PagesProvider pages;
   late CellsProvider cells;
   late LegendsProvider legends;
+  final services = <SyncService>[];
 
-  SyncService build({Map<String, dynamic> Function(int year)? body}) {
-    bootstrapCalls = 0;
-    statusCode = 200;
-    final client = MockClient((req) async {
-      if (req.url.path == '/api/bootstrap') {
-        bootstrapCalls++;
-        if (statusCode != 200) return http.Response('{"error":"down"}', statusCode);
-        final year = int.parse(req.url.queryParameters['year']!);
-        return http.Response(jsonEncode((body ?? bootstrapBody)(year)), 200);
-      }
-      return http.Response('{}', 404);
-    });
-    final api = ApiService.custom(client: client, tokens: FakeTokens());
+  setUp(() {
+    dir = Directory.systemTemp.createTempSync('dian_sync_');
+    server = FakeSyncServer();
+    network = FakeNetwork();
+    ws = FakeWs();
     snapshots = MemorySnapshots();
-    pages = PagesProvider();
-    cells = CellsProvider();
-    legends = LegendsProvider();
-    return SyncService(
-      api: api,
+  });
+
+  tearDown(() async {
+    for (final s in services) {
+      await s.clear(keepCopy: true);
+      s.dispose();
+    }
+    services.clear();
+    SettingsSink.sink = null;
+    dir.deleteSync(recursive: true);
+  });
+
+  /// A fresh app (new providers) over the same phone (same files).
+  SyncService build() {
+    pages = PagesProvider(audio: AudioService.silent());
+    cells = CellsProvider(audio: AudioService.silent());
+    legends = LegendsProvider(audio: AudioService.silent());
+    final sync = SyncService(
+      api: ApiService.custom(client: server.client, tokens: FakeTokens()),
       pages: pages,
       cells: cells,
       legends: legends,
-      ws: WsService(),
+      ws: ws,
       snapshots: snapshots,
       observeLifecycle: false,
+      databaseFactory: databaseFactoryFfiNoIsolate,
+      databasePath: (userId) => '${dir.path}/dian_$userId.db',
+      network: network,
     );
+    services.add(sync);
+    return sync;
   }
 
-  test('ensureYear fetches once per year (deduped) and applies to all providers', () async {
+  Future<SyncService> started({String userId = 'u1'}) async {
     final sync = build();
-    await Future.wait([sync.ensureYear(2026), sync.ensureYear(2026)]);
-    await sync.ensureYear(2026);
-    expect(bootstrapCalls, 1);
-    expect(pages.pages.single.id, 'a');
-    expect(legends.legendsFor('a').single.id, 'l1');
-    expect(cells.isYearLoaded(2026), isTrue);
-    expect(cells.cellsFor('a', 2026)!.get(1, 1)!.color, '#AAAAAA');
-    expect(sync.activeYear, 2026);
-    expect(snapshots.data, isNotNull);
+    await sync.start(userId: userId, year: 2026);
+    await sync.firstSync;
+    return sync;
+  }
+
+  /// Lets the engine's cycle and the reload it triggers finish.
+  Future<void> settle(SyncService sync) async {
+    await sync.engine.value!.idle;
+    await Future<void>.delayed(Duration.zero);
+    await sync.firstSync;
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+  }
+
+  test('a fresh phone shows the full copy after the first sync: every year, legends, activated', () async {
+    server
+      ..addPage('a', title: 'Sport')
+      ..addCell('a', 2024, 3, 3, '#AAAAAA')
+      ..addCell('a', 2026, 1, 1, '#AAAAAA');
+    server.legends['l1'] = {'id': 'l1', 'pageId': 'a', 'color': '#AAAAAA', 'label': 'Yes', 'position': 0, 'rev': 9, 'editRev': 9};
+    final sync = build();
+    expect(await sync.start(userId: 'u1', year: 2026), isFalse, reason: 'nothing on the phone yet');
+    await sync.firstSync;
+    expect(pages.pages.map((p) => p.title), ['Sport']);
+    expect(legends.legendsFor('a').single.label, 'Yes');
+    expect(cells.cellsFor('a', 2024)!.get(3, 3)?.color, '#AAAAAA');
+    expect(cells.cellsFor('a', 2026)!.get(1, 1)?.color, '#AAAAAA');
+    expect(sync.activated, isTrue);
   });
 
-  test('a second year is a second fetch, and the first year stays', () async {
+  test('the copy stays on the phone between launches and shows offline, before any network', () async {
+    server
+      ..addPage('a', title: 'Sport')
+      ..addCell('a', 2026, 1, 1, '#AAAAAA');
+    final first = await started();
+    await first.clear(keepCopy: true);
+    server.offline = true;
     final sync = build();
-    await sync.ensureYear(2026);
-    await sync.ensureYear(2025);
-    expect(bootstrapCalls, 2);
-    expect(cells.isYearLoaded(2025), isTrue);
-    expect(cells.isYearLoaded(2026), isTrue);
-    expect(sync.activeYear, 2025);
+    expect(await sync.start(userId: 'u1', year: 2026), isTrue);
+    expect(pages.pages.map((p) => p.title), ['Sport']);
+    expect(cells.cellsFor('a', 2026)!.get(1, 1)?.color, '#AAAAAA');
+    expect(sync.snapshotActivated, isTrue);
   });
 
-  test('start hydrates pages, legends and cells from a matching snapshot before the network', () async {
-    final first = build();
-    await first.start(userId: 'u1', year: 2026);
-    await first.ensureYear(2026); // awaits the bootstrap start() kicked off
-    final saved = snapshots.data!;
+  test('signing out erases the copy; a session the server closed keeps it with its queue (H25)', () async {
+    server.addPage('a');
+    final first = await started();
+    server.offline = true;
+    cells.setContext(pageId: 'a', year: 2026);
+    await cells.setCell(1, 1, '#AAAAAA');
+    await settle(first);
+    await first.clear(keepCopy: true);
 
-    final sync = build();
-    snapshots.data = saved;
-    final hydrated = await sync.start(userId: 'u1', year: 2026);
-    expect(hydrated, isTrue);
-    expect(pages.pages.single.id, 'a');
-    expect(legends.legendsFor('a').single.id, 'l1');
-    expect(cells.cellsFor('a', 2026)!.length, 1);
-    expect(cells.isYearLoaded(2026), isTrue);
+    final again = build();
+    expect(await again.start(userId: 'u1', year: 2026), isTrue);
+    expect(again.engine.value!.pendingCount, 1, reason: 'the change made before the session closed is still queued');
+    await again.clear();
+
+    final afterSignOut = build();
+    expect(await afterSignOut.start(userId: 'u1', year: 2026), isFalse, reason: 'nothing left on the phone');
   });
 
-  test('snapshot cells are ignored when the snapshot year differs (pages still hydrate)', () async {
-    final first = build();
-    await first.start(userId: 'u1', year: 2026);
-    await first.ensureYear(2026); // awaits the bootstrap start() kicked off
-    final saved = snapshots.data!;
+  test('signing out while a sync is on its way waits for it before closing the copy', () async {
+    server.addPage('a');
+    final sync = await started();
+    server.hold = Completer<void>();
+    cells.setContext(pageId: 'a', year: 2026);
+    await cells.setCell(1, 1, '#AAAAAA');
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    final cleared = sync.clear();
+    server.hold!.complete();
+    await cleared;
+    expect(server.sentKinds, ['cell.set'], reason: 'the send in flight finished');
+    expect(pages.pages, isEmpty);
+  });
 
-    final sync = build();
-    snapshots.data = saved;
-    final hydrated = await sync.start(userId: 'u1', year: 2025);
-    expect(hydrated, isTrue);
-    expect(pages.pages.single.id, 'a');
-    // The snapshot held 2026 cells; they must not be applied under 2025 nor
-    // marked loaded for 2026.
-    expect(cells.isYearLoaded(2026), isFalse);
+  test('a change made offline stays shown, counts one change, and leaves when the network returns (H1)', () async {
+    server.addPage('a');
+    final sync = await started();
+    server.offline = true;
+    cells.setContext(pageId: 'a', year: 2026);
+    await cells.setCell(1, 1, '#AAAAAA');
+    await settle(sync);
+    expect(sync.engine.value!.isOffline, isTrue);
+    expect(sync.engine.value!.pendingCount, 1);
+    expect(cells.getCell(1, 1)?.color, '#AAAAAA', reason: 'never undone');
+
+    server.offline = false;
+    network.comeBack();
+    await Future<void>.delayed(Duration.zero);
+    await settle(sync);
+    expect(server.sentKinds, ['cell.set']);
+    expect(sync.engine.value!.pendingCount, 0);
+    expect(cells.getCell(1, 1)?.color, '#AAAAAA');
+  });
+
+  test('a tracker created offline then one of its days: two changes, sent in that order (H2)', () async {
+    final sync = await started();
+    server.offline = true;
+    final page = await pages.createPage('Sport');
+    cells.setContext(pageId: page!.id, year: 2026);
+    await cells.setCell(1, 1, '#AAAAAA');
+    await settle(sync);
+    expect(sync.engine.value!.pendingCount, 2);
+    expect(pages.pages.map((p) => p.title), ['Sport']);
+
+    server.offline = false;
+    network.comeBack();
+    await Future<void>.delayed(Duration.zero);
+    await settle(sync);
+    expect(server.sentKinds, ['page.create', 'cell.set']);
+    expect(server.pages.keys, [page.id], reason: 'the id made by the phone is the server\'s');
+  });
+
+  test('a sync message from the server starts a sync', () async {
+    final sync = await started();
+    final before = server.pulls;
+    server.addPage('a', title: 'From the other phone');
+    ws.receive('sync', {'rev': server.rev});
+    await Future<void>.delayed(Duration.zero);
+    await settle(sync);
+    expect(server.pulls, before + 1);
+    expect(pages.pages.map((p) => p.title), ['From the other phone']);
+  });
+
+  test('the old live messages change nothing any more', () async {
+    final sync = await started();
+    final before = server.pulls;
+    ws.receive('cell:updated', {'pageId': 'a', 'year': 2026, 'month': 1, 'day': 1, 'color': '#AAAAAA'});
+    await settle(sync);
+    expect(server.pulls, before);
     expect(cells.cellsFor('a', 2026), isNull);
   });
 
-  test('snapshot of another user is ignored', () async {
-    final first = build();
-    await first.start(userId: 'u1', year: 2026);
-    await first.ensureYear(2026); // awaits the bootstrap start() kicked off
-    final saved = snapshots.data!;
+  test('H9: Premium lost while away keeps what was made offline (a 4th tracker), and the phone learns it', () async {
+    for (final id in ['a', 'b', 'c']) {
+      server.addPage(id, position: server.pages.length);
+    }
+    server.premium = true;
+    final told = <bool>[];
+    final sync = build()..onPremium = told.add;
+    await sync.start(userId: 'u1', year: 2026);
+    await sync.firstSync;
+    expect(told.last, isTrue);
 
-    final sync = build();
-    snapshots.data = saved;
-    final hydrated = await sync.start(userId: 'someone-else', year: 2026);
-    expect(hydrated, isFalse);
-    expect(pages.pages, isEmpty);
+    server.offline = true;
+    await pages.createPage('Fourth');
+    await settle(sync);
+    server
+      ..premium = false
+      ..offline = false;
+    network.comeBack();
+    await Future<void>.delayed(Duration.zero);
+    await settle(sync);
+    expect(pages.pages.length, 4, reason: 'nothing made offline is lost');
+    expect(told.last, isFalse);
+    expect(!hasKeepChoice(pages.pages) && pages.pages.length > 3, isTrue, reason: 'the list opens the keep screen');
   });
 
-  test('a corrupt snapshot is ignored', () async {
-    final sync = build();
-    snapshots.data = '{not json';
-    final hydrated = await sync.start(userId: 'u1', year: 2026);
-    expect(hydrated, isFalse);
+  test('settings: the copy\'s reach the app, a change goes through the queue', () async {
+    server.rev++;
+    server.settings['theme'] = {'rev': server.rev, 'value': 'sakura'};
+    final applied = <Map<String, Object?>>[];
+    final sync = build()..onSettings = applied.add;
+    await sync.start(userId: 'u1', year: 2026);
+    await sync.firstSync;
+    expect(applied.last['theme'], 'sakura');
+
+    await SettingsSink.record('theme', 'night');
+    await settle(sync);
+    expect(server.sentKinds, ['setting.set']);
+    expect(server.settings['theme']!['value'], 'night');
   });
 
-  test('revalidate with an unchanged body does not notify or rewrite the snapshot', () async {
-    final sync = build();
-    await sync.ensureYear(2026);
-    final writesBefore = snapshots.writes;
-    var notified = 0;
-    cells.addListener(() => notified++);
-    pages.addListener(() => notified++);
-    await sync.revalidate();
-    expect(bootstrapCalls, 2);
-    expect(notified, 0);
-    expect(snapshots.writes, writesBefore);
-  });
-
-  test('revalidate with a changed body applies it', () async {
-    var color = '#AAAAAA';
-    final sync = build(body: (y) => bootstrapBody(y, color: color));
-    await sync.ensureYear(2026);
-    color = '#222222';
-    await sync.revalidate();
-    expect(cells.cellsFor('a', 2026)!.get(1, 1)!.color, '#222222');
-    expect(legends.legendsFor('a').single.color, '#222222');
-  });
-
-  test('a failed fetch keeps the current data and the year stays unloaded', () async {
-    final sync = build();
-    statusCode = 503;
-    await sync.ensureYear(2026);
-    expect(cells.isYearLoaded(2026), isFalse);
-    expect(pages.pages, isEmpty);
-    // Next ensureYear retries.
-    statusCode = 200;
-    await sync.ensureYear(2026);
-    expect(bootstrapCalls, 2);
-    expect(cells.isYearLoaded(2026), isTrue);
-  });
-
-  test('revalidate before start is a no-op', () async {
-    final sync = build();
-    await sync.revalidate();
-    expect(bootstrapCalls, 0);
-  });
-
-  test('persistSnapshot serializes the current store in bootstrap format', () async {
-    final sync = build();
-    await sync.ensureYear(2026);
-    cells.debugHandleWs(const WsMessage(event: 'cell:updated', data: {
-      'pageId': 'a', 'year': 2026, 'month': 6, 'day': 6, 'color': '#333333', 'comment': 'c', 'updatedAt': '',
-    }));
-    await sync.persistSnapshot();
-    final snap = jsonDecode(snapshots.data!) as Map<String, dynamic>;
-    expect(snap['v'], 1);
-    expect(snap['userId'], isNull); // not started via start(): no user id
-    final data = snap['data'] as Map<String, dynamic>;
-    expect(data['year'], 2026);
-    expect((data['cells'] as Map)['a'], containsAll([[6, 6, '#333333', 'c']]));
-  });
-
-  test('an identical body is still applied when the store changed locally since the last apply', () async {
-    final sync = build();
-    await sync.ensureYear(2026);
-    // A local change the server never received (e.g. a failed recolor).
-    cells.debugHandleWs(const WsMessage(event: 'cells:recolored', data: {
-      'pageId': 'a', 'colorMap': {'#AAAAAA': '#999999'},
-    }));
-    expect(cells.cellsFor('a', 2026)!.get(1, 1)!.color, '#999999');
-    await sync.revalidate(); // server body is byte-identical to the first one
-    expect(cells.cellsFor('a', 2026)!.get(1, 1)!.color, '#AAAAAA', reason: 'store healed from the server');
-  });
-
-  test('a local mutation during an in-flight bootstrap discards that body and refetches once', () async {
-    var mutateDuringFetch = false;
-    final sync = build(body: (y) {
-      if (mutateDuringFetch) {
-        mutateDuringFetch = false;
-        // Simulates a tap that landed while the request was in flight.
-        cells.debugHandleWs(const WsMessage(event: 'cell:updated', data: {
-          'pageId': 'a', 'year': 2026, 'month': 3, 'day': 3, 'color': '#CCCCCC', 'updatedAt': '',
-        }));
-      }
-      return bootstrapBody(y);
+  group('the 1.4.0 snapshot (until the first full copy)', () {
+    test('shows pages, legends and the year\'s days of the same account, offline', () async {
+      snapshots.data = jsonEncode(snapshot(activated: true));
+      server.offline = true;
+      final sync = build();
+      expect(await sync.start(userId: 'u1', year: 2026), isTrue);
+      expect(pages.pages.single.title, 'From 1.4.0');
+      expect(legends.legendsFor('s').single.id, 'ls');
+      expect(cells.cellsFor('s', 2026)!.get(1, 1)?.color, '#AAAAAA');
+      expect(sync.snapshotActivated, isTrue);
+      expect(sync.activated, isNull, reason: 'no full copy yet');
     });
-    await sync.ensureYear(2026);
-    expect(bootstrapCalls, 1);
-    mutateDuringFetch = true;
-    await sync.revalidate();
-    expect(bootstrapCalls, 3, reason: 'stale body discarded, one retry');
-    expect(cells.cellsFor('a', 2026)!.get(3, 3), isNull, reason: 'the retry carries server truth');
-  });
 
-  test('ensureYear refetches a loaded year when a page has no entry for it', () async {
-    final sync = build();
-    await sync.ensureYear(2026);
-    pages.debugHandleWs(WsMessage(event: 'page:created', data: {
-      'id': 'b', 'userId': 'u1', 'title': 'B', 'position': 1, 'palette': null, 'createdAt': '', 'year': 2026,
-    }));
-    await sync.ensureYear(2026);
-    expect(bootstrapCalls, 2);
-  });
+    test('of another year: pages only', () async {
+      snapshots.data = jsonEncode(snapshot(year: 2025));
+      server.offline = true;
+      await build().start(userId: 'u1', year: 2026);
+      expect(pages.pages.single.id, 's');
+      expect(cells.cellsFor('s', 2025), isNull);
+    });
 
-  test('clear wipes providers and snapshot', () async {
-    final sync = build();
-    await sync.start(userId: 'u1', year: 2026);
-    await sync.ensureYear(2026);
-    await sync.clear();
-    expect(pages.pages, isEmpty);
-    expect(legends.legendsFor('a'), isEmpty);
-    expect(cells.isYearLoaded(2026), isFalse);
-    expect(snapshots.data, isNull);
-    await sync.revalidate();
-    expect(bootstrapCalls, 1);
-  });
+    test('of another account, or corrupt: ignored', () async {
+      snapshots.data = jsonEncode(snapshot(userId: 'someone-else'));
+      server.offline = true;
+      final first = build();
+      expect(await first.start(userId: 'u1', year: 2026), isFalse);
+      await first.clear(keepCopy: true);
+      snapshots.data = '{not json';
+      expect(await build().start(userId: 'u1', year: 2026), isFalse);
+      expect(pages.pages, isEmpty);
+    });
 
-  test('activated comes from the network body, snapshotActivated from the disk snapshot', () async {
-    final first = build(body: (y) => {...bootstrapBody(y), 'activated': false});
-    expect(first.activated, isNull, reason: 'nothing fetched yet');
-    await first.start(userId: 'u1', year: 2026);
-    await first.ensureYear(2026); // awaits the bootstrap start() kicked off
-    expect(first.activated, isFalse);
-    final saved = snapshots.data!;
+    test('without activated but with days (app 1.3.0) counts as activated', () async {
+      snapshots.data = jsonEncode(snapshot());
+      server.offline = true;
+      final sync = build();
+      await sync.start(userId: 'u1', year: 2026);
+      expect(sync.snapshotActivated, isTrue);
+    });
 
-    final sync = build(body: (y) => {...bootstrapBody(y), 'activated': true});
-    snapshots.data = saved;
-    await sync.start(userId: 'u1', year: 2026);
-    expect(sync.snapshotActivated, isFalse, reason: 'written by the previous session');
-    await sync.ensureYear(2026);
-    expect(sync.activated, isTrue, reason: 'the server has the last word');
-  });
-
-  test('activated stays unknown when the body or the snapshot lacks it (backend < 1.2.0, app ≤ 1.3.0)', () async {
-    // No cell either: a cell on disk would prove activation (see the next tests).
-    final first = build(body: (y) => {...bootstrapBody(y), 'cells': {'a': <dynamic>[]}});
-    await first.start(userId: 'u1', year: 2026);
-    await first.ensureYear(2026); // awaits the bootstrap start() kicked off
-    expect(first.activated, isNull);
-    final saved = snapshots.data!;
-
-    final sync = build();
-    snapshots.data = saved;
-    await sync.start(userId: 'u1', year: 2026);
-    expect(sync.snapshotActivated, isNull);
-  });
-
-  test('clear forgets activated', () async {
-    final sync = build(body: (y) => {...bootstrapBody(y), 'activated': true});
-    await sync.ensureYear(2026);
-    expect(sync.activated, isTrue);
-    await sync.clear();
-    expect(sync.activated, isNull);
-    expect(sync.snapshotActivated, isNull);
-  });
-
-  test('a snapshot without activated but with cells (app 1.3.0) hydrates as activated', () async {
-    final first = build(); // bootstrapBody has one cell and no activated field
-    await first.start(userId: 'u1', year: 2026);
-    await first.ensureYear(2026);
-    final saved = snapshots.data!;
-
-    final sync = build();
-    snapshots.data = saved;
-    await sync.start(userId: 'u1', year: 2026);
-    expect(sync.snapshotActivated, isTrue, reason: 'a cell on disk proves the account is activated');
-  });
-
-  test('a snapshot without activated and without cells stays unknown', () async {
-    final first = build(body: (y) => {...bootstrapBody(y), 'cells': {'a': <dynamic>[]}});
-    await first.start(userId: 'u1', year: 2026);
-    await first.ensureYear(2026);
-    final saved = snapshots.data!;
-
-    final sync = build();
-    snapshots.data = saved;
-    await sync.start(userId: 'u1', year: 2026);
-    expect(sync.snapshotActivated, isNull);
+    test('gives way to the full copy, and is deleted then', () async {
+      snapshots.data = jsonEncode(snapshot(activated: true));
+      server.addPage('a', title: 'Server');
+      await started();
+      expect(pages.pages.map((p) => p.title), ['Server']);
+      await Future<void>.delayed(Duration.zero);
+      expect(snapshots.data, isNull);
+    });
   });
 }

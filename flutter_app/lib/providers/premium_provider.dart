@@ -1,11 +1,10 @@
-import 'dart:convert';
+import '../data/change_sink.dart';
 import 'package:flutter/foundation.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/tracker_lock.dart';
 import '../models/page_model.dart';
-import '../services/api_service.dart';
 import '../services/purchase_service.dart';
 
 class PremiumProvider extends ChangeNotifier {
@@ -60,20 +59,16 @@ class PremiumProvider extends ChangeNotifier {
     return _purchaseService.restorePurchases();
   }
 
-  /// Reconciles the cached premium flag with the server at every session
-  /// start (the RevenueCat webhook keeps the server authoritative). "Yes"
-  /// from either the server or the SDK wins; "no" needs both to agree, so a
-  /// purchase the webhook has not seen yet is never taken away. This is
-  /// also what makes a lapsed subscription take effect, and what a local
-  /// backend toggles for tests (see README, "Testing Premium locally").
-  Future<void> checkServerSubscription({ApiService? api}) async {
-    try {
-      final response = await (api ?? ApiService()).apiFetch('/api/purchase/status');
-      if (response.statusCode != 200) return;
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      final next = data['premium'] == true || _purchaseService.isPremiumActive;
-      if (next != _isPremium) await _setPremiumCached(next);
-    } catch (_) {}
+  /// Reconciles the cached premium flag with what the server says (the
+  /// copy on the phone, offline sync; the RevenueCat webhook keeps the server
+  /// authoritative). "Yes" from either the server or the SDK wins; "no"
+  /// needs both to agree, so a purchase the webhook has not seen yet is never
+  /// taken away. This is also what makes a lapsed subscription take effect,
+  /// and what a local backend toggles for tests (see README, "Testing
+  /// Premium locally").
+  Future<void> applyServerPremium(bool serverPremium) async {
+    final next = serverPremium || _purchaseService.isPremiumActive;
+    if (next != _isPremium) await _setPremiumCached(next);
   }
 
   /// Set VIP status (from AuthProvider).
@@ -114,7 +109,7 @@ class PremiumProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_cursorEnabledKey, value);
     notifyListeners();
-    ApiService().apiFetch('/api/auth/settings', method: 'PATCH', body: {'cursorEnabled': value}).ignore();
+    SettingsSink.record('cursor', {'id': _cursorId, 'enabled': value}).ignore();
   }
 
   /// Set which cursor to use (for future multiple cursors).
@@ -123,7 +118,7 @@ class PremiumProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_cursorIdKey, id);
     notifyListeners();
-    ApiService().apiFetch('/api/auth/settings', method: 'PATCH', body: {'cursorId': id}).ignore();
+    SettingsSink.record('cursor', {'id': id, 'enabled': _cursorEnabled}).ignore();
   }
 
   Future<void> _setPremiumCached(bool value) async {

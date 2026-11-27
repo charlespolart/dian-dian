@@ -1,9 +1,5 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -12,28 +8,13 @@ import 'package:dian_dian/providers/language_provider.dart';
 import 'package:dian_dian/providers/legends_provider.dart';
 import 'package:dian_dian/providers/pages_provider.dart';
 import 'package:dian_dian/screens/first_tracker_screen.dart';
-import 'package:dian_dian/services/api_service.dart';
 import 'package:dian_dian/services/audio_service.dart';
-import 'package:dian_dian/services/ws_service.dart';
 
 import 'helpers.dart';
 
-/// Like the real server: JSON in UTF-8 (a bare `http.Response` would encode
-/// the body as Latin-1 and choke on the en dash of the Sleep labels).
-http.Response _json(String body, int status) =>
-    http.Response(body, status, headers: const {'content-type': 'application/json; charset=utf-8'});
-
-/// Providers + a fake server around a [FirstTrackerScreen]. The server
-/// answers POST /api/pages with the page "n" and the legends it was sent,
-/// and PUT /api/cells/n with the cell it was sent.
+/// Providers writing to a [RecordingSink] around a [FirstTrackerScreen].
 class Harness {
-  final List<http.Request> requests = [];
-  int pageStatus = 201;
-  /// The POST reaches the server but the client sees a network error (timeout after commit).
-  bool throwOnPost = false;
-  /// 409 on any POST carrying `replaces` (the page is no longer empty).
-  bool refuseReplace = false;
-  int Function() cellStatus = () => 200;
+  final sink = RecordingSink();
   late final PagesProvider pages;
   late final LegendsProvider legends;
   late final CellsProvider cells;
@@ -47,39 +28,9 @@ class Harness {
     Map<String, dynamic> legendRows = const {},
     int maxTrackers = 3,
   }) {
-    final client = MockClient((req) async {
-      requests.add(req);
-      if (req.method == 'POST' && req.url.path == '/api/pages') {
-        if (throwOnPost) throw http.ClientException('connection closed before the response');
-        if (pageStatus != 201) return _json('{"error":"x"}', pageStatus);
-        final body = jsonDecode(req.body) as Map<String, dynamic>;
-        if (refuseReplace && body.containsKey('replaces')) return _json('{"error":"Page is not empty"}', 409);
-        final sent = body['legends'] as List<dynamic>;
-        return _json(jsonEncode({
-          ...pageJson('n', title: body['title'] as String),
-          'legends': [
-            for (var i = 0; i < sent.length; i++)
-              legendJson('l$i', 'n', sent[i]['color'] as String, i, label: sent[i]['label'] as String),
-          ],
-          'replaced': body['replaces'],
-        }), 201);
-      }
-      if (req.method == 'PATCH' && req.url.path == '/api/pages/n') {
-        final body = jsonDecode(req.body) as Map<String, dynamic>;
-        return _json(jsonEncode(pageJson('n', title: body['title'] as String)), 200);
-      }
-      if (req.method == 'PUT' && req.url.path == '/api/cells/n') {
-        final status = cellStatus();
-        if (status != 200) return _json('{"error":"x"}', status);
-        final body = jsonDecode(req.body) as Map<String, dynamic>;
-        return _json(jsonEncode({'pageId': 'n', ...body, 'updatedAt': ''}), 200);
-      }
-      return _json('{"error":"unexpected ${req.method} ${req.url.path}"}', 404);
-    });
-    final api = ApiService.custom(client: client, tokens: FakeTokens());
-    pages = PagesProvider(api: api)..applyBootstrap(pageRows);
-    legends = LegendsProvider(api: api)..applyBootstrap(legendRows);
-    cells = CellsProvider(api: api, audio: AudioService.silent())
+    pages = PagesProvider(audio: AudioService.silent(), sink: sink)..applyBootstrap(pageRows);
+    legends = LegendsProvider(audio: AudioService.silent(), sink: sink)..applyBootstrap(legendRows);
+    cells = CellsProvider(audio: AudioService.silent(), sink: sink)
       ..applyBootstrap(now().year, {for (final p in pageRows) p['id'] as String: <dynamic>[]});
     widget = MultiProvider(
       providers: [
@@ -100,9 +51,13 @@ class Harness {
     );
   }
 
-  List<http.Request> get posts => requests.where((r) => r.method == 'POST').toList();
-  List<http.Request> get puts => requests.where((r) => r.method == 'PUT').toList();
+  List<Map<String, dynamic>> of(String kind) => [for (final c in sink.changes) if (c.$1 == kind) c.$2];
+  List<Map<String, dynamic>> get creations => of('page.create');
+  List<Map<String, dynamic>> get days => of('cell.set');
+  String get createdId => creations.single['id'] as String;
 }
+
+final _uuidV4 = RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$');
 
 /// A phone-sized surface (390 × 844 logical): the default 800 × 600 test
 /// window puts the lower buttons of screen 2 below the fold.
@@ -130,18 +85,18 @@ void main() {
     expect(find.text('Thursday, October 15'), findsOneWidget);
     expect(find.text('And today?'), findsOneWidget);
     expect(find.text('Not today'), findsOneWidget);
-    expect(h.requests, isEmpty, reason: 'nothing is created before a choice');
+    expect(h.sink.changes, isEmpty, reason: 'nothing is created before a choice');
 
     await tester.tap(find.text('Great'));
     await tester.pumpAndSettle();
 
-    final body = jsonDecode(h.posts.single.body) as Map<String, dynamic>;
+    final body = h.creations.single;
     expect(body['title'], 'Mood');
-    expect(body['position'], 0);
-    expect(body.containsKey('replaces'), isFalse);
+    expect(h.createdId, matches(_uuidV4), reason: 'the app makes the id');
     expect((body['legends'] as List).map((l) => l['label']), ['Great', 'Good', 'Okay', 'Meh', 'Low']);
-    expect(jsonDecode(h.puts.single.body), {'year': 2026, 'month': 10, 'day': 15, 'color': '#FFEC99'});
-    expect(h.legends.legendsFor('n').length, 5);
+    expect(h.sink.kinds, ['page.create', 'cell.set'], reason: 'the tracker, then its day');
+    expect(h.days.single, {'pageId': h.createdId, 'year': 2026, 'month': 10, 'day': 15, 'color': '#FFEC99', 'comment': null});
+    expect(h.legends.legendsFor(h.createdId).length, 5);
     expect(h.cells.getCell(10, 15)!.color, '#FFEC99');
     expect(find.text('Open my tracker'), findsOneWidget);
     expect(find.text('Not today'), findsNothing);
@@ -159,55 +114,22 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Open my tracker'));
     await tester.pump();
-    expect(opened, 'n/2026');
+    expect(opened, '${h.createdId}/2026');
   });
 
-  testWidgets('a failed cell shows the error; Retry only replays the cell', (tester) async {
+  testWidgets('a copy that could not be written still makes the tracker and today\'s colour (nothing to retry)', (tester) async {
     phone(tester);
-    var failCell = true;
-    final h = Harness(now: () => oct15)..cellStatus = () => failCell ? 500 : 200;
+    final h = Harness(now: () => oct15);
+    h.sink.fail = true;
     await tester.pumpWidget(h.widget);
     await tester.tap(find.text('Mood'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Great'));
     await tester.pumpAndSettle();
-    expect(find.text("Can't reach the server, try again"), findsOneWidget);
-    expect(find.text('Open my tracker'), findsNothing);
-    expect(h.posts.length, 1);
-    expect(h.puts.length, 1);
-
-    failCell = false;
-    await tester.tap(find.text('Retry'));
-    await tester.pumpAndSettle();
-    expect(h.posts.length, 1, reason: 'the page is never created twice');
-    expect(h.puts.length, 2);
+    expect(h.pages.pages.length, 1);
+    expect(h.cells.getCell(10, 15)!.color, '#FFEC99');
     expect(find.text("Can't reach the server, try again"), findsNothing);
     expect(find.text('Open my tracker'), findsOneWidget);
-  });
-
-  testWidgets('a failed page creation shows the error; Retry creates it then sets the cell', (tester) async {
-    phone(tester);
-    final h = Harness(now: () => oct15)..pageStatus = 500;
-    await tester.pumpWidget(h.widget);
-    await tester.tap(find.text('Sleep'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('8 h+'));
-    await tester.pumpAndSettle();
-    expect(find.text("Can't reach the server, try again"), findsOneWidget);
-    expect(h.puts, isEmpty);
-    expect(h.pages.pages, isEmpty);
-
-    h.pageStatus = 201;
-    await tester.tap(find.text('Retry'));
-    await tester.pumpAndSettle();
-    expect(h.posts.length, 2);
-    expect(h.puts.length, 1);
-    expect(find.text('Open my tracker'), findsOneWidget);
-    // Both attempts carry the same idempotency key, a v4 uuid: a response
-    // lost after a server-side commit can never produce a twin.
-    final keys = h.posts.map((r) => (jsonDecode(r.body) as Map)['clientId'] as String).toList();
-    expect(keys[0], keys[1]);
-    expect(keys[0], matches(RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$')));
   });
 
   testWidgets('the date is read at tap time (midnight while the screen is open)', (tester) async {
@@ -222,7 +144,7 @@ void main() {
     clock = DateTime(2026, 10, 16, 0, 1);
     await tester.tap(find.text('Great'));
     await tester.pumpAndSettle();
-    expect(jsonDecode(h.puts.single.body), {'year': 2026, 'month': 10, 'day': 16, 'color': '#FFEC99'});
+    expect(h.days.single, {'pageId': h.createdId, 'year': 2026, 'month': 10, 'day': 16, 'color': '#FFEC99', 'comment': null});
     expect(find.text('Friday, October 16'), findsOneWidget);
   });
 
@@ -251,7 +173,7 @@ void main() {
 
     await tester.tap(find.text('Yes'));
     await tester.pumpAndSettle();
-    expect((jsonDecode(h.posts.single.body) as Map)['title'], 'Water');
+    expect(h.creations.single['title'], 'Water');
   });
 
   testWidgets('Not today creates the tracker without a cell and opens it', (tester) async {
@@ -263,9 +185,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Not today'));
     await tester.pumpAndSettle();
-    expect(h.posts.length, 1);
-    expect(h.puts, isEmpty);
-    expect(opened, 'n/2026');
+    expect(h.sink.kinds, ['page.create']);
+    expect(opened, '${h.createdId}/2026');
     expect((await SharedPreferences.getInstance()).getBool('first_tracker_done_u1'), isTrue);
   });
 
@@ -281,10 +202,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Done'));
     await tester.pumpAndSettle();
-    final body = jsonDecode(h.posts.single.body) as Map<String, dynamic>;
-    expect(body['replaces'], 'old');
-    expect(body.containsKey('position'), isFalse);
-    expect(h.pages.pages.map((p) => p.id), ['n']);
+    expect(h.sink.kinds, ['page.delete', 'page.create', 'pages.reorder', 'cell.set']);
+    expect(h.of('page.delete').single, {'id': 'old'});
+    expect(h.pages.pages.map((p) => p.id), [h.createdId]);
   });
 
   testWidgets('Later leaves without a request and is remembered for this account on this device', (tester) async {
@@ -295,13 +215,13 @@ void main() {
     await tester.tap(find.text('Later'));
     await tester.pumpAndSettle();
     expect(later, isTrue);
-    expect(h.requests, isEmpty);
+    expect(h.sink.changes, isEmpty);
     expect((await SharedPreferences.getInstance()).getBool('first_tracker_done_u1'), isTrue);
     expect(await FirstTrackerScreen.isDone('u1'), isTrue);
     expect(await FirstTrackerScreen.isDone('u2'), isFalse);
   });
 
-  testWidgets('at the free limit, a refused replace shows the error instead of creating a locked 4th tracker', (tester) async {
+  testWidgets('at the free limit, the empty tracker is replaced in its place: still three trackers', (tester) async {
     phone(tester);
     final h = Harness(
       now: () => oct15,
@@ -312,49 +232,14 @@ void main() {
         'p3': [legendJson('l3', 'p3', '#222222', 0)],
       },
       maxTrackers: 3,
-    )..refuseReplace = true;
+    );
     await tester.pumpWidget(h.widget);
     await tester.tap(find.text('Habits'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Done'));
     await tester.pumpAndSettle();
-    expect(h.posts.length, 1, reason: 'no fallback POST without replaces');
-    expect((jsonDecode(h.posts.single.body) as Map)['replaces'], 'old');
-    expect(h.pages.pages.length, 3, reason: 'nothing created');
-    expect(find.text("Can't reach the server, try again"), findsOneWidget);
-    expect(find.text('Open my tracker'), findsNothing);
-    expect(find.text('Later'), findsOneWidget);
-  });
-
-  testWidgets('a page committed server-side but lost in transit is adopted on Retry, never duplicated', (tester) async {
-    phone(tester);
-    final h = Harness(now: () => oct15)..throwOnPost = true;
-    await tester.pumpWidget(h.widget);
-    await tester.tap(find.text('Mood'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Great'));
-    await tester.pumpAndSettle();
-    expect(find.text("Can't reach the server, try again"), findsOneWidget);
-    expect(h.posts.length, 1);
-
-    // The server had committed: its WebSocket echo brings the page with its legends.
-    const labels = ['Great', 'Good', 'Okay', 'Meh', 'Low'];
-    const colors = ['#FFEC99', '#FFD43B', '#8CE99A', '#74C0FC', '#E599F7'];
-    final echo = {
-      ...pageJson('n', title: 'Mood'),
-      'legends': [for (var i = 0; i < 5; i++) legendJson('l$i', 'n', colors[i], i, label: labels[i])],
-      'replaced': null,
-    };
-    h.pages.debugHandleWs(WsMessage(event: 'page:created', data: echo));
-    h.legends.debugHandleWs(WsMessage(event: 'page:created', data: echo));
-    await tester.pump();
-
-    h.throwOnPost = false;
-    await tester.tap(find.text('Retry'));
-    await tester.pumpAndSettle();
-    expect(h.posts.length, 1, reason: 'the existing identical page is adopted, not re-created');
-    expect(h.puts.single.url.path, '/api/cells/n');
-    expect(h.pages.pages.length, 1);
+    expect(h.pages.pages.map((p) => p.id), [h.createdId, 'p2', 'p3']);
+    expect(h.of('pages.reorder').single, {'ids': [h.createdId, 'p2', 'p3']});
     expect(find.text('Open my tracker'), findsOneWidget);
   });
 
@@ -413,11 +298,11 @@ void main() {
 
     await tester.tap(find.text('Great'));
     await tester.pumpAndSettle();
-    expect((jsonDecode(h.posts.single.body) as Map)['title'], 'Vibes');
-    expect(h.requests.where((r) => r.method == 'PATCH'), isEmpty);
+    expect(h.creations.single['title'], 'Vibes');
+    expect(h.of('page.update'), isEmpty);
   });
 
-  testWidgets('renaming after the page exists patches its title', (tester) async {
+  testWidgets('renaming after the page exists writes its new title', (tester) async {
     phone(tester);
     final h = Harness(now: () => oct15);
     await tester.pumpWidget(h.widget);
@@ -425,16 +310,14 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('8 h+'));
     await tester.pumpAndSettle();
-    expect(h.posts.length, 1);
+    expect(h.creations.length, 1);
 
     await tester.tap(find.text('Sleep'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('firstTracker.title')), 'Nights');
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
-    final patch = h.requests.where((r) => r.method == 'PATCH').single;
-    expect(patch.url.path, '/api/pages/n');
-    expect(jsonDecode(patch.body), {'title': 'Nights'});
+    expect(h.of('page.update').single, {'id': h.createdId, 'title': 'Nights'});
     expect(h.pages.pages.single.title, 'Nights');
     expect(find.text('Nights'), findsOneWidget);
   });

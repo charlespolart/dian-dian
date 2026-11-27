@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart' show FlutterError, Size;
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:dian_dian/data/change_sink.dart';
 import 'package:dian_dian/services/audio_service.dart';
 import 'package:dian_dian/services/snapshot_store.dart';
 import 'package:dian_dian/services/token_store.dart';
@@ -25,6 +26,24 @@ class FakeTokens implements TokenStore {
   Future<void> setUserId(String id) async => userId = id;
   @override
   Future<void> deleteUserId() async => userId = null;
+}
+
+/// Collects what the providers write (offline sync): kind and data, in order.
+/// [fail] makes every write throw, like a copy that could not be written.
+class RecordingSink implements ChangeSink {
+  final changes = <(String, Map<String, dynamic>)>[];
+  bool fail = false;
+
+  List<String> get kinds => [for (final c in changes) c.$1];
+
+  /// [[kind, data], …], for a deep comparison.
+  List<List<Object>> get log => [for (final c in changes) [c.$1, c.$2]];
+
+  @override
+  Future<void> record(String kind, Map<String, dynamic> data) async {
+    if (fail) throw StateError('not written');
+    changes.add((kind, data));
+  }
 }
 
 /// In-memory [SnapshotStore] for tests.

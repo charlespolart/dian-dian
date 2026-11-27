@@ -1,20 +1,17 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:dian_dian/models/year_cells.dart';
 import 'package:dian_dian/providers/cells_provider.dart';
-import 'package:dian_dian/services/api_service.dart';
 import 'package:dian_dian/services/audio_service.dart';
-import 'package:dian_dian/services/ws_service.dart';
 
 import 'helpers.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  CellsProvider loaded() {
-    final p = CellsProvider();
+  CellsProvider loaded({RecordingSink? sink}) {
+    final p = CellsProvider(audio: AudioService.silent(), sink: sink);
     p.applyBootstrap(2026, {
       'a': [
         [1, 1, '#AAAAAA'],
@@ -24,6 +21,9 @@ void main() {
     });
     return p;
   }
+
+  Map<int, YearCells> years(String pageId, Map<int, List<List<dynamic>>> rows) =>
+      {for (final e in rows.entries) e.key: YearCells.fromCompact(pageId, e.key, e.value)};
 
   test('applyBootstrap loads every page and marks the year loaded', () {
     final p = loaded();
@@ -39,6 +39,27 @@ void main() {
     p.applyBootstrap(2026, {'b': [[5, 5, '#CCCCCC']]});
     expect(p.cellsFor('a', 2026), isNull);
     expect(p.cellsFor('b', 2026)!.length, 1);
+  });
+
+  test('applyCopy loads every year of every page and every year counts as loaded', () {
+    final p = loaded();
+    p.applyCopy({
+      'a': years('a', {2024: [[3, 3, '#AAAAAA']], 2026: [[1, 1, '#AAAAAA']]}),
+    });
+    expect(p.cellsFor('a', 2024)!.length, 1);
+    expect(p.cellsFor('a', 2026)!.length, 1);
+    expect(p.cellsFor('b', 2026), isNull, reason: 'the copy replaces the store');
+    expect(p.isYearLoaded(1999), isTrue, reason: 'the phone has every year');
+  });
+
+  test('allDays gives every coloured day of a page, all years', () {
+    final p = CellsProvider(audio: AudioService.silent());
+    p.applyCopy({
+      'a': years('a', {2024: [[3, 3, '#AAAAAA']], 2026: [[1, 1, '#AAAAAA'], [1, 2, '#AAAAAA']]}),
+      'b': years('b', {2026: [[5, 5, '#AAAAAA']]}),
+    });
+    expect(p.allDays('a').toSet(), {DateTime(2024, 3, 3), DateTime(2026, 1, 1), DateTime(2026, 1, 2)});
+    expect(p.allDays('c'), isEmpty);
   });
 
   test('setContext is synchronous and exposes the current cells', () {
@@ -69,7 +90,7 @@ void main() {
   });
 
   test('currentStreak counts consecutive days ending today or yesterday', () {
-    final p = CellsProvider();
+    final p = CellsProvider(audio: AudioService.silent());
     final now = DateTime.now();
     final d0 = DateTime(now.year, now.month, now.day);
     final days = [d0, d0.subtract(const Duration(days: 1)), d0.subtract(const Duration(days: 2))]
@@ -91,111 +112,73 @@ void main() {
     }
   });
 
-  test('stats are memoized per YearCells instance', () {
-    final p = loaded();
+  test('stats are memoized per YearCells instance', () async {
+    final p = loaded(sink: RecordingSink());
     p.setContext(pageId: 'a', year: 2026);
     expect(p.filledDays, 2);
-    p.debugHandleWs(const WsMessage(event: 'cell:updated', data: {
-      'pageId': 'a', 'year': 2026, 'month': 3, 'day': 3, 'color': '#CCCCCC', 'updatedAt': '',
-    }));
+    await p.setCell(3, 3, '#CCCCCC');
     expect(p.filledDays, 3);
   });
 
-  test('WS cell:updated applies only to loaded years', () {
-    final p = loaded();
+  test('setCell shows the day at once and writes one cell.set', () async {
+    final sink = RecordingSink();
+    final p = loaded(sink: sink);
     p.setContext(pageId: 'a', year: 2026);
     var notified = 0;
     p.addListener(() => notified++);
-
-    p.debugHandleWs(const WsMessage(event: 'cell:updated', data: {
-      'pageId': 'a', 'year': 2026, 'month': 3, 'day': 3, 'color': '#CCCCCC', 'updatedAt': '',
-    }));
+    await p.setCell(3, 3, '#CCCCCC', comment: 'note');
     expect(p.getCell(3, 3)?.color, '#CCCCCC');
     expect(notified, 1);
-
-    p.debugHandleWs(const WsMessage(event: 'cell:updated', data: {
-      'pageId': 'a', 'year': 2025, 'month': 3, 'day': 3, 'color': '#CCCCCC', 'updatedAt': '',
-    }));
-    expect(p.cellsFor('a', 2025), isNull);
-    expect(notified, 1);
+    expect(sink.log, [['cell.set', {'pageId': 'a', 'year': 2026, 'month': 3, 'day': 3, 'color': '#CCCCCC', 'comment': 'note'}]]);
   });
 
-  test('WS cell:updated for a page unknown to this year creates its entry', () {
-    final p = loaded();
-    p.debugHandleWs(const WsMessage(event: 'cell:updated', data: {
-      'pageId': 'new-page', 'year': 2026, 'month': 3, 'day': 3, 'color': '#CCCCCC', 'updatedAt': '',
-    }));
-    expect(p.cellsFor('new-page', 2026)!.length, 1);
-  });
-
-  test('WS cell:deleted and cells:reset', () {
-    final p = loaded();
+  test('deleteCell writes one cell.clear; an empty day writes nothing', () async {
+    final sink = RecordingSink();
+    final p = loaded(sink: sink);
     p.setContext(pageId: 'a', year: 2026);
-    p.debugHandleWs(const WsMessage(event: 'cell:deleted', data: {
-      'pageId': 'a', 'year': 2026, 'month': 1, 'day': 1,
-    }));
+    await p.deleteCell(1, 1);
+    await p.deleteCell(9, 9);
     expect(p.getCell(1, 1), isNull);
     expect(p.filledDays, 1);
-    p.debugHandleWs(const WsMessage(event: 'cells:reset', data: {'pageId': 'a', 'year': 2026}));
-    expect(p.filledDays, 0);
-    expect(p.cellsFor('a', 2026)!.isEmpty, isTrue);
+    expect(sink.log, [['cell.clear', {'pageId': 'a', 'year': 2026, 'month': 1, 'day': 1}]]);
   });
 
-  test('WS cells:recolored recolors every cached year of the page without refetch', () {
-    final p = loaded();
+  test('a change that could not be written stays on screen (nothing is undone, H1)', () async {
+    final sink = RecordingSink()..fail = true;
+    final p = loaded(sink: sink);
+    p.setContext(pageId: 'a', year: 2026);
+    await p.setCell(3, 3, '#CCCCCC');
+    await p.deleteCell(1, 1);
+    expect(p.getCell(3, 3)?.color, '#CCCCCC');
+    expect(p.getCell(1, 1), isNull);
+  });
+
+  test('recolorCells recolours every year of the page on screen and writes nothing', () async {
+    final sink = RecordingSink();
+    final p = loaded(sink: sink);
     p.applyBootstrap(2025, {'a': [[5, 5, '#AAAAAA']], 'b': <dynamic>[]});
-    p.debugHandleWs(const WsMessage(event: 'cells:recolored', data: {
-      'pageId': 'a', 'colorMap': {'#AAAAAA': '#111111'},
-    }));
+    p.setContext(pageId: 'a', year: 2026);
+    await p.recolorCells({'#AAAAAA': '#111111'});
     expect(p.cellsFor('a', 2026)!.get(1, 1)!.color, '#111111');
     expect(p.cellsFor('a', 2025)!.get(5, 5)!.color, '#111111');
     expect(p.cellsFor('a', 2026)!.get(1, 2)!.color, '#BBBBBB');
+    expect(sink.changes, isEmpty, reason: 'the legend colour change is the one change (LegendsProvider)');
   });
 
-  test('identity only changes for the touched (page, year)', () {
-    final p = loaded();
+  test('identity only changes for the touched (page, year)', () async {
+    final p = loaded(sink: RecordingSink());
+    p.setContext(pageId: 'a', year: 2026);
     final a = p.cellsFor('a', 2026);
     final b = p.cellsFor('b', 2026);
-    p.debugHandleWs(const WsMessage(event: 'cell:deleted', data: {
-      'pageId': 'a', 'year': 2026, 'month': 1, 'day': 1,
-    }));
+    await p.deleteCell(1, 1);
     expect(identical(p.cellsFor('a', 2026), a), isFalse);
     expect(identical(p.cellsFor('b', 2026), b), isTrue);
-  });
-
-  test('mutationEpoch increments on local/WS changes, not on applyBootstrap', () {
-    final p = loaded();
-    final e0 = p.mutationEpoch;
-    p.applyBootstrap(2025, {'a': <dynamic>[]});
-    expect(p.mutationEpoch, e0);
-    p.debugHandleWs(const WsMessage(event: 'cell:updated', data: {
-      'pageId': 'a', 'year': 2026, 'month': 3, 'day': 3, 'color': '#CCCCCC', 'updatedAt': '',
-    }));
-    expect(p.mutationEpoch, e0 + 1);
-    p.debugHandleWs(const WsMessage(event: 'cells:recolored', data: {
-      'pageId': 'a', 'colorMap': {'#CCCCCC': '#DDDDDD'},
-    }));
-    expect(p.mutationEpoch, e0 + 2);
-  });
-
-  test('recolorCells reverts every cached year when the server rejects it', () async {
-    final client = MockClient((req) async => http.Response('{"error":"nope"}', 500));
-    final api = ApiService.custom(client: client, tokens: FakeTokens());
-    final p = CellsProvider(api: api, audio: AudioService.silent());
-    p.applyBootstrap(2026, {'a': [[1, 1, '#AAAAAA']]});
-    p.applyBootstrap(2025, {'a': [[2, 2, '#AAAAAA']]});
-    p.setContext(pageId: 'a', year: 2026);
-    await p.recolorCells({'#AAAAAA': '#111111'});
-    expect(p.cellsFor('a', 2026)!.get(1, 1)!.color, '#AAAAAA');
-    expect(p.cellsFor('a', 2025)!.get(2, 2)!.color, '#AAAAAA');
   });
 
   test('a fill plays dotFill, an erase plays dotErase', () async {
     SharedPreferences.setMockInitialValues({});
     final rec = await recordingAudio();
-    final client = MockClient((req) async => http.Response('{"ok":true}', 200));
-    final api = ApiService.custom(client: client, tokens: FakeTokens());
-    final p = CellsProvider(api: api, audio: rec.service);
+    final p = CellsProvider(audio: rec.service, sink: RecordingSink());
     p.applyBootstrap(2026, {'a': <dynamic>[]});
     p.setContext(pageId: 'a', year: 2026);
     await p.setCell(1, 1, '#AAAAAA');
@@ -203,18 +186,9 @@ void main() {
     expect(rec.players.played, [SoundCue.dotFill, SoundCue.dotErase]);
   });
 
-  test('recolorCells keeps the new colors when the server accepts', () async {
-    final client = MockClient((req) async => http.Response('{"ok":true}', 200));
-    final api = ApiService.custom(client: client, tokens: FakeTokens());
-    final p = CellsProvider(api: api, audio: AudioService.silent());
-    p.applyBootstrap(2026, {'a': [[1, 1, '#AAAAAA']]});
-    p.setContext(pageId: 'a', year: 2026);
-    await p.recolorCells({'#AAAAAA': '#111111'});
-    expect(p.cellsFor('a', 2026)!.get(1, 1)!.color, '#111111');
-  });
-
   test('clear forgets everything', () {
     final p = loaded();
+    p.applyCopy({'a': years('a', {2026: [[1, 1, '#AAAAAA']]})});
     p.setContext(pageId: 'a', year: 2026);
     p.clear();
     expect(p.isYearLoaded(2026), isFalse);
@@ -224,26 +198,15 @@ void main() {
   });
 
   group('lastChange', () {
-    CellsProvider withServer({int status = 200}) {
-      final client = MockClient((req) async {
-        if (req.method == 'PUT' && req.url.path.startsWith('/api/cells/')) {
-          return http.Response(
-            '{"pageId":"a","year":2026,"month":1,"day":3,"color":"#111111","updatedAt":""}',
-            status,
-            headers: const {'content-type': 'application/json; charset=utf-8'},
-          );
-        }
-        if (req.method == 'DELETE') return http.Response('', status == 200 ? 204 : status);
-        return http.Response('{}', 404);
-      });
-      final p = CellsProvider(api: ApiService.custom(client: client, tokens: FakeTokens()), audio: AudioService.silent());
+    CellsProvider withSink() {
+      final p = CellsProvider(audio: AudioService.silent(), sink: RecordingSink());
       p.applyBootstrap(2026, {'a': [[1, 1, '#AAAAAA']]});
       p.setContext(pageId: 'a', year: 2026);
       return p;
     }
 
     test('is null until this device changes a cell, then names the cell and its new colour', () async {
-      final p = withServer();
+      final p = withSink();
       expect(p.lastChange, isNull);
       await p.setCell(1, 3, '#111111');
       final c = p.lastChange!;
@@ -251,7 +214,7 @@ void main() {
     });
 
     test('seq grows at every change, an erase keeps the old colour', () async {
-      final p = withServer();
+      final p = withSink();
       await p.setCell(1, 3, '#111111');
       final first = p.lastChange!.seq;
       await p.deleteCell(1, 1);
@@ -260,20 +223,11 @@ void main() {
       expect((c.month, c.day, c.color, c.erased), (1, 1, '#AAAAAA', true));
     });
 
-    test('a refused change is forgotten with the revert', () async {
-      final p = withServer(status: 500);
-      await p.setCell(1, 3, '#111111');
-      expect(p.getCell(1, 3), isNull);
-      expect(p.lastChange, isNull);
-    });
-
-    test('a bootstrap, a WS message or clear() never produce a pop', () async {
-      final p = withServer();
+    test('a bootstrap, a load of the copy or clear() never produce a pop', () async {
+      final p = withSink();
       p.applyBootstrap(2026, {'a': [[2, 2, '#BBBBBB']]});
       expect(p.lastChange, isNull);
-      p.debugHandleWs(const WsMessage(event: 'cell:updated', data: {
-        'pageId': 'a', 'year': 2026, 'month': 3, 'day': 3, 'color': '#CCCCCC', 'updatedAt': '',
-      }));
+      p.applyCopy({'a': years('a', {2026: [[3, 3, '#CCCCCC']]})});
       expect(p.lastChange, isNull);
       await p.setCell(1, 3, '#111111');
       p.clear();

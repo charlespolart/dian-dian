@@ -10,8 +10,8 @@ import 'app_dialog.dart';
 import 'press_scale.dart';
 
 /// A free account over the limit chooses which trackers stay open. The
-/// most active ones are preselected; the choice is stored on the server
-/// (`PUT /api/pages/keep`) so every device agrees. Nothing is deleted: the
+/// most active ones are preselected; the choice goes to the server with the
+/// queue (`pages.keep`) so every device agrees. Nothing is deleted: the
 /// others reopen with Premium or a new choice.
 class KeepTrackersDialog extends StatefulWidget {
   final int maxTrackers;

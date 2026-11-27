@@ -77,8 +77,9 @@ class DianDianApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => LegendsProvider()),
         ChangeNotifierProvider(create: (_) => PremiumProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        // Owns loading (bootstrap, disk snapshot, resume/reconnect resync);
-        // the three data providers above only hold state.
+        // Owns the session's data: the copy on the phone, its queue and the
+        // sync (offline sync, chantier 10); the three data providers above
+        // only hold what the screens show.
         Provider<SyncService>(
           create: (ctx) => SyncService(
             api: ApiService(),
@@ -86,7 +87,17 @@ class DianDianApp extends StatelessWidget {
             cells: ctx.read<CellsProvider>(),
             legends: ctx.read<LegendsProvider>(),
             ws: WsService(),
-          ),
+          )
+            ..onPremium = ((premium) => ctx.read<PremiumProvider>().applyServerPremium(premium))
+            ..onSettings = (settings) {
+              // The account's settings, from the copy (other phones' changes included).
+              final cursor = settings['cursor'];
+              ctx.read<ThemeProvider>().applyServerSettings(settings['theme'] as String?);
+              ctx.read<LanguageProvider>().applyServerSettings(settings['language'] as String?);
+              if (cursor is Map) {
+                ctx.read<PremiumProvider>().applyServerSettings(cursorId: cursor['id'] as String?, cursorEnabled: cursor['enabled'] as bool?);
+              }
+            },
           dispose: (_, sync) => sync.dispose(),
           lazy: false,
         ),
@@ -173,8 +184,8 @@ class _AppShellState extends State<AppShell> {
   ListEntrance _listEntrance = ListEntrance.cascade;
   String? _revealPageId;
   TrackerEntrance _trackerEntrance = TrackerEntrance.none;
-  // One session start per authentication: hydrate + bootstrap + land on
-  // the right screen. Reset on logout.
+  // One session start per authentication: show the copy + first sync + land
+  // on the right screen. Reset on logout.
   bool _sessionStarted = false;
   // Session restored from storage but not yet confirmed by the network.
   // When it flips back to confirmed, the store is revalidated.
@@ -190,9 +201,9 @@ class _AppShellState extends State<AppShell> {
     auth.addListener(_onAuthChange);
   }
 
-  /// Runs once per authenticated session. Hydrates the store from the disk
-  /// snapshot (instant first paint), kicks the network bootstrap, then lands
-  /// on the first-tracker flow, the last open tracker, or the page list.
+  /// Runs once per authenticated session. Shows the copy on the phone
+  /// (instant first paint), starts the sync, then lands on the first-tracker
+  /// flow, the last open tracker, or the page list.
   Future<void> _startSession(AuthProvider auth) async {
     try {
       await _startSessionInner(auth);
@@ -217,12 +228,13 @@ class _AppShellState extends State<AppShell> {
     final hydrated = await sync.start(userId: auth.userId!, year: year);
     if (!mounted) return;
 
-    // Anyone the snapshot already knows as active lands at once (instant
-    // first paint). Everyone else waits for the server once: new and dormant
-    // accounts get the first-tracker flow only on a confirmed "no cell at
-    // all". Offline, `activated` stays null and the normal app shows.
+    // Anyone the phone already knows as active lands at once (instant first
+    // paint). Everyone else waits for the session's first sync: the
+    // first-tracker flow runs on what the copy then says ("no cell at all"),
+    // offline too once the phone has its full copy. Without one and
+    // offline, `activated` stays null and the normal app shows.
     if (!hydrated || sync.snapshotActivated != true) {
-      await sync.ensureYear(year);
+      await sync.firstSync;
     }
     if (!mounted) return;
 
@@ -375,21 +387,17 @@ class _AppShellState extends State<AppShell> {
     if (auth.isAuthenticated && auth.userId != null && !_sessionStarted) {
       _sessionStarted = true;
       _wasOffline = auth.isOffline;
-      // Premium from the server (webhook-fed), both ways; in parallel with
-      // the session start, which does not depend on it.
-      unawaited(context.read<PremiumProvider>().checkServerSubscription());
       await _startSession(auth);
     }
     if (!mounted) return;
 
-    // Network confirmation after a pending/offline start: the snapshot may
-    // be stale, re-fetch now (deduped with any bootstrap already in flight).
+    // Network confirmation after a pending/offline start: the copy may be
+    // behind, sync now (joins a sync already on its way).
     final cameBackOnline =
         _wasOffline && auth.isAuthenticated && !auth.isOffline;
     _wasOffline = auth.isAuthenticated && auth.isOffline;
     if (cameBackOnline && _sessionStarted) {
       context.read<SyncService>().revalidate();
-      unawaited(context.read<PremiumProvider>().checkServerSubscription());
     }
 
     if (!auth.isAuthenticated && _sessionStarted) {
@@ -399,7 +407,7 @@ class _AppShellState extends State<AppShell> {
       context.read<PagesProvider>().cancelPendingDelete();
       // A session the server closed keeps its copy for the reconnection to
       // that account (offline sync, H25); a logout or a deleted account does not.
-      if (auth.sessionEnded != SessionEnd.reconnect) context.read<SyncService>().clear();
+      context.read<SyncService>().clear(keepCopy: auth.sessionEnded == SessionEnd.reconnect);
       _clearLastTracker();
     }
     if (!auth.isAuthenticated &&

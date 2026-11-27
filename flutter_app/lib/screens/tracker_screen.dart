@@ -155,16 +155,16 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
       _yearDirection = delta.sign;
       _year = newYear;
     });
-    // Synchronous pointer move; the grid paints from the store at once when
-    // the year is cached, and one bootstrap fills it otherwise.
+    // Synchronous pointer move; the grid paints from the store at once: every
+    // year is on the phone once it has its full copy.
     context.read<CellsProvider>().setYear(newYear);
     context.read<SyncService>().ensureYear(newYear);
     widget.onYearChanged?.call(newYear);
   }
 
   /// "Today": the cell editor on today's date, from any year. When the
-  /// current year is not in the store yet, its bootstrap is awaited first so
-  /// the editor shows today's real cell, not an empty one.
+  /// phone has no full copy yet, the first sync is awaited first so the
+  /// editor shows today's real cell, not an empty one.
   Future<void> _openToday() async {
     final today = DateTime.now();
     if (_year != today.year) {
@@ -274,7 +274,7 @@ class _TrackerScreenState extends State<TrackerScreen> with SingleTickerProvider
     final cellsProv = context.watch<CellsProvider>();
     final legends = context.watch<LegendsProvider>().legends;
     // Watch pages so title updates are reflected — and leave if this tracker
-    // vanished (deleted on another device, or a bootstrap pruning a stale
+    // vanished (deleted on another device, or the full copy replacing a stale
     // snapshot) instead of crashing on a missing page.
     final pagesProv = context.watch<PagesProvider>();
     if (!pagesProv.pages.any((p) => p.id == widget.pageId)) {

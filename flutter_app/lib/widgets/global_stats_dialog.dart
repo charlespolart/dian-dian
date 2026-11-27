@@ -1,15 +1,14 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../models/cell_model.dart';
 import '../models/page_model.dart';
 import '../providers/cells_provider.dart';
 import '../providers/language_provider.dart';
 import '../providers/pages_provider.dart';
 import '../providers/premium_provider.dart';
-import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import 'app_dialog.dart';
 import 'marquee_text.dart';
@@ -75,99 +74,24 @@ class _GlobalStatsContent extends StatefulWidget {
 }
 
 class _GlobalStatsContentState extends State<_GlobalStatsContent> {
-  static const _spinnerDelay = Duration(milliseconds: 250);
-
-  final _api = ApiService();
-  /// Filled dates per page for the selected range. Only dates are needed:
-  /// counts and streaks derive from them.
-  final Map<String, List<DateTime>> _daysPerPage = {};
-  bool _initialLoading = true;
-  bool _refreshing = false;
   bool _allTime = false;
-  Timer? _spinnerTimer;
 
-  @override
-  void initState() {
-    super.initState();
-    _load(initial: true);
-  }
-
-  @override
-  void dispose() {
-    _spinnerTimer?.cancel();
-    super.dispose();
-  }
-
-  /// "This year" comes straight from the store (zero requests — the page
-  /// list already holds that year). "All time" is one request returning
-  /// every filled date of every page.
-  Future<void> _load({bool initial = false}) async {
-    final fetchAllTime = _allTime;
-
-    if (!fetchAllTime) {
-      final cellsProv = context.read<CellsProvider>();
-      final results = <String, List<DateTime>>{};
-      for (final page in widget.pages) {
-        final cells = cellsProv.cellsFor(page.id, widget.year);
-        results[page.id] = [
-          if (cells != null)
-            for (final c in cells.values) DateTime(c.year, c.month, c.day),
-        ];
-      }
-      _spinnerTimer?.cancel();
-      setState(() {
-        _daysPerPage
-          ..clear()
-          ..addAll(results);
-        _initialLoading = false;
-        _refreshing = false;
-      });
-      return;
-    }
-
-    _spinnerTimer?.cancel();
-    if (!initial) {
-      _spinnerTimer = Timer(_spinnerDelay, () {
-        if (mounted) setState(() => _refreshing = true);
-      });
-    }
-
-    final results = <String, List<DateTime>>{};
-    try {
-      final response = await _api.apiFetch('/api/stats/days');
-      if (response.statusCode == 200) {
-        final byPage = jsonDecode(response.body) as Map<String, dynamic>;
-        for (final page in widget.pages) {
-          final rows = byPage[page.id] as List<dynamic>? ?? const [];
-          final days = <DateTime>[];
-          for (final r in rows) {
-            try {
-              final t = r as List<dynamic>;
-              days.add(DateTime(t[0] as int, t[1] as int, t[2] as int));
-            } catch (_) {}
-          }
-          results[page.id] = days;
-        }
-      }
-    } catch (_) {}
-
-    _spinnerTimer?.cancel();
-    if (!mounted) return;
-    // Race guard: a faster newer toggle might have already replaced our scope.
-    if (fetchAllTime != _allTime) return;
-    setState(() {
-      _daysPerPage
-        ..clear()
-        ..addAll(results);
-      _initialLoading = false;
-      _refreshing = false;
-    });
-  }
+  /// Filled dates per page for the selected range, straight from the store:
+  /// every year of every tracker is on the phone (offline sync), so "all
+  /// time" needs no request either. Counts and streaks derive from them.
+  Map<String, List<DateTime>> _daysPerPage(CellsProvider cellsProv) => {
+        for (final page in widget.pages)
+          page.id: _allTime
+              ? cellsProv.allDays(page.id)
+              : [
+                  for (final c in cellsProv.cellsFor(page.id, widget.year)?.values ?? const <CellModel>[])
+                    DateTime(c.year, c.month, c.day),
+                ],
+      };
 
   void _setAllTime(bool value) {
     if (value == _allTime) return;
     setState(() => _allTime = value);
-    _load();
   }
 
   /// Longest run of consecutive dates (dates are deduplicated first).
@@ -208,27 +132,7 @@ class _GlobalStatsContentState extends State<_GlobalStatsContent> {
       ],
     );
 
-    if (_initialLoading) {
-      return Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            header,
-            const SizedBox(height: 20),
-            SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: AppColors.accent,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
+    final daysPerPage = _daysPerPage(context.watch<CellsProvider>());
     final totalPages = widget.pages.length;
     int totalCells = 0;
     String? mostActiveName;
@@ -236,7 +140,7 @@ class _GlobalStatsContentState extends State<_GlobalStatsContent> {
     int bestStreak = 0;
 
     for (final page in widget.pages) {
-      final days = _daysPerPage[page.id] ?? const [];
+      final days = daysPerPage[page.id] ?? const [];
       totalCells += days.length;
 
       if (days.length > mostActiveCells) {
@@ -252,7 +156,7 @@ class _GlobalStatsContentState extends State<_GlobalStatsContent> {
 
     // Per-tracker breakdown
     final trackerStats = widget.pages.map((page) {
-      final days = _daysPerPage[page.id] ?? const [];
+      final days = daysPerPage[page.id] ?? const [];
       return _TrackerStat(name: page.title, count: days.length);
     }).toList()
       ..sort((a, b) => b.count.compareTo(a.count));
@@ -345,31 +249,6 @@ class _GlobalStatsContentState extends State<_GlobalStatsContent> {
         ],
       ),
         ),
-        // Subtle overlay spinner shown while the range toggle is loading.
-        // Positioned over the content rather than reserving layout space —
-        // avoids any jump when it appears/disappears.
-        if (_refreshing)
-          Positioned.fill(
-            child: IgnorePointer(
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppColors.shell.withValues(alpha: 0.85),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppColors.accent,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
       ],
     );
   }

@@ -35,8 +35,8 @@ class TrackerHarness {
     final client = MockClient((req) async => http.Response('{"error":"x"}', 404));
     final api = ApiService.custom(client: client, tokens: FakeTokens());
     final rows = [pageJson('p0', title: title)];
-    final pages = PagesProvider(api: api)..applyBootstrap(rows);
-    final legends = LegendsProvider(api: api)
+    final pages = PagesProvider()..applyBootstrap(rows);
+    final legends = LegendsProvider()
       ..applyBootstrap({
         'p0': [
           {'id': 'l1', 'pageId': 'p0', 'color': '#FFEC99', 'label': 'Sport', 'position': 0, 'createdAt': ''},
@@ -44,7 +44,7 @@ class TrackerHarness {
       })
       ..setPageId('p0');
     // The same service as the screen's, as the app's singleton is.
-    final cells = CellsProvider(api: api, audio: audio ?? AudioService.silent())
+    final cells = CellsProvider(audio: audio ?? AudioService.silent())
       ..applyBootstrap(2026, {'p0': <dynamic>[]})
       ..setContext(pageId: 'p0', year: 2026); // as the shell does before showing a tracker
     final sync = SyncService(

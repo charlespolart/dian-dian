@@ -3,7 +3,7 @@ import '../models/page_model.dart';
 
 /// The empty page a dormant account's first tracker should replace: the
 /// first page (by position) with no legend. Cells need not be checked: the
-/// flow only runs when the server reports no cell at all for the account.
+/// flow only runs when the phone's full copy has no cell at all for the account.
 String? replaceablePageId(
   List<PageModel> pages,
   List<LegendModel> Function(String pageId) legendsFor,
@@ -17,8 +17,9 @@ String? replaceablePageId(
 
 /// Whether to show the first-tracker flow instead of the usual landing.
 ///
-/// [activated] is the server's answer for this session: `null` means no
-/// answer (offline, or a backend older than 1.2.0) and never shows the flow.
+/// [activated] is what the phone's full copy says (offline sync): `null`
+/// means the phone has no full copy yet (first launch offline) and never
+/// shows the flow.
 /// [doneOnThisDevice] is the per-device, per-account flag set when the flow
 /// was finished or skipped. The free limit is respected: at the limit, the
 /// flow only runs if it can replace an empty page.

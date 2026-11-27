@@ -1,5 +1,5 @@
 /// The last cell this device changed, for the grid's pop. Never a change
-/// from another device, a bootstrap or a recolor.
+/// from another device, a load of the copy or a recolor.
 class CellChange {
   final String pageId;
   final int year;

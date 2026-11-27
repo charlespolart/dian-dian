@@ -35,9 +35,9 @@ class ListHarness {
     final client = MockClient((req) async => http.Response('{"error":"x"}', 404));
     final api = ApiService.custom(client: client, tokens: FakeTokens());
     final rows = [for (var i = 0; i < pageCount; i++) pageJson('p$i', position: i, title: 'T$i')];
-    pages = PagesProvider(api: api)..applyBootstrap(rows);
-    legends = LegendsProvider(api: api)..applyBootstrap({});
-    cells = CellsProvider(api: api, audio: AudioService.silent())
+    pages = PagesProvider()..applyBootstrap(rows);
+    legends = LegendsProvider()..applyBootstrap({});
+    cells = CellsProvider(audio: AudioService.silent())
       ..applyBootstrap(2026, {for (final r in rows) r['id'] as String: <dynamic>[]});
     premium = PremiumProvider();
     if (vip) premium.setVip(true);

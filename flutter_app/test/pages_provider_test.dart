@@ -1,168 +1,158 @@
-import 'dart:convert';
-
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:dian_dian/models/page_model.dart';
 import 'package:dian_dian/providers/pages_provider.dart';
-import 'package:dian_dian/services/api_service.dart';
 import 'package:dian_dian/services/audio_service.dart';
-import 'package:dian_dian/services/ws_service.dart';
 
 import 'helpers.dart';
 
+final _uuidV4 = RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$');
+
 void main() {
-  PagesProvider withServer(int deleteStatus) {
-    final client = MockClient((req) async {
-      if (req.method == 'DELETE') return http.Response('{"error":"x"}', deleteStatus);
-      return http.Response('{}', 200);
-    });
-    final api = ApiService.custom(client: client, tokens: FakeTokens());
-    return PagesProvider(api: api)..applyBootstrap([pageJson('a'), pageJson('b', position: 1)]);
-  }
+  late RecordingSink sink;
 
-  test('deletePage puts the page back when the server fails', () async {
-    final p = withServer(500);
-    await p.deletePage('a');
-    expect(p.pages.map((x) => x.id), containsAll(['a', 'b']));
+  PagesProvider withPages(List<Map<String, dynamic>> pages, {AudioService? audio}) =>
+      PagesProvider(audio: audio ?? AudioService.silent(), sink: sink)..applyBootstrap(pages);
+
+  setUp(() => sink = RecordingSink());
+
+  test('createPage gives the tracker at once, with an id made by the app, and writes one page.create (H2)', () async {
+    final p = withPages([pageJson('a')])..userId = 'u1';
+    final created = await p.createPage('Sport');
+    expect(created!.id, matches(_uuidV4));
+    expect((created.title, created.position, created.userId), ('Sport', 1, 'u1'));
+    expect(p.pages.map((x) => x.id), ['a', created.id]);
+    expect(sink.log, [['page.create', {'id': created.id, 'title': 'Sport'}]]);
   });
 
-  test('deletePage drops the page on 404 (already gone server-side)', () async {
-    final p = withServer(404);
-    await p.deletePage('a');
-    expect(p.pages.map((x) => x.id), ['b']);
+  test('a creation that could not be written stays on screen', () async {
+    sink.fail = true;
+    final p = withPages([pageJson('a')]);
+    final created = await p.createPage('Sport');
+    expect(created, isNotNull);
+    expect(p.pages.length, 2);
   });
 
-  test('mutationEpoch increments on local and WS changes, not on applyBootstrap', () {
-    final p = withServer(200);
-    final e0 = p.mutationEpoch;
-    p.applyBootstrap([pageJson('a')]);
-    expect(p.mutationEpoch, e0);
-    p.debugHandleWs(WsMessage(event: 'page:created', data: pageJson('c', position: 2)));
-    expect(p.mutationEpoch, e0 + 1);
-    expect(p.pages.map((x) => x.id), containsAll(['a', 'c']));
-    p.debugHandleWs(const WsMessage(event: 'pages:reordered', data: {'ids': ['c', 'a']}));
-    expect(p.mutationEpoch, e0 + 2);
-    expect(p.pages.map((x) => x.id), ['c', 'a']);
-  });
-
-  PagesProvider withClient(MockClient client, List<Map<String, dynamic>> pages) =>
-      PagesProvider(api: ApiService.custom(client: client, tokens: FakeTokens()))..applyBootstrap(pages);
-
-  test('createFirstTracker sends title, legends and position, stores the page and returns its legends', () async {
-    final requests = <http.Request>[];
-    final client = MockClient((req) async {
-      requests.add(req);
-      return http.Response(jsonEncode({
-        ...pageJson('n', position: 2, title: 'Humeur'),
-        'legends': [legendJson('l1', 'n', '#FFEC99', 0), legendJson('l2', 'n', '#FFD43B', 1)],
-        'replaced': null,
-      }), 201);
-    });
-    final p = withClient(client, [pageJson('a'), pageJson('b', position: 1)]);
+  test('createFirstTracker writes the tracker with its legends in one page.create', () async {
+    final p = withPages([pageJson('a'), pageJson('b', position: 1)]);
     final created = await p.createFirstTracker(
       title: 'Humeur',
       legends: const [(color: '#FFEC99', label: 'Génial'), (color: '#FFD43B', label: 'Super')],
     );
-    expect(requests.single.method, 'POST');
-    expect(requests.single.url.path, '/api/pages');
-    final body = jsonDecode(requests.single.body) as Map<String, dynamic>;
-    expect(body['title'], 'Humeur');
-    expect(body['position'], 2);
-    expect(body.containsKey('replaces'), isFalse);
-    expect(body['legends'], [
-      {'color': '#FFEC99', 'label': 'Génial'},
-      {'color': '#FFD43B', 'label': 'Super'},
+    final page = created!.page;
+    expect(p.pages.map((x) => x.id), ['a', 'b', page.id]);
+    expect(created.legends.map((l) => (l.color, l.label, l.position, l.pageId)), [
+      ('#FFEC99', 'Génial', 0, page.id),
+      ('#FFD43B', 'Super', 1, page.id),
     ]);
-    expect(created!.page.id, 'n');
-    expect(created.legends.map((l) => l.id), ['l1', 'l2']);
-    expect(p.pages.map((x) => x.id), ['a', 'b', 'n']);
+    expect(created.legends.every((l) => _uuidV4.hasMatch(l.id)), isTrue);
+    expect(sink.log, [
+      ['page.create', {
+        'id': page.id,
+        'title': 'Humeur',
+        'legends': [
+          {'id': created.legends[0].id, 'color': '#FFEC99', 'label': 'Génial'},
+          {'id': created.legends[1].id, 'color': '#FFD43B', 'label': 'Super'},
+        ],
+      }],
+    ]);
   });
 
-  test('createFirstTracker with replaces omits position, drops the replaced page and keeps its slot', () async {
-    late Map<String, dynamic> sent;
-    final client = MockClient((req) async {
-      sent = jsonDecode(req.body) as Map<String, dynamic>;
-      return http.Response(jsonEncode({
-        ...pageJson('n', position: 0, title: 'Humeur'), 'legends': <dynamic>[], 'replaced': 'a',
-      }), 201);
-    });
-    final p = withClient(client, [pageJson('a'), pageJson('b', position: 1)]);
+  test('createFirstTracker with replaces deletes the empty tracker, creates the new one and puts it in its place', () async {
+    final p = withPages([pageJson('a'), pageJson('b', position: 1)]);
     final created = await p.createFirstTracker(title: 'Humeur', legends: const [], replaces: 'a');
-    expect(sent['replaces'], 'a');
-    expect(sent.containsKey('position'), isFalse);
-    expect(created, isNotNull);
-    expect(p.pages.map((x) => x.id), ['n', 'b']);
+    final id = created!.page.id;
+    expect(p.pages.map((x) => x.id), [id, 'b']);
+    expect(sink.kinds, ['page.delete', 'page.create', 'pages.reorder']);
+    expect(sink.changes.first.$2, {'id': 'a'});
+    expect(sink.changes.last.$2, {'ids': [id, 'b']});
   });
 
-  test('createFirstTracker retries once without replaces when the server says 404 or 409', () async {
-    final bodies = <Map<String, dynamic>>[];
-    final client = MockClient((req) async {
-      final body = jsonDecode(req.body) as Map<String, dynamic>;
-      bodies.add(body);
-      if (body.containsKey('replaces')) return http.Response('{"error":"Page is not empty"}', 409);
-      return http.Response(jsonEncode({...pageJson('n', position: 1), 'legends': <dynamic>[], 'replaced': null}), 201);
-    });
-    final p = withClient(client, [pageJson('a')]);
-    final created = await p.createFirstTracker(title: 'X', legends: const [], replaces: 'a');
-    expect(bodies.length, 2);
-    expect(bodies.last.containsKey('replaces'), isFalse);
-    expect(bodies.last['position'], 1);
-    expect(created!.page.id, 'n');
-    expect(p.pages.map((x) => x.id), ['a', 'n'], reason: 'the page that could not be replaced stays');
+  test('createFirstTracker whose replaced tracker is gone creates a plain one, unless the caller forbids it (free limit)', () async {
+    final p = withPages([pageJson('a')]);
+    final plain = await p.createFirstTracker(title: 'X', legends: const [], replaces: 'gone');
+    expect(p.pages.map((x) => x.id), ['a', plain!.page.id]);
+    expect(sink.kinds, ['page.create']);
+
+    sink.changes.clear();
+    final atLimit = withPages([pageJson('a'), pageJson('b', position: 1), pageJson('c', position: 2)]);
+    expect(await atLimit.createFirstTracker(title: 'X', legends: const [], replaces: 'gone', fallbackWithoutReplaces: false), isNull);
+    expect(atLimit.pages.map((x) => x.id), ['a', 'b', 'c']);
+    expect(sink.changes, isEmpty);
   });
 
-  test('createFirstTracker returns null and changes nothing on a server error', () async {
-    final client = MockClient((req) async => http.Response('{"error":"x"}', 500));
-    final p = withClient(client, [pageJson('a')]);
-    expect(await p.createFirstTracker(title: 'X', legends: const []), isNull);
-    expect(p.pages.map((x) => x.id), ['a']);
+  test('createFirstTracker uses the clientId as the tracker id; the same gesture again finds it', () async {
+    const id = '11111111-1111-4111-8111-111111111111';
+    final p = withPages(const []);
+    final created = await p.createFirstTracker(title: 'X', legends: const [(color: '#FFEC99', label: 'G')], clientId: id);
+    expect(created!.page.id, id);
+    final again = await p.createFirstTracker(title: 'X', legends: const [(color: '#FFEC99', label: 'G')], clientId: id);
+    expect(again!.page.id, id);
+    expect(again.legends, isEmpty, reason: 'the caller keeps the legends it shows');
+    expect(p.pages.length, 1);
+    expect(sink.kinds, ['page.create'], reason: 'no twin');
   });
 
-  test('createFirstTracker does not fall back without replaces when the caller forbids it (free limit)', () async {
-    var calls = 0;
-    final client = MockClient((req) async {
-      calls++;
-      return http.Response('{"error":"Page is not empty"}', 409);
-    });
-    final p = withClient(client, [pageJson('a'), pageJson('b', position: 1), pageJson('c', position: 2)]);
-    final created = await p.createFirstTracker(
-      title: 'X', legends: const [], replaces: 'a', fallbackWithoutReplaces: false,
-    );
-    expect(created, isNull);
-    expect(calls, 1, reason: 'no second request');
-    expect(p.pages.map((x) => x.id), ['a', 'b', 'c']);
-  });
-
-  test('keepFree sends the ids, flags them locally and clears the others', () async {
-    late Map<String, dynamic> sent;
-    late String path;
-    final client = MockClient((req) async {
-      path = '${req.method} ${req.url.path}';
-      sent = jsonDecode(req.body) as Map<String, dynamic>;
-      return http.Response('{"ok":true}', 200);
-    });
-    final p = withClient(client, [pageJson('a', keepFree: true), pageJson('b', position: 1), pageJson('c', position: 2)]);
-    final ok = await p.keepFree(['b', 'c']);
-    expect(ok, isTrue);
-    expect(path, 'PUT /api/pages/keep');
-    expect(sent, {'ids': ['b', 'c']});
+  test('keepFree flags the kept trackers, clears the others and writes one pages.keep', () async {
+    final p = withPages([pageJson('a', keepFree: true), pageJson('b', position: 1), pageJson('c', position: 2)]);
+    expect(await p.keepFree(['b', 'c']), isTrue);
     expect(p.pages.map((x) => '${x.id}:${x.keepFree}'), ['a:false', 'b:true', 'c:true']);
+    expect(sink.log, [['pages.keep', {'ids': ['b', 'c']}]]);
   });
 
-  test('keepFree reverts the flags when the server refuses', () async {
-    final client = MockClient((req) async => http.Response('{"error":"x"}', 500));
-    final p = withClient(client, [pageJson('a', keepFree: true), pageJson('b', position: 1)]);
-    expect(await p.keepFree(['b']), isFalse);
-    expect(p.pages.map((x) => '${x.id}:${x.keepFree}'), ['a:true', 'b:false']);
+  test('updatePage renames at once and writes the title only', () async {
+    final p = withPages([pageJson('a', title: 'Old')]);
+    await p.updatePage('a', {'title': 'New'});
+    expect(p.pages.single.title, 'New');
+    expect(sink.log, [['page.update', {'id': 'a', 'title': 'New'}]]);
   });
 
-  test('pages:kept from another device applies the choice', () {
-    final p = withServer(200);
-    p.debugHandleWs(const WsMessage(event: 'pages:kept', data: {'ids': ['b']}));
-    expect(p.pages.map((x) => '${x.id}:${x.keepFree}'), ['a:false', 'b:true']);
+  test('updatePage changes the palette and writes it', () async {
+    final p = withPages([pageJson('a')]);
+    final palette = [['#111111', '#222222']];
+    await p.updatePage('a', {'palette': palette});
+    expect(p.pages.single.palette, palette);
+    expect(sink.log, [['page.update', {'id': 'a', 'palette': palette}]]);
+  });
+
+  test('reorderPages reorders at once and writes pages.reorder', () async {
+    final p = withPages([pageJson('a'), pageJson('b', position: 1), pageJson('c', position: 2)]);
+    await p.reorderPages(['c', 'a', 'b']);
+    expect(p.pages.map((x) => '${x.id}:${x.position}'), ['c:0', 'a:1', 'b:2']);
+    expect(sink.log, [['pages.reorder', {'ids': ['c', 'a', 'b']}]]);
+  });
+
+  test('deletePage removes at once and writes page.delete', () async {
+    final p = withPages([pageJson('a'), pageJson('b', position: 1)]);
+    await p.deletePage('a');
+    expect(p.pages.map((x) => x.id), ['b']);
+    expect(sink.log, [['page.delete', {'id': 'a'}]]);
+  });
+
+  test('a soft delete writes nothing until its delay is over; an undo writes nothing', () async {
+    const delay = Duration(milliseconds: 40);
+    final p = withPages([pageJson('a'), pageJson('b', position: 1)]);
+    p.softDeletePage(p.pages.first, delay: delay);
+    expect(p.pages.map((x) => x.id), ['b']);
+    p.undoDeletePage();
+    await Future<void>.delayed(delay * 2);
+    expect(sink.changes, isEmpty);
+    expect(p.pages.map((x) => x.id), containsAll(['a', 'b']));
+
+    p.softDeletePage(p.pages.firstWhere((x) => x.id == 'a'), delay: delay);
+    expect(sink.changes, isEmpty);
+    await Future<void>.delayed(delay * 2);
+    expect(sink.log, [['page.delete', {'id': 'a'}]]);
+    expect(p.pendingDeletePage, isNull);
+  });
+
+  test('a load of the copy keeps a tracker whose deletion is still undoable hidden', () {
+    final p = withPages([pageJson('a'), pageJson('b', position: 1)]);
+    p.softDeletePage(p.pages.first);
+    p.applyPages([PageModel.fromJson(pageJson('a')), PageModel.fromJson(pageJson('b', position: 1))]);
+    expect(p.pages.map((x) => x.id), ['b']);
+    p.cancelPendingDelete();
   });
 
   test('PageModel reads activity and keepFree, defaults when absent (snapshot of 1.3.0)', () {
@@ -177,60 +167,14 @@ void main() {
     expect(PageModel.fromJson(full.toJson()).keepFree, isTrue, reason: 'round-trips through the snapshot');
   });
 
-  test('createFirstTracker forwards the clientId and accepts a 200 replay', () async {
-    late Map<String, dynamic> sent;
-    final client = MockClient((req) async {
-      sent = jsonDecode(req.body) as Map<String, dynamic>;
-      return http.Response(jsonEncode({...pageJson('n', title: 'X'), 'legends': <dynamic>[], 'replaced': null}), 200);
-    });
-    final p = withClient(client, const []);
-    final created = await p.createFirstTracker(
-      title: 'X', legends: const [], clientId: '11111111-1111-4111-8111-111111111111',
-    );
-    expect(sent['clientId'], '11111111-1111-4111-8111-111111111111');
-    expect(created!.page.id, 'n');
-    expect(p.pages.single.id, 'n');
-  });
-
-  test('a created page plays trackerCreate; a refused one plays nothing', () async {
+  test('a created tracker plays trackerCreate, the first tracker too; a load of the copy plays nothing', () async {
     SharedPreferences.setMockInitialValues({});
     final rec = await recordingAudio();
-    var status = 201;
-    final client = MockClient((req) async => status == 201
-        ? http.Response(jsonEncode(pageJson('n', position: 0, title: 'New')), 201)
-        : http.Response('{"error":"x"}', status));
-    final p = PagesProvider(api: ApiService.custom(client: client, tokens: FakeTokens()), audio: rec.service);
-    expect(await p.createPage('New'), isNotNull);
-    status = 500;
-    expect(await p.createPage('Nope'), isNull);
-    expect(rec.players.played, [SoundCue.trackerCreate]);
-  });
-
-  test('a creation the socket inserted first still sounds once: it is this user\'s gesture', () async {
-    SharedPreferences.setMockInitialValues({});
-    final rec = await recordingAudio();
-    late PagesProvider p;
-    final client = MockClient((req) async {
-      // The server broadcasts page:created to this device before answering.
-      p.debugHandleWs(WsMessage(event: 'page:created', data: pageJson('n', position: 0, title: 'New')));
-      return http.Response(jsonEncode(pageJson('n', position: 0, title: 'New')), 201);
-    });
-    p = PagesProvider(api: ApiService.custom(client: client, tokens: FakeTokens()), audio: rec.service);
-    expect(await p.createPage('New'), isNotNull);
-    expect(p.pages.map((x) => x.id), ['n'], reason: 'inserted once');
-    expect(rec.players.played, [SoundCue.trackerCreate]);
-  });
-
-  test('the first tracker plays trackerCreate too; a page created on another device plays nothing', () async {
-    SharedPreferences.setMockInitialValues({});
-    final rec = await recordingAudio();
-    final client = MockClient((req) async =>
-        http.Response(jsonEncode({...pageJson('n', position: 0), 'legends': <dynamic>[], 'replaced': null}), 201));
-    final p = PagesProvider(api: ApiService.custom(client: client, tokens: FakeTokens()), audio: rec.service);
-    expect(await p.createFirstTracker(title: 'X', legends: const []), isNotNull);
-    expect(rec.players.played, [SoundCue.trackerCreate]);
-    p.debugHandleWs(WsMessage(event: 'page:created', data: pageJson('c', position: 2)));
+    final p = withPages(const [], audio: rec.service);
+    await p.createPage('New');
+    await p.createFirstTracker(title: 'X', legends: const []);
+    p.applyPages([PageModel.fromJson(pageJson('c', position: 2))]);
     await Future<void>.delayed(Duration.zero);
-    expect(rec.players.played, [SoundCue.trackerCreate], reason: 'a remote creation is not this user\'s gesture');
+    expect(rec.players.played, [SoundCue.trackerCreate, SoundCue.trackerCreate]);
   });
 }

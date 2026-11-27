@@ -1,15 +1,11 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:dian_dian/providers/language_provider.dart';
 import 'package:dian_dian/providers/pages_provider.dart';
-import 'package:dian_dian/services/api_service.dart';
+import 'package:dian_dian/services/audio_service.dart';
 import 'package:dian_dian/widgets/keep_trackers_dialog.dart';
 
 import 'helpers.dart';
@@ -17,16 +13,12 @@ import 'helpers.dart';
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  late List<http.Request> requests;
+  late RecordingSink sink;
   late PagesProvider pages;
 
   Widget host() {
-    requests = [];
-    final client = MockClient((req) async {
-      requests.add(req);
-      return http.Response('{"ok":true}', 200, headers: const {'content-type': 'application/json; charset=utf-8'});
-    });
-    pages = PagesProvider(api: ApiService.custom(client: client, tokens: FakeTokens()))
+    sink = RecordingSink();
+    pages = PagesProvider(audio: AudioService.silent(), sink: sink)
       ..applyBootstrap([
         pageJson('mood', title: 'Mood', recentCells: 40, lastCellAt: '2026-10-15T00:00:00Z'),
         pageJson('sleep', title: 'Sleep', position: 1, recentCells: 12, lastCellAt: '2026-10-10T00:00:00Z'),
@@ -95,10 +87,8 @@ void main() {
     await tester.pump();
     await tester.tap(find.text('Keep these 3'));
     await tester.pumpAndSettle();
-    final put = requests.single;
-    expect(put.method, 'PUT');
-    expect(put.url.path, '/api/pages/keep');
-    expect((jsonDecode(put.body) as Map)['ids'], unorderedEquals(['mood', 'gym', 'water']));
+    expect(sink.kinds, ['pages.keep']);
+    expect(sink.changes.single.$2['ids'], unorderedEquals(['mood', 'gym', 'water']));
     expect(find.text('Keep these 3'), findsNothing, reason: 'closed');
   });
 
@@ -108,6 +98,6 @@ void main() {
     await tester.pump();
     await tester.tap(find.text('Keep these 3'));
     await tester.pumpAndSettle();
-    expect(requests, isEmpty);
+    expect(sink.changes, isEmpty);
   });
 }

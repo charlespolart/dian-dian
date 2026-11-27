@@ -1,7 +1,7 @@
+import '../data/change_sink.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 
 class ThemeProvider extends ChangeNotifier {
@@ -50,6 +50,6 @@ class ThemeProvider extends ChangeNotifier {
     await prefs.setString(_prefKey, type.name);
     notifyListeners();
     // Sync to server (fire-and-forget)
-    ApiService().apiFetch('/api/auth/settings', method: 'PATCH', body: {'theme': type.name}).ignore();
+    SettingsSink.record('theme', type.name).ignore();
   }
 }

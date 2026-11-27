@@ -220,8 +220,9 @@ class _FirstTrackerScreenState extends State<FirstTrackerScreen> {
           clientId: _clientId,
         );
     if (created == null || !mounted) return created;
-    // Point the store at the new page, as the page list would have.
-    legends.setLegends(created.page.id, created.legends);
+    // Point the store at the new page, as the page list would have. A
+    // tracker found again by its id comes without legends: it keeps its own.
+    if (created.legends.isNotEmpty) legends.setLegends(created.page.id, created.legends);
     legends.setPageId(created.page.id);
     context.read<CellsProvider>().setContext(
       pageId: created.page.id,
@@ -237,9 +238,8 @@ class _FirstTrackerScreenState extends State<FirstTrackerScreen> {
     final today = widget.now();
     final cells = context.read<CellsProvider>();
     cells.setContext(pageId: created.page.id, year: today.year);
+    // Written on the phone at once, offline too; the server gets it with the queue.
     await cells.setCell(today.month, today.day, color);
-    // setCell reverts silently when the server refuses: ask the store.
-    if (cells.getCell(today.month, today.day)?.color != color) return false;
     _todayColor = color;
     await FirstTrackerScreen.markDone(widget.userId);
     return true;

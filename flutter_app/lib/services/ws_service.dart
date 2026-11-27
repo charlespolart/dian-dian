@@ -36,7 +36,7 @@ class WsService {
   bool _hadSessionConnect = false;
 
   /// Fired after the socket re-authenticates following a drop. The sync layer
-  /// uses it to re-fetch state that WS events could not deliver meanwhile.
+  /// uses it to sync what the socket could not announce meanwhile.
   VoidCallback? onReconnected;
 
   final List<WsListener> _listeners = [];

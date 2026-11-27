@@ -1,25 +1,21 @@
-import 'dart:convert';
-
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:dian_dian/models/legend_model.dart';
 import 'package:dian_dian/providers/legends_provider.dart';
-import 'package:dian_dian/services/api_service.dart';
 import 'package:dian_dian/services/audio_service.dart';
-import 'package:dian_dian/services/ws_service.dart';
 
 import 'helpers.dart';
 
 Map<String, dynamic> legend(String id, String pageId, String color, int pos) =>
     {'id': id, 'pageId': pageId, 'color': color, 'label': id, 'position': pos, 'createdAt': ''};
 
+final _uuidV4 = RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$');
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  LegendsProvider loaded() => LegendsProvider()
+  LegendsProvider loaded({RecordingSink? sink}) => LegendsProvider(audio: AudioService.silent(), sink: sink)
     ..applyBootstrap({
       'a': [legend('l1', 'a', '#AAAAAA', 0), legend('l2', 'a', '#BBBBBB', 1)],
       'b': <dynamic>[],
@@ -43,43 +39,6 @@ void main() {
     expect(notified, 1);
   });
 
-  test('legends:reordered uses ids (previously ignored: expected a legends list)', () {
-    final p = loaded()..setPageId('a');
-    p.debugHandleWs(const WsMessage(event: 'legends:reordered', data: {'pageId': 'a', 'ids': ['l2', 'l1']}));
-    expect(p.legends.map((l) => l.id), ['l2', 'l1']);
-  });
-
-  test('legends:reordered keeps legends missing from ids at the end', () {
-    final p = loaded()..setPageId('a');
-    p.debugHandleWs(const WsMessage(event: 'legends:reordered', data: {'pageId': 'a', 'ids': ['l2']}));
-    expect(p.legends.map((l) => l.id), ['l2', 'l1']);
-  });
-
-  test('legends:recolored uses colorMap (previously ignored)', () {
-    final p = loaded()..setPageId('a');
-    p.debugHandleWs(const WsMessage(event: 'legends:recolored', data: {
-      'pageId': 'a', 'colorMap': {'#AAAAAA': '#111111'},
-    }));
-    expect(p.legends.first.color, '#111111');
-    expect(p.legends.last.color, '#BBBBBB');
-  });
-
-  test('legend events apply to non-current pages too (card previews stay fresh)', () {
-    final p = loaded()..setPageId('a');
-    p.debugHandleWs(WsMessage(event: 'legend:created', data: legend('l3', 'b', '#CCCCCC', 0)));
-    expect(p.legendsFor('b').length, 1);
-    p.debugHandleWs(WsMessage(event: 'legend:updated', data: legend('l3', 'b', '#DDDDDD', 0)));
-    expect(p.legendsFor('b').first.color, '#DDDDDD');
-    p.debugHandleWs(const WsMessage(event: 'legend:deleted', data: {'id': 'l3', 'pageId': 'b'}));
-    expect(p.legendsFor('b'), isEmpty);
-  });
-
-  test('legend:created is idempotent (own echo from the server)', () {
-    final p = loaded()..setPageId('a');
-    p.debugHandleWs(WsMessage(event: 'legend:created', data: legend('l1', 'a', '#AAAAAA', 0)));
-    expect(p.legends.length, 2);
-  });
-
   test('applyBootstrap replaces everything; clear empties', () {
     final p = loaded();
     p.applyBootstrap({'c': [legend('l9', 'c', '#000000', 0)]});
@@ -90,55 +49,77 @@ void main() {
     expect(p.currentPageId, isNull);
   });
 
-  test('setLegends replaces a page list and bumps the epoch', () {
+  test('applyCopy replaces every page with the copy', () {
+    final p = loaded()..setPageId('a');
+    p.applyCopy({'c': [LegendModel.fromJson(legend('l9', 'c', '#000000', 0))]});
+    expect(p.legendsFor('a'), isEmpty);
+    expect(p.legendsFor('c').single.id, 'l9');
+    expect(p.currentPageId, 'a', reason: 'the page on screen stays');
+  });
+
+  test('setLegends replaces a page list', () {
     final p = loaded();
-    final e0 = p.mutationEpoch;
     p.setLegends('b', [LegendModel.fromJson(legend('l9', 'b', '#999999', 0))]);
     expect(p.legendsFor('b').single.id, 'l9');
-    expect(p.mutationEpoch, e0 + 1);
   });
 
-  test('page:created carrying legends fills that page (first tracker made on another device)', () {
-    final p = loaded();
-    p.debugHandleWs(WsMessage(event: 'page:created', data: {
-      'id': 'c', 'userId': 'u1', 'title': 'Humeur', 'position': 2, 'palette': null, 'createdAt': '',
-      'legends': [legend('l5', 'c', '#FFEC99', 0), legend('l6', 'c', '#FFD43B', 1)],
-      'replaced': null,
-    }));
-    expect(p.legendsFor('c').map((l) => l.id), ['l5', 'l6']);
+  test('createLegend shows it at once with an id made by the app and writes one legend.create', () async {
+    final sink = RecordingSink();
+    final p = loaded(sink: sink)..setPageId('a');
+    await p.createLegend('#CCCCCC', 'Sport');
+    final created = p.legends.last;
+    expect((created.color, created.label, created.position), ('#CCCCCC', 'Sport', 2));
+    expect(created.id, matches(_uuidV4));
+    expect(sink.log, [['legend.create', {'id': created.id, 'pageId': 'a', 'color': '#CCCCCC', 'label': 'Sport'}]]);
   });
 
-  test('page:created without legends (backend < 1.2.0) changes nothing', () {
-    final p = loaded();
-    p.debugHandleWs(const WsMessage(event: 'page:created', data: {
-      'id': 'c', 'userId': 'u1', 'title': 'T', 'position': 2, 'palette': null, 'createdAt': '',
-    }));
-    expect(p.legendsFor('c'), isEmpty);
+  test('a new colour is one change: legend.update with the colour', () async {
+    final sink = RecordingSink();
+    final p = loaded(sink: sink)..setPageId('a');
+    await p.updateLegend('l1', color: '#111111');
+    expect(p.legends.first.color, '#111111');
+    expect(sink.log, [['legend.update', {'id': 'l1', 'color': '#111111'}]]);
   });
 
-  test('page:deleted forgets the legends of that page', () {
-    final p = loaded();
-    p.debugHandleWs(const WsMessage(event: 'page:deleted', data: {'id': 'a'}));
-    expect(p.legendsFor('a'), isEmpty);
+  test('a rename writes legend.update with the label only', () async {
+    final sink = RecordingSink();
+    final p = loaded(sink: sink)..setPageId('a');
+    await p.updateLegend('l2', label: 'Lu');
+    expect(p.legends.last.label, 'Lu');
+    expect(sink.log, [['legend.update', {'id': 'l2', 'label': 'Lu'}]]);
   });
 
-  test('legend:created echoes of legends already set by page:created do not duplicate them', () {
-    final p = loaded();
-    p.debugHandleWs(WsMessage(event: 'page:created', data: {
-      'id': 'c', 'userId': 'u1', 'title': 'Humeur', 'position': 2, 'palette': null, 'createdAt': '',
-      'legends': [legend('l5', 'c', '#FFEC99', 0), legend('l6', 'c', '#FFD43B', 1)],
-      'replaced': null,
-    }));
-    p.debugHandleWs(WsMessage(event: 'legend:created', data: legend('l5', 'c', '#FFEC99', 0)));
-    p.debugHandleWs(WsMessage(event: 'legend:created', data: legend('l6', 'c', '#FFD43B', 1)));
-    expect(p.legendsFor('c').map((l) => l.id), ['l5', 'l6']);
+  test('deleteLegend and reorderLegends write legend.delete and legends.reorder', () async {
+    final sink = RecordingSink();
+    final p = loaded(sink: sink)..setPageId('a');
+    await p.reorderLegends(['l2', 'l1']);
+    expect(p.legends.map((l) => l.id), ['l2', 'l1']);
+    await p.deleteLegend('l1');
+    expect(p.legends.map((l) => l.id), ['l2']);
+    expect(sink.log, [
+      ['legends.reorder', {'pageId': 'a', 'ids': ['l2', 'l1']}],
+      ['legend.delete', {'id': 'l1'}],
+    ]);
+  });
+
+  test('reorder keeps legends missing from ids at the end', () async {
+    final p = loaded(sink: RecordingSink())..setPageId('a');
+    await p.reorderLegends(['l2']);
+    expect(p.legends.map((l) => l.id), ['l2', 'l1']);
+  });
+
+  test('a change that could not be written stays on screen', () async {
+    final sink = RecordingSink()..fail = true;
+    final p = loaded(sink: sink)..setPageId('a');
+    await p.createLegend('#CCCCCC', 'Sport');
+    await p.deleteLegend('l1');
+    expect(p.legends.map((l) => l.label), ['l2', 'Sport']);
   });
 
   test('a created legend plays legendAdd', () async {
     SharedPreferences.setMockInitialValues({});
     final rec = await recordingAudio();
-    final client = MockClient((req) async => http.Response(jsonEncode(legend('l9', 'a', '#ff0000', 2)), 201));
-    final p = LegendsProvider(api: ApiService.custom(client: client, tokens: FakeTokens()), audio: rec.service)
+    final p = LegendsProvider(audio: rec.service, sink: RecordingSink())
       ..applyBootstrap({'a': <dynamic>[]})
       ..setPageId('a');
     await p.createLegend('#ff0000', 'Sport');

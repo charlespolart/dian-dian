@@ -163,7 +163,7 @@ class _PageListScreenState extends State<PageListScreen> {
       _selectedYear += delta;
     });
     widget.onYearChanged(_selectedYear);
-    // Instant when the year is cached; one bootstrap request otherwise.
+    // Instant: every year is on the phone once it has its full copy.
     context.read<SyncService>().ensureYear(_selectedYear);
   }
 
