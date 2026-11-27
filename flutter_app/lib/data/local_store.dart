@@ -672,13 +672,14 @@ class LocalStore {
     await batch.commit(noResult: true);
   }
 
-  Future<List<SyncOutcome>> takeOutcomes() {
-    return _db.transaction((txn) async {
-      final rows = await txn.query('outcomes', orderBy: 'seq');
-      await txn.delete('outcomes');
-      return [for (final r in rows) SyncOutcome.fromJson((jsonDecode(r['json'] as String) as Map).cast<String, dynamic>())];
-    });
-  }
+  /// What was not kept and not told yet (kept across a restart).
+  Future<List<SyncOutcome>> storedOutcomes() async => [
+        for (final r in await _db.query('outcomes', orderBy: 'seq'))
+          SyncOutcome.fromJson((jsonDecode(r['json'] as String) as Map).cast<String, dynamic>()),
+      ];
+
+  /// Told: forget it.
+  Future<void> clearOutcomes() => _db.delete('outcomes');
 
   // ---------------------------------------------------------------------------
 
