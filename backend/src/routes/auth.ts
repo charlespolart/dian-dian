@@ -4,6 +4,7 @@ import * as argon2 from 'argon2';
 import { db } from '../db/index.js';
 import { users, refreshTokens, passwordResetTokens, subscriptions, oauthAccounts, endedSessions, sessions } from '../db/schema.js';
 import { newSession, type EndReason } from '../lib/sessions.js';
+import { closeSessions } from '../lib/closeSessions.js';
 import { and } from 'drizzle-orm';
 import { signAccessToken, generateRefreshToken, hashToken } from '../lib/jwt.js';
 import { validate } from '../middleware/validate.js';
@@ -286,8 +287,14 @@ router.post('/reset-password', validate(z.object({
     }
 
     const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
-    await db.update(users).set({ passwordHash }).where(eq(users.id, user.id));
-    await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, user.id));
+    // A changed password closes every session of the account, in the same
+    // step: whoever had the old one is out (case 51).
+    const closing = await db.transaction(async (tx) => {
+      await tx.update(users).set({ passwordHash }).where(eq(users.id, user.id));
+      await tx.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, user.id));
+      return closeSessions(tx, user.id, { reason: 'password_changed' });
+    });
+    closing.afterCommit();
 
     res.json({ ok: true });
   } catch (err) {
@@ -303,16 +310,13 @@ router.delete('/account', requireAuth, async (req, res) => {
 
     // Cascade delete handles pages, cells, legends, tokens. Its sessions are
     // remembered as ended by a deletion: another phone of the account learns
-    // it at its next renewal and erases its copy (H24).
-    await db.transaction(async (tx) => {
-      const tokens = await tx.select({ tokenHash: refreshTokens.tokenHash, sessionId: refreshTokens.sessionId })
-        .from(refreshTokens).where(eq(refreshTokens.userId, req.userId!));
-      if (tokens.length > 0) {
-        await tx.insert(endedSessions).values(tokens.map((t) => ({ tokenHash: t.tokenHash, sessionId: t.sessionId, reason: 'account_deleted' })))
-          .onConflictDoNothing();
-      }
+    // it at its next request or renewal and erases its copy (H24, case 50).
+    const closing = await db.transaction(async (tx) => {
+      const ended = await closeSessions(tx, req.userId!, { reason: 'account_deleted' });
       await tx.delete(users).where(eq(users.id, req.userId!));
+      return ended;
     });
+    closing.afterCommit();
 
     res.clearCookie('refreshToken', { path: '/api/auth' });
 
@@ -435,6 +439,21 @@ router.patch('/settings', requireAuth, validate(settingsSchema), async (req, res
     res.json({ ok: true });
   } catch (err) {
     console.error('Update settings error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// « Déconnecter mes autres appareils » (case 52): every session of the
+// account but this one ends, saying so. A token issued before sessions had
+// ids cannot say which one is "this one": 401, the app renews and asks again.
+router.post('/sessions/close-others', requireAuth, async (req, res) => {
+  try {
+    if (!req.sessionId) { res.status(401).json({ error: 'Renew the session first' }); return; }
+    const closing = await db.transaction((tx) => closeSessions(tx, req.userId!, { except: req.sessionId, reason: 'session_revoked' }));
+    closing.afterCommit();
+    res.json({ closed: closing.closed.length });
+  } catch (err) {
+    console.error('Close other sessions error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });

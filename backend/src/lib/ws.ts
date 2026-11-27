@@ -101,6 +101,19 @@ export function notifySync(userId: string, rev?: number) {
   broadcast(userId, 'sync', rev === undefined ? {} : { rev });
 }
 
+/**
+ * The live channels of closed sessions (chantier 9): each is told why, then
+ * closed — it no longer hears the account.
+ */
+export function closeSessionSockets(sessionIds: string[], code: string) {
+  const closing = new Set(sessionIds);
+  for (const [ws, sessionId] of socketSession) {
+    if (!closing.has(sessionId)) continue;
+    if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ event: 'session:ended', data: { code } }));
+    ws.close(4003, 'Session ended');
+  }
+}
+
 export function broadcast(userId: string, event: string, data: unknown, excludeWs?: WebSocket) {
   const userClients = clients.get(userId);
   if (!userClients) return;

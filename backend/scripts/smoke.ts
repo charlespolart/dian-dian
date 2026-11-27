@@ -18,7 +18,7 @@
  */
 import 'dotenv/config';
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import postgres from 'postgres';
 import WebSocket from 'ws';
@@ -473,6 +473,58 @@ async function main() {
     await send([mut('page.delete', { id: legendsTracker })]);
     // The rest of the suite expects this order, and no extra day on the first tracker.
     await send([mut('pages.reorder', { ids: [page2, pageId] }), mut('cell.clear', { pageId, year: 2026, month: 4, day: 1 })]);
+  }
+
+  // --- closing sessions, and saying why (chantier 9, lot 1, task 2) --------
+  {
+    const mail = `smoke-sessions-${Date.now()}@example.com`;
+    const a = (await call('POST', '/api/auth/register', { email: mail, password }, false)).json;
+    const b = (await call('POST', '/api/auth/login', { email: mail, password }, false)).json;
+    const c = (await call('POST', '/api/auth/login', { email: mail, password }, false)).json;
+    const as = (token: string, method: string, path: string, body?: unknown) => fetch(`${BASE}${path}`, {
+      method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const socket = new WebSocket(`${BASE.replace(/^http/, 'ws')}/ws`);
+    const heard: { event: string; data: Json }[] = [];
+    let socketClosed = false;
+    await new Promise<void>((resolve, reject) => {
+      socket.on('open', () => socket.send(JSON.stringify({ type: 'auth', token: b.accessToken })));
+      socket.on('message', (raw) => {
+        const m = JSON.parse(String(raw)) as { event: string; data: Json };
+        heard.push(m);
+        if (m.event === 'auth:ok') resolve();
+      });
+      socket.on('close', () => { socketClosed = true; });
+      socket.on('error', reject);
+    });
+
+    const closed = await as(a.accessToken, 'POST', '/api/auth/sessions/close-others');
+    assert.equal(closed.status, 200, '« Déconnecter mes autres appareils »');
+    assert.equal((await closed.json()).closed, 2);
+    const meB = await as(b.accessToken, 'GET', '/api/auth/me');
+    assert.equal(meB.status, 401, 'the other phone stops at its next request');
+    assert.equal((await meB.json()).code, 'session_revoked');
+    const renewB = await call('POST', '/api/auth/refresh', { refreshToken: b.refreshToken }, false);
+    assert.equal(renewB.json.code, 'session_revoked', 'and its renewal says the same');
+    for (let i = 0; i < 40 && !socketClosed; i++) await new Promise((r) => setTimeout(r, 25));
+    assert.deepEqual(heard.find((m) => m.event === 'session:ended')?.data, { code: 'session_revoked' }, 'its live channel is told');
+    assert.ok(socketClosed, 'then closed');
+    assert.equal((await as(a.accessToken, 'GET', '/api/auth/me')).status, 200, 'the phone that asked stays signed in');
+    assert.equal((await as(c.accessToken, 'GET', '/api/auth/me')).status, 401);
+
+    if (sql) {
+      // A password changed by « mot de passe oublié » closes every session (case 51).
+      const [{ id }] = await sql`select id from users where email = ${mail}`;
+      await sql`insert into password_reset_tokens (user_id, token_hash, expires_at) values (${id}, ${createHash('sha256').update('123456').digest('hex')}, ${new Date(Date.now() + 600_000)})`;
+      const reset = await call('POST', '/api/auth/reset-password', { email: mail, code: '123456', password }, false);
+      assert.equal(reset.status, 200, `reset: ${JSON.stringify(reset.json)}`);
+      const meA = await as(a.accessToken, 'GET', '/api/auth/me');
+      assert.equal((await meA.json()).code, 'password_changed', 'every session ends, saying the password changed');
+      const renewA = await call('POST', '/api/auth/refresh', { refreshToken: a.refreshToken }, false);
+      assert.equal(renewA.json.code, 'password_changed');
+    }
+    const again = (await call('POST', '/api/auth/login', { email: mail, password }, false)).json;
+    assert.equal((await as(again.accessToken, 'DELETE', '/api/auth/account')).status, 200);
   }
 
   // --- every change tells the account's other phones: `sync` (I1) ---------
