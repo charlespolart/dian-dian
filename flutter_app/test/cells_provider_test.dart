@@ -197,6 +197,20 @@ void main() {
     expect(p.cells, isEmpty);
   });
 
+  test('without a full copy (H15), no day changes, each attempt is refused; a recolour stays silent', () async {
+    final sink = RecordingSink()..canWrite = false;
+    final p = loaded(sink: sink);
+    p.setContext(pageId: 'a', year: 2026);
+    await p.setCell(3, 3, '#CCCCCC');
+    await p.deleteCell(1, 1);
+    await p.recolorCells({'#AAAAAA': '#111111'});
+    expect(p.getCell(3, 3), isNull);
+    expect(p.getCell(1, 1)?.color, '#AAAAAA');
+    expect(p.lastChange, isNull);
+    expect(sink.changes, isEmpty);
+    expect(sink.refusals, 2, reason: 'the recolour follows a legend change already refused');
+  });
+
   group('lastChange', () {
     CellsProvider withSink() {
       final p = CellsProvider(audio: AudioService.silent(), sink: RecordingSink());

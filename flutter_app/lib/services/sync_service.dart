@@ -48,6 +48,10 @@ class SyncService with WidgetsBindingObserver implements ChangeSink {
   /// full copy.
   void Function(bool premium)? onPremium;
 
+  /// A change was refused: the phone has no full copy yet (H15). The app
+  /// says a connection is needed to finish the update.
+  void Function()? onWriteRefused;
+
   /// The session's engine, for what the screens tell (banner, message).
   final ValueNotifier<SyncEngine?> engine = ValueNotifier(null);
 
@@ -132,10 +136,12 @@ class SyncService with WidgetsBindingObserver implements ChangeSink {
     await syncEngine.restore();
     engine.value = syncEngine;
     _copyChanged = syncEngine.onCopyChanged.listen((_) => _reload());
+    // Deletions the app was killed holding are done now (H14).
+    await store.commitHeldDeletes(offline: false);
+    _hasFullCopy = await store.hasFullCopy();
     _bind(this);
 
     var hydrated = false;
-    _hasFullCopy = await store.hasFullCopy();
     if (_hasFullCopy) {
       await _reload();
       hydrated = _pages.pages.isNotEmpty;
@@ -219,6 +225,20 @@ class SyncService with WidgetsBindingObserver implements ChangeSink {
   // ---------------------------------------------------------------------------
   // Changes (ChangeSink)
   // ---------------------------------------------------------------------------
+
+  /// Without a session nothing is written anyway; within one, only once the
+  /// phone has the full copy (H15).
+  @override
+  bool get canWrite => _store == null || _hasFullCopy;
+
+  @override
+  void refused() => onWriteRefused?.call();
+
+  @override
+  Future<void> holdDelete(String pageId) async => _store?.holdDelete(pageId);
+
+  @override
+  Future<void> releaseDelete(String pageId) async => _store?.releaseDelete(pageId);
 
   /// Writes a provider's change on the phone with its entry in the queue,
   /// then starts a sync.

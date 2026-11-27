@@ -177,4 +177,38 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     expect(rec.players.played, [SoundCue.trackerCreate, SoundCue.trackerCreate]);
   });
+
+  test('a soft delete is held on the phone; an undo releases it; its end writes it (H14)', () async {
+    const delay = Duration(milliseconds: 40);
+    final p = withPages([pageJson('a'), pageJson('b', position: 1)]);
+    p.softDeletePage(p.pages.first, delay: delay);
+    await Future<void>.delayed(Duration.zero);
+    expect(sink.held, {'a'});
+    p.undoDeletePage();
+    await Future<void>.delayed(Duration.zero);
+    expect(sink.held, isEmpty);
+    expect(sink.changes, isEmpty);
+
+    p.softDeletePage(p.pages.firstWhere((x) => x.id == 'a'), delay: delay);
+    await Future<void>.delayed(delay * 2);
+    expect(sink.log, [['page.delete', {'id': 'a'}]]);
+    expect(sink.held, isEmpty);
+  });
+
+  test('without a full copy (H15), no tracker change is made and each attempt is refused', () async {
+    sink.canWrite = false;
+    final p = withPages([pageJson('a'), pageJson('b', position: 1)]);
+    expect(await p.createPage('New'), isNull);
+    expect(await p.createFirstTracker(title: 'X', legends: const []), isNull);
+    expect(await p.keepFree(['a']), isFalse);
+    await p.updatePage('a', {'title': 'Renamed'});
+    await p.reorderPages(['b', 'a']);
+    await p.deletePage('a');
+    p.softDeletePage(p.pages.first);
+    expect(p.pages.map((x) => '${x.id}:${x.title}:${x.keepFree}'), ['a:T:false', 'b:T:false']);
+    expect(p.pendingDeletePage, isNull);
+    expect(sink.changes, isEmpty);
+    expect(sink.held, isEmpty);
+    expect(sink.refusals, 7);
+  });
 }

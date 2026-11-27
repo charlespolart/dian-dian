@@ -125,4 +125,16 @@ void main() {
     await p.createLegend('#ff0000', 'Sport');
     expect(rec.players.played, [SoundCue.legendAdd]);
   });
+
+  test('without a full copy (H15), no legend changes and each attempt is refused', () async {
+    final sink = RecordingSink()..canWrite = false;
+    final p = loaded(sink: sink)..setPageId('a');
+    await p.createLegend('#CCCCCC', 'Sport');
+    await p.updateLegend('l1', color: '#111111');
+    await p.deleteLegend('l2');
+    await p.reorderLegends(['l2', 'l1']);
+    expect(p.legends.map((l) => '${l.id}:${l.color}'), ['l1:#AAAAAA', 'l2:#BBBBBB']);
+    expect(sink.changes, isEmpty);
+    expect(sink.refusals, 4);
+  });
 }

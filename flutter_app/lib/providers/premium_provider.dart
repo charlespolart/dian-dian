@@ -105,6 +105,7 @@ class PremiumProvider extends ChangeNotifier {
 
   /// Toggle animated cursor on/off.
   Future<void> setCursorEnabled(bool value) async {
+    if (!SettingsSink.allows()) return;
     _cursorEnabled = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_cursorEnabledKey, value);
@@ -114,6 +115,7 @@ class PremiumProvider extends ChangeNotifier {
 
   /// Set which cursor to use (for future multiple cursors).
   Future<void> setCursorId(String id) async {
+    if (!SettingsSink.allows()) return;
     _cursorId = id;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_cursorIdKey, id);

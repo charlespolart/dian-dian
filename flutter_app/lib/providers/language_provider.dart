@@ -48,6 +48,7 @@ class LanguageProvider extends ChangeNotifier {
   }
 
   Future<void> setLang(Language lang) async {
+    if (!SettingsSink.allows()) return;
     _lang = lang;
     notifyListeners();
 
@@ -243,6 +244,7 @@ class LanguageProvider extends ChangeNotifier {
       'common.erase': 'Effacer',
       'common.add': '+ Ajouter',
       'common.ok': 'OK',
+      'sync.needsConnection': 'Il faut une connexion pour finir la mise à jour de vos trackers',
       'common.comment': 'Commentaire',
       'common.create': '+ Créer',
       'premium.title': 'Premium',
@@ -484,6 +486,7 @@ class LanguageProvider extends ChangeNotifier {
       'common.erase': 'Erase',
       'common.add': '+ Add',
       'common.ok': 'OK',
+      'sync.needsConnection': 'A connection is needed to finish updating your trackers',
       'common.comment': 'Comment',
       'common.create': '+ Create',
       'premium.title': 'Premium',
@@ -721,6 +724,7 @@ class LanguageProvider extends ChangeNotifier {
       'common.erase': '清除',
       'common.add': '+ 添加',
       'common.ok': 'OK',
+      'sync.needsConnection': '需要联网才能完成追踪器的更新',
       'common.comment': '评论',
       'common.create': '+ 创建',
       'premium.title': '高级版',
@@ -958,6 +962,7 @@ class LanguageProvider extends ChangeNotifier {
       'common.erase': '清除',
       'common.add': '+ 新增',
       'common.ok': 'OK',
+      'sync.needsConnection': '需要連網才能完成追蹤器的更新',
       'common.comment': '評論',
       'common.create': '+ 建立',
       'premium.title': '進階版',

@@ -68,6 +68,15 @@ class PagesProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// True, after telling the user, when the phone cannot write yet (no full
+  /// copy of the account, H15): the change is not made.
+  bool _refused() {
+    final sink = _sink;
+    if (sink == null || sink.canWrite) return false;
+    sink.refused();
+    return true;
+  }
+
   Future<void> _record(String kind, Map<String, dynamic> data) async {
     try {
       await _sink?.record(kind, data);
@@ -83,6 +92,7 @@ class PagesProvider extends ChangeNotifier {
   /// Creates a tracker at the end of the list, on the phone at once (offline
   /// too, H2); the server receives it with the queue.
   Future<PageModel?> createPage(String title) async {
+    if (_refused()) return null;
     final page = PageModel(
       id: _uuid.v4(),
       userId: userId,
@@ -112,6 +122,7 @@ class PagesProvider extends ChangeNotifier {
     bool fallbackWithoutReplaces = true,
     String? clientId,
   }) async {
+    if (_refused()) return null;
     final id = clientId ?? _uuid.v4();
     final existing = _pages.where((p) => p.id == id).firstOrNull;
     if (existing != null) return CreatedPage(page: existing, legends: const []);
@@ -157,6 +168,7 @@ class PagesProvider extends ChangeNotifier {
 
   /// Which trackers stay open on a free account over the limit (≤ the free limit).
   Future<bool> keepFree(List<String> ids) async {
+    if (_refused()) return false;
     _pages = [for (final p in _pages) p.copyWith(keepFree: ids.contains(p.id))];
     notifyListeners();
     await _record('pages.keep', {'ids': ids});
@@ -165,6 +177,7 @@ class PagesProvider extends ChangeNotifier {
 
   /// Renames a tracker or changes its palette (`title`, `palette`).
   Future<void> updatePage(String id, Map<String, dynamic> updates) async {
+    if (_refused()) return;
     final index = _pages.indexWhere((p) => p.id == id);
     if (index == -1) return;
     final page = _pages[index];
@@ -191,6 +204,7 @@ class PagesProvider extends ChangeNotifier {
   }
 
   Future<void> reorderPages(List<String> ids) async {
+    if (_refused()) return;
     _applyOrder(ids);
     notifyListeners();
     await _record('pages.reorder', {'ids': ids});
@@ -213,13 +227,17 @@ class PagesProvider extends ChangeNotifier {
   }
 
   /// Soft-delete a page: hidden at once, deleted after [delay] unless undone.
+  /// The deletion is held on the phone meanwhile: an app killed during the
+  /// delay finds it done when reopened (H14).
   void softDeletePage(PageModel page, {Duration delay = const Duration(seconds: 8)}) {
+    if (_refused()) return;
     // Cancel any previous pending delete
     _commitPendingDelete();
 
     _pendingDeletePage = page;
     _pages = [for (final p in _pages) if (p.id != page.id) p];
     notifyListeners();
+    unawaited(_hold(page.id, release: false));
 
     _deleteTimer = Timer(delay, () {
       _commitPendingDelete();
@@ -235,10 +253,13 @@ class PagesProvider extends ChangeNotifier {
       _pendingDeletePage = null;
       _reinsert(page, _pages.length);
       notifyListeners();
+      unawaited(_hold(page.id, release: true));
     }
   }
 
-  /// Cancel pending delete without committing (used on logout).
+  /// Cancel pending delete without committing (used on logout). Its hold
+  /// stays on the phone: if the copy is kept (the server closed the
+  /// session, H25), the next session of this account finds it done.
   void cancelPendingDelete() {
     _deleteTimer?.cancel();
     _deleteTimer = null;
@@ -263,12 +284,21 @@ class PagesProvider extends ChangeNotifier {
 
   /// Deletes a page at once.
   Future<void> deletePage(String id) async {
+    if (_refused()) return;
     final before = _pages.length;
     _pages = [for (final p in _pages) if (p.id != id) p];
     if (_pages.length != before) {
         notifyListeners();
     }
     await _record('page.delete', {'id': id});
+  }
+
+  Future<void> _hold(String pageId, {required bool release}) async {
+    try {
+      release ? await _sink?.releaseDelete(pageId) : await _sink?.holdDelete(pageId);
+    } catch (e) {
+      debugPrint('PagesProvider: delete hold not written: $e');
+    }
   }
 
   void _reinsert(PageModel page, int index) {

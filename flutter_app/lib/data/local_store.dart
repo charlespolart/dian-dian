@@ -211,6 +211,37 @@ class LocalStore {
     });
   }
 
+  // ---------------------------------------------------------------------------
+  // A tracker deletion still undoable (H14)
+  // ---------------------------------------------------------------------------
+
+  /// Keeps a deletion that can still be undone for [delay]: an app killed
+  /// meanwhile finds it done when reopened ([commitHeldDeletes]).
+  Future<void> holdDelete(String pageId, {Duration delay = const Duration(seconds: 8)}) => _db.insert(
+        'pending_delete',
+        {'page_id': pageId, 'until_ms': DateTime.now().add(delay).millisecondsSinceEpoch},
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+
+  /// The deletion was undone.
+  Future<void> releaseDelete(String pageId) => _db.delete('pending_delete', where: 'page_id = ?', whereArgs: [pageId]);
+
+  Future<List<String>> heldDeletes() async =>
+      [for (final r in await _db.query('pending_delete', orderBy: 'until_ms')) r['page_id'] as String];
+
+  /// At launch: the deletions the app was killed holding are done now, each
+  /// with its entry in the queue. One whose tracker is gone meanwhile is let go.
+  Future<void> commitHeldDeletes({required bool offline}) async {
+    for (final id in await heldDeletes()) {
+      final exists = await _db.query('pages', columns: ['id'], where: 'id = ?', whereArgs: [id]);
+      if (exists.isEmpty) {
+        await releaseDelete(id);
+      } else {
+        await record('page.delete', {'id': id}, offline: offline);
+      }
+    }
+  }
+
   static bool _merges(String earlier, String later) {
     const days = {'cell.set', 'cell.clear'};
     if (days.contains(earlier) && days.contains(later)) return true;
@@ -326,6 +357,7 @@ class LocalStore {
         }, where: 'id = ?', whereArgs: [_req<String>(d, 'id')]);
       case 'page.delete':
         final id = _req<String>(d, 'id');
+        await txn.delete('pending_delete', where: 'page_id = ?', whereArgs: [id]);
         await txn.delete('pages', where: 'id = ?', whereArgs: [id]);
         await txn.delete('legends', where: 'page_id = ?', whereArgs: [id]);
         await txn.delete('cells', where: 'page_id = ?', whereArgs: [id]);

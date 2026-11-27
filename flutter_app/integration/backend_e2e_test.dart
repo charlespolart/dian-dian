@@ -48,8 +48,6 @@ class MemorySnapshots implements SnapshotStore {
   @override
   Future<String?> read() async => data;
   @override
-  Future<void> write(String json) async => data = json;
-  @override
   Future<void> delete() async => data = null;
 }
 

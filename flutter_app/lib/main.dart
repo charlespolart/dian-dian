@@ -26,6 +26,7 @@ import 'screens/settings_screen.dart';
 import 'services/audio_service.dart';
 import 'services/orientation_policy.dart';
 import 'theme/app_theme.dart';
+import 'widgets/connection_needed_dialog.dart';
 import 'widgets/custom_cursor.dart';
 import 'widgets/back_swipe.dart';
 import 'widgets/dotted_background.dart';
@@ -199,6 +200,17 @@ class _AppShellState extends State<AppShell> {
     super.initState();
     final auth = context.read<AuthProvider>();
     auth.addListener(_onAuthChange);
+    context.read<SyncService>().onWriteRefused = _onWriteRefused;
+  }
+
+  bool _connectionDialogOpen = false;
+
+  /// A change refused before the phone has the full copy (H15): one box at a
+  /// time, however many taps.
+  void _onWriteRefused() {
+    if (_connectionDialogOpen || !mounted) return;
+    _connectionDialogOpen = true;
+    ConnectionNeededDialog.show(context).whenComplete(() => _connectionDialogOpen = false);
   }
 
   /// Runs once per authenticated session. Shows the copy on the phone

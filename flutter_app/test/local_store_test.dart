@@ -192,4 +192,20 @@ void main() {
     expect(File(path).existsSync(), isFalse);
     await dir.delete(recursive: true);
   });
+
+  test('a tracker deletion still undoable is held on the phone; releasing it or writing the delete lets it go (H14)', () async {
+    final store = await memory();
+    await store.applyServer(seed());
+    await store.holdDelete(p1);
+    expect(await store.heldDeletes(), [p1]);
+    await store.releaseDelete(p1);
+    expect(await store.heldDeletes(), isEmpty);
+    expect(await store.pendingCount(), 0, reason: 'an undo writes nothing');
+
+    await store.holdDelete(p1);
+    await store.record('page.delete', {'id': p1}, offline: false);
+    expect(await store.heldDeletes(), isEmpty, reason: 'in the same transaction as the delete');
+    expect(await store.pendingCount(), 1);
+    await store.close();
+  });
 }

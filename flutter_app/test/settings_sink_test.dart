@@ -34,4 +34,18 @@ void main() {
     await ThemeProvider().setTheme(AppThemeType.values.first);
     expect(sink.changes, isEmpty);
   });
+
+  test('without a full copy (H15), a theme or a language change is refused and kept as it was', () async {
+    sink.canWrite = false;
+    final theme = ThemeProvider();
+    final before = theme.currentTheme;
+    await theme.setTheme(AppThemeType.values.firstWhere((t) => t != before));
+    final language = LanguageProvider();
+    final lang = language.lang;
+    await language.setLang(Language.values.firstWhere((l) => l != lang));
+    expect(theme.currentTheme, before);
+    expect(language.lang, lang);
+    expect(sink.changes, isEmpty);
+    expect(sink.refusals, 2);
+  });
 }

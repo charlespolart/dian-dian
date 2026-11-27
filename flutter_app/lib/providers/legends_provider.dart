@@ -33,6 +33,15 @@ class LegendsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// True, after telling the user, when the phone cannot write yet (no full
+  /// copy of the account, H15): the change is not made.
+  bool _refused() {
+    final sink = _sink;
+    if (sink == null || sink.canWrite) return false;
+    sink.refused();
+    return true;
+  }
+
   Future<void> _record(String kind, Map<String, dynamic> data) async {
     try {
       await _sink?.record(kind, data);
@@ -146,7 +155,7 @@ class LegendsProvider extends ChangeNotifier {
 
   Future<void> createLegend(String color, String label) async {
     final pageId = _currentPageId;
-    if (pageId == null) return;
+    if (pageId == null || _refused()) return;
     final legend = LegendModel(
       id: _uuid.v4(),
       pageId: pageId,
@@ -165,7 +174,7 @@ class LegendsProvider extends ChangeNotifier {
   /// recolours the legend's days with it (CellsProvider.recolorCells shows it).
   Future<void> updateLegend(String id, {String? label, String? color}) async {
     final pageId = _pageOf(id);
-    if (pageId == null) return;
+    if (pageId == null || _refused()) return;
     final old = legendsFor(pageId).firstWhere((l) => l.id == id);
     _replace(old.copyWith(label: label, color: color));
     notifyListeners();
@@ -174,7 +183,7 @@ class LegendsProvider extends ChangeNotifier {
 
   Future<void> deleteLegend(String id) async {
     final pageId = _pageOf(id) ?? _currentPageId;
-    if (pageId == null) return;
+    if (pageId == null || _refused()) return;
     _remove(pageId, id);
     notifyListeners();
     await _record('legend.delete', {'id': id});
@@ -182,7 +191,7 @@ class LegendsProvider extends ChangeNotifier {
 
   Future<void> reorderLegends(List<String> ids) async {
     final pageId = _currentPageId;
-    if (pageId == null) return;
+    if (pageId == null || _refused()) return;
     _reorder(pageId, ids);
     notifyListeners();
     await _record('legends.reorder', {'pageId': pageId, 'ids': ids});

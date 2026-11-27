@@ -44,6 +44,7 @@ class ThemeProvider extends ChangeNotifier {
   }
 
   Future<void> setTheme(AppThemeType type) async {
+    if (!SettingsSink.allows()) return;
     _currentTheme = type;
     AppColors.setTheme(type);
     final prefs = await SharedPreferences.getInstance();

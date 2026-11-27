@@ -190,6 +190,15 @@ class CellsProvider extends ChangeNotifier {
 
   void _put(YearCells yc) => _store[_key(yc.pageId, yc.year)] = yc;
 
+  /// True, after telling the user, when the phone cannot write yet (no full
+  /// copy of the account, H15): the change is not made.
+  bool _refused() {
+    final sink = _sink;
+    if (sink == null || sink.canWrite) return false;
+    sink.refused();
+    return true;
+  }
+
   Future<void> _record(String kind, Map<String, dynamic> data) async {
     try {
       await _sink?.record(kind, data);
@@ -202,7 +211,7 @@ class CellsProvider extends ChangeNotifier {
   /// receives it with the queue.
   Future<void> setCell(int month, int day, String color, {String? comment}) async {
     final pageId = _currentPageId;
-    if (pageId == null) return;
+    if (pageId == null || _refused()) return;
 
     final year = _currentYear;
     // Server semantics: an absent comment clears it.
@@ -228,7 +237,7 @@ class CellsProvider extends ChangeNotifier {
 
     final year = _currentYear;
     final previous = getCell(month, day);
-    if (previous == null) return;
+    if (previous == null || _refused()) return;
 
     _put(_entry(pageId, year).remove(month, day));
     _lastChange = CellChange(pageId: pageId, year: year, month: month, day: day, color: previous.color, erased: true, seq: ++_changeSeq);
@@ -239,10 +248,11 @@ class CellsProvider extends ChangeNotifier {
 
   /// Recolours the active page's days on screen, all years. Nothing is
   /// written: the legend's colour change (LegendsProvider.updateLegend) is
-  /// the change, and the copy recolours its days with it.
+  /// the change, and the copy recolours its days with it. Without a full
+  /// copy (H15) that change was refused: nothing moves, nothing is told twice.
   Future<void> recolorCells(Map<String, String> colorMap) async {
     final pageId = _currentPageId;
-    if (pageId == null) return;
+    if (pageId == null || !(_sink?.canWrite ?? true)) return;
     _recolorPage(pageId, colorMap);
     notifyListeners();
   }

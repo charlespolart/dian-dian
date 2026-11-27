@@ -34,6 +34,23 @@ class RecordingSink implements ChangeSink {
   final changes = <(String, Map<String, dynamic>)>[];
   bool fail = false;
 
+  /// False: the phone has no full copy yet (H15).
+  @override
+  bool canWrite = true;
+  int refusals = 0;
+
+  /// Tracker deletions still undoable (H14).
+  final held = <String>{};
+
+  @override
+  void refused() => refusals++;
+
+  @override
+  Future<void> holdDelete(String pageId) async => held.add(pageId);
+
+  @override
+  Future<void> releaseDelete(String pageId) async => held.remove(pageId);
+
   List<String> get kinds => [for (final c in changes) c.$1];
 
   /// [[kind, data], …], for a deep comparison.
@@ -43,21 +60,17 @@ class RecordingSink implements ChangeSink {
   Future<void> record(String kind, Map<String, dynamic> data) async {
     if (fail) throw StateError('not written');
     changes.add((kind, data));
+    // Like the copy: writing a deletion lets its hold go, in the same step.
+    if (kind == 'page.delete') held.remove(data['id']);
   }
 }
 
 /// In-memory [SnapshotStore] for tests.
 class MemorySnapshots implements SnapshotStore {
   String? data;
-  int writes = 0;
 
   @override
   Future<String?> read() async => data;
-  @override
-  Future<void> write(String json) async {
-    data = json;
-    writes++;
-  }
 
   @override
   Future<void> delete() async => data = null;
