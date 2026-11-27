@@ -57,13 +57,13 @@ RevenueCat) sont en anglais ; les textes de l'app vouvoient.
 
 | Branche | Contenu | À faire |
 |---|---|---|
-| `master` | Ce qui est en production : backend **1.2.1** (2026-11-23), app **1.4.0** | Base de travail |
+| `master` | Production : backend **1.2.1** (2026-11-23), app **1.4.0** ; s'y ajoutent, non publiés, les chantiers 0, 1, le registre, 3 et 10 de la release unique | Base de travail |
 | `docs/conversion-retention` | Toute la préparation : docs, recherches, specs, scripts marketing ; plus `.gitignore` (`marketing/out/`, la même ligne que sur master), `ANDROID_RELEASE_PLAN.md` et quatre scripts de lecture `backend/scripts/prod-*.sql` (filtre des comptes internes). Partie de master avant ses trois derniers commits (backend 1.2.1) : le code qu'on y voit n'est pas celui de la production | À fusionner dans master avant de coder (aucun code de l'app ni du serveur ; fusion sans conflit, vérifiée le 2026-11-25) |
 | `feat/comment-badge` | App : pastille de commentaire à la place de l'anneau troué ; tuiles Sons et Vibrations qui suivent le thème. Testé, analyse propre, entrées dans `flutter_app/CHANGELOG.md` (Unreleased) | À pousser (au 2026-11-25 elle n'existe que sur la machine de Charles) et à fusionner ; sortira avec la prochaine version de l'app ; les notes des stores devront dire que le repère a changé (celles de 1.4.0 parlent d'« un petit anneau ») |
 | `feat/landing-store-by-platform` | Déjà fusionnée et en production (1.2.1) | Peut être supprimée |
 | `feat/cell-popup-page-list` | Ancien travail en cours, hors de ce brief | — |
-| `feat/android-tooling` | Chantier 3 (outillage Android, bannière au-dessus de la barre système) | En attente des essais de Charles sur appareil, puis fusion |
-| `feat/offline-sync` | Chantier 10 (hors ligne), partie de `feat/android-tooling` : 12 tâches construites le 2026-11-27, registre d'exécution `.superpowers/sdd/2026-11-27-offline-sync/progress.md` | Essais de Charles sur deux téléphones (H1 à H29, mise à jour depuis 1.4.0), relecture neuve, fusion après le chantier 3 |
+| `feat/android-tooling` | Chantier 3 — fusionné dans master le 2026-11-27 | Peut être supprimée |
+| `feat/offline-sync` | Chantier 10 — fusionné dans master le 2026-11-27 (avec le chantier 3) | Peut être supprimée |
 
 ## Les chantiers, dans l'ordre
 
@@ -72,14 +72,14 @@ RevenueCat) sont en anglais ; les textes de l'app vouvoient.
 | 0 | Mesure des achats : table brute du webhook RevenueCat (chaque événement, avec la période d'essai, le prix, la devise, l'environnement et les raisons), plateforme et version de l'app acceptées sur `events` | audit, « Trous de mesure » 1 et 2 ; `docs/CONFIRMATION.md`, point 10 | rien (backend seul) | ½ à 1 jour |
 | 1 | Compteur de visites du site, avec le regroupement du `ct` Apple par source | `2026-11-23-landing-visits-design.md`, ROADMAP §3 | rien (backend seul) | 3 à 4 jours |
 | 2 | Refonte du paywall et du mur des 3 trackers (un seul écran par mur, essai affiché selon l'éligibilité), événements du parcours d'achat ; dans la même version de l'app, le correctif des jours invalides de l'éditeur de jour (`docs/CONFIRMATION.md`, point 27) | `docs/PRICING.md` | les prix en stores (Charles, 1er décembre) | à estimer |
-| 3 | Outillage Android : AGP 9.1.1, Gradle 9.3.1, Kotlin 2.4.0, `compileSdk = 37` écrit à la main, R8 déjà actif (Dart ≥ 3.12 est acquis : Flutter 3.47.5, Dart 3.13.4) ; fait tôt et testé sur appareil avant d'empiler le reste (plus de release dédiée, voir « Une seule release ») | `ANDROID_RELEASE_PLAN.md` §8 | rien | fait le 2026-11-26 (plan `docs/superpowers/plans/2026-11-26-android-tooling.md`) ; R8 était déjà actif ; reste l'essai sur appareil |
+| 3 | Outillage Android : AGP 9.1.1, Gradle 9.3.1, Kotlin 2.4.0, `compileSdk = 37` écrit à la main, R8 déjà actif (Dart ≥ 3.12 est acquis : Flutter 3.47.5, Dart 3.13.4) ; fait tôt et testé sur appareil avant d'empiler le reste (plus de release dédiée, voir « Une seule release ») | `ANDROID_RELEASE_PLAN.md` §8 | rien | fait le 2026-11-26 (plan `docs/superpowers/plans/2026-11-26-android-tooling.md`) ; R8 était déjà actif ; fusionné le 2026-11-27 ; essai sur appareil à la fin de la release |
 | 4 | Rappels (notifications locales, matin et soir, section Rappels, écran de demande) | `2026-11-23-reminders-design.md` | 3 (le plugin le plus récent exige AGP 9) ; 5, lot 1 (le remplissage et le moment du rappel se règlent à la création et dans les réglages du tracker) ; la date de création du compte dans le bootstrap (backend, avant l'app) | à estimer |
 | 5 | Stats plus utiles, en trois lots : réglages et création, avec le chargement de l'année précédente (lot 1), page Stats (lot 2), estimation et liens (lot 3) | `2026-11-24-stats-design.md` | lot 1 : rien ; lots 2 et 3 : le lot 1 | à estimer |
 | 6 | Pop-up premium occasionnelle | `2026-11-23-premium-popup-design.md` | 4 (passe après l'écran des rappels), 5 lot 2 (`stats_ready` dévoile une stat Premium prête) et lot 3 (`link_found`) | à estimer |
 | 7 | Voir un tracker par mois et par semaine (zoom), et plier la barre d'un glissement | `2026-11-25-tracker-zoom-design.md` ; page d'essai https://claude.ai/artifact/TonXNPhgKSxYvDwVet948j (version 2) | la fusion de `feat/comment-badge` (même fichier, `tracker_grid.dart`) ; après la pop-up (6), *mon choix* du 2026-11-25 | à estimer |
 | 8 | Astuces : les fonctions cachées montrées une à une, carnet d'astuces, événements | `2026-11-25-feature-tips-design.md` ; maquettes https://claude.ai/artifact/3HsujtgXLrre5FbtaViGmE | lot 1 : deux champs du bootstrap (backend, avant l'app) ; 5 lot 1 si déjà là (la roue des réglages pour l'astuce 8) ; lot 2 (astuces du zoom) : 7 ; les événements avec le registre RGPD ; le lot 1 juste après les rappels (4), *mon choix* du 2026-11-25 | à estimer |
 | 9 | Entrer sans mur : compte sans identité créé en coulisse, écran d'accueil à quatre boutons, e-mail par code, créer son compte ou rejoindre le sien, Premium sans compte (achat, restauration, reprise des trackers par l'achat), annonces entre deux téléphones, clé dans le trousseau iCloud, écran « Mes données », clé de restauration Android en dernier lot | `2026-11-25-account-later-design.md` ; cas illustrés `2026-11-26-sans-compte-hors-ligne-stories.html` | 10 (il s'appuie sur la copie du téléphone) ; passe avant 2 (le paywall doit connaître le compte invisible) | à estimer, gros ; le plan commence par les vérifications RevenueCat en bac à sable et sur appareils |
-| 10 | Utiliser l'app sans réseau, avec ou sans compte : copie complète sur le téléphone, file des modifications, « le serveur gagne » en cas de conflit, sessions qui durent | `2026-11-26-offline-sync-design.md` ; mêmes cas illustrés | 3 | à estimer, le plus gros de la release : toute la couche de données de l'app est refaite |
+| 10 | Utiliser l'app sans réseau, avec ou sans compte : copie complète sur le téléphone, file des modifications, « le serveur gagne » en cas de conflit, sessions qui durent | `2026-11-26-offline-sync-design.md` ; mêmes cas illustrés | 3 | fait le 2026-11-27 (plan `docs/superpowers/plans/2026-11-27-offline-sync.md`), relu, fusionné ; essais sur deux téléphones à la fin de la release |
 | 11 | Consentement publicitaire : le formulaire de Google affiché avant la première bannière AdMob là où il est requis (Espace économique européen, Royaume-Uni, Suisse), un moyen de revenir sur son choix dans les réglages, et l'écran de suivi d'Apple si le formulaire le demande. Ajouté le 2026-11-26 : l'app affiche aujourd'hui la publicité sans rien demander | spec à écrire ; le constat et ses sources : `docs/REGISTRE.md`, fiche 9 | 9 (son écran d'accueil décide du moment où la première bannière peut apparaître) ; le message de consentement publié dans AdMob (fait le 2026-11-26) | à estimer, petit |
 | — | Registre RGPD du projet et politique de confidentialité, en quatre langues ; purge des événements produit au-delà de 13 mois. **Construit le 2026-11-26** : `docs/REGISTRE.md` (onze fiches, les écarts connus), la politique réécrite, la purge, un moyen de tenir une opposition aux événements, les polices du site servies par le site | plan `docs/superpowers/plans/2026-11-26-rgpd-register.md` | — | fait |
 
@@ -163,6 +163,20 @@ release ; un correctif urgent de la production part du tag.
   commune à tous les projets. À consulter avant d'intégrer un service tiers ;
   un ajout se propose à Charles, ne se fait pas en cachette. Le compteur de
   visites doit y laisser une fiche (voir sa spec).
+
+## Les essais sur appareil, à la fin de la release
+
+Décidé par Charles le 2026-11-27 : les essais sur appareil se font en une
+fois, quand tous les chantiers sont construits ; en attendant, chaque
+chantier se teste au mieux sans lui (tests, smoke, scénarios, la vraie app
+sur le simulateur iOS par `flutter_app/integration_test/`) et se fusionne.
+La liste à faire à la fin :
+- chantier 3 : Android à trois boutons et à gestes, la bannière sur
+  iPhone, achat, restauration, connexion Google, centre client, partage,
+  pages légales et sons sous R8 9.1, la remarque R8 de la Play Console ;
+- chantier 10 : deux téléphones, l'un en mode avion, H1 à H29 (liste à
+  cocher dans la page des cas illustrés), puis une mise à jour depuis 1.4.0
+  hors ligne puis en ligne.
 
 ## Vérifier
 
