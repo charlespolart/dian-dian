@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 import 'package:dian_dian/services/api_service.dart';
+import 'package:dian_dian/services/key_store.dart';
 import 'package:dian_dian/services/token_store.dart';
 
 class FakeTokens implements TokenStore {
@@ -83,8 +84,8 @@ void main() {
   // the phone and its queue wait, hidden, for a reconnection to that account
   // (offline sync, H25). Only a deleted account forgets it (H24).
   for (final (body, label) in [
-    ('{"error":"x","code":"session_revoked"}', 'a session closed by the server'),
-    ('{"error":"x","code":"session_expired"}', 'an expired session'),
+    ('{"error":"x","code":"invalid"}', 'a spent or expired session'),
+    ('{"error":"x","code":"session_expired"}', 'an expired session (a server before chantier 9)'),
     ('{"error":"bad"}', 'a refusal without a reason (an older server)'),
   ]) {
     test('$label: the session ends with "log in again", the account id is kept', () async {
@@ -197,4 +198,134 @@ void main() {
     final restore = await api.tryRestoreSession();
     expect(restore.outcome, RefreshOutcome.invalid);
   });
+
+  // --- chantier 9, lot 1: a session that says why it ended, and the key ------
+
+  test('a request refused with its reason ends the session at once, without renewing (cases 51, 52)', () async {
+    for (final (code, end) in [('password_changed', SessionEnd.passwordChanged), ('session_revoked', SessionEnd.revoked), ('account_deleted', SessionEnd.accountDeleted)]) {
+      final paths = <String>[];
+      final client = MockClient((req) async {
+        paths.add(req.url.path);
+        return http.Response('{"error":"Session ended","code":"$code"}', 401);
+      });
+      final tokens = FakeTokens(refresh: 'r1')..userId = 'u1';
+      final api = ApiService.custom(client: client, tokens: tokens);
+      final ends = <SessionEnd>[];
+      api.onSessionEnded = ends.add;
+      await api.apiFetch('/api/pages');
+      expect(ends, [end], reason: code);
+      expect(paths, ['/api/pages'], reason: '$code: no renewal attempted');
+    }
+  });
+
+  test('a refusal handed to the caller does not end the session for it (case 66)', () async {
+    final client = MockClient((req) async => http.Response('{"error":"Session ended","code":"account_deleted"}', 401));
+    final api = ApiService.custom(client: client, tokens: FakeTokens(refresh: 'r1')..userId = 'u1');
+    final ends = <SessionEnd>[];
+    api.onSessionEnded = ends.add;
+    final r = await api.apiFetch('/api/auth/account', method: 'DELETE', handleSessionEnd: false);
+    expect(r.statusCode, 401);
+    expect(ends, isEmpty);
+  });
+
+  group('the key of an invisible account', () {
+    const key = 'k0k0k0k0k0k0k0k0k0k0k0k0k0k0k0k0k0k0k0k0k0k';
+    late List<http.Request> seen;
+
+    ApiService api(Future<http.Response> Function(http.Request) answer, {String? refresh, FakeKeys? keys}) {
+      seen = [];
+      return ApiService.custom(
+        client: MockClient((req) async {
+          seen.add(req);
+          return answer(req);
+        }),
+        tokens: FakeTokens(refresh: refresh)..userId = 'u1',
+        keys: keys ?? (FakeKeys()..keys['u1'] = key..created.add('u1')),
+      );
+    }
+
+    String session(String access) => jsonEncode({'accessToken': access, 'refreshToken': 'r-$access', 'userId': 'u1', 'kind': 'invisible', 'methods': []});
+
+    test('a renewal refused reopens the session with the key, unseen (principle 4)', () async {
+      final a = api((req) async => switch (req.url.path) {
+            '/api/auth/refresh' => http.Response('{"error":"x","code":"invalid"}', 401),
+            '/api/auth/key' => http.Response(session('a2'), 200),
+            _ => req.headers['Authorization'] == 'Bearer a2' ? http.Response('[]', 200) : http.Response('{}', 401),
+          }, refresh: 'r1');
+      final ends = <SessionEnd>[];
+      a.onSessionEnded = ends.add;
+      final r = await a.apiFetch('/api/pages');
+      expect(r.statusCode, 200);
+      expect(ends, isEmpty);
+      expect(seen.map((q) => q.url.path), ['/api/pages', '/api/auth/refresh', '/api/auth/key', '/api/pages']);
+    });
+
+    test('without any token, the key creates the account once, then reopens it (case 5)', () async {
+      final keys = FakeKeys()..keys['u1'] = key;
+      final a = api((req) async => switch (req.url.path) {
+            '/api/auth/invisible' => http.Response(session('a1'), 201),
+            '/api/auth/key' => http.Response(session('a3'), 200),
+            _ => req.headers['Authorization'] == null ? http.Response('{"error":"Missing token"}', 401) : http.Response('[]', 200),
+          }, keys: keys);
+      expect((await a.apiFetch('/api/pages')).statusCode, 200);
+      expect(keys.created, {'u1'}, reason: 'created: the next reopening goes through /key');
+      expect(jsonDecode(seen.firstWhere((q) => q.url.path == '/api/auth/invisible').body), {'id': 'u1', 'key': key});
+    });
+
+    test('a deleted account: the session ends as deleted, and the key is forgotten', () async {
+      final keys = FakeKeys()..keys['u1'] = key..created.add('u1');
+      final a = api((req) async => req.url.path == '/api/auth/key'
+          ? http.Response('{"error":"x","code":"account_deleted"}', 401)
+          : http.Response('{}', 401), keys: keys);
+      final ends = <SessionEnd>[];
+      a.onSessionEnded = ends.add;
+      await a.apiFetch('/api/pages');
+      expect(ends, [SessionEnd.accountDeleted]);
+      expect(keys.keys, isEmpty);
+    });
+
+    test('no network on the way, or an account the server never had: no session end, the phone keeps its copy', () async {
+      for (final answer in [
+        (http.Request req) async => req.url.path == '/api/auth/key' ? throw http.ClientException('no network') : http.Response('{}', 401),
+        (http.Request req) async => req.url.path == '/api/auth/key' ? http.Response('{"code":"too_many"}', 429) : http.Response('{}', 401),
+        (http.Request req) async => req.url.path == '/api/auth/key' ? http.Response('{"error":"x","code":"unknown"}', 401) : http.Response('{}', 401),
+      ]) {
+        final a = api(answer);
+        final ends = <SessionEnd>[];
+        a.onSessionEnded = ends.add;
+        await expectLater(a.apiFetch('/api/pages'), throwsA(isA<ApiUnreachable>()));
+        expect(ends, isEmpty);
+      }
+    });
+
+    test('the key travels only to /invisible and /key, never with another request', () async {
+      final a = api((req) async => switch (req.url.path) {
+            '/api/auth/key' => http.Response(session('a2'), 200),
+            _ => req.headers['Authorization'] == 'Bearer a2' ? http.Response('[]', 200) : http.Response('{}', 401),
+          });
+      await a.apiFetch('/api/pages');
+      for (final q in seen.where((q) => q.url.path != '/api/auth/key')) {
+        expect('${q.headers}${q.body}${q.url}'.contains(key), isFalse, reason: q.url.path);
+      }
+    });
+  });
+}
+
+class FakeKeys implements KeyStore {
+  final keys = <String, String>{};
+  final created = <String>{};
+  @override
+  Future<String?> invisibleKey(String userId) async => keys[userId];
+  @override
+  Future<void> setInvisibleKey(String userId, String key) async => keys[userId] = key;
+  @override
+  Future<void> deleteInvisibleKey(String userId) async {
+    keys.remove(userId);
+    created.remove(userId);
+  }
+
+  @override
+  Future<bool> invisibleCreated(String userId) async => created.contains(userId);
+  @override
+  Future<void> markInvisibleCreated(String userId) async => created.add(userId);
 }

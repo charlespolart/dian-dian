@@ -115,6 +115,10 @@ class FakeWs implements WsService {
 
   @override
   void ensureConnected() {}
+  @override
+  void connect() {}
+  @override
+  void disconnect() {}
 
   void receive(String event, [Object? data]) {
     for (final l in List.of(_listeners)) {

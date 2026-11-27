@@ -565,6 +565,16 @@ async function main() {
     assert.deepEqual(heard.find((m) => m.event === 'session:ended')?.data, { code: 'session_revoked' }, 'its live channel is told');
     assert.ok(socketClosed, 'then closed');
     assert.equal((await as(a.accessToken, 'GET', '/api/auth/me')).status, 200, 'the phone that asked stays signed in');
+    // A live channel opened afterwards with the closed session's token is
+    // told why too, instead of being closed without a word (the app would
+    // otherwise reconnect every 3 seconds).
+    const late = await new Promise<{ event: string; data: Json } | null>((resolve) => {
+      const ws = new WebSocket(`${BASE.replace(/^http/, 'ws')}/ws`);
+      ws.on('open', () => ws.send(JSON.stringify({ type: 'auth', token: b.accessToken })));
+      ws.on('message', (raw) => resolve(JSON.parse(String(raw))));
+      ws.on('close', () => resolve(null));
+    });
+    assert.deepEqual(late, { event: 'session:ended', data: { code: 'session_revoked' } });
     assert.equal((await as(c.accessToken, 'GET', '/api/auth/me')).status, 401);
 
     if (sql) {

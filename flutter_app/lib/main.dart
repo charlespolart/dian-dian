@@ -482,7 +482,7 @@ class _AppShellState extends State<AppShell> {
       // not. The end is told when changes were waiting, or the account was
       // deleted on another device (H24).
       final end = auth.sessionEnded;
-      context.read<SyncService>().clear(keepCopy: end == SessionEnd.reconnect).then((pending) {
+      context.read<SyncService>().clear(keepCopy: end?.keepsCopy ?? false).then((pending) {
         if (end != null && SessionDialogs.tellsSessionEnd(end, pending: pending) && mounted) {
           SessionDialogs.sessionEnded(context, end, pending: pending);
         }

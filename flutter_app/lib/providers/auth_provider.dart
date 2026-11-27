@@ -1,5 +1,10 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:math';
+
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
@@ -8,9 +13,10 @@ import '../services/ws_service.dart';
 class AuthProvider extends ChangeNotifier {
   static const _vipKey = 'is_vip';
 
-  final ApiService _api = ApiService();
-  final WsService _ws = WsService();
-  final StorageService _storage = StorageService();
+  final ApiService _api;
+  final WsService _ws;
+  final StorageService _storage;
+  late final RemoveListener _stopListening;
 
   bool _isLoading = true;
   bool _isAuthenticated = false;
@@ -20,6 +26,8 @@ class AuthProvider extends ChangeNotifier {
   String? _email;
   String? _userId;
   bool _isVip = false;
+  String? _kind;
+  List<String> _methods = const [];
   // Why the last session ended without the user asking (null otherwise):
   // [SessionEnd.reconnect] keeps the account's copy for its reconnection.
   SessionEnd? _sessionEnded;
@@ -35,6 +43,15 @@ class AuthProvider extends ChangeNotifier {
   bool get isVip => _isVip;
   SessionEnd? get sessionEnded => _sessionEnded;
 
+  /// What the account is, as the server says it (chantier 9, principle 5):
+  /// `invisible` (no identity yet) or `attached`; null until the server has
+  /// answered in this launch. The app never guesses it.
+  String? get kind => _kind;
+
+  /// The identities of an attached account (`email`, `password`, `apple`,
+  /// `google`), as the server says them.
+  List<String> get methods => _methods;
+
   /// The account whose session the server ended (null otherwise): a deleted
   /// account's copy is erased from the phone even when no session had
   /// started yet (review, minor 1).
@@ -42,15 +59,24 @@ class AuthProvider extends ChangeNotifier {
   String? _endedUserId;
 
   /// Whether a launch shows the app at once: only on a session still held —
-  /// an account id and its renewal token. A session the server closed keeps
-  /// the account id (for the reconnection, H25) but not the token.
-  static bool landsAtOnce({required String? storedUserId, required String? refreshToken}) =>
-      storedUserId != null && refreshToken != null;
+  /// an account id and its renewal token, or the key of an invisible account
+  /// (which opens its session, even before the server has it, case 5). A
+  /// session the server closed keeps the account id (for the reconnection,
+  /// H25) but not the token.
+  static bool landsAtOnce({required String? storedUserId, required String? refreshToken, bool hasKey = false}) =>
+      storedUserId != null && (refreshToken != null || hasKey);
   Map<String, dynamic>? get serverSettings => _serverSettings;
 
-  AuthProvider() {
+  AuthProvider() : this.custom(api: ApiService(), ws: WsService(), storage: StorageService());
+
+  /// The seam for tests: a fake server, live channel and secure storage.
+  AuthProvider.custom({required ApiService api, required WsService ws, required StorageService storage})
+      : _api = api,
+        _ws = ws,
+        _storage = storage {
     _api.onSessionEnded = _onSessionEnded;
     _api.onTokensRefreshed = _onTokensRefreshed;
+    _stopListening = _ws.addListener(_onLiveMessage);
     tryRestoreSession();
   }
 
@@ -60,12 +86,42 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> login(String email, String password) async {
     final data = await _api.login(email, password);
-    await _applySession(data, email: email);
+    await _applySession(data);
   }
 
   Future<void> register(String email, String password) async {
     final data = await _api.register(email, password);
-    await _applySession(data, email: email);
+    await _applySession(data);
+  }
+
+  /// « Continuer sans compte » (chantier 9, case 5): the phone chooses the
+  /// account's id and key, and the app is usable at once under that id,
+  /// network or not; the account is born on the server at the first network
+  /// (here if there is one, else at the next request). The key is read back
+  /// before anything else: a phone that cannot keep it does not go on.
+  Future<void> continueWithoutAccount() async {
+    final id = const Uuid().v4();
+    final random = Random.secure();
+    final key = base64Url.encode(List<int>.generate(32, (_) => random.nextInt(256))).replaceAll('=', '');
+    await _storage.setInvisibleKey(id, key);
+    if (await _storage.invisibleKey(id) != key) throw StateError('The account key could not be kept on this phone');
+    await _storage.setUserId(id);
+    await _storage.deleteEmail();
+    _userId = id;
+    _email = null;
+    _kind = null;
+    _methods = const [];
+    _isVip = false;
+    _serverSettings = null;
+    _sessionEnded = null;
+    _endedUserId = null;
+    _isAuthenticated = true;
+    _isOffline = true; // until the server has the account
+    notifyListeners();
+    unawaited(_api.tryRestoreSession().catchError((Object e) {
+      debugPrint('AuthProvider: invisible account not created yet: ${e.runtimeType}');
+      return const RestoreResult(RefreshOutcome.offline, null);
+    }));
   }
 
   /// Signs in (or signs up) via Apple/Google. Pass the provider id ('apple' or
@@ -82,6 +138,8 @@ class AuthProvider extends ChangeNotifier {
     } finally {
       _email = null;
       _userId = null;
+      _kind = null;
+      _methods = const [];
       _isVip = false;
       _isOffline = false;
       _serverSettings = null;
@@ -100,7 +158,8 @@ class AuthProvider extends ChangeNotifier {
     // disk snapshot right away (0 round-trips). The refresh below then
     // confirms it (profile, tokens) or revokes it (invalid → login screen).
     final storedUserId = await _storage.getUserId();
-    if (landsAtOnce(storedUserId: storedUserId, refreshToken: await _storage.getRefreshToken())) {
+    final hasKey = storedUserId != null && await _storage.invisibleKey(storedUserId) != null;
+    if (landsAtOnce(storedUserId: storedUserId, refreshToken: await _storage.getRefreshToken(), hasKey: hasKey)) {
       _userId = storedUserId;
       _email = await _storage.getEmail();
       final prefs = await SharedPreferences.getInstance();
@@ -117,18 +176,23 @@ class AuthProvider extends ChangeNotifier {
         case RefreshOutcome.ok:
           // The profile rides along with the refresh — no /me round-trip.
           _applyProfile(result.profile!);
-          _email ??= await _storage.getEmail();
           _isAuthenticated = true;
           _isOffline = false;
           _ws.connect();
 
         case RefreshOutcome.invalid:
         case RefreshOutcome.accountDeleted:
+        case RefreshOutcome.passwordChanged:
+        case RefreshOutcome.revoked:
           _endedUserId = storedUserId;
           _isAuthenticated = false;
           _isOffline = false;
           _userId = null;
-          _sessionEnded = result.outcome == RefreshOutcome.accountDeleted ? SessionEnd.accountDeleted : SessionEnd.reconnect;
+          _email = null;
+          _kind = null;
+          _methods = const [];
+          await _storage.deleteEmail();
+          _sessionEnded = result.outcome.end;
 
         case RefreshOutcome.offline:
           // No network: stay on the stored session (if any) with cached data;
@@ -148,10 +212,8 @@ class AuthProvider extends ChangeNotifier {
   // Internal
   // ---------------------------------------------------------------------------
 
-  Future<void> _applySession(Map<String, dynamic> data, {String? email}) async {
+  Future<void> _applySession(Map<String, dynamic> data) async {
     _applyProfile(data);
-    if (email != null) _email = email;
-    if (_email != null) await _storage.setEmail(_email!);
     if (_userId != null) await _storage.setUserId(_userId!);
     _isAuthenticated = true;
     _isOffline = false;
@@ -162,7 +224,16 @@ class AuthProvider extends ChangeNotifier {
 
   void _applyProfile(Map<String, dynamic> data) {
     _userId = data['userId'] as String? ?? _userId;
-    _email = data['email'] as String? ?? _email;
+    // The address exactly as the server sends it: none for an invisible
+    // account, never one kept from before (principle 5, case 68).
+    if (data.containsKey('email')) {
+      _email = data['email'] as String?;
+      unawaited(_email == null ? _storage.deleteEmail() : _storage.setEmail(_email!));
+    }
+    if (data['kind'] is String) {
+      _kind = data['kind'] as String;
+      _methods = List<String>.unmodifiable((data['methods'] as List? ?? const []).whereType<String>());
+    }
     _isVip = data['vip'] == true;
     _serverSettings = {
       'theme': data['theme'],
@@ -186,12 +257,23 @@ class AuthProvider extends ChangeNotifier {
     if (wasOffline) notifyListeners();
   }
 
+  /// The live channel says the session ended (chantier 9): the same path as
+  /// a request refused with that code.
+  void _onLiveMessage(WsMessage message) {
+    if (message.event != 'session:ended') return;
+    final data = message.data;
+    unawaited(_api.sessionEndedByServer(data is Map ? data['code'] as String? : null));
+  }
+
   void _onSessionEnded(SessionEnd end) {
     _sessionEnded = end;
     _endedUserId = _userId;
     _ws.disconnect();
     _userId = null;
     _email = null;
+    _kind = null;
+    _methods = const [];
+    unawaited(_storage.deleteEmail());
     _serverSettings = null;
     _isOffline = false;
     _isAuthenticated = false;
@@ -202,6 +284,7 @@ class AuthProvider extends ChangeNotifier {
   void dispose() {
     _api.onSessionEnded = null;
     _api.onTokensRefreshed = null;
+    _stopListening();
     _ws.disconnect();
     super.dispose();
   }

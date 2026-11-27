@@ -41,7 +41,10 @@ export function setupWebSocket(server: Server) {
     // A socket belongs to a session (chantier 9): a session that is over
     // opens none, and closing a session closes its sockets.
     const attach = async ({ userId, sessionId }: { userId: string; sessionId: string | null }): Promise<boolean> => {
-      if (sessionId && (await sessionStatus(sessionId)) !== 'alive') {
+      const status = sessionId ? await sessionStatus(sessionId) : 'alive';
+      if (status !== 'alive') {
+        // Told why, like a request (the app ends the session the same way).
+        if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ event: 'session:ended', data: { code: status } }));
         ws.close(4003, 'Session ended');
         return false;
       }

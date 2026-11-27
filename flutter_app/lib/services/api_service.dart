@@ -5,20 +5,36 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import 'key_store.dart';
 import 'storage_service.dart';
 import 'token_store.dart';
 import 'dev_host.dart';
 
-/// What a refresh attempt concluded about the stored session.
-///
-/// Only [invalid] means the session is gone. [offline] covers everything
-/// transient (no network, timeout, 5xx): the refresh token is kept and the
-/// next request tries again.
-/// How a session renewal went. [invalid]: the server refused the session
-/// (closed, expired, unknown): log in again, the phone's copy waits for it.
-/// [accountDeleted]: the account was deleted (from another device): the copy
-/// goes too (offline sync, H24).
-enum RefreshOutcome { ok, invalid, accountDeleted, offline }
+/// How a session renewal went. [offline] covers everything transient (no
+/// network, timeout, 429, 5xx): the tokens are kept and the next request
+/// tries again. Every other outcome but [ok] ends the session, with why:
+/// [invalid], the server refused it (spent, expired, unknown) — log in
+/// again, the phone's copy waits for it (H25); [accountDeleted], the account
+/// was deleted (from another device): the copy goes too (H24);
+/// [passwordChanged] and [revoked], the server closed it (chantier 9, cases
+/// 51 and 52) — log in again, the copy waits.
+enum RefreshOutcome {
+  ok,
+  invalid,
+  accountDeleted,
+  passwordChanged,
+  revoked,
+  offline;
+
+  /// How the session ends on this outcome; null when it does not.
+  SessionEnd? get end => switch (this) {
+        RefreshOutcome.invalid => SessionEnd.reconnect,
+        RefreshOutcome.accountDeleted => SessionEnd.accountDeleted,
+        RefreshOutcome.passwordChanged => SessionEnd.passwordChanged,
+        RefreshOutcome.revoked => SessionEnd.revoked,
+        RefreshOutcome.ok || RefreshOutcome.offline => null,
+      };
+}
 
 /// Why a session ended without the user asking.
 enum SessionEnd {
@@ -28,6 +44,18 @@ enum SessionEnd {
 
   /// The account was deleted elsewhere: forget it, copy included (H24).
   accountDeleted,
+
+  /// The password was changed by « mot de passe oublié » (case 51): log in
+  /// again with the new one, the copy waits.
+  passwordChanged,
+
+  /// Another phone of the account closed this session (case 52): log in
+  /// again, the copy waits.
+  revoked;
+
+  /// Whether the phone keeps the account's copy for the reconnection:
+  /// every end but a deletion (H25).
+  bool get keepsCopy => this != SessionEnd.accountDeleted;
 }
 
 class RestoreResult {
@@ -53,15 +81,17 @@ class ApiService {
 
   /// Non-singleton constructor: the injection seam for tests (a `MockClient`
   /// + in-memory tokens) and for the end-to-end harness.
-  ApiService.custom({http.Client? client, TokenStore? tokens})
+  ApiService.custom({http.Client? client, TokenStore? tokens, KeyStore? keys})
       : _client = client ?? http.Client(),
-        _tokens = tokens ?? StorageService();
+        _tokens = tokens ?? StorageService(),
+        _keys = keys ?? (tokens == null ? StorageService() : const NoKeys());
 
   /// One client for the whole app. The top-level `http.get()` helpers create
   /// and close a client per call, which costs a TCP + TLS handshake on every
   /// request; a shared client keeps connections alive and reuses them.
   final http.Client _client;
   final TokenStore _tokens;
+  final KeyStore _keys;
 
   static const _timeout = Duration(seconds: 20);
 
@@ -87,13 +117,22 @@ class ApiService {
   // Core fetch
   // ---------------------------------------------------------------------------
 
-  /// Generic HTTP helper. Attaches the access token and, on a 401, refreshes
-  /// once (shared across concurrent callers) before retrying.
+  /// Generic HTTP helper. Attaches the access token and, on a 401, renews
+  /// the session once (shared across concurrent callers) before retrying.
+  ///
+  /// A 401 that says why the server ended the session (chantier 9:
+  /// `account_deleted`, `password_changed`, `session_revoked`) is not
+  /// renewed: the session ends with that reason — unless the account is
+  /// invisible, whose key reopens it (principle 4), or a deletion.
+  /// With [handleSessionEnd] false, such a refusal is handed back to the
+  /// caller instead, the session untouched: a retried deletion whose first
+  /// answer was lost says itself that the data is gone (case 66).
   Future<http.Response> apiFetch(
     String path, {
     String method = 'GET',
     Map<String, dynamic>? body,
     Map<String, String>? headers,
+    bool handleSessionEnd = true,
   }) async {
     final usedToken = _accessToken;
     final response = await _send(path, method: method, body: body, headers: headers);
@@ -105,20 +144,30 @@ class ApiService {
       return _send(path, method: method, body: body, headers: headers);
     }
 
-    switch (await _refreshTokens()) {
+    final refused = _refusalOf(_refusalCode(response));
+    if (refused != null && !handleSessionEnd) return response;
+    final outcome = await _renew(refused: refused);
+    switch (outcome) {
       case RefreshOutcome.ok:
         return _send(path, method: method, body: body, headers: headers);
-      case RefreshOutcome.invalid:
-        _endSession(SessionEnd.reconnect);
-        return response;
-      case RefreshOutcome.accountDeleted:
-        _endSession(SessionEnd.accountDeleted);
-        return response;
       case RefreshOutcome.offline:
         // The token ran out and its renewal cannot reach the server: no
         // network, not a refused session (the sync retries, H5).
         throw const ApiUnreachable();
+      case RefreshOutcome.invalid:
+      case RefreshOutcome.accountDeleted:
+      case RefreshOutcome.passwordChanged:
+      case RefreshOutcome.revoked:
+        if (handleSessionEnd) await _endSession(outcome.end!);
+        return response;
     }
+  }
+
+  /// The live channel said the session ended (chantier 9): the same path as
+  /// a request refused with that [code].
+  Future<void> sessionEndedByServer(String? code) async {
+    final end = (await _renew(refused: _refusalOf(code))).end;
+    if (end != null) await _endSession(end);
   }
 
   Future<http.Response> _send(
@@ -159,16 +208,70 @@ class ApiService {
   // Token refresh
   // ---------------------------------------------------------------------------
 
-  /// Single-flight: concurrent 401s share one refresh. Without this, N
+  /// Single-flight: concurrent 401s share one renewal. Without this, N
   /// parallel requests hitting an expired access token each rotated the
   /// refresh token; only the first succeeded and the rest logged the user out.
-  Future<RefreshOutcome> _refreshTokens() {
+  /// [refused]: the server already said why the session ended — its refresh
+  /// token is not tried.
+  Future<RefreshOutcome> _renew({RefreshOutcome? refused}) {
     // Block body on purpose: a `whenComplete` callback that *returns* a
     // future makes the chain wait for it (an arrow returning the cleared
     // slot would be fine here, but keep the shape obviously safe).
-    return _refreshInFlight ??= _doRefresh().whenComplete(() {
+    return _refreshInFlight ??= _doRenew(refused).whenComplete(() {
       _refreshInFlight = null;
     });
+  }
+
+  Future<RefreshOutcome> _doRenew(RefreshOutcome? refused) async {
+    final outcome = refused ?? await _doRefresh();
+    switch (outcome) {
+      case RefreshOutcome.ok:
+      case RefreshOutcome.offline:
+      case RefreshOutcome.accountDeleted:
+        return outcome;
+      case RefreshOutcome.invalid:
+      case RefreshOutcome.passwordChanged:
+      case RefreshOutcome.revoked:
+        // Refused, lost or absent: an invisible account reopens its session
+        // with its key, unseen (chantier 9, principle 4).
+        return await _openWithKey() ?? outcome;
+    }
+  }
+
+  /// Opens the session of this phone's invisible account with its key:
+  /// `/api/auth/invisible` until the server has the account (the account is
+  /// born at the first network, case 5), `/api/auth/key` after. Null when the
+  /// phone holds no key for its account. A failure on the way (no network,
+  /// 429, 5xx, an account the server does not have) is [RefreshOutcome.offline]:
+  /// the phone keeps its copy, stays in, and tries again later.
+  Future<RefreshOutcome?> _openWithKey() async {
+    final userId = await _tokens.getUserId();
+    if (userId == null) return null;
+    final key = await _keys.invisibleKey(userId);
+    if (key == null) return null;
+    final created = await _keys.invisibleCreated(userId);
+    try {
+      final response = await _client
+          .post(
+            Uri.parse('$baseUrl/api/auth/${created ? 'key' : 'invisible'}'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'id': userId, 'key': key}),
+          )
+          .timeout(_timeout);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (!created) await _keys.markInvisibleCreated(userId);
+        await _sessionOpened(jsonDecode(response.body) as Map<String, dynamic>);
+        return RefreshOutcome.ok;
+      }
+      final code = _refusalCode(response);
+      if (code == 'account_deleted') return RefreshOutcome.accountDeleted;
+      debugPrint('Key session not opened (${response.statusCode} $code): kept for later');
+      return RefreshOutcome.offline;
+    } catch (e) {
+      // The type only: the request carried the key.
+      debugPrint('Key session failed (transient): ${e.runtimeType}');
+      return RefreshOutcome.offline;
+    }
   }
 
   Future<RefreshOutcome> _doRefresh() async {
@@ -185,14 +288,11 @@ class ApiService {
           .timeout(_timeout);
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        await _storeSession(data);
-        _lastProfile = data;
-        onTokensRefreshed?.call(data);
+        await _sessionOpened(jsonDecode(response.body) as Map<String, dynamic>);
         return RefreshOutcome.ok;
       }
       if (response.statusCode == 401 || response.statusCode == 403) {
-        return _refusalCode(response) == 'account_deleted' ? RefreshOutcome.accountDeleted : RefreshOutcome.invalid;
+        return _refusalOf(_refusalCode(response)) ?? RefreshOutcome.invalid;
       }
       // 5xx / 429 / anything else: the server is unhappy, not the session.
       return RefreshOutcome.offline;
@@ -202,6 +302,12 @@ class ApiService {
     }
   }
 
+  Future<void> _sessionOpened(Map<String, dynamic> data) async {
+    await _storeSession(data);
+    _lastProfile = data;
+    onTokensRefreshed?.call(data);
+  }
+
   Future<void> _storeSession(Map<String, dynamic> data) async {
     _accessToken = data['accessToken'] as String;
     await _tokens.setRefreshToken(data['refreshToken'] as String);
@@ -209,8 +315,18 @@ class ApiService {
     if (userId is String) await _tokens.setUserId(userId);
   }
 
-  /// The `code` of a refused renewal (backend ≥ 1.3: `session_expired`,
-  /// `session_revoked`, `account_deleted`, `invalid`), or null.
+  /// The ending a refusal's code names (chantier 9), or null when it names
+  /// none: a token that ran out, `invalid`, an older server's
+  /// `session_expired`, no code at all.
+  static RefreshOutcome? _refusalOf(String? code) => switch (code) {
+        'account_deleted' => RefreshOutcome.accountDeleted,
+        'password_changed' => RefreshOutcome.passwordChanged,
+        'session_revoked' => RefreshOutcome.revoked,
+        _ => null,
+      };
+
+  /// The `code` of a refusal (`account_deleted`, `password_changed`,
+  /// `session_revoked`, `invalid`; an older server's `session_expired`), or null.
   static String? _refusalCode(http.Response response) {
     try {
       final body = jsonDecode(response.body);
@@ -222,12 +338,16 @@ class ApiService {
 
   /// The session is over. The refused token goes; the account id stays
   /// unless the account itself was deleted: it says whose copy the phone
-  /// keeps for the reconnection.
-  void _endSession(SessionEnd end, {bool notify = true}) {
+  /// keeps for the reconnection. A deleted account's key goes with it.
+  Future<void> _endSession(SessionEnd end, {bool notify = true}) async {
     _accessToken = null;
     _lastProfile = null;
-    _tokens.deleteRefreshToken();
-    if (end == SessionEnd.accountDeleted) _tokens.deleteUserId();
+    await _tokens.deleteRefreshToken();
+    if (end == SessionEnd.accountDeleted) {
+      final userId = await _tokens.getUserId();
+      if (userId != null) await _keys.deleteInvisibleKey(userId);
+      await _tokens.deleteUserId();
+    }
     if (notify) onSessionEnded?.call(end);
   }
 
@@ -280,13 +400,15 @@ class ApiService {
     }
   }
 
-  /// Attempts to restore a previous session by refreshing the token pair.
+  /// Attempts to restore a previous session by refreshing the token pair,
+  /// or, for an invisible account, by its key (which creates the account
+  /// on the server the first time, case 5).
   Future<RestoreResult> tryRestoreSession() async {
-    final outcome = await _refreshTokens();
+    final outcome = await _renew();
     // The caller reads the outcome itself: the tokens are settled here, the
     // callback is not fired.
-    if (outcome == RefreshOutcome.invalid) _endSession(SessionEnd.reconnect, notify: false);
-    if (outcome == RefreshOutcome.accountDeleted) _endSession(SessionEnd.accountDeleted, notify: false);
+    final end = outcome.end;
+    if (end != null) await _endSession(end, notify: false);
     return RestoreResult(outcome, outcome == RefreshOutcome.ok ? _lastProfile : null);
   }
 

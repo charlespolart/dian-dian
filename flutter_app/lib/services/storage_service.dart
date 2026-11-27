@@ -1,8 +1,9 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import 'key_store.dart';
 import 'token_store.dart';
 
-class StorageService implements TokenStore {
+class StorageService implements TokenStore, KeyStore {
   static final StorageService _instance = StorageService._internal();
   factory StorageService() => _instance;
   StorageService._internal();
@@ -56,4 +57,26 @@ class StorageService implements TokenStore {
   Future<void> deleteUserId() async {
     await _storage.delete(key: _userIdKey);
   }
+
+  // The key of an invisible account, one entry per account id (chantier 9).
+  // Default options on purpose: on iOS, an entry not synchronized through
+  // iCloud, with the default accessibility — never a `*_this_device` one,
+  // which an encrypted transfer to a new iPhone would leave behind.
+  @override
+  Future<String?> invisibleKey(String userId) => _storage.read(key: 'invisible_key_$userId');
+
+  @override
+  Future<void> setInvisibleKey(String userId, String key) => _storage.write(key: 'invisible_key_$userId', value: key);
+
+  @override
+  Future<void> deleteInvisibleKey(String userId) async {
+    await _storage.delete(key: 'invisible_key_$userId');
+    await _storage.delete(key: 'invisible_created_$userId');
+  }
+
+  @override
+  Future<bool> invisibleCreated(String userId) async => await _storage.read(key: 'invisible_created_$userId') == 'yes';
+
+  @override
+  Future<void> markInvisibleCreated(String userId) => _storage.write(key: 'invisible_created_$userId', value: 'yes');
 }
