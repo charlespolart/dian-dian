@@ -52,6 +52,11 @@ class AuthProvider extends ChangeNotifier {
   /// `google`), as the server says them.
   List<String> get methods => _methods;
 
+  /// The account was just made on this phone by « Continuer sans compte »:
+  /// the server has nothing of it, its copy starts whole and empty (case 5).
+  bool get isNewAccount => _isNewAccount;
+  bool _isNewAccount = false;
+
   /// The account whose session the server ended (null otherwise): a deleted
   /// account's copy is erased from the phone even when no session had
   /// started yet (review, minor 1).
@@ -108,6 +113,7 @@ class AuthProvider extends ChangeNotifier {
     await _storage.setUserId(id);
     await _storage.deleteEmail();
     _userId = id;
+    _isNewAccount = true;
     _email = null;
     _kind = null;
     _methods = const [];
@@ -138,6 +144,7 @@ class AuthProvider extends ChangeNotifier {
     } finally {
       _email = null;
       _userId = null;
+      _isNewAccount = false;
       _kind = null;
       _methods = const [];
       _isVip = false;
@@ -213,6 +220,7 @@ class AuthProvider extends ChangeNotifier {
   // ---------------------------------------------------------------------------
 
   Future<void> _applySession(Map<String, dynamic> data) async {
+    _isNewAccount = false;
     _applyProfile(data);
     if (_userId != null) await _storage.setUserId(_userId!);
     _isAuthenticated = true;
@@ -270,6 +278,7 @@ class AuthProvider extends ChangeNotifier {
     _endedUserId = _userId;
     _ws.disconnect();
     _userId = null;
+    _isNewAccount = false;
     _email = null;
     _kind = null;
     _methods = const [];

@@ -22,10 +22,11 @@ class ConnectionNeededDialog {
   }
 
   /// True, after telling the user, when the gesture must not start (H6):
-  /// nothing is begun halfway.
-  static Future<bool> blockIfOffline(BuildContext context) async {
+  /// nothing is begun halfway. [message] replaces the general one (the
+  /// welcome screen's, chantier 9 case 5).
+  static Future<bool> blockIfOffline(BuildContext context, {String? message}) async {
     if (!await NetworkGate.isOffline()) return false;
-    if (context.mounted) await showForGesture(context);
+    if (context.mounted) await (message == null ? showForGesture(context) : MessageDialog.show(context, message: message));
     return true;
   }
 }

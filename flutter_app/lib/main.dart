@@ -18,6 +18,7 @@ import 'providers/pages_provider.dart';
 import 'providers/premium_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/login_screen.dart';
+import 'screens/welcome_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/forgot_password_screen.dart';
 import 'screens/page_list_screen.dart';
@@ -142,6 +143,7 @@ class AppShell extends StatefulWidget {
 }
 
 enum AppScreen {
+  welcome,
   login,
   register,
   forgotPassword,
@@ -156,7 +158,8 @@ enum AppScreen {
 AppScreen? systemBackTarget(AppScreen screen) => switch (screen) {
   AppScreen.tracker || AppScreen.settings => AppScreen.pageList,
   AppScreen.register || AppScreen.forgotPassword => AppScreen.login,
-  AppScreen.login || AppScreen.pageList || AppScreen.firstTracker => null,
+  AppScreen.login => AppScreen.welcome,
+  AppScreen.welcome || AppScreen.pageList || AppScreen.firstTracker => null,
 };
 
 /// How the stage goes from [from] to [to]: the tracker morphs out of and
@@ -179,7 +182,7 @@ class _AppShellState extends State<AppShell> {
   static const _lastTrackerYearKey = 'last_tracker_year';
   static const _whatsNewSeenKey = 'whats_new_seen_version';
 
-  AppScreen _screen = AppScreen.login;
+  AppScreen _screen = AppScreen.welcome;
   String? _activePageId;
   int _selectedYear = DateTime.now().year;
   // The stage: how the next screen arrives, and the card it morphs from or to.
@@ -275,7 +278,7 @@ class _AppShellState extends State<AppShell> {
     if (!mounted) return;
 
     final sync = context.read<SyncService>();
-    final hydrated = await sync.start(userId: auth.userId!, year: year);
+    final hydrated = await sync.start(userId: auth.userId!, year: year, newAccount: auth.isNewAccount);
     if (!mounted) return;
 
     // Anyone the phone already knows as active lands at once (instant first
@@ -495,6 +498,7 @@ class _AppShellState extends State<AppShell> {
       unawaited(context.read<SyncService>().forgetCopies([auth.endedUserId!]));
     }
     if (!auth.isAuthenticated &&
+        _screen != AppScreen.welcome &&
         _screen != AppScreen.login &&
         _screen != AppScreen.register &&
         _screen != AppScreen.forgotPassword) {
@@ -502,7 +506,7 @@ class _AppShellState extends State<AppShell> {
         _transition = StageTransition.fade;
         _morphPageId = null;
         _revealPageId = null;
-        _screen = AppScreen.login;
+        _screen = AppScreen.welcome;
         _activePageId = null;
         _selectedYear = DateTime.now().year;
         // Next login holds the splash until its own session start lands.
@@ -665,11 +669,17 @@ class _AppShellState extends State<AppShell> {
           key: const ValueKey('forgot'),
           onBack: () => _navigate(AppScreen.login),
         );
-      default:
+      case AppScreen.login:
         return LoginScreen(
           key: const ValueKey('login'),
+          onBack: () => _navigate(AppScreen.welcome),
           onSwitchToRegister: () => _navigate(AppScreen.register),
           onForgotPassword: () => _navigate(AppScreen.forgotPassword),
+        );
+      default:
+        return WelcomeScreen(
+          key: const ValueKey('welcome'),
+          onEmail: () => _navigate(AppScreen.login),
         );
     }
   }

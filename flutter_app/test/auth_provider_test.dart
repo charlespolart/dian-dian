@@ -7,46 +7,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:dian_dian/providers/auth_provider.dart';
 import 'package:dian_dian/services/api_service.dart';
-import 'package:dian_dian/services/storage_service.dart';
 
+import 'auth_fakes.dart';
 import 'sync_fakes.dart';
-
-/// The phone's secure storage, in memory.
-class FakeStorage implements StorageService {
-  final values = <String, String>{};
-  @override
-  Future<String?> getRefreshToken() async => values['refresh'];
-  @override
-  Future<void> setRefreshToken(String token) async => values['refresh'] = token;
-  @override
-  Future<void> deleteRefreshToken() async => values.remove('refresh');
-  @override
-  Future<String?> getUserId() async => values['user'];
-  @override
-  Future<void> setUserId(String id) async => values['user'] = id;
-  @override
-  Future<void> deleteUserId() async => values.remove('user');
-  @override
-  Future<String?> getEmail() async => values['email'];
-  @override
-  Future<void> setEmail(String email) async => values['email'] = email;
-  @override
-  Future<void> deleteEmail() async => values.remove('email');
-  @override
-  Future<String?> invisibleKey(String userId) async => values['key:$userId'];
-  @override
-  Future<void> setInvisibleKey(String userId, String key) async => values['key:$userId'] = key;
-  @override
-  Future<void> deleteInvisibleKey(String userId) async {
-    values.remove('key:$userId');
-    values.remove('created:$userId');
-  }
-
-  @override
-  Future<bool> invisibleCreated(String userId) async => values['created:$userId'] == 'yes';
-  @override
-  Future<void> markInvisibleCreated(String userId) async => values['created:$userId'] = 'yes';
-}
 
 Future<void> settle() => Future<void>.delayed(const Duration(milliseconds: 20));
 
@@ -82,6 +45,28 @@ void main() {
     expect(storage.values['key:${auth.userId}'], matches(RegExp(r'^[A-Za-z0-9_-]{43}$')), reason: '32 bytes, base64url');
     expect(auth.kind, isNull, reason: 'the server has not said yet (principle 5)');
     expect(auth.email, isNull);
+    expect(auth.isNewAccount, isTrue, reason: 'its copy starts whole and empty');
+  });
+
+  test('too many accounts from this network (429, case 6): the app lets in all the same, and tries again later', () async {
+    final storage = FakeStorage();
+    var tries = 0;
+    final auth = build((req) async {
+      if (req.url.path == '/api/auth/invisible') {
+        tries++;
+        return http.Response('{"error":"Too many","code":"too_many"}', 429);
+      }
+      return http.Response('{"error":"Missing token"}', 401);
+    }, storage);
+    await settle();
+    await auth.continueWithoutAccount();
+    await settle();
+    expect(auth.isAuthenticated, isTrue);
+    expect(auth.isOffline, isTrue);
+    expect(tries, 1);
+    await expectLater(api.apiFetch('/api/sync?since=0'), throwsA(isA<ApiUnreachable>()), reason: 'a later request: kept, not ended');
+    expect(tries, 2);
+    expect(auth.isAuthenticated, isTrue);
   });
 
   test('« Continuer sans compte » online: the account is born, and the server says it is invisible', () async {

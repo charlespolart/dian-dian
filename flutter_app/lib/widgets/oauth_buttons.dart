@@ -1,6 +1,4 @@
-import 'dart:io' show Platform;
-
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -8,9 +6,9 @@ import 'package:provider/provider.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../providers/auth_provider.dart';
+import '../providers/language_provider.dart';
 import '../theme/app_theme.dart';
 import 'press_scale.dart';
-import 'connection_needed_dialog.dart';
 
 const String _googleGLogoSvg = '''
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18">
@@ -29,70 +27,27 @@ const String _googleGLogoSvg = '''
 const String _googleWebClientId =
     '1095494651933-rrqbtudlcpuemcu40gaf3l1j61s7rokt.apps.googleusercontent.com';
 
-/// "Sign in with Apple" + "Sign in with Google" stacked buttons.
-/// Renders only the buttons that make sense on the current platform.
-class OAuthButtons extends StatefulWidget {
-  /// Called when an OAuth flow fails (e.g. token rejected by backend).
-  final void Function(String message)? onError;
+/// The platform windows of Apple and Google: each gives an identity token,
+/// or null when the person closed it (case 4: back, without a message).
+/// Anything else that goes wrong is thrown.
+class IdentityWindows {
+  const IdentityWindows();
 
-  const OAuthButtons({super.key, this.onError});
-
-  @override
-  State<OAuthButtons> createState() => _OAuthButtonsState();
-}
-
-class _OAuthButtonsState extends State<OAuthButtons> {
-  bool _busy = false;
-
-  bool get _appleAvailable {
-    if (kIsWeb) return false;
-    try {
-      return Platform.isIOS;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  bool get _googleAvailable {
-    if (kIsWeb) return false;
-    try {
-      return Platform.isIOS || Platform.isAndroid;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  Future<void> _signInWithApple() async {
-    if (_busy) return;
-    if (await ConnectionNeededDialog.blockIfOffline(context)) return;
-    if (!mounted) return;
-    setState(() => _busy = true);
+  Future<String?> apple() async {
     try {
       final credential = await SignInWithApple.getAppleIDCredential(
         scopes: [AppleIDAuthorizationScopes.email, AppleIDAuthorizationScopes.fullName],
       );
       final identityToken = credential.identityToken;
       if (identityToken == null) throw Exception('Apple did not return an identity token');
-      if (!mounted) return;
-      await context.read<AuthProvider>().oauthSignIn(
-        provider: 'apple',
-        identityToken: identityToken,
-      );
+      return identityToken;
     } on SignInWithAppleAuthorizationException catch (e) {
-      if (e.code == AuthorizationErrorCode.canceled) return;
-      widget.onError?.call(e.message);
-    } catch (e) {
-      widget.onError?.call(e.toString());
-    } finally {
-      if (mounted) setState(() => _busy = false);
+      if (e.code == AuthorizationErrorCode.canceled) return null;
+      rethrow;
     }
   }
 
-  Future<void> _signInWithGoogle() async {
-    if (_busy) return;
-    if (await ConnectionNeededDialog.blockIfOffline(context)) return;
-    if (!mounted) return;
-    setState(() => _busy = true);
+  Future<String?> google() async {
     try {
       final signIn = GoogleSignIn.instance;
       // iOS picks up the client id from Info.plist (`GIDClientID`). Android
@@ -101,18 +56,76 @@ class _OAuthButtonsState extends State<OAuthButtons> {
       // throws "serverClientId must be provided on Android". Left unset on iOS
       // so the working flow there is untouched.
       await signIn.initialize(
-        serverClientId: Platform.isAndroid ? _googleWebClientId : null,
+        serverClientId: defaultTargetPlatform == TargetPlatform.android ? _googleWebClientId : null,
       );
       final account = await signIn.authenticate();
       final idToken = account.authentication.idToken;
       if (idToken == null) throw Exception('Google did not return an ID token');
-      if (!mounted) return;
-      await context.read<AuthProvider>().oauthSignIn(
-        provider: 'google',
-        identityToken: idToken,
-      );
+      return idToken;
     } on GoogleSignInException catch (e) {
-      if (e.code == GoogleSignInExceptionCode.canceled) return;
+      if (e.code == GoogleSignInExceptionCode.canceled) return null;
+      rethrow;
+    }
+  }
+}
+
+/// One more button of the welcome screen, after Apple and Google.
+class AuthChoice {
+  final Key key;
+  final Widget icon;
+  final String label;
+  final VoidCallback? onPressed;
+  const AuthChoice({required this.key, required this.icon, required this.label, required this.onPressed});
+}
+
+/// « Continuer avec Apple » (iPhone only) and « Continuer avec Google »,
+/// then [trailing] — the welcome screen's other two buttons — all the same
+/// size and weight (chantier 9: four buttons, none of them a wall): one
+/// text size for the four, the largest at which the longest label shows
+/// whole. While a window is open, every button waits.
+class OAuthButtons extends StatefulWidget {
+  /// Called when an OAuth flow fails (e.g. token rejected by backend).
+  final void Function(String message)? onError;
+
+  /// Called before a window opens: true stops it (no network, told).
+  final Future<bool> Function()? blocked;
+
+  final List<AuthChoice> trailing;
+  final IdentityWindows windows;
+
+  const OAuthButtons({
+    super.key,
+    this.onError,
+    this.blocked,
+    this.trailing = const [],
+    this.windows = const IdentityWindows(),
+  });
+
+  /// Whether Apple's button shows: on the iPhone, as before.
+  static bool get appleAvailable => !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+
+  static bool get googleAvailable =>
+      !kIsWeb && (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android);
+
+  @override
+  State<OAuthButtons> createState() => _OAuthButtonsState();
+}
+
+class _OAuthButtonsState extends State<OAuthButtons> {
+  bool _busy = false;
+
+  Future<void> _signIn(String provider, Future<String?> Function() window) async {
+    if (_busy) return;
+    if (await (widget.blocked?.call() ?? Future.value(false))) return;
+    if (!mounted) return;
+    setState(() => _busy = true);
+    try {
+      final identityToken = await window();
+      if (identityToken == null || !mounted) return; // closed by the person (case 4)
+      await context.read<AuthProvider>().oauthSignIn(provider: provider, identityToken: identityToken);
+    } on SignInWithAppleAuthorizationException catch (e) {
+      widget.onError?.call(e.message);
+    } on GoogleSignInException catch (e) {
       widget.onError?.call(e.description ?? e.code.name);
     } catch (e) {
       widget.onError?.call(e.toString());
@@ -123,7 +136,45 @@ class _OAuthButtonsState extends State<OAuthButtons> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_appleAvailable && !_googleAvailable) return const SizedBox.shrink();
+    final lang = context.watch<LanguageProvider>();
+    const logo = AuthButton.baseFontSize;
+    final choices = <AuthChoice>[
+      if (OAuthButtons.appleAvailable)
+        AuthChoice(
+          key: const ValueKey('welcome.apple'),
+          // Apple's own logo, at the proportions of its standard button
+          // (sign_in_with_apple's painter): a custom button as Apple's
+          // guidelines allow, so that its label takes the common size.
+          icon: SizedBox(
+            width: logo * (25 / 31),
+            height: logo,
+            child: CustomPaint(painter: AppleLogoPainter(color: Colors.black)),
+          ),
+          label: lang.t('welcome.apple'),
+          onPressed: () => _signIn('apple', widget.windows.apple),
+        ),
+      if (OAuthButtons.googleAvailable)
+        AuthChoice(
+          key: const ValueKey('welcome.google'),
+          icon: SvgPicture.string(_googleGLogoSvg, width: 18, height: 18),
+          label: lang.t('welcome.google'),
+          onPressed: () => _signIn('google', widget.windows.google),
+        ),
+      ...widget.trailing,
+    ];
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final fontSize = AuthButton.fittingFontSize(context, [for (final c in choices) c.label], constraints.maxWidth);
+        final buttons = [
+          for (final c in choices)
+            _tinted(AuthButton(key: c.key, icon: c.icon, label: c.label, onPressed: c.onPressed, fontSize: fontSize)),
+        ];
+        return _stack(buttons);
+      },
+    );
+  }
+
+  Widget _stack(List<Widget> buttons) {
     return Stack(
       children: [
         // Buttons stay laid out so the column doesn't jump while busy.
@@ -133,21 +184,10 @@ class _OAuthButtonsState extends State<OAuthButtons> {
             ignoring: _busy,
             child: Column(
               children: [
-                if (_appleAvailable)
-                  _tinted(
-                    SignInWithAppleButton(
-                      onPressed: _signInWithApple,
-                      style: SignInWithAppleButtonStyle.whiteOutlined,
-                      height: 44,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
-                if (_appleAvailable && _googleAvailable) const SizedBox(height: 8),
-                if (_googleAvailable)
-                  _tinted(_GoogleButton(onPressed: _signInWithGoogle)),
-                const SizedBox(height: 12),
-                _separator(),
-                const SizedBox(height: 12),
+                for (var i = 0; i < buttons.length; i++) ...[
+                  if (i > 0) const SizedBox(height: 8),
+                  buttons[i],
+                ],
               ],
             ),
           ),
@@ -171,7 +211,7 @@ class _OAuthButtonsState extends State<OAuthButtons> {
 
   /// Semi-transparent cream overlay so the (mandatory) standard Apple/Google
   /// button styles blend with the app's pixel-art cream palette without
-  /// breaking HIG/branding requirements.
+  /// breaking HIG/branding requirements. Every button gets it: same weight.
   Widget _tinted(Widget child) {
     return Container(
       foregroundDecoration: BoxDecoration(
@@ -181,26 +221,53 @@ class _OAuthButtonsState extends State<OAuthButtons> {
       child: child,
     );
   }
-
-  Widget _separator() {
-    return Row(
-      children: [
-        Expanded(child: Container(height: 1, color: AppColors.shellBorder)),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text('or', style: AppFonts.dot(fontSize: 11, color: AppColors.textMuted)),
-        ),
-        Expanded(child: Container(height: 1, color: AppColors.shellBorder)),
-      ],
-    );
-  }
 }
 
-/// White button matching SignInWithAppleButtonStyle.whiteOutlined silhouette
-/// (height, border, label weight) with the official 4-color Google G logo.
-class _GoogleButton extends StatelessWidget {
+/// A button with the silhouette of Apple's white outlined one: its height,
+/// border, corner, and its label's font, at most at its size
+/// (sign_in_with_apple's `height * 0.43`), so that the four buttons of the
+/// welcome screen weigh the same.
+class AuthButton extends StatelessWidget {
+  static const double height = 44;
+  static const double baseFontSize = height * 0.43;
+  static const double _padding = 16;
+  static const double _gap = 8;
+
+  final Widget icon;
+  final String label;
   final VoidCallback? onPressed;
-  const _GoogleButton({required this.onPressed});
+  final double fontSize;
+
+  const AuthButton({super.key, required this.icon, required this.label, required this.onPressed, this.fontSize = baseFontSize});
+
+  static TextStyle _style(double fontSize) => TextStyle(
+        inherit: false,
+        fontFamily: '.SF Pro Text',
+        fontSize: fontSize,
+        color: Colors.black,
+        letterSpacing: -0.41,
+      );
+
+  /// The largest size, up to [baseFontSize], at which every one of
+  /// [labels] shows whole on a button [width] wide (the phone's text size
+  /// setting included). Never under 11: past that, the label is cut.
+  static double fittingFontSize(BuildContext context, List<String> labels, double width) {
+    final room = width - 2 * _padding - baseFontSize - _gap - 2; // the icon's box, and a border on each side
+    final scaler = MediaQuery.textScalerOf(context);
+    var scale = 1.0;
+    for (final label in labels) {
+      final painter = TextPainter(
+        text: TextSpan(text: label, style: _style(baseFontSize)),
+        textDirection: Directionality.of(context),
+        textScaler: scaler,
+        maxLines: 1,
+      )..layout();
+      if (painter.width > room) scale = scale < room / painter.width ? scale : room / painter.width;
+      painter.dispose();
+    }
+    final size = (baseFontSize * scale * 2).floorToDouble() / 2; // half points: no fraction left to round up
+    return size < 11 ? 11 : size;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -208,7 +275,8 @@ class _GoogleButton extends StatelessWidget {
       onTap: onPressed,
       child: Container(
         width: double.infinity,
-        height: 44,
+        height: height,
+        padding: const EdgeInsets.symmetric(horizontal: _padding),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(6),
@@ -217,17 +285,10 @@ class _GoogleButton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SvgPicture.string(_googleGLogoSvg, width: 18, height: 18),
-            const SizedBox(width: 8),
-            const Text(
-              'Sign in with Google',
-              style: TextStyle(
-                fontFamily: '.SF Pro Text',
-                fontSize: 17,
-                fontWeight: FontWeight.w500,
-                color: Colors.black,
-                letterSpacing: -0.4,
-              ),
+            SizedBox(width: baseFontSize, child: Center(child: icon)),
+            const SizedBox(width: _gap),
+            Flexible(
+              child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: _style(fontSize)),
             ),
           ],
         ),

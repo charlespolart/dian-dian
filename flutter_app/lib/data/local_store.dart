@@ -191,6 +191,12 @@ class LocalStore {
   Future<int> lastRev() async => int.tryParse(await _metaOf(_db, 'last_rev') ?? '') ?? 0;
   Future<bool> hasFullCopy() async => await _metaOf(_db, 'full_copy') == '1';
 
+  /// The copy of an account born on this phone (« Continuer sans compte »,
+  /// chantier 9, case 5): the server has nothing of it, so the empty copy is
+  /// already whole — it is written to offline at once, and a later launch
+  /// still knows it.
+  Future<void> startEmpty() => _setMeta(_db, 'full_copy', '1');
+
   /// A change was set aside: the server's version must come back whole.
   Future<bool> needsFullCopy() async => await _metaOf(_db, 'needs_full') == '1';
 

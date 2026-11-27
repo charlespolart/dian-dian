@@ -121,8 +121,10 @@ class SyncService with WidgetsBindingObserver implements ChangeSink {
   // ---------------------------------------------------------------------------
 
   /// Opens [userId]'s copy, shows it, and starts syncing. Returns true when
-  /// the UI can render now (the phone had trackers to show).
-  Future<bool> start({required String userId, required int year}) async {
+  /// the UI can render now (the phone had trackers to show). [newAccount]:
+  /// the account was just made on this phone, the server has nothing of it
+  /// (chantier 9, case 5) — its empty copy is whole from the start.
+  Future<bool> start({required String userId, required int year, bool newAccount = false}) async {
     final generation = ++_generation;
     _userId = userId;
     _started = true;
@@ -133,6 +135,7 @@ class SyncService with WidgetsBindingObserver implements ChangeSink {
       return false;
     }
     _store = store;
+    if (newAccount) await store.startEmpty();
     final syncEngine = SyncEngine(store: store, api: _api, network: _network ?? DeviceNetwork());
     await syncEngine.restore();
     engine.value = syncEngine;

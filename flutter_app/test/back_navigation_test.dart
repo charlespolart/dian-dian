@@ -18,8 +18,12 @@ void main() {
       expect(systemBackTarget(AppScreen.forgotPassword), AppScreen.login);
     });
 
+    test('the e-mail screen goes back to the welcome screen (chantier 9)', () {
+      expect(systemBackTarget(AppScreen.login), AppScreen.welcome);
+    });
+
     test('roots have nowhere to go: the app may close', () {
-      expect(systemBackTarget(AppScreen.login), isNull);
+      expect(systemBackTarget(AppScreen.welcome), isNull);
       expect(systemBackTarget(AppScreen.pageList), isNull);
       expect(systemBackTarget(AppScreen.firstTracker), isNull);
     });

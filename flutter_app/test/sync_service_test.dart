@@ -247,6 +247,31 @@ void main() {
     expect(server.pages.keys, [page.id], reason: 'the id made by the phone is the server\'s');
   });
 
+  test('an account born on this phone, offline (case 5): its copy is whole and empty at once, a tracker is kept and leaves at the first network', () async {
+    server.offline = true;
+    final sync = build();
+    expect(await sync.start(userId: 'u1', year: 2026, newAccount: true), isFalse);
+    await sync.firstSync;
+    expect(sync.canWrite, isTrue, reason: 'nothing to wait for: the server has nothing of this account');
+    expect(sync.activated, isFalse, reason: 'the first-tracker flow shows');
+    final page = await pages.createPage('Sport');
+    expect(page, isNotNull);
+    await settle(sync);
+    expect(sync.engine.value!.pendingCount, 1);
+
+    await sync.clear(keepCopy: true);
+    final again = build();
+    await again.start(userId: 'u1', year: 2026);
+    expect(again.canWrite, isTrue, reason: 'killed before any network: the copy is still whole at the next launch');
+    expect(pages.pages.map((p) => p.title), ['Sport']);
+
+    server.offline = false;
+    network.comeBack();
+    await Future<void>.delayed(Duration.zero);
+    await settle(again);
+    expect(server.sentKinds, ['page.create']);
+  });
+
   test('a sync message from the server starts a sync', () async {
     final sync = await started();
     final before = server.pulls;

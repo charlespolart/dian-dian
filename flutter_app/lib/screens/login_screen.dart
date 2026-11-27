@@ -6,17 +6,20 @@ import '../providers/language_provider.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/language_dropdown.dart';
-import '../widgets/oauth_buttons.dart';
 import '../widgets/password_field.dart';
 import '../widgets/press_scale.dart';
 import '../widgets/connection_needed_dialog.dart';
 
+/// « Continuer avec un e-mail » (chantier 9): address and password, or the
+/// sign-up behind it. Apple and Google are on the welcome screen.
 class LoginScreen extends StatefulWidget {
+  final VoidCallback onBack;
   final VoidCallback onSwitchToRegister;
   final VoidCallback onForgotPassword;
 
   const LoginScreen({
     super.key,
+    required this.onBack,
     required this.onSwitchToRegister,
     required this.onForgotPassword,
   });
@@ -81,6 +84,15 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: Stack(
           children: [
+            // Back to the welcome screen, top-left
+            Positioned(
+              top: 8,
+              left: 8,
+              child: IconButton(
+                icon: Icon(Icons.arrow_back, color: AppColors.textMuted),
+                onPressed: widget.onBack,
+              ),
+            ),
             // Language selector top-right
             Positioned(
               top: 8,
@@ -138,10 +150,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-
-                    OAuthButtons(
-                      onError: (msg) => setState(() => _error = msg),
-                    ),
 
                     // Email
                     TextField(

@@ -6,7 +6,6 @@ import '../providers/language_provider.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/language_dropdown.dart';
-import '../widgets/oauth_buttons.dart';
 import '../widgets/password_field.dart';
 import '../widgets/press_scale.dart';
 import '../widgets/connection_needed_dialog.dart';
@@ -141,10 +140,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-
-                    OAuthButtons(
-                      onError: (msg) => setState(() => _error = msg),
-                    ),
 
                     // Email
                     TextField(

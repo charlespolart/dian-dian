@@ -189,6 +189,13 @@ class LanguageProvider extends ChangeNotifier {
       'auth.resetPasswordSuccess':
           'Mot de passe modifié ! Vous pouvez vous connecter.',
       'auth.backToLogin': 'Retour à la connexion',
+      'welcome.apple': 'Continuer avec Apple',
+      'welcome.google': 'Continuer avec Google',
+      'welcome.email': 'Continuer avec un e-mail',
+      'welcome.noAccount': 'Continuer sans compte',
+      'welcome.note': "Avec un compte, vous retrouvez vos points sur un autre téléphone. Sans compte, ils restent liés à cette installation de l'app.",
+      'welcome.offline': 'Il faut une connexion pour se connecter à un compte. Vous pouvez commencer sans compte et le créer plus tard.',
+      'welcome.keyFailed': "Ce téléphone n'a pas pu garder la clé du compte. Réessayez.",
 
       // Tracker
       'tracker.colors': 'Couleurs',
@@ -486,6 +493,13 @@ class LanguageProvider extends ChangeNotifier {
       'auth.resetPasswordBtn': 'Reset password',
       'auth.resetPasswordSuccess': 'Password changed! You can now log in.',
       'auth.backToLogin': 'Back to login',
+      'welcome.apple': 'Continue with Apple',
+      'welcome.google': 'Continue with Google',
+      'welcome.email': 'Continue with email',
+      'welcome.noAccount': 'Continue without an account',
+      'welcome.note': 'With an account, you get your dots back on another phone. Without one, they stay tied to this installation of the app.',
+      'welcome.offline': 'You need a connection to sign in to an account. You can start without an account and create it later.',
+      'welcome.keyFailed': "This phone couldn't keep the account's key. Try again.",
 
       // Tracker
       'tracker.colors': 'Colors',
@@ -782,6 +796,13 @@ class LanguageProvider extends ChangeNotifier {
       'auth.resetPasswordBtn': '重置密码',
       'auth.resetPasswordSuccess': '密码已修改！请登录。',
       'auth.backToLogin': '返回登录',
+      'welcome.apple': '通过 Apple 继续',
+      'welcome.google': '通过 Google 继续',
+      'welcome.email': '通过邮箱继续',
+      'welcome.noAccount': '不使用账号继续',
+      'welcome.note': '有账号时，换一部手机也能找回你的点。没有账号时，它们只属于这次安装的应用。',
+      'welcome.offline': '登录账号需要联网。你可以先不使用账号开始，以后再创建。',
+      'welcome.keyFailed': '这部手机无法保存账号的密钥。请重试。',
 
       // Tracker
       'tracker.colors': '颜色',
@@ -1075,6 +1096,13 @@ class LanguageProvider extends ChangeNotifier {
       'auth.resetPasswordBtn': '重置密碼',
       'auth.resetPasswordSuccess': '密碼已修改！請登入。',
       'auth.backToLogin': '返回登入',
+      'welcome.apple': '透過 Apple 繼續',
+      'welcome.google': '透過 Google 繼續',
+      'welcome.email': '透過電子郵件繼續',
+      'welcome.noAccount': '不使用帳號繼續',
+      'welcome.note': '有帳號時，換一支手機也能找回你的點。沒有帳號時，它們只屬於這次安裝的 App。',
+      'welcome.offline': '登入帳號需要連網。你可以先不使用帳號開始，之後再建立。',
+      'welcome.keyFailed': '這支手機無法保存帳號的金鑰。請重試。',
 
       // Tracker
       'tracker.colors': '顏色',

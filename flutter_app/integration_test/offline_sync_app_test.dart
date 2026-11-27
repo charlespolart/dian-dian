@@ -46,6 +46,8 @@ void main() {
     final token = jsonDecode(reg.body)['accessToken'] as String;
 
     app.main();
+    await waitFor(tester, find.text('Continue with email'));
+    await tester.tap(find.text('Continue with email'));
     await waitFor(tester, find.byType(TextField));
     await tester.enterText(find.byType(TextField).at(0), email);
     await tester.enterText(find.byType(TextField).at(1), password);
