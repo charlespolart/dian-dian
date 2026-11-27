@@ -52,6 +52,21 @@ Chaque lot a son plan dans `docs/superpowers/plans/`, écrit quand le précéden
 7. **« Déconnecter mes autres appareils »** (`POST /api/auth/sessions/close-others`) ferme toutes les sessions du compte sauf celle qui le demande, avec la raison `session_revoked`. **Changer de mot de passe par « mot de passe oublié »** ferme toutes les sessions du compte avec `password_changed` (cas 51 ; le parcours par code du lot 2 reprendra ce même appel).
 8. **L'écran d'accueil remplace l'écran de connexion** comme premier écran sans session ; « Continuer avec un e-mail » ouvre, au lot 1, l'écran de connexion et d'inscription d'aujourd'hui (le lot 2 le remplace par le parcours par code). « Créer mon compte » et « J'ai déjà un compte » arrivent au lot 3 : au lot 1, les réglages d'un compte invisible montrent la phrase du cas 10 et « Restaurer les achats », pas encore ces deux boutons.
 
+### Après la relecture des choix (2026-11-27)
+
+Un agent neuf a relu ces huit choix à la demande de Charles ; ses propositions, toutes retenues, priment sur le texte ci-dessus (détail dans le registre d'exécution) :
+
+- **Choix 1 remplacé** : une table `sessions {id, user_id, created_at}` ; `refresh_tokens.session_id` obligatoire, avec suppression en cascade ; `requireAuth` lit `sessions` à chaque requête, **sans cache** ; fermer une session écrit une ligne `ended_sessions` par jeton puis supprime la session ; la déconnexion ferme toute sa session ; la purge horaire supprime les sessions sans jeton. Migration : générée, plus un remplissage (`drizzle-kit generate --custom`, une session par jeton existant), plus la contrainte.
+- **Mémoire des comptes supprimés** (`deleted_accounts`, 24 mois) : `/key` répond `account_deleted`, `/invisible` refuse un identifiant supprimé.
+- `/key` : clé validée (43 caractères base64url), hachée en SHA-256, comparée en temps constant, sous la limite des connexions ; réponses `account_deleted`, `unknown` (le téléphone garde sa copie et reste dans l'app), `invalid`.
+- `/refresh` : un jeton dépensé ou expiré répond `invalid` ; `session_revoked` ne veut plus dire que « déconnecté depuis un autre appareil ».
+- `requireAuth` : un jeton d'accès mauvais ou expiré répond 401 sans raison (l'app renouvelle) ; une session disparue répond 401 avec sa raison. L'app ne renouvelle pas pour `account_deleted`, `password_changed`, `session_revoked`.
+- Le téléphone marque dans sa copie que le compte invisible est créé ; la clé est écrite et relue avant la première création, jamais refaite ; un 409 sur un compte en attente est une collision : nouvel identifiant, la copie déplacée, rien d'effacé. Un 429, 5xx ou réseau absent sur `/invisible` ou `/key` vaut hors ligne, jamais une fin de session.
+- Le canal en direct vérifie la session à l'authentification et ferme les sockets d'une session fermée par `session:ended {code}`, traité dans l'app comme un 401.
+- `last_seen_at` obligatoire avec `now()` par défaut, mis à jour au plus une fois par heure dans la requête même ; limite des créations invisibles réglable (`INVISIBLE_PER_HOUR`, 30 par défaut) ; l'adresse prise telle que le serveur la donne (pas d'ancienne gardée).
+- Trousseau iOS « propre à l'appareil » : non synchronisé, accessibilité par défaut, jamais `*_this_device`, jamais « tout effacer ».
+- Cas 66 : une suppression rejouée après une réponse perdue reçoit `account_deleted` sans le message global du cas 50 ; les réglages disent « Vos données ont été supprimées ».
+
 ## Review Focus
 
 1. **Une session fermée, n'importe où** : le téléphone concerné cesse de lire et d'écrire à la requête suivante, son canal en direct se ferme, et il dit la raison ; un téléphone 1.4.0 retombe sur la connexion comme aujourd'hui.
