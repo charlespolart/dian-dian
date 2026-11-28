@@ -7,6 +7,7 @@ import { accountKind } from '../lib/accountKind.js';
 import { sqlState } from '../lib/pgError.js';
 import { newSession, touchLastSeen, type EndReason } from '../lib/sessions.js';
 import { closeSessions } from '../lib/closeSessions.js';
+import type { Tx } from '../lib/revs.js';
 import { and } from 'drizzle-orm';
 import { signAccessToken, generateRefreshToken, hashToken } from '../lib/jwt.js';
 import { validate } from '../middleware/validate.js';
@@ -68,9 +69,9 @@ function setRefreshCookie(res: Response, refreshToken: string) {
 }
 
 /** A new refresh token of [sessionId], stored by its hash; returns it and its row id. */
-async function newRefreshToken(userId: string, sessionId: string): Promise<{ token: string; id: string }> {
+async function newRefreshToken(userId: string, sessionId: string, tx: Tx | typeof db = db): Promise<{ token: string; id: string }> {
   const token = generateRefreshToken();
-  const [row] = await db.insert(refreshTokens)
+  const [row] = await tx.insert(refreshTokens)
     .values({ userId, sessionId, tokenHash: hashToken(token), expiresAt: new Date(Date.now() + sessionMs) })
     .returning({ id: refreshTokens.id });
   return { token, id: row.id };
@@ -78,9 +79,14 @@ async function newRefreshToken(userId: string, sessionId: string): Promise<{ tok
 
 /** Opens a session: access + refresh tokens, the cookie, and the response body. */
 async function issueSession(res: Response, user: ProfileUser) {
-  const sessionId = await newSession(user.id);
+  // The session and its first token in one step: the hourly purge of
+  // sessions without a token never sees one between the two (review, minor 11).
+  const { sessionId, refreshToken } = await db.transaction(async (tx) => {
+    const id = await newSession(user.id, tx);
+    const { token } = await newRefreshToken(user.id, id, tx);
+    return { sessionId: id, refreshToken: token };
+  });
   const accessToken = await signAccessToken(user.id, sessionId);
-  const { token: refreshToken } = await newRefreshToken(user.id, sessionId);
   setRefreshCookie(res, refreshToken);
   return { accessToken, refreshToken, ...(await profileOf(user)) };
 }

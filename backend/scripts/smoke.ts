@@ -528,6 +528,32 @@ async function main() {
     }
     assert.equal((await post('/api/auth/invisible', { id: randomUUID(), key: randomBytes(32).toString('base64url') }, crowd)).status, 429);
     for (const one of madeHere) await as(one.token, 'DELETE', '/api/auth/account');
+
+    // The same limit counts an IPv6 customer by its /56: addresses of one
+    // prefix are one network, not a fresh budget each (review, minor 8).
+    const hex = () => Math.floor(Math.random() * 0xffff).toString(16);
+    const prefix = `2001:db8:${hex()}:${Math.floor(Math.random() * 0xff).toString(16).padStart(2, '0')}`;
+    const madeV6: string[] = [];
+    for (let i = 0; i < limit; i++) {
+      const one = { id: randomUUID(), key: randomBytes(32).toString('base64url') };
+      const r = await post('/api/auth/invisible', one, `${prefix}${i.toString(16).padStart(2, '0')}::${hex()}`);
+      assert.equal(r.status, 201);
+      madeV6.push(r.json.accessToken);
+    }
+    assert.equal((await post('/api/auth/invisible', { id: randomUUID(), key: randomBytes(32).toString('base64url') }, `${prefix}ff::1`)).status, 429, 'another address of the same /56');
+    for (const token of madeV6) await as(token, 'DELETE', '/api/auth/account');
+
+    // Reopening by key has its own budget: phones stuck on /key (a restored
+    // database) never eat the sign-in budget of their network (review, minor 7).
+    const nat = `10.252.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}`;
+    const keyed = { id: randomUUID(), key: randomBytes(32).toString('base64url') };
+    const keyedToken = (await post('/api/auth/invisible', keyed, nat)).json.accessToken as string;
+    for (let i = 0; i < 30; i++) {
+      assert.equal((await post('/api/auth/login', { email: 'nobody@example.com', password: 'wrong-password' }, nat)).status, 401);
+    }
+    assert.equal((await post('/api/auth/login', { email: 'nobody@example.com', password: 'wrong-password' }, nat)).status, 429, 'the sign-in budget is spent');
+    assert.equal((await post('/api/auth/key', keyed, nat)).status, 200, 'the key still opens');
+    await as(keyedToken, 'DELETE', '/api/auth/account');
   }
 
   // --- closing sessions, and saying why (chantier 9, lot 1, task 2) --------
@@ -766,6 +792,7 @@ async function main() {
       'only the key\'s fingerprint is kept': { en: 'we keep only its fingerprint, never the key itself', fr: 'nous ne gardons que son empreinte, jamais la clé elle-même', 'zh-CN': '我们只保存它的指纹，从不保存密钥本身', 'zh-TW': '我們只儲存它的指紋，從不儲存金鑰本身' },
       'the date of the app\'s last contact': { en: 'the date the app last contacted it', fr: "la date du dernier contact de l'app", 'zh-CN': '应用最后一次联系该账户的日期', 'zh-TW': 'App 最後一次聯繫該帳戶的日期' },
       'the deletion in the app of an account without an address': { en: '"Delete my data"', fr: '« Supprimer mes données »', 'zh-CN': '“删除我的数据”', 'zh-TW': '「刪除我的資料」' },
+      'a closed session is remembered with its reason for a password change and for the other devices too': { en: 'when its password is changed or its other devices are logged out', fr: 'quand son mot de passe change ou que ses autres appareils sont déconnectés', 'zh-CN': '密码更改或其他设备被退出时', 'zh-TW': '密碼變更或其他裝置被登出時' },
       'a deleted account\'s identifier is remembered 24 months': { en: 'the identifier of a deleted account (nothing else) is kept 24 months', fr: "l'identifiant d'un compte supprimé (rien d'autre) est gardé 24 mois", 'zh-CN': '已删除账户的标识符（仅此而已）保留 24 个月', 'zh-TW': '已刪除帳戶的識別碼（僅此而已）保留 24 個月' },
     };
     for (const lang of ['en', 'fr', 'zh-CN', 'zh-TW']) {

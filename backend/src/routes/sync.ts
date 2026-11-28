@@ -96,7 +96,7 @@ type CompactCell = [number, number, number, string, string | null, number, numbe
 
 router.get('/', async (req, res) => {
   const userId = req.userId!;
-    touchLastSeen(userId).catch((err) => console.error('Last seen failed:', err)); // its last contact (chantier 9)
+  touchLastSeen(userId).catch((err) => console.error('Last seen failed:', err)); // its last contact (chantier 9)
   const asked = Number(req.query.since);
   try {
     const [account] = await db.select().from(users).where(eq(users.id, userId)).limit(1);

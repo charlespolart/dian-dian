@@ -1,6 +1,7 @@
 import { and, eq, lt, notExists, sql } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { endedSessions, refreshTokens, sessions, users } from '../db/schema.js';
+import type { Tx } from './revs.js';
 
 /**
  * Why a session is over, as a refused request says it (chantier 9). The app
@@ -19,8 +20,8 @@ export async function sessionStatus(sessionId: string): Promise<'alive' | EndRea
 }
 
 /** A new session of [userId]: a sign-in, a sign-up, an account created. */
-export async function newSession(userId: string): Promise<string> {
-  const [row] = await db.insert(sessions).values({ userId }).returning({ id: sessions.id });
+export async function newSession(userId: string, tx: Tx | typeof db = db): Promise<string> {
+  const [row] = await tx.insert(sessions).values({ userId }).returning({ id: sessions.id });
   return row.id;
 }
 

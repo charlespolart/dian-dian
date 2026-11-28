@@ -40,7 +40,18 @@ export function setupWebSocket(server: Server) {
 
     // A socket belongs to a session (chantier 9): a session that is over
     // opens none, and closing a session closes its sockets.
+    // Known by its session, with its close handler, before the session is
+    // checked: a socket that leaves meanwhile is forgotten, and a session
+    // closed meanwhile finds it to close (review, minor 6). It hears the
+    // account only once the check passed.
     const attach = async ({ userId, sessionId }: { userId: string; sessionId: string | null }): Promise<boolean> => {
+      if (ws.readyState !== WebSocket.OPEN) return false;
+      if (sessionId) socketSession.set(ws, sessionId);
+      ws.on('close', () => {
+        clients.get(userId)?.delete(ws);
+        if (clients.get(userId)?.size === 0) clients.delete(userId);
+        socketSession.delete(ws);
+      });
       const status = sessionId ? await sessionStatus(sessionId) : 'alive';
       if (status !== 'alive') {
         // Told why, like a request (the app ends the session the same way).
@@ -48,15 +59,9 @@ export function setupWebSocket(server: Server) {
         ws.close(4003, 'Session ended');
         return false;
       }
+      if (ws.readyState !== WebSocket.OPEN) return false; // left, or closed with its session, meanwhile
       if (!clients.has(userId)) clients.set(userId, new Set());
       clients.get(userId)!.add(ws);
-      if (sessionId) socketSession.set(ws, sessionId);
-
-      ws.on('close', () => {
-        clients.get(userId)?.delete(ws);
-        if (clients.get(userId)?.size === 0) clients.delete(userId);
-        socketSession.delete(ws);
-      });
       return true;
     };
 

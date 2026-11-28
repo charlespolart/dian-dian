@@ -13,6 +13,8 @@ import { env } from './lib/env.js';
 import { db } from './db/index.js';
 import { RETENTION_PURGE_EVERY_MS, runRetentionPurge } from './lib/retention.js';
 import { setupWebSocket } from './lib/ws.js';
+import { purgeEmptySessions } from './lib/sessions.js';
+import { addressKey } from './lib/addressKey.js';
 import authRoutes from './routes/auth.js';
 import pagesRoutes from './routes/pages.js';
 import cellsRoutes from './routes/cells.js';
@@ -112,11 +114,21 @@ const eventsLimiter = rateLimit({
 const invisibleLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: Number(process.env.INVISIBLE_PER_HOUR ?? 30),
+  keyGenerator: (req) => addressKey(req.ip), // an IPv6 customer by its /56
   message: { error: 'Too many accounts created from this network', code: 'too_many' },
+});
+// Reopening an invisible account by its key: its own budget, so that phones
+// that keep asking (a database restored to before their account) never eat
+// the sign-in budget of their network. A key is 256 bits: nothing to guess.
+const keyLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 min
+  max: 120,
+  keyGenerator: (req) => addressKey(req.ip),
+  message: { error: 'Too many attempts, try again in 15 minutes' },
 });
 
 app.use('/api/auth/invisible', invisibleLimiter);
-app.use('/api/auth/key', authLimiter);
+app.use('/api/auth/key', keyLimiter);
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 app.use('/api/auth/forgot-password', forgotLimiter);
@@ -173,7 +185,6 @@ app.get('/api/ready', async (_req, res) => {
 
 // Contact form
 import { sendEmail } from './lib/email.js';
-import { purgeEmptySessions } from './lib/sessions.js';
 function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
