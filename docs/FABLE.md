@@ -223,6 +223,18 @@ appareil pour les téléphones encore sur la nouvelle version (cas H26).
    release tant qu'une app qui synchronise est installée : elle a besoin de
    `/api/sync` et des numéros. Retirer l'app ne demande rien au serveur.
 
+## Au déploiement de la release (chantier 9)
+
+- Entre `drizzle-kit migrate` et le redémarrage, l'ancien backend répond
+  500 aux connexions et aux renouvellements (`session_id` devenu
+  obligatoire) : les apps le prennent pour une coupure réseau et
+  réessaient. Enchaîner les deux sans attendre.
+- Vérifier sur le VPS ce que `req.ip` vaut pour un client IPv6 derrière
+  Caddy et docker-proxy : si tous les clients IPv6 y paraissent sous
+  l'adresse de la passerelle Docker, ils partagent une seule limite de
+  création de comptes invisibles (30 par heure), et il faut activer l'IPv6
+  de Docker ou faire passer l'adresse par Caddy autrement.
+
 ## Ce que Charles fait de son côté (hors code)
 
 - Programmer les nouveaux prix dans App Store Connect au plus tard le 28 ou

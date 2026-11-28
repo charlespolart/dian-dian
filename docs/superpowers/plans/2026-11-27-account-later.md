@@ -163,3 +163,10 @@ Un agent neuf a relu ces huit choix à la demande de Charles ; ses propositions,
 - Tout ce qui touche Premium sans compte et RevenueCat, et les deux effacements automatiques : lot 4.
 - La clé dans le trousseau synchronisé, « Mes données », les copies restaurées : lot 5.
 - La clé de restauration Android : lot 6.
+
+## Appris au lot 1 (relecture du 2026-11-28), pour les lots suivants
+
+- Lot 4 : un compte invisible peut acheter avant que le serveur l'ait (création encore en attente, 429) ; RevenueCat reçoit alors un identifiant que le webhook ne connaît pas. Le lot 4 couvre « le compte n'est pas encore créé ».
+- Lots 2, 3 et 5 : chaque raison nouvelle de fin de session (`identity_added`, `joined`, `merged`, `keys_merged`…) s'ajoute à `_refusalOf` et à `_doRenew` (`flutter_app/lib/services/api_service.dart`) ; sans cela elle tombe sur un renouvellement puis sur la clé.
+- Lots 4 et 5 : `/key` qui répond `unknown` ou `invalid`, et un 409 sur `/invisible`, laissent aujourd'hui le téléphone « hors ligne » pour toujours (principe 2, « chaque refus a son message », pas encore tenu) : ces lots leur donnent leur suite et leur message.
+- Lot 5 (cas 88) : sur Android, la clé est dans le stockage sécurisé, que la sauvegarde automatique emporte chiffrée et illisible ailleurs ; le point 4 de la relecture (« jamais dans un fichier sauvegardé ») n'est tenu qu'avec ce lot.

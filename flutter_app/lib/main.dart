@@ -286,7 +286,7 @@ class _AppShellState extends State<AppShell> {
     // first-tracker flow runs on what the copy then says ("no cell at all"),
     // offline too once the phone has its full copy. Without one and
     // offline, `activated` stays null and the normal app shows.
-    if (!hydrated || sync.snapshotActivated != true) {
+    if (waitsForFirstSync(hydrated: hydrated, snapshotActivated: sync.snapshotActivated, newAccount: auth.isNewAccount)) {
       await sync.firstSync;
     }
     if (!mounted) return;
@@ -494,7 +494,7 @@ class _AppShellState extends State<AppShell> {
     }
     // An account deleted elsewhere while its session had not started here
     // yet (a launch, the other-account check): its copy goes all the same.
-    if (!auth.isAuthenticated && !_sessionStarted && auth.sessionEnded == SessionEnd.accountDeleted && auth.endedUserId != null) {
+    if (!auth.isAuthenticated && !_sessionStarted && auth.sessionEnded?.keepsCopy == false && auth.endedUserId != null) {
       unawaited(context.read<SyncService>().forgetCopies([auth.endedUserId!]));
     }
     if (!auth.isAuthenticated &&

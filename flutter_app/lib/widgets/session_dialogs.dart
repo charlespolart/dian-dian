@@ -15,7 +15,7 @@ class SessionDialogs {
   static const textKeys = [
     'logout.pending.title.one', 'logout.pending.title.other', 'logout.pending.body.one', 'logout.pending.body.other',
     'logout.stay', 'logout.anyway',
-    'session.deleted.title', 'session.deleted.body.zero', 'session.deleted.body.one', 'session.deleted.body.other',
+    'session.deleted.body.zero', 'session.deleted.body.one', 'session.deleted.body.other',
     'session.closed.title', 'session.closed.body.zero', 'session.closed.body.one', 'session.closed.body.other', 'session.reconnect',
     'session.password.title', 'session.password.body.zero', 'session.revoked.title', 'session.deletedHere.body',
     'session.otherAccount.title.one', 'session.otherAccount.title.other', 'session.otherAccount.body', 'session.otherAccount.continue',
@@ -53,9 +53,9 @@ class SessionDialogs {
     String reconnect(String zeroKey) => pending == 0 ? lang.t(zeroKey) : _n(lang, 'session.closed.body', pending);
     switch (end) {
       case SessionEnd.accountDeleted:
+        // Case 50, in the spec's words, and what was not sent (H24).
         return MessageDialog.show(
           context,
-          title: lang.t('session.deleted.title'),
           message: pending == 0 ? lang.t('session.deleted.body.zero') : _n(lang, 'session.deleted.body', pending),
         );
       case SessionEnd.deletedHere:

@@ -133,8 +133,11 @@ class AccountSection extends StatelessWidget {
   }
 
   Future<void> _delete(BuildContext context, {required bool invisible, required String? email}) async {
-    // Deleting needs the server (H6): nothing is begun offline.
-    if (await ConnectionNeededDialog.blockIfOffline(context)) return;
+    // Deleting needs the server (H6): nothing is begun offline — unless the
+    // server has never had this account.
+    final onPhoneOnly = await context.read<AuthProvider>().deletesOnPhoneOnly();
+    if (!context.mounted) return;
+    if (!onPhoneOnly && await ConnectionNeededDialog.blockIfOffline(context)) return;
     if (!context.mounted) return;
     final lang = context.read<LanguageProvider>();
     final pages = context.read<PagesProvider>().pages;
@@ -161,8 +164,11 @@ class AccountSection extends StatelessWidget {
     // Signed out only once the server confirms: a deletion that failed must
     // not look done (the account and its data would still be there). Done,
     // the session ends and the app says « Vos données ont été supprimées ».
-    final gone = await context.read<AuthProvider>().deleteAccount();
-    if (!gone && context.mounted) await MessageDialog.show(context, message: lang.t('account.delete.failed'));
+    final auth = context.read<AuthProvider>();
+    final gone = await auth.deleteAccount();
+    // Not gone, and the session still there: nothing changed, say so. A
+    // session that ended meanwhile for another reason says that instead.
+    if (!gone && auth.isAuthenticated && context.mounted) await MessageDialog.show(context, message: lang.t('account.delete.failed'));
   }
 
   /// What the confirmation of a deletion says (case 65): what goes, with its

@@ -69,7 +69,11 @@ class RestoreResult {
   /// The user profile returned by `/api/auth/refresh` when [outcome] is [RefreshOutcome.ok].
   final Map<String, dynamic>? profile;
 
-  const RestoreResult(this.outcome, this.profile);
+  /// How the session ended, when it did: [outcome]'s ending, or what it
+  /// turned out to be (a deletion asked here, case 66).
+  final SessionEnd? end;
+
+  const RestoreResult(this.outcome, this.profile, {this.end});
 }
 
 /// A request that needed a new access token while the server could not be
@@ -129,15 +133,11 @@ class ApiService {
   /// `account_deleted`, `password_changed`, `session_revoked`) is not
   /// renewed: the session ends with that reason — unless the account is
   /// invisible, whose key reopens it (principle 4), or a deletion.
-  /// With [handleSessionEnd] false, such a refusal is handed back to the
-  /// caller instead, the session untouched: a retried deletion whose first
-  /// answer was lost says itself that the data is gone (case 66).
   Future<http.Response> apiFetch(
     String path, {
     String method = 'GET',
     Map<String, dynamic>? body,
     Map<String, String>? headers,
-    bool handleSessionEnd = true,
   }) async {
     final usedToken = _accessToken;
     final response = await _send(path, method: method, body: body, headers: headers);
@@ -150,7 +150,9 @@ class ApiService {
     }
 
     final refused = _refusalOf(_refusalCode(response));
-    if (refused != null && !handleSessionEnd) return response;
+    // The token of a session the server ended is dead: never sent again,
+    // even if the key cannot reopen the session now (review, minor 10).
+    if (refused != null) _accessToken = null;
     final outcome = await _renew(refused: refused);
     switch (outcome) {
       case RefreshOutcome.ok:
@@ -163,37 +165,50 @@ class ApiService {
       case RefreshOutcome.accountDeleted:
       case RefreshOutcome.passwordChanged:
       case RefreshOutcome.revoked:
-        if (handleSessionEnd) await _endSession(outcome.end!);
+        await _endSession(outcome.end!);
         return response;
     }
   }
 
-  /// Deletes the account and its data on the server (cases 65 and 66). True
-  /// when it is gone — also when a first deletion's answer was lost and the
-  /// session already says so: the session then ends as [SessionEnd.deletedHere].
-  /// False when the server did not do it (no network, an error): nothing
-  /// changes on the phone. While it runs, a refusal that says the account
-  /// was deleted — another request, the live channel — is this deletion,
-  /// never « deleted on another device ».
+  /// Deletes the account and its data (cases 65 and 66). True when it is
+  /// gone, and the session has ended as [SessionEnd.deletedHere]; false when
+  /// the server did not do it (an error, no network) — nothing changes on
+  /// the phone — or when the session had already ended for another reason,
+  /// which then ends it. While it runs, any « account deleted » — another
+  /// request, the live channel, a retried deletion whose first answer was
+  /// lost — is this deletion, never « deleted on another device »; and if
+  /// its answer never comes, that stays true for later (on the phone).
   Future<bool> deleteAccount() async {
+    final userId = await _tokens.getUserId();
+    if (await deletesOnPhoneOnly()) {
+      await _endSession(SessionEnd.deletedHere);
+      return true;
+    }
     _deleting = true;
-    _endedByDeletion = false;
     try {
-      final res = await apiFetch('/api/auth/account', method: 'DELETE', handleSessionEnd: false);
-      final gone = res.statusCode == 200 || (res.statusCode == 401 && _refusalCode(res) == 'account_deleted');
-      if (gone && !_endedByDeletion) await _endSession(SessionEnd.deletedHere);
-      if (!gone) debugPrint('Delete account failed: ${res.statusCode}');
-      return gone;
+      final res = await apiFetch('/api/auth/account', method: 'DELETE');
+      if (res.statusCode == 200) await _endSession(SessionEnd.deletedHere);
+      if (res.statusCode != 200 && !_ended) debugPrint('Delete account failed: ${res.statusCode}');
+      return _ended && _lastEnd == SessionEnd.deletedHere;
     } catch (e) {
-      debugPrint('Delete account failed: $e');
-      return _endedByDeletion;
+      // The server may have done it and only the answer was lost (case 66).
+      debugPrint('Delete account failed: ${e.runtimeType}');
+      if (userId != null) await _keys.markDeletionAsked(userId);
+      return _ended && _lastEnd == SessionEnd.deletedHere;
     } finally {
       _deleting = false;
     }
   }
 
+  /// An invisible account the server has never had (its creation never
+  /// answered): deleting it, or leaving it, is the phone's business alone.
+  Future<bool> deletesOnPhoneOnly() async {
+    final userId = await _tokens.getUserId();
+    if (userId == null || await _keys.invisibleKey(userId) == null) return false;
+    return !await _keys.invisibleCreated(userId);
+  }
+
   bool _deleting = false;
-  bool _endedByDeletion = false;
 
   /// « Déconnecter mes autres appareils » (case 52): how many sessions were
   /// closed. Throws when the server did not do it.
@@ -206,7 +221,9 @@ class ApiService {
   /// The live channel said the session ended (chantier 9): the same path as
   /// a request refused with that [code].
   Future<void> sessionEndedByServer(String? code) async {
-    final end = (await _renew(refused: _refusalOf(code))).end;
+    final refused = _refusalOf(code);
+    if (refused != null) _accessToken = null;
+    final end = (await _renew(refused: refused)).end;
     if (end != null) await _endSession(end);
   }
 
@@ -263,6 +280,10 @@ class ApiService {
   }
 
   Future<RefreshOutcome> _doRenew(RefreshOutcome? refused) async {
+    // An invisible account the server does not have yet is created first:
+    // a stray refresh token (left by an app before 1.3.0) never pulls it
+    // into another account (review, minor 1).
+    if (refused == null && await deletesOnPhoneOnly()) return await _openWithKey() ?? RefreshOutcome.invalid;
     final outcome = refused ?? await _doRefresh();
     switch (outcome) {
       case RefreshOutcome.ok:
@@ -350,6 +371,8 @@ class ApiService {
 
   Future<void> _storeSession(Map<String, dynamic> data) async {
     _accessToken = data['accessToken'] as String;
+    _ended = false;
+    _lastEnd = null;
     await _tokens.setRefreshToken(data['refreshToken'] as String);
     final userId = data['userId'];
     if (userId is String) await _tokens.setUserId(userId);
@@ -379,24 +402,30 @@ class ApiService {
   /// The session is over. The refused token goes; the account id stays
   /// unless the account itself was deleted: it says whose copy the phone
   /// keeps for the reconnection. A deleted account's key goes with it.
-  Future<void> _endSession(SessionEnd end, {bool notify = true}) async {
-    if (_deleting) {
-      if (_endedByDeletion) return; // already ended by this deletion
-      if (end == SessionEnd.accountDeleted) {
-        end = SessionEnd.deletedHere;
-        _endedByDeletion = true;
-      }
-    }
+  /// Once per session, however many requests learn it at the same time
+  /// (review, minor 5); returns how it ended, null when it already had.
+  Future<SessionEnd?> _endSession(SessionEnd end, {bool notify = true}) async {
+    if (_ended) return null;
+    _ended = true;
     _accessToken = null;
     _lastProfile = null;
+    final userId = await _tokens.getUserId();
+    // Deleted from this phone, now or by a deletion whose answer was lost.
+    if (end == SessionEnd.accountDeleted && (_deleting || (userId != null && await _keys.deletionAsked(userId)))) {
+      end = SessionEnd.deletedHere;
+    }
+    _lastEnd = end;
     await _tokens.deleteRefreshToken();
     if (!end.keepsCopy) {
-      final userId = await _tokens.getUserId();
-      if (userId != null) await _keys.deleteInvisibleKey(userId);
+      if (userId != null) await _keys.forgetAccount(userId);
       await _tokens.deleteUserId();
     }
     if (notify) onSessionEnded?.call(end);
+    return end;
   }
+
+  bool _ended = false;
+  SessionEnd? _lastEnd;
 
   // ---------------------------------------------------------------------------
   // Auth endpoints
@@ -436,13 +465,21 @@ class ApiService {
     return data;
   }
 
+  /// Signs out on the server, then on the phone whatever the server said:
+  /// never thrown, offline included. An invisible account's key is
+  /// forgotten with it — and one the server never had asks nothing of it
+  /// (review, minor 2).
   Future<void> logout() async {
+    final userId = await _tokens.getUserId();
     try {
-      await apiFetch('/api/auth/logout', method: 'POST');
+      if (!await deletesOnPhoneOnly()) await apiFetch('/api/auth/logout', method: 'POST');
+    } catch (e) {
+      debugPrint('Logout request failed: ${e.runtimeType}');
     } finally {
       _accessToken = null;
       _lastProfile = null;
       await _tokens.deleteRefreshToken();
+      if (userId != null && await _keys.invisibleKey(userId) != null) await _keys.forgetAccount(userId);
       await _tokens.deleteUserId();
     }
   }
@@ -455,8 +492,8 @@ class ApiService {
     // The caller reads the outcome itself: the tokens are settled here, the
     // callback is not fired.
     final end = outcome.end;
-    if (end != null) await _endSession(end, notify: false);
-    return RestoreResult(outcome, outcome == RefreshOutcome.ok ? _lastProfile : null);
+    final ended = end == null ? null : await _endSession(end, notify: false) ?? _lastEnd;
+    return RestoreResult(outcome, outcome == RefreshOutcome.ok ? _lastProfile : null, end: ended);
   }
 
   Future<void> forgotPassword(String email) async {

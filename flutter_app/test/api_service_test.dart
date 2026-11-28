@@ -218,14 +218,125 @@ void main() {
     }
   });
 
-  test('a refusal handed to the caller does not end the session for it (case 66)', () async {
-    final client = MockClient((req) async => http.Response('{"error":"Session ended","code":"account_deleted"}', 401));
+  group('a deletion asked on this phone (cases 65 and 66)', () {
+    late List<String> paths;
+    late FakeKeys keys;
+    late FakeTokens tokens;
+
+    ApiService api(Future<http.Response> Function(http.Request) answer) {
+      paths = [];
+      return ApiService.custom(
+        client: MockClient((req) async {
+          paths.add('${req.method} ${req.url.path}');
+          return answer(req);
+        }),
+        tokens: tokens,
+        keys: keys,
+      );
+    }
+
+    setUp(() {
+      keys = FakeKeys();
+      tokens = FakeTokens(refresh: 'r1')..userId = 'u1';
+    });
+
+    test('its answer lost: a later « account deleted » is this deletion, never « deleted on another device » (review, important 1)', () async {
+      var deleted = false;
+      final a = api((req) async {
+        if (req.method == 'DELETE') {
+          deleted = true; // done on the server…
+          throw http.ClientException('connection reset'); // …and the answer lost
+        }
+        if (req.url.path == '/api/auth/refresh') return http.Response(jsonEncode({'accessToken': 'a1', 'refreshToken': 'r2', 'userId': 'u1'}), 200);
+        return deleted ? http.Response('{"error":"Session ended","code":"account_deleted"}', 401) : http.Response('{}', 200);
+      });
+      final ends = <SessionEnd>[];
+      a.onSessionEnded = ends.add;
+      expect(await a.deleteAccount(), isFalse, reason: 'the phone cannot know yet');
+      expect(ends, isEmpty);
+      await a.apiFetch('/api/sync?since=0'); // the sync's next request
+      expect(ends, [SessionEnd.deletedHere]);
+      expect(tokens.userId, isNull);
+      expect(keys.asked, isEmpty, reason: 'forgotten with the account');
+    });
+
+    test('its answer lost, then the app closed: at the next launch too', () async {
+      final first = api((req) async => req.method == 'DELETE'
+          ? throw http.ClientException('connection reset')
+          : http.Response(jsonEncode({'accessToken': 'a1', 'refreshToken': 'r2', 'userId': 'u1'}), 200));
+      await first.tryRestoreSession();
+      expect(await first.deleteAccount(), isFalse);
+      final relaunched = api((req) async => http.Response('{"error":"x","code":"account_deleted"}', 401));
+      final r = await relaunched.tryRestoreSession();
+      expect(r.end, SessionEnd.deletedHere);
+    });
+
+    test('refused because the session had already ended for another reason: that reason ends it, not « réessayez » (review, minor 4)', () async {
+      final a = api((req) async => http.Response('{"error":"Session ended","code":"password_changed"}', 401));
+      final ends = <SessionEnd>[];
+      a.onSessionEnded = ends.add;
+      expect(await a.deleteAccount(), isFalse);
+      expect(ends, [SessionEnd.passwordChanged]);
+    });
+
+    test('an invisible account the server never had is deleted on the phone alone, without the network (review, minor 3)', () async {
+      keys.keys['u1'] = 'k';
+      tokens.refresh = null;
+      final a = api((req) async => throw http.ClientException('no network'));
+      final ends = <SessionEnd>[];
+      a.onSessionEnded = ends.add;
+      expect(await a.deletesOnPhoneOnly(), isTrue);
+      expect(await a.deleteAccount(), isTrue);
+      expect(paths, isEmpty);
+      expect(ends, [SessionEnd.deletedHere]);
+      expect(keys.keys, isEmpty);
+    });
+  });
+
+  test('a session ends once, however many requests learn it at the same time (review, minor 5)', () async {
+    final client = MockClient((req) async => http.Response('{"error":"Session ended","code":"session_revoked"}', 401));
     final api = ApiService.custom(client: client, tokens: FakeTokens(refresh: 'r1')..userId = 'u1');
     final ends = <SessionEnd>[];
     api.onSessionEnded = ends.add;
-    final r = await api.apiFetch('/api/auth/account', method: 'DELETE', handleSessionEnd: false);
-    expect(r.statusCode, 401);
-    expect(ends, isEmpty);
+    await Future.wait([api.apiFetch('/api/pages'), api.apiFetch('/api/sync?since=0'), api.sessionEndedByServer('session_revoked')]);
+    expect(ends, [SessionEnd.revoked]);
+  });
+
+  test('a refusal with its reason drops the access token even when the key cannot reach the server (review, minor 10)', () async {
+    final keys = FakeKeys()..keys['u1'] = 'k'..created.add('u1');
+    final api = ApiService.custom(
+      client: MockClient((req) async => req.url.path == '/api/auth/key'
+          ? throw http.ClientException('no network')
+          : req.url.path == '/api/auth/refresh'
+              ? http.Response(jsonEncode({'accessToken': 'a1', 'refreshToken': 'r2', 'userId': 'u1'}), 200)
+              : http.Response('{"error":"Session ended","code":"session_revoked"}', 401)),
+      tokens: FakeTokens(refresh: 'r1')..userId = 'u1',
+      keys: keys,
+    );
+    await api.tryRestoreSession();
+    expect(api.accessToken, 'a1');
+    await expectLater(api.apiFetch('/api/pages'), throwsA(isA<ApiUnreachable>()));
+    expect(api.accessToken, isNull, reason: 'a dead token is not kept to be refused again');
+  });
+
+  test('an invisible account the server does not have yet goes to /invisible, never through a stray refresh token (review, minor 1)', () async {
+    final keys = FakeKeys()..keys['u1'] = 'k';
+    final paths = <String>[];
+    final api = ApiService.custom(
+      client: MockClient((req) async {
+        paths.add(req.url.path);
+        return switch (req.url.path) {
+          '/api/auth/refresh' => http.Response(jsonEncode({'accessToken': 'x', 'refreshToken': 'x', 'userId': 'someone-else'}), 200),
+          '/api/auth/invisible' => http.Response(jsonEncode({'accessToken': 'a1', 'refreshToken': 'r2', 'userId': 'u1'}), 201),
+          _ => http.Response('{}', 404),
+        };
+      }),
+      tokens: FakeTokens(refresh: 'stale')..userId = 'u1',
+      keys: keys,
+    );
+    final r = await api.tryRestoreSession();
+    expect(r.outcome, RefreshOutcome.ok);
+    expect(paths, ['/api/auth/invisible']);
   });
 
   group('the key of an invisible account', () {
@@ -318,14 +429,20 @@ class FakeKeys implements KeyStore {
   Future<String?> invisibleKey(String userId) async => keys[userId];
   @override
   Future<void> setInvisibleKey(String userId, String key) async => keys[userId] = key;
+  final asked = <String>{};
   @override
-  Future<void> deleteInvisibleKey(String userId) async {
+  Future<void> forgetAccount(String userId) async {
     keys.remove(userId);
     created.remove(userId);
+    asked.remove(userId);
   }
 
   @override
   Future<bool> invisibleCreated(String userId) async => created.contains(userId);
   @override
   Future<void> markInvisibleCreated(String userId) async => created.add(userId);
+  @override
+  Future<bool> deletionAsked(String userId) async => asked.contains(userId);
+  @override
+  Future<void> markDeletionAsked(String userId) async => asked.add(userId);
 }

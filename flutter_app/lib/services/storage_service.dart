@@ -69,10 +69,17 @@ class StorageService implements TokenStore, KeyStore {
   Future<void> setInvisibleKey(String userId, String key) => _storage.write(key: 'invisible_key_$userId', value: key);
 
   @override
-  Future<void> deleteInvisibleKey(String userId) async {
+  Future<void> forgetAccount(String userId) async {
     await _storage.delete(key: 'invisible_key_$userId');
     await _storage.delete(key: 'invisible_created_$userId');
+    await _storage.delete(key: 'deletion_asked_$userId');
   }
+
+  @override
+  Future<bool> deletionAsked(String userId) async => await _storage.read(key: 'deletion_asked_$userId') == 'yes';
+
+  @override
+  Future<void> markDeletionAsked(String userId) => _storage.write(key: 'deletion_asked_$userId', value: 'yes');
 
   @override
   Future<bool> invisibleCreated(String userId) async => await _storage.read(key: 'invisible_created_$userId') == 'yes';

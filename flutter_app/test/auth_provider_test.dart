@@ -32,7 +32,7 @@ void main() {
   }
 
   test('« Continuer sans compte » offline: the app is usable at once, under the id the phone chose (case 5)', () async {
-    final storage = FakeStorage();
+    final storage = FakeStorage()..values['refresh'] = 'stale-from-1.2';
     final auth = build((req) async => throw http.ClientException('no network'), storage);
     await settle();
     expect(auth.isAuthenticated, isFalse);
@@ -46,6 +46,7 @@ void main() {
     expect(auth.kind, isNull, reason: 'the server has not said yet (principle 5)');
     expect(auth.email, isNull);
     expect(auth.isNewAccount, isTrue, reason: 'its copy starts whole and empty');
+    expect(storage.values['refresh'], isNull, reason: 'a stray refresh token is gone with the new account (review, minor 1)');
   });
 
   test('too many accounts from this network (429, case 6): the app lets in all the same, and tries again later', () async {
@@ -122,6 +123,57 @@ void main() {
     await settle();
     expect(auth.email, isNull);
     expect(storage.values['email'], isNull);
+  });
+
+  test('« Continuer sans compte » forgets a stray refresh token: the new account is never pulled into an old one (review, minor 1)', () async {
+    final storage = FakeStorage()..values['refresh'] = 'stale-from-1.2';
+    final sent = <String>[];
+    final auth = build((req) async {
+      sent.add(req.url.path);
+      if (req.url.path == '/api/auth/invisible') {
+        final body = jsonDecode(req.body) as Map<String, dynamic>;
+        return http.Response(jsonEncode({'accessToken': 'a1', 'refreshToken': 'r1', 'userId': body['id'], 'email': null, 'kind': 'invisible', 'methods': []}), 201);
+      }
+      return http.Response(jsonEncode({'accessToken': 'x', 'refreshToken': 'x', 'userId': 'old-account', 'email': 'old@example.com', 'kind': 'attached', 'methods': ['email']}), 200);
+    }, storage);
+    await settle();
+    sent.clear();
+    await auth.continueWithoutAccount();
+    await settle();
+    final id = auth.userId;
+    expect(sent, ['/api/auth/invisible']);
+    expect(storage.values['user'], id);
+    expect(auth.kind, 'invisible');
+  });
+
+  test('signing out of an account born here before the server has it: forgotten on the phone, nothing asked of the server (review, minor 2)', () async {
+    final storage = FakeStorage();
+    final sent = <String>[];
+    final auth = build((req) async {
+      sent.add(req.url.path);
+      throw http.ClientException('no network');
+    }, storage);
+    await settle();
+    await auth.continueWithoutAccount();
+    await settle();
+    final id = auth.userId!;
+    sent.clear();
+    await auth.logout(); // the H25 « go back » after « Continuer sans compte »
+    expect(sent, isEmpty);
+    expect(auth.isAuthenticated, isFalse);
+    expect(storage.values['user'], isNull);
+    expect(storage.values['key:$id'], isNull, reason: 'no key left behind');
+  });
+
+  test('signing out offline never throws: the session is dropped on the phone all the same', () async {
+    final storage = FakeStorage()
+      ..values['user'] = 'u1'
+      ..values['refresh'] = 'r1';
+    final auth = build((req) async => throw http.ClientException('no network'), storage);
+    await settle();
+    await auth.logout();
+    expect(auth.isAuthenticated, isFalse);
+    expect(storage.values['refresh'], isNull);
   });
 
   test('the live channel saying the session ended ends it like a refused request (ruling 21)', () async {

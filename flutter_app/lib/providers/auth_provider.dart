@@ -70,6 +70,10 @@ class AuthProvider extends ChangeNotifier {
     return gone;
   }
 
+  /// An account born here that the server does not have yet: deleting it
+  /// needs no network (review, minor 3).
+  Future<bool> deletesOnPhoneOnly() => _api.deletesOnPhoneOnly();
+
   /// « Déconnecter mes autres appareils » (case 52): how many were closed.
   Future<int> closeOtherSessions() => _api.closeOtherSessions();
 
@@ -131,6 +135,9 @@ class AuthProvider extends ChangeNotifier {
     final key = base64Url.encode(List<int>.generate(32, (_) => random.nextInt(256))).replaceAll('=', '');
     await _storage.setInvisibleKey(id, key);
     if (await _storage.invisibleKey(id) != key) throw StateError('The account key could not be kept on this phone');
+    // A refresh token left behind (an app before 1.3.0 kept it without the
+    // account id) must never open another account under this one (review, minor 1).
+    await _storage.deleteRefreshToken();
     await _storage.setUserId(id);
     await _storage.deleteEmail();
     _userId = id;
@@ -223,7 +230,7 @@ class AuthProvider extends ChangeNotifier {
           _kind = null;
           _methods = const [];
           await _storage.deleteEmail();
-          _sessionEnded = result.outcome.end;
+          _sessionEnded = result.end ?? result.outcome.end;
 
         case RefreshOutcome.offline:
           // No network: stay on the stored session (if any) with cached data;

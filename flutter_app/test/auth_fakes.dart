@@ -26,10 +26,16 @@ class FakeStorage implements StorageService {
   @override
   Future<void> setInvisibleKey(String userId, String key) async => values['key:$userId'] = key;
   @override
-  Future<void> deleteInvisibleKey(String userId) async {
+  Future<void> forgetAccount(String userId) async {
     values.remove('key:$userId');
     values.remove('created:$userId');
+    values.remove('asked:$userId');
   }
+
+  @override
+  Future<bool> deletionAsked(String userId) async => values['asked:$userId'] == 'yes';
+  @override
+  Future<void> markDeletionAsked(String userId) async => values['asked:$userId'] = 'yes';
 
   @override
   Future<bool> invisibleCreated(String userId) async => values['created:$userId'] == 'yes';

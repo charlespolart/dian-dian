@@ -36,7 +36,7 @@ void main() {
   /// The account section of the settings, for an [invisible] or an attached
   /// account, with two trackers and three days coloured. [delete]: how the
   /// server answers the deletion.
-  Future<void> pump(WidgetTester tester, {required bool invisible, http.Response Function()? delete}) async {
+  Future<void> pump(WidgetTester tester, {required bool invisible, bool created = true, http.Response Function()? delete}) async {
     tester.view.physicalSize = const Size(1170, 2532);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
@@ -46,7 +46,7 @@ void main() {
     final storage = FakeStorage()..values['user'] = 'u1';
     if (invisible) {
       storage.values['key:u1'] = _invisibleKey;
-      storage.values['created:u1'] = 'yes';
+      if (created) storage.values['created:u1'] = 'yes';
     } else {
       storage.values['refresh'] = 'r1';
     }
@@ -93,6 +93,7 @@ void main() {
     ));
     await tester.pumpAndSettle();
     expect(auth.isAuthenticated, isTrue);
+    sent.clear();
   }
 
   const sentence = 'Sans compte, vos trackers peuvent ne pas vous suivre sur un autre téléphone. "Mes données" dit ce qu\'il en est.';
@@ -159,6 +160,23 @@ void main() {
   testWidgets('a retried deletion whose first answer was lost: told deleted, not « deleted on another device » (case 66)', (tester) async {
     await pump(tester, invisible: true, delete: () => http.Response('{"error":"Session ended","code":"account_deleted"}', 401));
     await confirmDeletion(tester, invisible: true);
+    expect(auth.isAuthenticated, isFalse);
+    expect(auth.sessionEnded, SessionEnd.deletedHere);
+  });
+
+  testWidgets('refused because the password changed meanwhile: that reason ends the session, no « réessayez » (review, minor 4)', (tester) async {
+    await pump(tester, invisible: false, delete: () => http.Response('{"error":"Session ended","code":"password_changed"}', 401));
+    await confirmDeletion(tester, invisible: false);
+    expect(auth.isAuthenticated, isFalse);
+    expect(auth.sessionEnded, SessionEnd.passwordChanged);
+    expect(find.text('Suppression impossible pour l\'instant, réessayez.'), findsNothing);
+  });
+
+  testWidgets('an account born here that the server does not have yet is deleted offline, on the phone alone (review, minor 3)', (tester) async {
+    await pump(tester, invisible: true, created: false);
+    NetworkGate.deviceOffline = () async => true;
+    await confirmDeletion(tester, invisible: true);
+    expect(sent.where((r) => r.url.path == '/api/auth/account'), isEmpty);
     expect(auth.isAuthenticated, isFalse);
     expect(auth.sessionEnded, SessionEnd.deletedHere);
   });

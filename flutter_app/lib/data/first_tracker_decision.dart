@@ -23,6 +23,13 @@ String? replaceablePageId(
 /// [doneOnThisDevice] is the per-device, per-account flag set when the flow
 /// was finished or skipped. The free limit is respected: at the limit, the
 /// flow only runs if it can replace an empty page.
+/// Whether a session's landing waits for its first sync: anyone the phone
+/// already knows as active lands at once; so does an account just born on
+/// this phone, whose empty copy already says « first tracker » (case 5) —
+/// on a slow network, its creation may take a while (review, minor 9).
+bool waitsForFirstSync({required bool hydrated, required bool? snapshotActivated, required bool newAccount}) =>
+    !newAccount && (!hydrated || snapshotActivated != true);
+
 bool shouldShowFirstTracker({
   required bool? activated,
   required bool doneOnThisDevice,

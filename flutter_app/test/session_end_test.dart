@@ -58,10 +58,14 @@ void main() {
     });
   });
 
-  testWidgets('H24: the account was deleted on another device', (tester) async {
+  testWidgets('H24, case 50: the account was deleted on another device, in the spec\'s words', (tester) async {
+    await run(tester, (context) => SessionDialogs.sessionEnded(context, SessionEnd.accountDeleted, pending: 0));
+    expect(find.text('Ce compte a été supprimé depuis un autre appareil.'), findsOneWidget);
+  });
+
+  testWidgets('H24: with the changes it leaves', (tester) async {
     await run(tester, (context) => SessionDialogs.sessionEnded(context, SessionEnd.accountDeleted, pending: 2));
-    expect(find.text('Ce compte a été supprimé'), findsOneWidget);
-    expect(find.text("Il a été supprimé depuis un autre appareil. Les 2 modifications faites hors ligne n'ont pas été envoyées."), findsOneWidget);
+    expect(find.text("Ce compte a été supprimé depuis un autre appareil. Les 2 modifications faites hors ligne n'ont pas été envoyées."), findsOneWidget);
   });
 
   testWidgets('H25: the session was closed; the changes wait for the reconnection', (tester) async {
